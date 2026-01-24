@@ -380,6 +380,34 @@
         </Transition>
       </div>
 
+          <label class="section-label">Prompt History</label>
+          <div class="prompt-history">
+            <div
+              v-if="!promptHistory.length"
+              class="prompt-history-empty"
+            >
+              No prompts yet
+            </div>
+            <div
+              v-for="(prompt, index) in promptHistory"
+              :key="`prompt-${index}`"
+              class="prompt-history-item"
+            >
+              <div class="prompt-history-text">{{ prompt }}</div>
+              <button
+                type="button"
+                class="prompt-copy-button"
+                @click="copyPromptToInput(prompt)"
+                title="Copy to input"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
           <label class="section-label">Status</label>
           <div class="status-display" :class="{ 'status-active': status === 'Running...' }">
             {{ status }}
@@ -496,6 +524,8 @@ const route = useRoute()
 
 // Task input state
 const taskPrompt = ref('')
+const promptHistory = ref([])
+const MAX_HISTORY_ITEMS = 10
 
 // File selector state
 const workflowFiles = ref([])
@@ -1329,6 +1359,11 @@ const sendHumanInput = () => {
     }
   }
 
+  // Add to prompt history
+  if (trimmedInput) {
+    addToPromptHistory(trimmedInput)
+  }
+
   clearUploadedAttachments()
   ws.send(JSON.stringify(message))
 
@@ -1685,6 +1720,29 @@ const switchToGraph = async () => {
   await loadVueFlowGraph({ fit: true })
 }
 
+const addToPromptHistory = (prompt) => {
+  const trimmed = prompt.trim()
+  if (!trimmed) return
+  
+  // Remove duplicates
+  promptHistory.value = promptHistory.value.filter(p => p !== trimmed)
+  
+  // Add to the beginning
+  promptHistory.value.unshift(trimmed)
+  
+  // Keep only the latest MAX_HISTORY_ITEMS
+  if (promptHistory.value.length > MAX_HISTORY_ITEMS) {
+    promptHistory.value = promptHistory.value.slice(0, MAX_HISTORY_ITEMS)
+  }
+}
+
+const copyPromptToInput = (prompt) => {
+  taskPrompt.value = prompt
+  nextTick(() => {
+    taskInputRef.value?.focus()
+  })
+}
+
 const launchWorkflow = async () => {
   if (!selectedFile.value) {
     alert('Please choose a workflow file！')
@@ -1727,6 +1785,11 @@ const launchWorkflow = async () => {
     })
 
     if (response.ok) {
+      // Add to prompt history
+      if (trimmedPrompt) {
+        addToPromptHistory(trimmedPrompt)
+      }
+
       // Clear uploaded attachments
       clearUploadedAttachments()
 
@@ -3328,4 +3391,98 @@ watch(
 .settings-button:hover {
   background-color: rgba(160, 196, 255, 0.1);
 }
+
+/* Prompt History */
+.prompt-history {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prompt-history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prompt-history::-webkit-scrollbar-thumb {
+  background-color: rgba(160, 160, 160, 0.28);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.prompt-history::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(160, 160, 160, 0.48);
+}
+
+.prompt-history-empty {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+
+.prompt-history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.prompt-history-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.prompt-history-text {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.prompt-copy-button {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.prompt-copy-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #99eaf9;
+}
+
+.prompt-copy-button:active {
+  transform: scale(0.95);
+}
+
 </style>
