@@ -3,15 +3,14 @@
 #
 # MODELS IN USE:
 # - gemma2-9b-it-psy10k-mental_health-i1: Medical staff - specialized medical knowledge
-#
-# PROMPT: "A patient arrives with flu-like symptoms for a checkup"
 
 version: 0.1.0
 
 vars:
   api_key: ${API_KEY}
   base_url: ${BASE_URL}
-  NUMBER_OF_PATIENTS: 2
+  # Higher number of patients will need a more powerful model
+  NUMBER_OF_PATIENTS: 1
   COMMON_PROMPT: |
     You are an intelligent agent participating in a high-fidelity hospital simulation.
     
@@ -538,7 +537,7 @@ graph:
           
           Based on this SPECIFIC hospital atmosphere, generate 2 distinct, VIVID patient personas.
           
-          CRITICAL REQUIREMENTS:
+          REQUIREMENTS:
           - Patient behaviors should reflect the emotional atmosphere (anxious if chaotic, relaxed if calm)
           - Consider how the described conditions would realistically affect who shows up
           
@@ -608,7 +607,7 @@ graph:
           
           Respond as Nurse Jackie. 
           
-          CRITICAL: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the hospital conditions above.
+          REQUIREMENTS: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the hospital conditions above.
           - Match your stress level to the urgency
           - Show visible effects of understaffing, chaos, or calmness
           - You MUST NOT ask any questions to the patient
