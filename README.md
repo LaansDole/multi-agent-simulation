@@ -134,7 +134,7 @@ See our paper in [Multi-Agent Collaboration via Evolving Orchestration](https://
 
 #### Using Makefile (Recommended)
 
-** Start both Backend and Frontent**:
+**Start both Backend and Frontent**:
 ```bash
 make dev
 ```
