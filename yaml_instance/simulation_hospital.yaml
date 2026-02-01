@@ -4,26 +4,24 @@
 # MODELS IN USE:
 # - gemma2-9b-it-psy10k-mental_health-i1: Medical staff - specialized medical knowledge
 
-version: 0.1.0
-
+version: 1.0.0
 vars:
   api_key: ${API_KEY}
   base_url: ${BASE_URL}
   # Higher number of patients will need a more powerful model
   NUMBER_OF_PATIENTS: 1
   # Number of interactions between doctor and patient
-  NUMBER_OF_INTERACTIONS: 5
+  NUMBER_OF_INTERACTIONS: 2
   MAX_TOKENS: 4000
   COMMON_PROMPT: |
     You are an intelligent agent participating in a high-fidelity hospital simulation.
-    
+
     CORE DIRECTIVES:
     1. IMMERSION: Stay in character at all times. Never break the fourth wall.
     2. ADAPTABILITY: Your behavior, tone, and pacing must change dynamically based on the "Hospital Atmosphere" described in the input.
     3. PERSPECTIVE: You MUST always act in first person perspective.
-    
-    Current Role:
 
+    Current Role:
 graph:
   id: hospital_simulation_lmstudio_multimodel
   description: |
@@ -32,10 +30,7 @@ graph:
     - Patients use general Qwen model for natural conversation
     - Dynamic Execution: Simulates multiple parallel patients.
     Optimized for 8B parameter models with reduced context and token limits.
-  
   log_level: DEBUG
-  
-  # Memory stores - reduced size for local models
   memory:
     - name: nurse_memory
       type: simple
@@ -45,7 +40,6 @@ graph:
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
-
     - name: doctor_memory
       type: simple
       config:
@@ -54,37 +48,48 @@ graph:
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
-  
+    - name: patient_memory
+      type: simple
+      config:
+        embedding:
+          provider: openai
+          base_url: ${BASE_URL}
+          api_key: ${API_KEY}
+          model: text-embedding-bge-reranker-v2-m3
+    - name: environment_memory
+      type: simple
+      config:
+        embedding:
+          provider: openai
+          base_url: ${BASE_URL}
+          api_key: ${API_KEY}
+          model: text-embedding-bge-reranker-v2-m3
   nodes:
-    # Input Processor
     - id: InputProcessor
       type: passthrough
       name: Input Processor
-      description: 'Initial entry point for user input'
+      description: Initial entry point for user input
       config: {}
-
-    # Environment Coordinator (General Conversational Model)
     - id: environment
       name: Hospital Environment
       type: agent
-      description: 'Generates atmospheric context for the simulation'
+      description: Generates atmospheric context for the simulation
       config:
         role: |
           ${COMMON_PROMPT}
           You are the hospital environment coordinator.
-          
+
           Provide a detailed atmospheric description that will directly influence all agents' behavior throughout the simulation.
-          
+
           REQUIREMENTS:
           - Include Urgency Level (Low/Medium/High/Critical) - how busy and stressed the hospital is
           - Specify Staffing Status (Fully Staffed/Understaffed/Skeleton Crew)
           - Describe Time Context (time of day, day of week, season)
           - Note any Notable Conditions (weather impact, outbreak situation, equipment status, recent incidents)
           - Convey the Emotional Atmosphere (Calm/Tense/Chaotic/Somber) affecting everyone
-          
+
           OUTPUT FORMAT:
           Provide 3-5 sentences painting a vivid picture that will make nurses rushed or relaxed, doctors thorough or quick, and patients more or less anxious. Be specific and concrete - these details will directly shape how every agent behaves.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -92,59 +97,99 @@ graph:
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
-      
-    # Patient Generator (Creates parallel scenarios)
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              You have just generated an environmental description. Now determine the appropriate mode and refine:
+
+              MODE DETECTION:
+              1. Analyze the input request:
+                 - Is it MINIMAL/CONTINUATION? (e.g., "continue", "same", "next round", empty, or very short)
+                 - Is it EVOLUTIONARY? (e.g., adds new elements like "nurse infected", "power outage")
+
+              2. Review retrieved environment memory (if any from previous rounds):
+                 - What was the previous scenario context?
+                 - What conditions were already established?
+
+              CONTINUATION MODE (minimal input):
+              - Maintain ALL core elements from previous round (urgency, staffing, crisis, conditions)
+              - Add natural time progression (e.g., "2 hours later", "next shift")
+              - Keep consistency while showing realistic evolution
+              - Output updated description preserving established context
+
+              EVOLUTION MODE (new elements in input):
+              - PRESERVE all previously established context from memory
+              - INTEGRATE the new element(s) mentioned in the input
+              - Show how the new element COMPOUNDS with existing conditions
+              - Maintain narrative continuity while escalating complexity
+              - Output coherent description that builds on previous state
+
+              QUALITY CHECK:
+              1. Does the description include ALL required components (Urgency, Staffing, Time, Conditions, Atmosphere)?
+              2. Is there clear continuity with previous round (if memory exists)?
+              3. Are new elements properly integrated without losing established context?
+
+              Output ONLY the final refined environmental description (3-5 sentences) with no commentary.
+        memories:
+          - name: environment_memory
+            top_k: 10
+            similarity_threshold: 0.5
+            retrieve_stage:
+              - pre_gen_thinking
+            read: true
+            write: true
     - id: PatientGenerator
       name: Patient Coordinator
       type: agent
-      description: 'Generates multiple patient personas based on environment'
+      description: Generates multiple patient personas based on environment
       config:
         role: |
           ${COMMON_PROMPT}
           You are a simulation coordinator generating patient scenarios that DIRECTLY reflect the hospital environment.
-          
+
           CRITICAL INSTRUCTION: Every patient you generate MUST be a logical consequence of the specific environmental conditions described. You are NOT generating random patients - you are generating the EXACT patients who would realistically arrive given these specific circumstances.
-          
+
           MANDATORY ENVIRONMENT-DRIVEN GENERATION RULES:
-          
+
           1. URGENCY LEVEL DETERMINES CASE SEVERITY:
              - Critical/High Urgency → Generate mostly severe/urgent cases (trauma, cardiac events, respiratory distress)
              - Medium Urgency → Mix of moderate issues (infections, fractures, acute pain)
              - Low Urgency → Mostly minor cases (follow-ups, mild symptoms, chronic management)
-          
+
           2. TIME CONTEXT DETERMINES PATIENT TYPE:
              - Late night/Early morning → Accidents, emergencies, insomnia, acute pain
              - Daytime/Business hours → Routine visits, work injuries, varied presentations
              - Weekend → Home accidents, sports injuries, delayed care-seeking
-          
+
           3. SPECIAL CONDITIONS DETERMINE SYMPTOMS:
              - Outbreak/Epidemic mentioned → Multiple patients with related symptoms (respiratory, GI, fever)
              - Weather impact (heat wave/cold/storm) → Weather-related conditions (heat stroke, hypothermia, storm injuries)
              - Mass casualty event → Similar injury patterns (blast injuries, crush injuries, burns)
              - Equipment failure → Cases requiring specific equipment show up before failure is known
-          
+
           4. EMOTIONAL ATMOSPHERE DETERMINES PERSONALITY:
              - Chaotic → Patients are MORE panicked, agitated, demanding
              - Calm → Patients are composed, patient, cooperative
              - Tense → Patients pick up on staff stress, become anxious
-          
+
           5. MANDATORY ENVIRONMENT REFLECTION:
              - If ${NUMBER_OF_PATIENTS} = 1: Patient MUST directly reflect the crisis/scenario (e.g., COVID outbreak = respiratory symptoms)
              - If ${NUMBER_OF_PATIENTS} > 1: AT LEAST ${NUMBER_OF_PATIENTS}/2 patients MUST have symptoms directly caused by or related to the environmental conditions
-          
+
           WRONG EXAMPLES (Do NOT do this):
           - COVID-19 outbreak → Patient with sprained ankle (WRONG - ignores environment)
           - Nuclear disaster radiation exposure → Patient with common cold (WRONG - not crisis-related)
           - Heatwave → Patient with frostbite (WRONG - contradicts environment)
-          
+
           RIGHT EXAMPLES (Do this):
           - COVID-19 outbreak → Patients with fever, dry cough, difficulty breathing, loss of taste/smell
           - Nuclear disaster → Patients with radiation burns, nausea, confusion, visible injuries
           - Heatwave → Patients with heat exhaustion, dehydration, heat stroke, elderly with complications
-          
+
           OUTPUT FORMAT:
           Output ONLY a JSON array with exactly ${NUMBER_OF_PATIENTS} objects. Each object MUST include:
-          
+
           [
             {
               "name": "Meaningful Full Name",
@@ -155,9 +200,8 @@ graph:
               "environment_link": "ONE sentence explaining why THIS patient is here given THESE conditions"
             }
           ]
-          
+
           CRITICAL: Do NOT generate generic patients. Generate patients whose presence is EXPLAINED by the environmental context.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -165,39 +209,67 @@ graph:
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              You have just generated a patient list. Now verify uniqueness and quality:
 
-    # Router Node for Patient Regex Split
+              UNIQUENESS CHECK:
+              1. Review the retrieved patient memory (if any exists from previous simulation rounds)
+              2. Compare your generated patients against the historical patient records
+              3. Ensure your NEW patients have:
+                 - Different full names (no repeated names like "John Smith" if it appeared before)
+                 - Different symptom combinations (avoid exact duplicates of past presentations)
+                 - Unique backstories and environment_link narratives
+
+              QUALITY CHECK:
+              1. Does each patient DIRECTLY reflect the current environmental conditions?
+              2. Are symptoms, urgency, and personality consistent with the scenario?
+              3. Is the environment_link field compelling and scenario-specific?
+
+              If you find duplicate names or symptom patterns from memory:
+              - Generate fresh alternatives with different demographics and presentations
+              - Maintain environment consistency while ensuring patient diversity
+
+              If everything is unique and high-quality, return the same output unchanged.
+              Output ONLY the final JSON array with no additional commentary.
+        memories:
+          - name: patient_memory
+            top_k: 50
+            similarity_threshold: 0.3
+            retrieve_stage:
+              - pre_gen_thinking
+            read: true
+            write: true
     - id: PatientRouter
       type: passthrough
       name: Patient Router
-      description: 'Routes generated patients for splitting'
+      description: Routes generated patients for splitting
       config: {}
-
-    # Generic Patient Agent (Runs in Parallel)
     - id: PatientAgent
       name: Patient
       type: agent
-      description: 'Simulates individual patient behavior'
+      description: Simulates individual patient behavior
       config:
         role: |
           ${COMMON_PROMPT}
           You are a patient arriving at the hospital.
-          
+
           Your persona is defined by the input text provided. Act out this persona and approach the nurse.
-          
+
           REQUIREMENTS:
           - You MUST state your basic information clearly (name, context, and symptoms)
           - Stay in character based on your persona
           - Keep response brief (3-4 sentences)
-          
+
           OUTPUT FORMAT:
           Introduce yourself naturally including mandatory information:
           - Your name ("My name is..." or "I'm...")
           - Brief context (age, occupation, or relevant background)
           - Your symptoms or reason for visit
-          
+
           Example: "Hi, my name is Sarah. I'm 45 years old and I've been having severe headaches for the past three days."
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -205,30 +277,27 @@ graph:
         params:
           temperature: 0.8
           max_tokens: ${MAX_TOKENS}
-        
-    # End Node (Diagnosis)
     - id: Discharge
       type: agent
       name: Discharge Clerk
-      description: 'Generates discharge summary'
+      description: Generates discharge summary
       config:
         role: |
           ${COMMON_PROMPT}
           You are a discharge clerk at the hospital.
-          
+
           Extract patient information from the doctor's diagnosis and create a concise discharge summary.
-          
+
           REQUIREMENTS:
           - Extract the actual patient name from the "PATIENT:" line (do NOT use placeholders)
           - Find the diagnosis from the "DIAGNOSIS:" line
           - Include the condition and brief treatment plan if mentioned
           - Keep summary to 1-2 sentences
-          
+
           OUTPUT FORMAT:
           Patient [ACTUAL NAME] discharged with diagnosis: [CONDITION]. [Brief treatment plan if mentioned].
-          
+
           Example: Patient Michael Chen discharged with diagnosis: suspected appendicitis requiring immediate surgical evaluation.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -236,25 +305,23 @@ graph:
         params:
           temperature: 0.3
           max_tokens: ${MAX_TOKENS}
-
-    # Doctor Agent - Diagnosis
     - id: DoctorDiagnosis
       name: Dr. House (Diagnosis)
       type: agent
-      description: 'Final diagnostic decision maker'
+      description: Final diagnostic decision maker
       config:
         role: |
           ${COMMON_PROMPT}
           You are Dr. Gregory House, a brilliant diagnostician known for methodical reasoning.
-          
+
           Make a final clinical decision based on the complete patient history provided. You are tracking multiple patients in parallel, each with their own separate history.
-          
+
           REQUIREMENTS:
           - Retrieve actual patient data from memory (do NOT use placeholder text)
           - Extract patient name from the "patient" field first
           - Review the "history" field thoroughly before making decisions
           - Follow the mandatory diagnostic process below
-          
+
           DIAGNOSTIC PROCESS:
           1. Extract Patient Name from the "patient" field
           2. Summarize Key Findings - list all symptoms, timeline, relevant history
@@ -263,14 +330,14 @@ graph:
           5. Final Decision - choose one:
              - If confident: "DIAGNOSIS: [Specific condition] - [Brief treatment plan]"
              - If critical/unclear/life-threatening: "TRANSFER: ER immediately - [Specific concern]"
-          
+
           OUTPUT FORMAT (STRICT JSON ONLY):
           {
             "patient": "<ACTUAL_PATIENT_NAME_FROM_MEMORY>",
             "summary": "Brief 2-4 sentence summary of key findings so far",
             "differential": ["Possible condition 1", "Possible condition 2"],
           }
-          
+
           FINAL DECISION (IN PLAIN TEXT): 
           [Either "DIAGNOSIS:" or "TRANSFER:" with details]
                   
@@ -286,17 +353,17 @@ graph:
           config:
             reflection_prompt: |
               You have just completed a diagnostic assessment. Now critically review your diagnostic reasoning:
-              
+
               REFLECTION CHECKLIST:
               1. EVIDENCE REVIEW: Did you consider ALL symptoms and history from the patient record?
               2. DIFFERENTIAL DIAGNOSIS: Did you properly evaluate alternative diagnoses? Are there conditions you missed?
               3. REASONING SOUNDNESS: Are there any logical gaps or unsupported conclusions in your reasoning?
               4. URGENCY ASSESSMENT: Is your urgency determination (discharge vs transfer) appropriate given the symptoms?
-              
+
               Based on this reflection:
               - If your original diagnosis is solid, reaffirm it with stronger justification
               - If you find flaws, provide a corrected diagnosis with explanation
-              
+
               Maintain the same output format.
         memories:
           - name: nurse_memory
@@ -304,37 +371,39 @@ graph:
             similarity_threshold: 0.75
             retrieve_stage:
               - gen
+            read: true
+            write: true
           - name: doctor_memory
             top_k: 15
             similarity_threshold: 0.7
             retrieve_stage:
               - pre_gen_thinking
               - gen
-
-    # Doctor Agent - Intake
+            read: true
+            write: true
     - id: DoctorIntake
       name: Dr. House (Intake)
       type: agent
-      description: 'Conducts patient intake interview'
+      description: Conducts patient intake interview
       config:
         role: |
           ${COMMON_PROMPT}
           You are Dr. Gregory House conducting patient intake.
-          
+
           The hospital atmosphere described affects your patience and approach. You are tracking multiple patients in parallel, each with their own separate history.
-          
+
           REQUIREMENTS:
           - Retrieve actual patient data from memory (do NOT use placeholder text)
           - Extract patient name from the "patient" field first
           - Review the "history" field thoroughly before making question(s)
           - Follow the mandatory question process below
-          
+
           QUESTION PROCESS:
           1. Extract Patient Name from the "patient" field
           2. Summarize Key Findings - list all symptoms, timeline, relevant history
           3. Differential Diagnosis - consider 2-3 possible conditions based on evidence
           4. Formulate Questions to elicit more information
-          
+
           OUTPUT FORMAT (STRICT JSON ONLY):
           {
             "patient": "<ACTUAL_PATIENT_NAME_FROM_MEMORY>",
@@ -343,9 +412,8 @@ graph:
               "Second question targeting different diagnostic possibility"
             ]
           }
-          
+
           CRITICAL: Output ONLY valid JSON object. No additional text before or after.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -358,17 +426,17 @@ graph:
           config:
             reflection_prompt: |
               You have just formulated questions for the patient interview. Review your question strategy:
-              
+
               REFLECTION CHECKLIST:
               1. REDUNDANCY CHECK:
                  - Does your new question request information you ALREADY HAVE from previous answers?
                  - Example BAD: Q1 asked "When did pain start?" → Q3 asks "How long have you had this?"
                  - Example BAD: Q2 asked "Any radiation?" → Q4 asks "Does pain spread anywhere?"
-              
+
               2. PROGRESSION CHECK:
                  - Are you building on previous answers or just repeating?
                  - Are you narrowing the differential diagnosis or spinning wheels?
-              
+
               Maintain the same JSON output format with updated questions if needed.
         memories:
           - name: nurse_memory
@@ -377,34 +445,36 @@ graph:
             retrieve_stage:
               - pre_gen_thinking
               - gen
+            read: true
+            write: true
           - name: doctor_memory
             top_k: 5
             similarity_threshold: 0.65
             retrieve_stage:
               - pre_gen_thinking
               - gen
-
-    # Medical Scribe (DoctorNotes)
+            read: true
+            write: true
     - id: DoctorNotes
       name: Medical Scribe
       type: agent
-      description: 'Maintains patient notes and handles loop aggregation'
+      description: Maintains patient notes and handles loop aggregation
       config:
         role: |
           ${COMMON_PROMPT}
           You are a medical scribe maintaining patient clinical notes.
-          
+
           You MUST NEVER ask questions. During normal workflow, you track ONE patient interaction at a time. Only when receiving the explicit "LOOP ENDED." signal do you compile ALL patients.
-          
+
           REQUIREMENTS:
           - Retrieve actual patient data from memory (do NOT use placeholder text)
           - Extract real patient names from nurse intake notes
           - Output STRICT JSON ONLY - no conversational text
           - CRITICAL: Do NOT output arrays until you receive "LOOP ENDED." signal
           - CRITICAL: DEDUPLICATE patients by name - one entry per unique patient name
-          
+
           TASK SCENARIOS:
-          
+
           1. NORMAL WORKFLOW (default - most common):
              - You receive a single patient's answer/interaction
              - Focus on THIS ONE PATIENT ONLY
@@ -412,7 +482,7 @@ graph:
              - Extract that patient's actual name from conversation history
              - Add this new information to that patient's notes
              - Output ONLY UPDATE format (never an array during this phase)
-          
+
           2. LOOP SIGNAL (only when input explicitly contains "LOOP ENDED."):
              - This signals the question loop has ended for ALL patients
              - NOW retrieve ALL patient histories from memory
@@ -423,16 +493,16 @@ graph:
                * Each patient should appear EXACTLY ONCE in the output array
              - Output ONLY a bare JSON array (no wrapper object)
              - Do NOT copy example names - use actual names from memory
-          
+
           OUTPUT FORMAT EXAMPLES (replace placeholders with real data from memory):
-          
+
           For NORMAL WORKFLOW - UPDATE OBJECT ONLY (ONE PATIENT):
           {
             "status": "UPDATE",
             "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>",
             "history": "Q1: Nurse intake - <ACTUAL_SYMPTOMS_AND_CONTEXT_FROM_MEMORY>. Q2: <ACTUAL_DOCTOR_QUESTION> - <ACTUAL_PATIENT_ANSWER>. Q3: ... Q4: ..."
           }
-          
+
           For "LOOP ENDED." signal - BARE JSON ARRAY ONLY (UNIQUE PATIENTS):
           [
             {
@@ -444,7 +514,7 @@ graph:
               "history": "Q1: ... Q2: ... Q3: ... Q4: ... Q5: ..."
             }
           ]
-          
+
           CRITICAL NOTES:
           - Use the MOST COMPLETE history (e.g., Q1-Q4 is better than Q1-Q3)
           - Number of patients in output = Number of UNIQUE patient names
@@ -453,7 +523,6 @@ graph:
           - Examples show FORMAT only - populate with real data from memory
           - No "LOOP" text in the history output
           - Include question sequence with actual content
-          
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -466,34 +535,34 @@ graph:
           config:
             reflection_prompt: |
               You have just compiled patient clinical notes. Verify data integrity:
-              
+
               VERIFICATION CHECKLIST:
               1. COMPLETENESS CHECK:
                  - For UPDATE: Does the history include ALL prior interactions (Q1, Q2, Q3...) from memory?
                  - For LOOP ENDED: Are ALL patients from memory included in the array?
-              
+
               2. ACCURACY CHECK:
                  - Are patient names EXACTLY as they appear in nurse intake (no placeholders, no generic names)?
                  - Does each history accurately reflect the actual conversation from memory?
-              
+
               3. FORMAT CHECK:
                  - Is the JSON format correct (valid syntax, no extra text)?
                  - UPDATE: Single object with "status", "patient", "history" fields?
                  - LOOP ENDED: Bare array with "patient", "history" fields?
-              
+
               4. SEQUENCE CHECK:
                  - Is the Q1, Q2, Q3... sequence complete with no gaps?
                  - Does each Q include both the doctor's question AND patient's answer?
-              
+
               If you find ANY issues:
               - Retrieve missing data from memory
               - Ensure valid JSON format
-              
+
               If everything is correct, return the same output unchanged.
         memories:
           - name: nurse_memory
             top_k: 50
-            similarity_threshold: -1.0
+            similarity_threshold: -1
             retrieve_stage:
               - pre_gen_thinking
               - gen
@@ -501,56 +570,49 @@ graph:
             write: false
           - name: doctor_memory
             top_k: 100
-            similarity_threshold: -1.0
+            similarity_threshold: -1
             retrieve_stage:
               - pre_gen_thinking
               - gen
             read: true
             write: true
-
-    # Router for DoctorNotes
     - id: DoctorNotesRouter
       type: passthrough
       name: Doctor Notes Router
-      description: 'Routes output based on update vs timeout'
+      description: Routes output based on update vs timeout
       config: {}
-    
-    # Patient History Splitter - Extracts patient array from TIMEOUT message
     - id: PatientHistorySplitter
       type: passthrough
       name: Patient History Splitter
       description: Extracts and splits patient histories for parallel diagnosis
       config: {}
-
-    # Nurse Agent - Jackie
     - id: Nurse
       name: Nurse Jackie
       type: agent
-      description: 'Triage nurse handling initial intake'
+      description: Triage nurse handling initial intake
       config:
         role: |
           ${COMMON_PROMPT}
           You are Nurse Jackie, an empathetic triage nurse.
-          
+
           You are the first point of contact. Your job is to intake the patient before sending them to the doctor. 
           You MUST get basic information (name, context and symptoms) from the patient and provide a preliminary assessment based on their symptoms.
-          
+
           REQUIREMENTS:
           - Adapt behavior based on hospital environment conditions
           - DO NOT ASK QUESTIONS. You must state or confirm the facts provided by the patient.
           - Extract: Name, Basic Context (age/occupation), and Symptoms.
           - Speak professionally but let the environment affect your demeanor.
-          
+
           BEHAVIOR GUIDELINES BY ENVIRONMENT:
           - High Urgency/Overwhelming: Be brisk, efficient, skip pleasantries.
           - Calm/Low Volume: Be warmer, reassuring.
           - Crisis/Chaotic: Direct, focused, visible stress.
           - Well Staffed/Quiet: Thorough, friendly.
-          
+
           OUTPUT FORMAT:
           Respond naturally as Nurse Jackie, adapting your tone and pacing to match the hospital conditions.
           Patient basic information is mandatory before referral to the doctor.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -561,33 +623,31 @@ graph:
         memories:
           - name: nurse_memory
             top_k: 5
-            retrieve_stage:
-              - gen
-              
-    # Transfer Node (Failure/Referral)
+            similarity_threshold: 0.6
+            read: false
+            write: true
     - id: ER Transfer
       type: agent
       name: Transfer Coordinator
-      description: 'Generates transfer summary'
+      description: Generates transfer summary
       config:
         role: |
           ${COMMON_PROMPT}
           You are a transfer coordinator at the hospital.
-          
+
           Extract patient information from the doctor's transfer order and create a brief transfer summary.
-          
+
           REQUIREMENTS:
           - Extract the actual patient name from the "PATIENT:" line (do NOT use placeholders)
           - Find the destination and reason from the "TRANSFER:" line
           - Include destination (ER, ICU, specialist department, or external facility)
           - Include primary reason for transfer
           - Keep summary to 1-2 sentences maximum
-          
+
           OUTPUT FORMAT:
           Patient [ACTUAL NAME] transferred to [DESTINATION] for [REASON].
-          
+
           Example: Patient Michael Chen transferred to Emergency Room for suspected appendicitis requiring immediate surgical evaluation.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -595,29 +655,26 @@ graph:
         params:
           temperature: 0.3
           max_tokens: ${MAX_TOKENS}
-
-    # Patient Interaction Node (For Doctor Loop)
     - id: PatientInteraction
       name: Patient (Exam Room)
       type: agent
-      description: 'Simulates patient responses during exam'
+      description: Simulates patient responses during exam
       config:
         role: |
           ${COMMON_PROMPT}
           You are a patient in the exam room with Dr. House
-          
+
           Maintain your persona and answer the doctor's questions. You may be dramatic or difficult if your persona fits.
-          
+
           REQUIREMENTS:
           - Speak in FIRST PERSON ("I feel...", "My pain...")
           - Do NOT speak about the patient in third person
           - Do NOT behave as an AI
           - Stay in character based on your persona
           - Keep answers brief (2-3 sentences)
-          
+
           OUTPUT FORMAT:
           Respond naturally as the patient from the patient's perspective.
-        
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -625,20 +682,49 @@ graph:
         params:
           temperature: 0.8
           max_tokens: ${MAX_TOKENS}
+    - id: SimulationAggregator
+      type: passthrough
+      name: Simulation Aggregator
+      description: Collects all parallel patient outcomes before human control
+      config: {}
+    - id: HumanControl
+      type: human
+      name: Human Control
+      description: Prompts user to update scenario or end simulation
+      config:
+        description: |
+          WAITING FOR YOUR INPUT TO CONTINUE THE SIMULATION...
 
-    # Loop Counter Guard (Limit Questions)
+          You have three options:
+
+          1. CONTINUE SAME SCENARIO
+             - Type "continue" or "next round" to maintain current conditions
+             - The environment will naturally progress (time advances, staffing shifts)
+             - Same urgency level, crisis type, and atmosphere
+
+          2. EVOLVE THE SCENARIO
+             - Add new complications or changes to the existing situation
+             - New elements will be integrated while preserving current context
+
+          3. END SIMULATION
+             - Type "SIMULATION ENDED." (exact phrase) to terminate
+
+    - id: SimulationEnd
+      type: literal
+      name: Simulation End
+      description: Terminal node marking simulation completion
+      config:
+        content: Hospital simulation ended.
     - id: LoopGuard
       type: loop_counter
-      name: Question Limiter
-      description: 'Limits the number of doctor questions'
       config:
-        max_iterations: ${NUMBER_OF_INTERACTIONS}
+        max_iterations: 2
         reset_on_emit: true
-        message: "LOOP ENDED."
-
-  # ================== Interaction Flow ==================
+        message: LOOP ENDED.
+      description: Limits the number of doctor questions
+      context_window: 0
+      name: Question Limiter
   edges:
-    # Scene initialization
     - from: InputProcessor
       to: environment
       trigger: true
@@ -648,104 +734,103 @@ graph:
         type: template
         template: |
           Scenario: {{task_prompt}}
-          
+
           Create a DETAILED, VIVID hospital atmosphere description (3-5 sentences) that will DIRECTLY shape all agent behaviors.
-          
+
           REQUIRED: Include specific details about:
           - Urgency Level (Low/Medium/High/Critical)
           - Staffing Status (Fully Staffed/Understaffed/Skeleton Crew)
           - Time Context and any special conditions
           - Emotional Atmosphere affecting everyone
-          
+
           Be CONCRETE - these details will control how rushed, stressed, or calm everyone acts.
-    
-    # Environment -> Generator
     - from: environment
       to: PatientGenerator
       trigger: true
       condition: 'true'
       carry_data: true
+      clear_context: true
+      clear_kept_context: true
       processor:
         type: template
         template: |
           ===== HOSPITAL ENVIRONMENT CONTEXT =====
           {{input}}
           ========================================
-          
+
           CRITICAL MISSION: Generate ${NUMBER_OF_PATIENTS} patient(s) whose symptoms and arrival are DIRECT CONSEQUENCES of the conditions above.
-          
+
           ANALYSIS REQUIRED BEFORE GENERATING:
           1. What is the PRIMARY crisis/condition mentioned? (outbreak, disaster, weather, mass casualty, etc.)
           2. What SPECIFIC symptoms would patients have from THIS crisis?
           3. What is the urgency level? (Generate patients matching this urgency)
           4. What is the emotional tone? (Generate personalities reflecting this)
-          
+
           GENERATION CONSTRAINTS:
           - If an outbreak/epidemic is mentioned → Patients MUST have related symptoms (respiratory, fever, specific disease symptoms)
           - If a disaster is mentioned → Patients MUST have disaster-related injuries (radiation, trauma, environmental)
           - If weather is extreme → Patients MUST have weather-related conditions (heat stroke, hypothermia, storm injuries)
           - If understaffed/overwhelmed → Generate higher urgency cases that justify the chaos
           - If calm/quiet → Generate lower urgency, routine cases
-          
+
           DO NOT generate random patients. Generate patients whose presence makes logical sense given these SPECIFIC conditions.
-          
+
           Now generate exactly ${NUMBER_OF_PATIENTS} patient(s).
-    
-    # Generator -> Router (Regex Split)
     - from: PatientGenerator
       to: PatientRouter
       trigger: true
       condition: 'true'
       carry_data: true
+      clear_context: true
+      clear_kept_context: true
       dynamic:
         type: map
         split:
           type: regex
           config:
-            # Matches individual JSON objects inside the list (lazy match between braces)
-            pattern: "(?s)\\{.*?\\}"
+            pattern: (?s)\{.*?\}
         config:
           max_parallel: 10
       processor:
         type: template
-        template: "{{input}}"
-    
-    # Router -> Patient (Message Split)
+        template: '{{input}}'
     - from: PatientRouter
       to: PatientAgent
       trigger: true
       condition: 'true'
       carry_data: true
+      clear_context: true
+      clear_kept_context: true
       dynamic:
         type: map
         split:
           type: message
         config:
-          max_parallel: 10 # Parallel Waiting Room
+          max_parallel: 10
       processor:
         type: template
         template: |
           You are the patient described in this JSON data:
           {{input}}
-          
+
           CRITICAL CONTEXT: Pay special attention to the "environment_link" field - this explains WHY you are here and WHAT happened to you in the specific situation. Your symptoms and behavior should reflect this backstory.
-          
+
           You are currently standing at the hospital reception.
           Approach Nurse Jackie and explain what's wrong.
-          
+
           REQUIREMENTS:
           - Embody the personality described (panicked, calm, anxious, stoic, etc.)
           - Reference HOW you got your symptoms if it's relevant to your story
           - Your urgency and demeanor should match the severity described
-          
+
           Don't use any "Action:" prefixes. Just speak naturally as this patient would.
-    
-    # Patient -> Nurse
     - from: PatientAgent
       to: Nurse
       trigger: true
       condition: 'true'
       carry_data: true
+      clear_context: true
+      clear_kept_context: true
       dynamic:
         type: map
         split:
@@ -758,25 +843,25 @@ graph:
           ===== CURRENT HOSPITAL CONDITIONS =====
           {{environment.output}}
           ========================================
-          
+
           Patient says: "{{input}}"
-          
+
           Respond as Nurse Jackie. 
-          
+
           REQUIREMENTS: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the hospital conditions above.
           - Match your stress level to the urgency
           - Show visible effects of understaffing, chaos, or calmness
           - You MUST NOT ask any questions to the patient
           - Patient basic information is mandatory before referral to the doctor
-          
+
           Then refer them to Dr. House for diagnosis.
-    
-    # Nurse -> DoctorIntake (Referral)
     - from: Nurse
       to: DoctorIntake
       trigger: true
       condition: 'true'
       carry_data: true
+      clear_context: true
+      clear_kept_context: true
       dynamic:
         type: map
         split:
@@ -789,13 +874,11 @@ graph:
           ===== CURRENT HOSPITAL CONDITIONS =====
           {{environment.output}}
           ========================================
-          
+
           Nurse Referral Note: {{input}}
-          
+
           Dr. House, the hospital conditions above should DIRECTLY affect your approach.
           Adapt your interview style accordingly.
-    
-    # DoctorIntake -> Patient (Loop)
     - from: DoctorIntake
       to: PatientInteraction
       trigger: true
@@ -811,10 +894,8 @@ graph:
         type: template
         template: |
           The Doctor says: "{{input}}"
-          
-          Answer him, but feel free to be intimidated or annoyed by his manner.
 
-    # Patient -> DoctorNotes (Update History)
+          Answer him, but feel free to be intimidated or annoyed by his manner.
     - from: PatientInteraction
       to: DoctorNotes
       trigger: true
@@ -828,8 +909,6 @@ graph:
         type: template
         template: |
           Patient Answer: "{{input}}"
-
-    # DoctorNotes -> Router
     - from: DoctorNotes
       to: DoctorNotesRouter
       dynamic:
@@ -840,17 +919,15 @@ graph:
           max_parallel: 10
       processor:
         type: template
-        template: "{{input}}"
-
-    # Router -> DoctorIntake (Loop Return - UPDATE only, NOT array)
+        template: '{{input}}'
     - from: DoctorNotesRouter
       to: DoctorIntake
       trigger: true
       condition:
         type: keyword
         config:
-          any: 
-            - "UPDATE"
+          any:
+            - UPDATE
           none: []
           case_sensitive: false
       dynamic:
@@ -863,15 +940,13 @@ graph:
         type: regex_extract
         config:
           pattern: '["""]content["""]\s*:\s*["""](?P<content>(?:[^"""\\]|\\.)*)["""]'
-          group: "content"
+          group: content
           template: |
             Clinical Notes: {{content}}
-            
+
             Analyze this history. 
             - If you need more info, ask QUESTION.
           dotall: true
-
-    # Router -> PatientHistorySplitter
     - from: DoctorNotesRouter
       to: PatientHistorySplitter
       trigger: true
@@ -881,7 +956,7 @@ graph:
         config:
           any: []
           none:
-            - "UPDATE"
+            - UPDATE
           case_sensitive: false
       dynamic:
         type: map
@@ -889,8 +964,6 @@ graph:
           type: message
         config:
           max_parallel: 10
-    
-    # PatientHistorySplitter -> DoctorDiagnosis (Regex split like PatientGenerator)
     - from: PatientHistorySplitter
       to: DoctorDiagnosis
       trigger: true
@@ -901,20 +974,16 @@ graph:
         split:
           type: regex
           config:
-            # Matches individual JSON objects inside the list (lazy match between braces)
-            # Same pattern as PatientGenerator -> PatientRouter
-            pattern: "(?s)\\{.*?\\}"
+            pattern: (?s)\{.*?\}
         config:
           max_parallel: 10
       processor:
         type: template
         template: |
           {{input}}
-          
+
           TIMEOUT: Maximum questions reached. 
           Review the patient history above and make your final diagnosis now.
-
-    # DoctorDiagnosis -> Discharge
     - from: DoctorDiagnosis
       to: Discharge
       trigger: true
@@ -923,10 +992,10 @@ graph:
         type: keyword
         config:
           any:
-            - "DIAGNOSIS:"
+            - 'DIAGNOSIS:'
           none:
-            - "TRANSFER"
-            - "Transfer"
+            - TRANSFER
+            - Transfer
       regex: []
       case_sensitive: false
       dynamic:
@@ -934,15 +1003,13 @@ graph:
         split:
           type: json_path
           config:
-            json_path: ""
+            json_path: ''
         config:
           max_parallel: 10
       processor:
         type: template
         template: |
           Final Medical Report: {{input}}
-
-    # DoctorDiagnosis -> ER Transfer
     - from: DoctorDiagnosis
       to: ER Transfer
       trigger: true
@@ -951,8 +1018,8 @@ graph:
         type: keyword
         config:
           any:
-            - "TRANSFER"
-            - "Transfer"
+            - TRANSFER
+            - Transfer
           none: []
       regex: []
       case_sensitive: false
@@ -961,17 +1028,13 @@ graph:
         split:
           type: json_path
           config:
-            json_path: ""
+            json_path: ''
         config:
           max_parallel: 10
       processor:
         type: template
         template: |
           Transfer Order: {{input}}
-
-    # ================== Loop Guard Edges ==================
-    
-    # PatientInteraction -> LoopGuard (Count Iterations)
     - from: PatientInteraction
       to: LoopGuard
       trigger: true
@@ -981,8 +1044,6 @@ graph:
           type: message
         config:
           max_parallel: 10
-    
-    # LoopGuard -> DoctorIntake (Keep LoopGuard INSIDE the cycle)
     - from: LoopGuard
       to: DoctorIntake
       trigger: true
@@ -992,8 +1053,6 @@ graph:
           type: message
         config:
           max_parallel: 10
-
-    # LoopGuard -> DoctorNotes (When limit reached, signal TIMEOUT)
     - from: LoopGuard
       to: DoctorNotes
       trigger: true
@@ -1005,7 +1064,80 @@ graph:
           max_parallel: 10
       processor:
         type: template
-        template: "LOOP ENDED. Finalize notes."
+        template: LOOP ENDED. Finalize notes.
+
+    - from: Discharge
+      to: SimulationAggregator
+      trigger: true
+      carry_data: true
+      processor:
+        type: template
+        template: '{{input}}'
+
+    - from: ER Transfer
+      to: SimulationAggregator
+      trigger: true
+      carry_data: true
+      processor:
+        type: template
+        template: '{{input}}'
+
+    - from: SimulationAggregator
+      to: HumanControl
+      trigger: true
+      carry_data: true
+      processor:
+        type: template
+        template: |
+          Simulation round completed. Patient outcomes:
+          {{input}}
+
+    - from: HumanControl
+      to: environment
+      trigger: true
+      carry_data: true
+      keep_message: true
+      condition:
+        type: keyword
+        config:
+          any: []
+          none:
+            - SIMULATION ENDED.
+          case_sensitive: true
+      processor:
+        type: template
+        template: |
+          User Input: {{input}}
+
+          INSTRUCTIONS:
+          - Analyze the user input to determine if they want to CONTINUE the same scenario or EVOLVE it with new elements
+          - If input is minimal (e.g., "continue", "same", "next round") → maintain existing scenario with natural time progression
+          - If input contains new elements (e.g., "nurse infected", "power outage") → integrate these while preserving existing context
+
+          Create a DETAILED, VIVID hospital atmosphere description (3-5 sentences) that will DIRECTLY shape all agent behaviors.
+
+          REQUIRED: Include specific details about:
+          - Urgency Level (Low/Medium/High/Critical)
+          - Staffing Status (Fully Staffed/Understaffed/Skeleton Crew)
+          - Time Context and any special conditions
+          - Emotional Atmosphere affecting everyone
+
+          Be CONCRETE - these details will control how rushed, stressed, or calm everyone acts.
+
+    - from: HumanControl
+      to: SimulationEnd
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - SIMULATION ENDED.
+          none: []
+          case_sensitive: true
+      processor:
+        type: template
+        template: '{{input}}'
 
   # ================== SCENARIO PRESETS ==================
   # Copy/paste one of these into the initial_instruction field below:
@@ -1028,7 +1160,5 @@ graph:
   initial_instruction: Describe the scenario for the hospital simulation (e.g., 'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'). The system will simulate multiple patients arriving in parallel.
   start:
     - InputProcessor
-  
   end:
-    - Discharge
-    - ER Transfer
+    - SimulationEnd
