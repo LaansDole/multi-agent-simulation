@@ -31,6 +31,7 @@
               :can-open-conditional-child-modal="canOpenConditionalChildModal(modal, field)"
               :conditional-child-button-label="conditionalChildButtonLabel(modal, field)"
               :is-read-only="isFieldReadOnly(field)"
+              :suggestions="availableVariables"
               @open-child-modal="(f, idx) => openChildModal(modal.id, f, idx)"
               @clear-child-entry="(fname) => clearChildEntry(modal.id, fname)"
               @delete-child-entry="(fname, idx) => deleteChildEntry(modal.id, fname, idx)"
@@ -277,6 +278,14 @@ const formMode = computed(() => {
     return props.mode
   }
   return props.initialFormData ? 'edit' : 'create'
+})
+
+const availableVariables = computed(() => {
+  const vars = baseYamlObject.value?.vars
+  if (!vars || typeof vars !== 'object' || Array.isArray(vars)) {
+    return []
+  }
+  return Object.keys(vars).map(key => `\${${key}}`)
 })
 
 const normalizeWorkflowFilename = (name) => {

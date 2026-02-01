@@ -47,6 +47,43 @@ If the variables are configured here, **these settings will take precedence** ov
 
 <img src="media/config_graph.gif" width="800" />
 
+#### Root-Level Variables
+
+Variables are defined at the **root level** of the YAML configuration, as a sibling to the `graph` object. This structure allows you to define shared prompts, API keys, and other configuration values that can be referenced throughout your workflow.
+
+**Environment Variable References:**
+
+The system automatically populates `api_key` and `base_url` fields with `${API_KEY}` and `${BASE_URL}` by default. These reference the environment variables defined in your `.env` file (see `.env.example` for the standard configuration). You can also define custom variables in the root-level `vars` section and reference them anywhere in your workflow using the same `${VARIABLE_NAME}` syntax.
+
+**YAML Structure Example:**
+
+```yaml
+vars:
+  MY_GLOBAL_PROMPT: "You are a helpful assistant focused on clarity and precision."
+  API_KEY: "your-api-key-here"
+  MODEL_NAME: "gpt-4"
+
+graph:
+  id: my_workflow
+  nodes:
+    - id: agent1
+      type: agent
+      config:
+        role: "${MY_GLOBAL_PROMPT}"
+        api_key: "${API_KEY}"
+        model: "${MODEL_NAME}"
+```
+
+In this example, nodes reference variables using the `${VARIABLE_NAME}` syntax. This approach is particularly useful for:
+
+- **Shared prompts** across multiple agents (e.g., common instructions or role definitions)
+- **API configuration** (keys, base URLs, model names)
+- **Reusable templates** that need to be updated in one place
+
+**Best Practice for Complex Simulations:**
+
+For complex workflows with many agents sharing similar configurations, the root-level variables pattern (as seen in `simulation_hospital.yaml`) helps maintain consistency and reduces duplication. Define common prompts and settings once at the root level, then reference them in individual agent configurations.
+
 ---
 
 ## 2. Create Nodes

@@ -362,15 +362,28 @@
             ?
           </span>
         </label>
-        <input
-          :id="`${modalId}-${field.name}`"
-          :value="formData[field.name]"
-          @input="onInput($event.target.value)"
-          type="text"
-          class="form-input"
-          :readonly="isReadOnly"
-          :class="{'input-readonly': isReadOnly}"
-        />
+        <div class="suggestion-wrapper">
+          <input
+            :id="`${modalId}-${field.name}`"
+            :value="formData[field.name]"
+            @input="onInputWithSuggestions($event.target.value, $event)"
+            @blur="closeSuggestions"
+            type="text"
+            class="form-input"
+            :readonly="isReadOnly"
+            :class="{'input-readonly': isReadOnly}"
+          />
+          <div v-if="showSuggestions && suggestionsList.length > 0" class="suggestions-dropdown">
+            <div
+              v-for="(suggestion, index) in suggestionsList"
+              :key="index"
+              class="suggestion-item"
+              @mousedown="insertSuggestion(suggestion, $event)"
+            >
+              {{ suggestion }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Multiline text fields -->
@@ -386,15 +399,28 @@
             ?
           </span>
         </label>
-        <textarea
-          :id="`${modalId}-${field.name}`"
-          :value="formData[field.name]"
-          @input="onInput($event.target.value)"
-          class="form-textarea"
-          rows="4"
-          :readonly="isReadOnly"
-          :class="{'input-readonly': isReadOnly}"
-        />
+        <div class="suggestion-wrapper">
+          <textarea
+            :id="`${modalId}-${field.name}`"
+            :value="formData[field.name]"
+            @input="onInputWithSuggestions($event.target.value, $event)"
+            @blur="closeSuggestions"
+            class="form-textarea"
+            rows="4"
+            :readonly="isReadOnly"
+            :class="{'input-readonly': isReadOnly}"
+          />
+          <div v-if="showSuggestions && suggestionsList.length > 0" class="suggestions-dropdown">
+            <div
+              v-for="(suggestion, index) in suggestionsList"
+              :key="index"
+              class="suggestion-item"
+              @mousedown="insertSuggestion(suggestion, $event)"
+            >
+              {{ suggestion }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Integer input fields -->
@@ -603,6 +629,10 @@ const props = defineProps({
   isReadOnly: {
     type: Boolean,
     default: false
+  },
+  suggestions: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -628,6 +658,10 @@ const internalFormData = computed(() => props.formData)
 // Custom select filtering state
 const showDropdown = ref(false)
 const filterText = ref('')
+
+// Variable suggestions state
+const showSuggestions = ref(false)
+const suggestionsList = ref([])
 
 const isList = computed(() => {
   return props.field.type && props.field.type.includes('list[')
@@ -748,6 +782,82 @@ const getSelectedLabel = () => {
   }
 
   return currentValue
+}
+
+// Variable suggestion methods
+const onInputWithSuggestions = (value, event) => {
+  onInput(value)
+  
+  if (!props.suggestions || props.suggestions.length === 0) {
+    showSuggestions.value = false
+    return
+  }
+  
+  // Check if user is typing ${ to trigger suggestions
+  const cursorPos = event?.target?.selectionStart || value.length
+  const textBeforeCursor = value.substring(0, cursorPos)
+  
+  // Match ${VARIABLE or ${ pattern
+  const match = textBeforeCursor.match(/\$\{([^}]*)$/)
+  
+  if (match) {
+    const searchTerm = match[1].toLowerCase()
+    suggestionsList.value = props.suggestions.filter(suggestion => {
+      const varName = suggestion.replace(/^\$\{/, '').replace(/\}$/, '')
+      return varName.toLowerCase().includes(searchTerm)
+    })
+    showSuggestions.value = suggestionsList.value.length > 0
+  } else {
+    showSuggestions.value = false
+    suggestionsList.value = []
+  }
+}
+
+const insertSuggestion = (suggestion, event) => {
+  const currentValue = props.formData[props.field.name] || ''
+  
+  // Get the input/textarea element - traverse up from the clicked suggestion
+  const suggestionItem = event.currentTarget || event.target
+  const dropdownEl = suggestionItem.parentElement
+  const wrapperEl = dropdownEl?.parentElement
+  const inputElement = wrapperEl?.querySelector('input, textarea')
+  
+  if (!inputElement) {
+    // Fallback: just append the suggestion
+    onInput(currentValue + suggestion)
+    showSuggestions.value = false
+    return
+  }
+  
+  const cursorPos = inputElement.selectionStart || currentValue.length
+  const textBeforeCursor = currentValue.substring(0, cursorPos)
+  const textAfterCursor = currentValue.substring(cursorPos)
+  
+  // Find where ${ starts
+  const match = textBeforeCursor.match(/\$\{([^}]*)$/)
+  
+  if (match) {
+    const beforePattern = textBeforeCursor.substring(0, match.index)
+    const newValue = beforePattern + suggestion + textAfterCursor
+    onInput(newValue)
+    
+    // Set cursor position after the inserted suggestion
+    setTimeout(() => {
+      const newCursorPos = (beforePattern + suggestion).length
+      inputElement.setSelectionRange(newCursorPos, newCursorPos)
+      inputElement.focus()
+    }, 10)
+  }
+  
+  showSuggestions.value = false
+  suggestionsList.value = []
+}
+
+const closeSuggestions = () => {
+  setTimeout(() => {
+    showSuggestions.value = false
+    suggestionsList.value = []
+  }, 200)
 }
 </script>
 
@@ -1347,5 +1457,43 @@ input:checked + .switch-slider:before {
 
 .select-disabled .custom-select-input {
   cursor: not-allowed;
+}
+
+/* Variable suggestion styles */
+.suggestion-wrapper {
+  position: relative;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: rgba(25, 25, 25, 0.98);
+  border: 1px solid rgba(160, 196, 255, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  margin-top: 4px;
+  z-index: 1000;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #a0c4ff;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background-color: rgba(160, 196, 255, 0.15);
 }
 </style>

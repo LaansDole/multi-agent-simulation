@@ -1,18 +1,3 @@
-/**
- * Help Content Service
- * 
- * Centralized repository for all tooltip and help content used throughout the application.
- * Content follows a simple schema for consistency and maintainability.
- * 
- * Schema:
- * {
- *   title: string (optional) - Bold heading for the tooltip
- *   description: string (required) - Main explanatory text in plain language
- *   examples: string[] (optional) - List of concrete examples
- *   learnMoreUrl: string (optional) - Link to tutorial or documentation
- * }
- */
-
 export const helpContent = {
   // Start Node Help
   startNode: {
