@@ -366,7 +366,8 @@
           <input
             :id="`${modalId}-${field.name}`"
             :value="formData[field.name]"
-            @input="onInputWithSuggestions($event.target.value, $event)"
+            @input="onInput($event.target.value)"
+            @focus="showSuggestionsOnFocus"
             @blur="closeSuggestions"
             type="text"
             class="form-input"
@@ -403,7 +404,8 @@
           <textarea
             :id="`${modalId}-${field.name}`"
             :value="formData[field.name]"
-            @input="onInputWithSuggestions($event.target.value, $event)"
+            @input="onInput($event.target.value)"
+            @focus="showSuggestionsOnFocus"
             @blur="closeSuggestions"
             class="form-textarea"
             rows="4"
@@ -516,10 +518,15 @@
               <span class="var-name">{{ varKey }}</span>
               <span class="var-separator">|</span>
               <span class="var-value">{{ varValue }}</span>
+              <span v-if="protectedKeys.includes(varKey)" class="protected-indicator" title="Protected system variable">
+                🔒
+              </span>
               <button
                 class="delete-var-button"
                 @click.stop="$emit('delete-var', field.name, varKey)"
                 title="Delete variable"
+                :disabled="protectedKeys.includes(varKey)"
+                :class="{'button-disabled': protectedKeys.includes(varKey)}"
               >
                 ×
               </button>
@@ -581,7 +588,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 
 const props = defineProps({
   field: {
@@ -631,6 +638,10 @@ const props = defineProps({
     default: false
   },
   suggestions: {
+    type: Array,
+    default: () => []
+  },
+  protectedKeys: {
     type: Array,
     default: () => []
   }
@@ -730,12 +741,37 @@ const onInput = (value) => {
 }
 
 const onInputNumber = (value) => {
-    // Check if empty string
-    if (value === "") {
-        props.formData[props.field.name] = null
-        return
+  // Handle empty input
+  if (value === '' || value === null || value === undefined) {
+    props.formData[props.field.name] = null
+    return
+  }
+  
+  // Check if value is an environment variable reference (${...})
+  if (typeof value === 'string' && value.match(/^\$\{[^}]+\}$/)) {
+    // Preserve environment variable references as strings
+    props.formData[props.field.name] = value
+    return
+  }
+  
+  const numValue = Number(value)
+  
+  // Validate: reject NaN, Infinity, -Infinity
+  if (!Number.isFinite(numValue)) {
+    // Keep previous value or fall back to field default
+    if (props.formData[props.field.name] === undefined || props.formData[props.field.name] === null) {
+      props.formData[props.field.name] = props.field.default ?? null
     }
-  props.formData[props.field.name] = Number(value)
+    // else: keep existing valid value
+    return
+  }
+  
+  // For int type, round to integer
+  if (props.field.type === 'int') {
+    props.formData[props.field.name] = Math.round(numValue)
+  } else {
+    props.formData[props.field.name] = numValue
+  }
 }
 
 const onBooleanSwitchChange = (checked) => {
@@ -785,38 +821,33 @@ const getSelectedLabel = () => {
 }
 
 // Variable suggestion methods
-const onInputWithSuggestions = (value, event) => {
-  onInput(value)
-  
+const SYSTEM_VARS = ['API_KEY', 'BASE_URL']
+
+const showSuggestionsOnFocus = () => {
   if (!props.suggestions || props.suggestions.length === 0) {
     showSuggestions.value = false
     return
   }
   
-  // Check if user is typing ${ to trigger suggestions
-  const cursorPos = event?.target?.selectionStart || value.length
-  const textBeforeCursor = value.substring(0, cursorPos)
+  // Filter out system variables (user already knows these exist via defaults)
+  const userVars = props.suggestions.filter(s => {
+    const varName = s.replace(/^\$\{/, '').replace(/\}$/, '')
+    return !SYSTEM_VARS.includes(varName)
+  })
   
-  // Match ${VARIABLE or ${ pattern
-  const match = textBeforeCursor.match(/\$\{([^}]*)$/)
-  
-  if (match) {
-    const searchTerm = match[1].toLowerCase()
-    suggestionsList.value = props.suggestions.filter(suggestion => {
-      const varName = suggestion.replace(/^\$\{/, '').replace(/\}$/, '')
-      return varName.toLowerCase().includes(searchTerm)
-    })
-    showSuggestions.value = suggestionsList.value.length > 0
-  } else {
+  if (userVars.length === 0) {
     showSuggestions.value = false
-    suggestionsList.value = []
+    return
   }
+  
+  suggestionsList.value = userVars
+  showSuggestions.value = true
 }
 
 const insertSuggestion = (suggestion, event) => {
   const currentValue = props.formData[props.field.name] || ''
   
-  // Get the input/textarea element - traverse up from the clicked suggestion
+  // Get the input/textarea element
   const suggestionItem = event.currentTarget || event.target
   const dropdownEl = suggestionItem.parentElement
   const wrapperEl = dropdownEl?.parentElement
@@ -833,21 +864,16 @@ const insertSuggestion = (suggestion, event) => {
   const textBeforeCursor = currentValue.substring(0, cursorPos)
   const textAfterCursor = currentValue.substring(cursorPos)
   
-  // Find where ${ starts
-  const match = textBeforeCursor.match(/\$\{([^}]*)$/)
+  // Insert suggestion at cursor position
+  const newValue = textBeforeCursor + suggestion + textAfterCursor
+  onInput(newValue)
   
-  if (match) {
-    const beforePattern = textBeforeCursor.substring(0, match.index)
-    const newValue = beforePattern + suggestion + textAfterCursor
-    onInput(newValue)
-    
-    // Set cursor position after the inserted suggestion
-    setTimeout(() => {
-      const newCursorPos = (beforePattern + suggestion).length
-      inputElement.setSelectionRange(newCursorPos, newCursorPos)
-      inputElement.focus()
-    }, 10)
-  }
+  // Set cursor position after the inserted suggestion
+  setTimeout(() => {
+    const newCursorPos = (textBeforeCursor + suggestion).length
+    inputElement.setSelectionRange(newCursorPos, newCursorPos)
+    inputElement.focus()
+  }, 10)
   
   showSuggestions.value = false
   suggestionsList.value = []
@@ -859,6 +885,28 @@ const closeSuggestions = () => {
     suggestionsList.value = []
   }, 200)
 }
+
+// Sanitize integer/float fields on mount to handle legacy string values
+onMounted(() => {
+  if ((props.field.type === 'int' || props.field.type === 'float') && !isList.value) {
+    const currentValue = props.formData[props.field.name]
+    if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+      // Preserve environment variable references
+      if (typeof currentValue === 'string' && currentValue.match(/^\$\{[^}]+\}$/)) {
+        return
+      }
+      
+      const numValue = Number(currentValue)
+      if (Number.isFinite(numValue)) {
+        const sanitizedValue = props.field.type === 'int' ? Math.round(numValue) : numValue
+        // Only update if the value is different (e.g., was a string or needs rounding)
+        if (sanitizedValue !== currentValue) {
+          props.formData[props.field.name] = sanitizedValue
+        }
+      }
+    }
+  }
+})
 </script>
 
 <style scoped>
@@ -1156,6 +1204,25 @@ input:checked + .switch-slider:before {
 
 .delete-var-button:hover {
   color: #ff6b6b;
+}
+
+.delete-var-button:disabled,
+.delete-var-button.button-disabled {
+  color: #555;
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.delete-var-button:disabled:hover,
+.delete-var-button.button-disabled:hover {
+  color: #555;
+}
+
+.protected-indicator {
+  font-size: 12px;
+  margin-left: 8px;
+  opacity: 0.6;
+  cursor: help;
 }
 
 /* List items styles */

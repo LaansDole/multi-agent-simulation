@@ -32,6 +32,7 @@
               :conditional-child-button-label="conditionalChildButtonLabel(modal, field)"
               :is-read-only="isFieldReadOnly(field)"
               :suggestions="availableVariables"
+              :protected-keys="modal.protectedKeys || []"
               @open-child-modal="(f, idx) => openChildModal(modal.id, f, idx)"
               @clear-child-entry="(fname) => clearChildEntry(modal.id, fname)"
               @delete-child-entry="(fname, idx) => deleteChildEntry(modal.id, fname, idx)"
@@ -79,6 +80,8 @@
                 <InlineConfigRenderer
                   :modal="modal.inlineChildModals[field.name]"
                   :read-only-fields="props.readOnlyFields"
+                  :suggestions="availableVariables"
+                  :protected-keys="modal.protectedKeys || []"
                   @open-child-modal="(mid, f, idx) => openChildModal(mid, f, idx)"
                   @open-conditional-child-modal="(mid, f) => openConditionalChildModal(mid, f)"
                   @handle-enum-change="(mid, f) => handleEnumChange(mid, f)"
