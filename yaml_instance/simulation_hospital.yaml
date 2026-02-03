@@ -12,7 +12,7 @@ vars:
   NUMBER_OF_PATIENTS: 1
   # Number of interactions between doctor and patient
   NUMBER_OF_INTERACTIONS: 2
-  MAX_TOKENS: 4000
+  MAX_TOKENS: 6000
   COMMON_PROMPT: |
     You are an intelligent agent participating in a high-fidelity hospital simulation.
 
@@ -79,17 +79,32 @@ graph:
           ${COMMON_PROMPT}
           You are the hospital environment coordinator.
 
-          Provide a detailed atmospheric description that will directly influence all agents' behavior throughout the simulation.
+          Generate atmospheric context that will directly influence all agents' behavior throughout the simulation. Maintain continuity with previous rounds when appropriate.
+
+          OUTPUT FORMAT (STRICT JSON ONLY):
+          {
+            "outbreak": "description of active crisis (COVID-19, flu season, radiation explosion, none, etc.)",
+            "scenario": "temporal and contextual setting (e.g., March 2020, spring season, early morning shift)",
+            "urgency_level": "Low | Medium | High | Critical",
+            "atmospheric_description": "2-4 vivid sentences describing hospital conditions, staffing, resources, patient volume",
+            "emotional_atmosphere": "Calm | Tense | Chaotic | Somber"
+          }
 
           REQUIREMENTS:
-          - Include Urgency Level (Low/Medium/High/Critical) - how busy and stressed the hospital is
-          - Specify Staffing Status (Fully Staffed/Understaffed/Skeleton Crew)
-          - Describe Time Context (time of day, day of week, season)
-          - Note any Notable Conditions (weather impact, outbreak situation, equipment status, recent incidents)
-          - Convey the Emotional Atmosphere (Calm/Tense/Chaotic/Somber) affecting everyone
+          - Output ONLY valid JSON object. No additional text before or after.
+          - All 5 fields are required and must be non-empty
+          - urgency_level must be exactly: Low, Medium, High, or Critical
+          - emotional_atmosphere must be exactly: Calm, Tense, Chaotic, or Somber
+          - atmospheric_description should make nurses rushed or relaxed, doctors thorough or quick
 
-          OUTPUT FORMAT:
-          Provide 3-5 sentences painting a vivid picture that will make nurses rushed or relaxed, doctors thorough or quick, and patients more or less anxious. Be specific and concrete - these details will directly shape how every agent behaves.
+          EXAMPLE:
+          {
+            "outbreak": "COVID-19",
+            "scenario": "March 2020, spring season, early evening shift",
+            "urgency_level": "Critical",
+            "atmospheric_description": "The emergency department is crowded with patients showing respiratory symptoms. Nurses work double shifts as staff call in sick. PPE supplies run low. Tension fills the air as news reports show rising case numbers.",
+            "emotional_atmosphere": "Tense"
+          }
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -101,41 +116,40 @@ graph:
           type: reflection
           config:
             reflection_prompt: |
-              You have just generated an environmental description. Now determine the appropriate mode and refine:
+              You have just generated an environmental JSON object. Determine the appropriate mode and refine:
 
               MODE DETECTION:
-              1. Analyze the input request:
-                 - Is it MINIMAL/CONTINUATION? (e.g., "continue", "same", "next round", empty, or very short)
-                 - Is it EVOLUTIONARY? (e.g., adds new elements like "nurse infected", "power outage")
-
-              2. Review retrieved environment memory (if any from previous rounds):
-                 - What was the previous scenario context?
-                 - What conditions were already established?
+              1. Is the input MINIMAL/CONTINUATION? (e.g., "continue", "same", "next round", empty, or very short)
+              2. Is the input EVOLUTIONARY? (e.g., adds new elements like "nurse infected", "power outage")
+              3. Review retrieved environment memory from previous rounds if available
 
               CONTINUATION MODE (minimal input):
-              - Maintain ALL core elements from previous round (urgency, staffing, crisis, conditions)
-              - Add natural time progression (e.g., "2 hours later", "next shift")
-              - Keep consistency while showing realistic evolution
-              - Output updated description preserving established context
+              - Maintain outbreak field from previous JSON
+              - Update scenario field with time progression (e.g., "day 2" → "day 3")
+              - Maintain or naturally evolve urgency_level and emotional_atmosphere
+              - Show realistic progression in atmospheric_description
 
               EVOLUTION MODE (new elements in input):
-              - PRESERVE all previously established context from memory
-              - INTEGRATE the new element(s) mentioned in the input
-              - Show how the new element COMPOUNDS with existing conditions
-              - Maintain narrative continuity while escalating complexity
-              - Output coherent description that builds on previous state
+              - PRESERVE outbreak and core scenario from previous JSON
+              - INTEGRATE new element(s) into atmospheric_description
+              - Show how new element COMPOUNDS with existing conditions
+              - MAY escalate urgency_level and emotional_atmosphere if warranted
 
-              QUALITY CHECK:
-              1. Does the description include ALL required components (Urgency, Staffing, Time, Conditions, Atmosphere)?
-              2. Is there clear continuity with previous round (if memory exists)?
-              3. Are new elements properly integrated without losing established context?
+              VALIDATION:
+              1. Valid JSON syntax (proper quotes, commas, brackets)
+              2. All 5 fields present: outbreak, scenario, urgency_level, atmospheric_description, emotional_atmosphere
+              3. urgency_level is one of: Low, Medium, High, Critical
+              4. emotional_atmosphere is one of: Calm, Tense, Chaotic, Somber
+              5. atmospheric_description is 2-4 vivid sentences
+              6. Continuity preserved if memory exists
 
-              Output ONLY the final refined environmental description (3-5 sentences) with no commentary.
+              Output ONLY the final refined JSON object. No commentary or additional text.
         memories:
           - name: environment_memory
             top_k: 10
-            similarity_threshold: 0.5
+            similarity_threshold: 0.0
             retrieve_stage:
+              - gen
               - pre_gen_thinking
             read: true
             write: true
@@ -397,12 +411,15 @@ graph:
           - Extract patient name from the "patient" field first
           - Review the "history" field thoroughly before making question(s)
           - Follow the mandatory question process below
+          - If you have enough information to make a diagnosis, output "UNDERSTOOD" to exit the loop
 
           QUESTION PROCESS:
           1. Extract Patient Name from the "patient" field
           2. Summarize Key Findings - list all symptoms, timeline, relevant history
           3. Differential Diagnosis - consider 2-3 possible conditions based on evidence
-          4. Formulate Questions to elicit more information
+          4. Determine if you need more information:
+             - If YES: Formulate questions to elicit more information
+             - If NO: Output "UNDERSTOOD" to proceed to diagnosis
 
           OUTPUT FORMAT (STRICT JSON ONLY):
           {
@@ -410,10 +427,14 @@ graph:
             "questions": [
               "First specific question to narrow diagnosis",
               "Second question targeting different diagnostic possibility"
-            ]
+            ],
+            "status": "UNDERSTOOD" or "CONTINUE"
           }
 
-          CRITICAL: Output ONLY valid JSON object. No additional text before or after.
+          CRITICAL: 
+          - Output ONLY valid JSON object. No additional text before or after.
+          - Set "status": "UNDERSTOOD" when you have sufficient information for diagnosis
+          - Set "status": "CONTINUE" when you need more information
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
         api_key: ${api_key}
@@ -458,24 +479,23 @@ graph:
     - id: DoctorNotes
       name: Medical Scribe
       type: agent
-      description: Maintains patient notes and handles loop aggregation
+      description: Maintains patient notes and compiles final histories
       config:
         role: |
           ${COMMON_PROMPT}
           You are a medical scribe maintaining patient clinical notes.
 
-          You MUST NEVER ask questions. During normal workflow, you track ONE patient interaction at a time. Only when receiving the explicit "LOOP ENDED." signal do you compile ALL patients.
+          You MUST NEVER ask questions. You have two modes of operation based on the input:
 
           REQUIREMENTS:
           - Retrieve actual patient data from memory (do NOT use placeholder text)
           - Extract real patient names from nurse intake notes
           - Output STRICT JSON ONLY - no conversational text
-          - CRITICAL: Do NOT output arrays until you receive "LOOP ENDED." signal
           - CRITICAL: DEDUPLICATE patients by name - one entry per unique patient name
 
           TASK SCENARIOS:
 
-          1. NORMAL WORKFLOW (default - most common):
+          1. NORMAL WORKFLOW (default - when receiving patient answer):
              - You receive a single patient's answer/interaction
              - Focus on THIS ONE PATIENT ONLY
              - Identify which patient from memory context
@@ -483,15 +503,15 @@ graph:
              - Add this new information to that patient's notes
              - Output ONLY UPDATE format (never an array during this phase)
 
-          2. LOOP SIGNAL (only when input explicitly contains "LOOP ENDED."):
-             - This signals the question loop has ended for ALL patients
+          2. FINALIZATION WORKFLOW (when doctor says UNDERSTOOD OR you receive "LOOP ENDED."):
+             - The doctor has finished questioning ALL patients (satisfied OR max iterations reached)
              - NOW retrieve ALL patient histories from memory
              - Extract all UNIQUE patient names from nurse intake notes
              - DEDUPLICATION PROCESS (CRITICAL):
                * Group all memory entries by patient name
                * If multiple histories exist for same patient, use the one with most questions
                * Each patient should appear EXACTLY ONCE in the output array
-             - Output ONLY a bare JSON array (no wrapper object)
+             - Output format: First line contains the keyword (UNDERSTOOD or LOOP ENDED.), then the JSON array
              - Do NOT copy example names - use actual names from memory
 
           OUTPUT FORMAT EXAMPLES (replace placeholders with real data from memory):
@@ -503,7 +523,10 @@ graph:
             "history": "Q1: Nurse intake - <ACTUAL_SYMPTOMS_AND_CONTEXT_FROM_MEMORY>. Q2: <ACTUAL_DOCTOR_QUESTION> - <ACTUAL_PATIENT_ANSWER>. Q3: ... Q4: ..."
           }
 
-          For "LOOP ENDED." signal - BARE JSON ARRAY ONLY (UNIQUE PATIENTS):
+          For FINALIZATION WORKFLOW - KEYWORD + BARE JSON ARRAY (UNIQUE PATIENTS):
+          
+          If triggered by UNDERSTOOD from DoctorIntake:
+          UNDERSTOOD
           [
             {
               "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>",
@@ -515,13 +538,21 @@ graph:
             }
           ]
 
+          If triggered by LOOP ENDED. from Loop Counter (max iterations reached):
+          LOOP ENDED.
+          [
+            {
+              "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>",
+              "history": "Q1: Nurse intake - <ACTUAL_SYMPTOMS_AND_CONTEXT_FROM_MEMORY>. Q2: <ACTUAL_DOCTOR_QUESTION> - <ACTUAL_PATIENT_ANSWER>. Q3: ... Q4: ... Q5: ..."
+            }
+          ]
+
           CRITICAL NOTES:
           - Use the MOST COMPLETE history (e.g., Q1-Q4 is better than Q1-Q3)
           - Number of patients in output = Number of UNIQUE patient names
           - Default behavior: OUTPUT UPDATE object for single patient
-          - Only output array when you see "LOOP ENDED." in the input
+          - For finalization: Output the triggering keyword (UNDERSTOOD or LOOP ENDED.) on first line, then the JSON array
           - Examples show FORMAT only - populate with real data from memory
-          - No "LOOP" text in the history output
           - Include question sequence with actual content
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
@@ -541,14 +572,14 @@ graph:
                  - For UPDATE: Does the history include ALL prior interactions (Q1, Q2, Q3...) from memory?
                  - For LOOP ENDED: Are ALL patients from memory included in the array?
 
-              2. ACCURACY CHECK:
-                 - Are patient names EXACTLY as they appear in nurse intake (no placeholders, no generic names)?
-                 - Does each history accurately reflect the actual conversation from memory?
+               2. ACCURACY CHECK:
+                  - Are patient names EXACTLY as they appear in nurse intake (no placeholders, no generic names)?
+                  - Does each history accurately reflect the actual conversation from memory?
 
-              3. FORMAT CHECK:
-                 - Is the JSON format correct (valid syntax, no extra text)?
-                 - UPDATE: Single object with "status", "patient", "history" fields?
-                 - LOOP ENDED: Bare array with "patient", "history" fields?
+               3. FORMAT CHECK:
+                  - Is the JSON format correct (valid syntax, no extra text)?
+                  - UPDATE: Single object with "status", "patient", "history" fields?
+                  - FINALIZATION: Keyword (UNDERSTOOD or LOOP ENDED.) on first line, then bare array with "patient", "history" fields?
 
               4. SEQUENCE CHECK:
                  - Is the Q1, Q2, Q3... sequence complete with no gaps?
@@ -576,10 +607,10 @@ graph:
               - gen
             read: true
             write: true
-    - id: DoctorNotesRouter
+    - id: DiagnosisPhase
       type: passthrough
-      name: Doctor Notes Router
-      description: Routes output based on update vs timeout
+      name: Diagnosis Phase Gate
+      description: Catches UNDERSTOOD or LOOP ENDED keywords and routes to finalization (prevents loop-back to DoctorIntake)
       config: {}
     - id: PatientHistorySplitter
       type: passthrough
@@ -694,6 +725,8 @@ graph:
       config:
         description: |
           WAITING FOR YOUR INPUT TO CONTINUE THE SIMULATION...
+          
+          (Review the environment history above to understand past scenario progression)
 
           You have three options:
 
@@ -709,18 +742,26 @@ graph:
           3. END SIMULATION
              - Type "SIMULATION ENDED." (exact phrase) to terminate
 
+        memories:
+          - name: environment_memory
+            read: true
+            write: false
+            top_k: 10
+            similarity_threshold: 0.0
+
     - id: SimulationEnd
       type: literal
       name: Simulation End
       description: Terminal node marking simulation completion
       config:
         content: Hospital simulation ended.
-    - id: LoopGuard
+    - id: Doctor-Patient Phase Loop Counter
       type: loop_counter
       config:
-        max_iterations: 2
+        max_iterations: 5
         reset_on_emit: true
         message: LOOP ENDED.
+        passthrough: true
       description: Limits the number of doctor questions
       context_window: 0
       name: Question Limiter
@@ -733,17 +774,20 @@ graph:
       processor:
         type: template
         template: |
-          Scenario: {{task_prompt}}
+          User Scenario: {{task_prompt}}
 
-          Create a DETAILED, VIVID hospital atmosphere description (3-5 sentences) that will DIRECTLY shape all agent behaviors.
+          Generate hospital environment JSON based on the scenario above.
 
-          REQUIRED: Include specific details about:
-          - Urgency Level (Low/Medium/High/Critical)
-          - Staffing Status (Fully Staffed/Understaffed/Skeleton Crew)
-          - Time Context and any special conditions
-          - Emotional Atmosphere affecting everyone
+          OUTPUT FORMAT (STRICT JSON ONLY):
+          {
+            "outbreak": "description of active crisis type",
+            "scenario": "temporal and contextual setting",
+            "urgency_level": "Low | Medium | High | Critical",
+            "atmospheric_description": "2-4 vivid sentences describing hospital conditions",
+            "emotional_atmosphere": "Calm | Tense | Chaotic | Somber"
+          }
 
-          Be CONCRETE - these details will control how rushed, stressed, or calm everyone acts.
+          Output ONLY valid JSON object. No additional text.
     - from: environment
       to: PatientGenerator
       trigger: true
@@ -754,24 +798,30 @@ graph:
       processor:
         type: template
         template: |
+          {% set env = input | fromjson %}
           ===== HOSPITAL ENVIRONMENT CONTEXT =====
-          {{input}}
+          OUTBREAK: {{ env.outbreak }}
+          SCENARIO: {{ env.scenario }}
+          URGENCY: {{ env.urgency_level }}
+          ATMOSPHERE: {{ env.emotional_atmosphere }}
+          
+          CONDITIONS: {{ env.atmospheric_description }}
           ========================================
 
           CRITICAL MISSION: Generate ${NUMBER_OF_PATIENTS} patient(s) whose symptoms and arrival are DIRECT CONSEQUENCES of the conditions above.
 
-          ANALYSIS REQUIRED BEFORE GENERATING:
-          1. What is the PRIMARY crisis/condition mentioned? (outbreak, disaster, weather, mass casualty, etc.)
+          ANALYSIS REQUIRED:
+          1. What is the PRIMARY crisis/condition mentioned? (outbreak, disaster, weather, etc.)
           2. What SPECIFIC symptoms would patients have from THIS crisis?
           3. What is the urgency level? (Generate patients matching this urgency)
           4. What is the emotional tone? (Generate personalities reflecting this)
 
           GENERATION CONSTRAINTS:
-          - If an outbreak/epidemic is mentioned → Patients MUST have related symptoms (respiratory, fever, specific disease symptoms)
-          - If a disaster is mentioned → Patients MUST have disaster-related injuries (radiation, trauma, environmental)
-          - If weather is extreme → Patients MUST have weather-related conditions (heat stroke, hypothermia, storm injuries)
-          - If understaffed/overwhelmed → Generate higher urgency cases that justify the chaos
-          - If calm/quiet → Generate lower urgency, routine cases
+          - If outbreak/epidemic mentioned → Patients MUST have related symptoms (respiratory, fever, disease-specific)
+          - If disaster mentioned → Patients MUST have disaster-related injuries (radiation, trauma, environmental)
+          - If weather extreme → Patients MUST have weather-related conditions (heat stroke, hypothermia, injuries)
+          - If urgency Critical/High → Generate higher urgency cases
+          - If urgency Low/Medium → Generate lower urgency, routine cases
 
           DO NOT generate random patients. Generate patients whose presence makes logical sense given these SPECIFIC conditions.
 
@@ -840,8 +890,12 @@ graph:
       processor:
         type: template
         template: |
+          {% set env = environment.output | fromjson %}
           ===== CURRENT HOSPITAL CONDITIONS =====
-          {{environment.output}}
+          {{ env.atmospheric_description }}
+          
+          Urgency: {{ env.urgency_level }}
+          Atmosphere: {{ env.emotional_atmosphere }}
           ========================================
 
           Patient says: "{{input}}"
@@ -850,7 +904,7 @@ graph:
 
           REQUIREMENTS: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the hospital conditions above.
           - Match your stress level to the urgency
-          - Show visible effects of understaffing, chaos, or calmness
+          - Show visible effects of the atmosphere
           - You MUST NOT ask any questions to the patient
           - Patient basic information is mandatory before referral to the doctor
 
@@ -871,18 +925,29 @@ graph:
       processor:
         type: template
         template: |
+          {% set env = environment.output | fromjson %}
           ===== CURRENT HOSPITAL CONDITIONS =====
-          {{environment.output}}
+          {{ env.atmospheric_description }}
+          
+          Urgency: {{ env.urgency_level }}
+          Atmosphere: {{ env.emotional_atmosphere }}
           ========================================
 
           Nurse Referral Note: {{input}}
 
           Dr. House, the hospital conditions above should DIRECTLY affect your approach.
           Adapt your interview style accordingly.
+    # Keyword-based loop control: DoctorIntake -> PatientInteraction (continue loop)
     - from: DoctorIntake
       to: PatientInteraction
       trigger: true
-      condition: 'true'
+      condition:
+        type: keyword
+        config:
+          any: []
+          none:
+            - UNDERSTOOD
+          case_sensitive: false
       carry_data: true
       dynamic:
         type: map
@@ -896,6 +961,31 @@ graph:
           The Doctor says: "{{input}}"
 
           Answer him, but feel free to be intimidated or annoyed by his manner.
+    
+    # Keyword-based loop exit: DoctorIntake -> DoctorNotes (when doctor is satisfied)
+    - from: DoctorIntake
+      to: DoctorNotes
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - UNDERSTOOD
+          none: []
+          case_sensitive: false
+      carry_data: true
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      processor:
+        type: template
+        template: |
+          UNDERSTOOD
+          
+          Doctor has completed interview. Finalize patient notes.
     - from: PatientInteraction
       to: DoctorNotes
       trigger: true
@@ -909,20 +999,12 @@ graph:
         type: template
         template: |
           Patient Answer: "{{input}}"
+    
+    # DoctorNotes UPDATE routes to loop counter (which controls max iterations)
     - from: DoctorNotes
-      to: DoctorNotesRouter
-      dynamic:
-        type: map
-        split:
-          type: message
-        config:
-          max_parallel: 10
-      processor:
-        type: template
-        template: '{{input}}'
-    - from: DoctorNotesRouter
-      to: DoctorIntake
+      to: Doctor-Patient Phase Loop Counter
       trigger: true
+      carry_data: true
       condition:
         type: keyword
         config:
@@ -939,25 +1021,81 @@ graph:
       processor:
         type: regex_extract
         config:
-          pattern: '["""]content["""]\s*:\s*["""](?P<content>(?:[^"""\\]|\\.)*)["""]'
-          group: content
+          pattern: '["""]history["""]\s*:\s*["""](?P<history>(?:[^"""\\]|\\.)*)["""]'
+          group: history
           template: |
-            Clinical Notes: {{content}}
+            Clinical Notes: {{history}}
 
-            Analyze this history. 
-            - If you need more info, ask QUESTION.
+            Review the history and determine if you need more information.
           dotall: true
-    - from: DoctorNotesRouter
-      to: PatientHistorySplitter
+    
+    # Loop counter routes back to DoctorIntake (if under max iterations)
+    - from: Doctor-Patient Phase Loop Counter
+      to: DoctorIntake
       trigger: true
       carry_data: true
       condition:
         type: keyword
         config:
-          any: []
           none:
-            - UPDATE
+            - LOOP ENDED.
           case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+    
+    # Loop counter routes to DoctorNotes for finalization (if max iterations reached)
+    - from: Doctor-Patient Phase Loop Counter
+      to: DoctorNotes
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - LOOP ENDED.
+          case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      processor:
+        type: template
+        template: |
+          LOOP ENDED.
+          
+          Maximum iterations reached. Finalize all patient notes.
+    
+    # DoctorNotes routes to DiagnosisPhase (explicitly checks for UNDERSTOOD or LOOP ENDED. keywords)
+    - from: DoctorNotes
+      to: DiagnosisPhase
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - UNDERSTOOD
+            - LOOP ENDED.
+          none: []
+          case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+    
+    # DiagnosisPhase routes to PatientHistorySplitter (final step, no loop-back possible)
+    - from: DiagnosisPhase
+      to: PatientHistorySplitter
+      trigger: true
+      carry_data: true
       dynamic:
         type: map
         split:
@@ -1035,37 +1173,7 @@ graph:
         type: template
         template: |
           Transfer Order: {{input}}
-    - from: PatientInteraction
-      to: LoopGuard
-      trigger: true
-      dynamic:
-        type: map
-        split:
-          type: message
-        config:
-          max_parallel: 10
-    - from: LoopGuard
-      to: DoctorIntake
-      trigger: true
-      dynamic:
-        type: map
-        split:
-          type: message
-        config:
-          max_parallel: 10
-    - from: LoopGuard
-      to: DoctorNotes
-      trigger: true
-      dynamic:
-        type: map
-        split:
-          type: message
-        config:
-          max_parallel: 10
-      processor:
-        type: template
-        template: LOOP ENDED. Finalize notes.
-
+    
     - from: Discharge
       to: SimulationAggregator
       trigger: true
@@ -1110,19 +1218,21 @@ graph:
           User Input: {{input}}
 
           INSTRUCTIONS:
-          - Analyze the user input to determine if they want to CONTINUE the same scenario or EVOLVE it with new elements
-          - If input is minimal (e.g., "continue", "same", "next round") → maintain existing scenario with natural time progression
-          - If input contains new elements (e.g., "nurse infected", "power outage") → integrate these while preserving existing context
+          - If input is minimal ("continue", "same", "next round") → maintain existing scenario with time progression
+          - If input contains new elements ("nurse infected", "power outage") → integrate while preserving existing context
 
-          Create a DETAILED, VIVID hospital atmosphere description (3-5 sentences) that will DIRECTLY shape all agent behaviors.
+          Generate hospital environment JSON:
 
-          REQUIRED: Include specific details about:
-          - Urgency Level (Low/Medium/High/Critical)
-          - Staffing Status (Fully Staffed/Understaffed/Skeleton Crew)
-          - Time Context and any special conditions
-          - Emotional Atmosphere affecting everyone
+          OUTPUT FORMAT (STRICT JSON ONLY):
+          {
+            "outbreak": "maintain from previous if continuing",
+            "scenario": "show time progression or new context",
+            "urgency_level": "Low | Medium | High | Critical",
+            "atmospheric_description": "2-4 vivid sentences (integrate new elements if provided)",
+            "emotional_atmosphere": "Calm | Tense | Chaotic | Somber"
+          }
 
-          Be CONCRETE - these details will control how rushed, stressed, or calm everyone acts.
+          Output ONLY valid JSON object. No additional text.
 
     - from: HumanControl
       to: SimulationEnd
