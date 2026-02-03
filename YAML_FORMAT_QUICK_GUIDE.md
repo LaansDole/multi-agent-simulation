@@ -94,6 +94,77 @@ config:
 - When `write: true`, human feedback will be automatically stored in the memory for future retrieval.
 - `retrieve_stage` controls when memory is retrieved. If not specified, defaults to `gen` stage.
 
+**Best Practice - Memory Flow Patterns**:
+
+When designing workflows with shared memory between agent and human nodes, consider who should write to which memory:
+
+1. **State Memory Pattern** (Agent writes, Human reads):
+   ```yaml
+   # Environment/state generator agent
+   - id: environment
+     type: agent
+     config:
+       memories:
+         - name: environment_memory
+           read: true
+           write: true              # Agent owns this memory
+           top_k: 10
+           similarity_threshold: 0.0  # IMPORTANT: Use 0.0 to always retrieve recent items
+           retrieve_stage:
+             - gen                  # Retrieve during generation (before model call)
+   
+   # Human controller
+   - id: HumanControl
+     type: human
+     config:
+       memories:
+         - name: environment_memory
+           read: true               # Human only reads to see history
+           write: false             # Human does NOT write to state memory
+           top_k: 10
+           similarity_threshold: 0.0  # Always show recent history
+   ```
+   **Use when**: Agent generates state/context that human needs to review but not modify directly. The human provides commands via edges, and the agent interprets them to update state.
+   
+   **Why `similarity_threshold: 0.0`?** When the agent receives user input like "continue", the query text has low semantic similarity to past state descriptions (e.g., "COVID-19 outbreak" vs "continue"). Setting threshold to 0.0 ensures the agent ALWAYS retrieves its most recent states regardless of query similarity, maintaining continuity.
+   
+   **Why `retrieve_stage: gen`?** The `reflection` thinking type only processes memory during the generation stage. Using `pre_gen_thinking` would cause memory to be retrieved but ignored. With `gen` stage, memory is injected into the conversation BEFORE the model generates output, ensuring continuity.
+
+2. **Feedback Memory Pattern** (Human writes, Agent reads):
+   ```yaml
+   # Agent processes feedback
+   - id: processor
+     type: agent
+     config:
+       memories:
+         - name: feedback_memory
+           read: true
+           write: false
+   
+   # Human provides feedback
+   - id: reviewer
+     type: human
+     config:
+       memories:
+         - name: feedback_memory
+           read: true
+           write: true    # Human owns feedback memory
+   ```
+   **Use when**: Human provides annotations, corrections, or judgments that agents need to incorporate.
+
+3. **Separate Memory Pattern** (Isolated stores):
+   ```yaml
+   # Each node has its own memory store
+   - id: agent_a
+     memories:
+       - name: agent_a_memory
+   
+   - id: human_b
+     memories:
+       - name: human_b_memory
+   ```
+   **Use when**: No memory sharing needed; each node maintains independent history.
+
 #### **`loop_counter`**
 Controls loops by counting iterations.
 ```yaml
