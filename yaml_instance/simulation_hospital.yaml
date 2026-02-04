@@ -6,8 +6,6 @@
 
 version: 1.0.0
 vars:
-  api_key: ${API_KEY}
-  base_url: ${BASE_URL}
   # Higher number of patients will need a more powerful model
   NUMBER_OF_PATIENTS: 1
   # Number of interactions between doctor and patient
@@ -107,8 +105,8 @@ graph:
           }
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
@@ -218,8 +216,8 @@ graph:
           CRITICAL: Do NOT generate generic patients. Generate patients whose presence is EXPLAINED by the environmental context.
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
@@ -286,8 +284,8 @@ graph:
           Example: "Hi, my name is Sarah. I'm 45 years old and I've been having severe headaches for the past three days."
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.8
           max_tokens: ${MAX_TOKENS}
@@ -314,8 +312,8 @@ graph:
           Example: Patient Michael Chen discharged with diagnosis: suspected appendicitis requiring immediate surgical evaluation.
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.3
           max_tokens: ${MAX_TOKENS}
@@ -357,8 +355,8 @@ graph:
                   
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
@@ -437,8 +435,8 @@ graph:
           - Set "status": "CONTINUE" when you need more information
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
@@ -556,8 +554,8 @@ graph:
           - Include question sequence with actual content
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.1
           max_tokens: ${MAX_TOKENS}
@@ -646,8 +644,8 @@ graph:
           Patient basic information is mandatory before referral to the doctor.
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.7
           max_tokens: ${MAX_TOKENS}
@@ -681,8 +679,8 @@ graph:
           Example: Patient Michael Chen transferred to Emergency Room for suspected appendicitis requiring immediate surgical evaluation.
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.3
           max_tokens: ${MAX_TOKENS}
@@ -708,8 +706,8 @@ graph:
           Respond naturally as the patient from the patient's perspective.
         provider: openai
         name: gemma2-9b-it-psy10k-mental_health-i1
-        api_key: ${api_key}
-        base_url: ${base_url}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
         params:
           temperature: 0.8
           max_tokens: ${MAX_TOKENS}
