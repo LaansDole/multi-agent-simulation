@@ -1484,26 +1484,15 @@ const openCreateNodeModal = () => {
   openDynamicFormGenerator('node', { mode: 'create' })
 }
 
-const SYSTEM_VARS = ['API_KEY', 'BASE_URL']
-
 const openManageVarsModal = () => {
-  const currentVars = yamlContent.value?.vars || {}
-  
-  // Ensure system variables are always present
-  const varsWithSystem = {
-    ...currentVars,
-    API_KEY: currentVars.API_KEY || '${API_KEY}',
-    BASE_URL: currentVars.BASE_URL || '${BASE_URL}'
-  }
-  
+  const currentVars = yamlContent.value?.vars || null
   const sanitizedYaml = buildYamlWithoutVars()
   openDynamicFormGenerator('vars', {
     recursive: false,
     initialYaml: sanitizedYaml,
-    initialFormData: { vars: varsWithSystem },
-    mode: Object.keys(currentVars).length > 0 ? 'edit' : 'create',
-    fieldFilter: ['vars'],
-    protectedKeys: SYSTEM_VARS
+    initialFormData: currentVars ? { vars: currentVars } : null,
+    mode: currentVars ? 'edit' : 'create',
+    fieldFilter: ['vars']
   })
 }
 

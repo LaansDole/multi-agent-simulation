@@ -518,15 +518,10 @@
               <span class="var-name">{{ varKey }}</span>
               <span class="var-separator">|</span>
               <span class="var-value">{{ varValue }}</span>
-              <span v-if="protectedKeys.includes(varKey)" class="protected-indicator" title="Protected system variable">
-                🔒
-              </span>
               <button
                 class="delete-var-button"
                 @click.stop="$emit('delete-var', field.name, varKey)"
                 title="Delete variable"
-                :disabled="protectedKeys.includes(varKey)"
-                :class="{'button-disabled': protectedKeys.includes(varKey)}"
               >
                 ×
               </button>
@@ -638,10 +633,6 @@ const props = defineProps({
     default: false
   },
   suggestions: {
-    type: Array,
-    default: () => []
-  },
-  protectedKeys: {
     type: Array,
     default: () => []
   }
@@ -1204,25 +1195,6 @@ input:checked + .switch-slider:before {
 
 .delete-var-button:hover {
   color: #ff6b6b;
-}
-
-.delete-var-button:disabled,
-.delete-var-button.button-disabled {
-  color: #555;
-  cursor: not-allowed;
-  opacity: 0.3;
-}
-
-.delete-var-button:disabled:hover,
-.delete-var-button.button-disabled:hover {
-  color: #555;
-}
-
-.protected-indicator {
-  font-size: 12px;
-  margin-left: 8px;
-  opacity: 0.6;
-  cursor: help;
 }
 
 /* List items styles */
