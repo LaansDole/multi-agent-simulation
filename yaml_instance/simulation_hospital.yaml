@@ -756,7 +756,7 @@ graph:
     - id: Doctor-Patient Phase Loop Counter
       type: loop_counter
       config:
-        max_iterations: 5
+        max_iterations: 2
         reset_on_emit: true
         message: LOOP ENDED.
         passthrough: true
@@ -1100,6 +1100,13 @@ graph:
           type: message
         config:
           max_parallel: 10
+      processor:
+        type: regex_extract
+        config:
+          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\s*(\[[\s\S]*\])'
+          group: 1
+          template: '{{extracted}}'
+          dotall: true
     - from: PatientHistorySplitter
       to: DoctorDiagnosis
       trigger: true
