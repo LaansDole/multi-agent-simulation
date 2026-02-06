@@ -896,6 +896,13 @@ const handleClickOutside = (event) => {
 
 // Add a dialogue entry
 const addDialogue = (name, message) => {
+  if (message === null || message === undefined) {
+    return
+  }
+  const text = typeof message === 'string' ? message : String(message)
+  if (!text.trim()) {
+    return
+  }
   let avatar
   if (nameToSpriteMap.value.has(name)) {
     avatar = nameToSpriteMap.value.get(name)
@@ -909,7 +916,7 @@ const addDialogue = (name, message) => {
   chatMessages.value.push({
     type: 'dialogue',
     name: name,
-    text: message,
+    text: text,
     avatar: avatar,
     isRight: isRight,
     timestamp: Date.now()
