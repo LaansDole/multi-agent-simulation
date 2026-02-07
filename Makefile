@@ -6,7 +6,7 @@
 dev: server client ## Run both backend and frontend development servers
 
 .PHONY: server
-server: ## Start the backend server in the background
+server: stop ## Start the backend server in the background
 	@echo "Starting server in background..."
 	@uv run python server_main.py --port 6400 --reload &
 
