@@ -33,6 +33,8 @@
 - [x] 5.1 Create `yaml_instance/demo_loop_timer.yaml` demonstrating time-based loop control
 - [x] 5.2 Test standard mode (passthrough=False)
 - [x] 5.3 Test terminal gate mode (passthrough=True)
+- [x] 5.4 Merge both modes into comprehensive demo with 2-minute duration
+- [x] 5.5 Remove duplicate `demo_loop_timer_passthrough.yaml` file
 
 ## 6. Testing and Validation
 
