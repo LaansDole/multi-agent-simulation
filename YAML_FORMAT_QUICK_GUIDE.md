@@ -175,6 +175,18 @@ config:
   message: ""           # Optional message
 ```
 
+#### **`loop_timer`**
+Controls loops by tracking elapsed time.
+```yaml
+type: loop_timer
+config:
+  max_duration: 5       # Max allowed time
+  duration_unit: seconds # Unit: 'seconds', 'minutes', or 'hours'
+  reset_on_emit: true   # Reset timer when condition is met
+  message: ""           # Optional message
+  passthrough: false    # Passthrough mode (same as loop_counter)
+```
+
 #### **`passthrough`**
 A simple node that passes data through without modification.
 ```yaml
