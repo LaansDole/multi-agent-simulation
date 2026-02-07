@@ -107,6 +107,7 @@ See our paper in [Multi-Agent Collaboration via Evolving Orchestration](https://
 *   **Python**: 3.12 (not 3.13 or higher)
 *   **Node.js**: 18+
 *   **Package Manager**: [uv](https://docs.astral.sh/uv/)
+*   **Build Tool**: `make` (pre-installed on macOS/Linux; for Windows use WSL or install via [GnuWin32](http://gnuwin32.sourceforge.net/packages/make.htm))
 
 ### System Dependencies (Required Before Installation)
 
