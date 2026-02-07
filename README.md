@@ -121,7 +121,7 @@ If you don't have Homebrew installed, first install it from [brew.sh](https://br
 
 Then install the required system dependencies:
 ```bash
-# Required: cairo for PDF generation (xhtml2pdf)
+# Required for generating downloadable, formatted PDF reports
 brew install cairo pkg-config
 ```
 
@@ -146,7 +146,7 @@ brew install freetype libpng
 #### Linux (Debian/Ubuntu)
 
 ```bash
-# Required: cairo for PDF generation
+# Required for generating downloadable, formatted PDF reports
 sudo apt-get update
 sudo apt-get install -y libcairo2-dev pkg-config
 ```
