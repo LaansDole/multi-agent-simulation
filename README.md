@@ -13,6 +13,10 @@
   【<a href="./README.md">English</a> | <a href="./README-zh.md">简体中文</a>】
 </p>
 <p align="center">
+    <a href="#quick-start"><img src="https://img.shields.io/badge/Getting_Started-blue?style=for-the-badge" alt="Getting Started"></a>
+</p>
+
+<p align="center">
     【📚 <a href="#developers">Developers</a> | 👥 <a href="#primary-contributors">Contributors</a>｜⭐️ <a href="https://github.com/OpenBMB/ChatDev/tree/chatdev1.0">ChatDev 1.0 (Legacy)</a>】
 </p>
 
@@ -99,7 +103,7 @@ See our paper in [Multi-Agent Collaboration via Evolving Orchestration](https://
 </details>
 
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
