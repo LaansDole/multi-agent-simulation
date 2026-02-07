@@ -101,14 +101,77 @@ See our paper in [Multi-Agent Collaboration via Evolving Orchestration](https://
 
 ## 🚀 Quick Start
 
-### 📋 Prerequisites
+### Prerequisites
 
 *   **OS**: macOS / Linux / WSL / Windows
-*   **Python**: 3.12+
+*   **Python**: 3.12 (not 3.13 or higher)
 *   **Node.js**: 18+
 *   **Package Manager**: [uv](https://docs.astral.sh/uv/)
 
-### 📦 Installation
+### System Dependencies (Required Before Installation)
+
+Some Python packages in this project require system libraries that cannot be installed via `uv` or `pip`. You must install these first.
+
+#### macOS (using Homebrew)
+
+If you don't have Homebrew installed, first install it from [brew.sh](https://brew.sh/):
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Then install the required system dependencies:
+```bash
+# Required: cairo for PDF generation (xhtml2pdf)
+brew install cairo pkg-config
+```
+
+<details>
+<summary>Optional: Additional dependencies for building from source</summary>
+
+These are only needed if you encounter issues with pre-built wheels or need to build packages from source:
+
+```bash
+# For pygame (if wheel doesn't work)
+brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer
+
+# For cartopy (if wheel doesn't work)
+brew install geos proj
+
+# For matplotlib (if wheel doesn't work)
+brew install freetype libpng
+```
+
+</details>
+
+#### Linux (Debian/Ubuntu)
+
+```bash
+# Required: cairo for PDF generation
+sudo apt-get update
+sudo apt-get install -y libcairo2-dev pkg-config
+```
+
+<details>
+<summary>Optional: Additional dependencies for building from source</summary>
+
+```bash
+# For pygame
+sudo apt-get install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev
+
+# For cartopy
+sudo apt-get install -y libgeos-dev libproj-dev
+
+# For matplotlib
+sudo apt-get install -y libfreetype6-dev libpng-dev
+```
+
+</details>
+
+#### Windows
+
+On Windows, most packages install from pre-built wheels and do not require system dependencies. If you encounter issues, consider using WSL (Windows Subsystem for Linux) and follow the Linux instructions above.
+
+### Installation
 
 1.  **Backend Dependencies** (Python managed by `uv`):
     ```bash
