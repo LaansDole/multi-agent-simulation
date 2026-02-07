@@ -197,6 +197,17 @@ On Windows, most packages install from pre-built wheels and do not require syste
 *   **Model Keys**: Set `API_KEY` and `BASE_URL` in `.env` for your LLM provider.
 *   **YAML placeholders**: Use `${VAR}`（e.g., `${API_KEY}`）in configuration files to reference these variables.
 
+    <details>
+    <summary><i>Using LM Studio?</i></summary>
+
+    1. Open **LM Studio** and go to the **Local Server** tab.
+    2. Select a model and click **Start Server**.
+    3. Ensure the server is running before starting DevAll.
+    4. In your `.env` file, set:
+       - `BASE_URL=http://localhost:1234/v1` (verify the port in LM Studio)
+       - `API_KEY=lm-studio` (or any placeholder)
+    </details>
+
 ### ⚡️ Run the Application
 
 
