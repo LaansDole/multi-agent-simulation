@@ -63,11 +63,6 @@ graph:
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
   nodes:
-    - id: InputProcessor
-      type: passthrough
-      name: Input Processor
-      description: Initial entry point for user input
-      config: {}
     - id: environment
       name: Hospital Environment
       type: agent
@@ -77,7 +72,9 @@ graph:
           ${COMMON_PROMPT}
           You are the hospital environment coordinator.
 
-          Generate atmospheric context that will directly influence all agents' behavior throughout the simulation. Maintain continuity with previous rounds when appropriate.
+          User Scenario: {{task_prompt}}
+
+          Generate hospital environment JSON based on the scenario above. Maintain continuity with previous rounds when appropriate.
 
           OUTPUT FORMAT (STRICT JSON ONLY):
           {
@@ -254,11 +251,6 @@ graph:
               - pre_gen_thinking
             read: true
             write: true
-    - id: PatientRouter
-      type: passthrough
-      name: Patient Router
-      description: Routes generated patients for splitting
-      config: {}
     - id: PatientAgent
       name: Patient
       type: agent
@@ -605,11 +597,6 @@ graph:
               - gen
             read: true
             write: true
-    - id: DiagnosisPhase
-      type: passthrough
-      name: Diagnosis Phase Gate
-      description: Catches UNDERSTOOD or LOOP ENDED keywords and routes to finalization (prevents loop-back to DoctorIntake)
-      config: {}
     - id: PatientHistorySplitter
       type: passthrough
       name: Patient History Splitter
@@ -764,28 +751,6 @@ graph:
       context_window: 0
       name: Question Limiter
   edges:
-    - from: InputProcessor
-      to: environment
-      trigger: true
-      condition: 'true'
-      carry_data: true
-      processor:
-        type: template
-        template: |
-          User Scenario: {{task_prompt}}
-
-          Generate hospital environment JSON based on the scenario above.
-
-          OUTPUT FORMAT (STRICT JSON ONLY):
-          {
-            "outbreak": "description of active crisis type",
-            "scenario": "temporal and contextual setting",
-            "urgency_level": "Low | Medium | High | Critical",
-            "atmospheric_description": "2-4 vivid sentences describing hospital conditions",
-            "emotional_atmosphere": "Calm | Tense | Chaotic | Somber"
-          }
-
-          Output ONLY valid JSON object. No additional text.
     - from: environment
       to: PatientGenerator
       trigger: true
@@ -825,7 +790,7 @@ graph:
 
           Now generate exactly ${NUMBER_OF_PATIENTS} patient(s).
     - from: PatientGenerator
-      to: PatientRouter
+      to: PatientAgent
       trigger: true
       condition: 'true'
       carry_data: true
@@ -837,22 +802,6 @@ graph:
           type: regex
           config:
             pattern: (?s)\{.*?\}
-        config:
-          max_parallel: 10
-      processor:
-        type: template
-        template: '{{input}}'
-    - from: PatientRouter
-      to: PatientAgent
-      trigger: true
-      condition: 'true'
-      carry_data: true
-      clear_context: true
-      clear_kept_context: true
-      dynamic:
-        type: map
-        split:
-          type: message
         config:
           max_parallel: 10
       processor:
@@ -1069,9 +1018,9 @@ graph:
           
           Maximum iterations reached. Finalize all patient notes.
     
-    # DoctorNotes routes to DiagnosisPhase (explicitly checks for UNDERSTOOD or LOOP ENDED. keywords)
+    # DoctorNotes routes to PatientHistorySplitter (explicitly checks for UNDERSTOOD or LOOP ENDED. keywords)
     - from: DoctorNotes
-      to: DiagnosisPhase
+      to: PatientHistorySplitter
       trigger: true
       carry_data: true
       condition:
@@ -1088,22 +1037,10 @@ graph:
           type: message
         config:
           max_parallel: 10
-    
-    # DiagnosisPhase routes to PatientHistorySplitter (final step, no loop-back possible)
-    - from: DiagnosisPhase
-      to: PatientHistorySplitter
-      trigger: true
-      carry_data: true
-      dynamic:
-        type: map
-        split:
-          type: message
-        config:
-          max_parallel: 10
       processor:
         type: regex_extract
         config:
-          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\s*(\[[\s\S]*\])'
+          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\\s*(\[[\s\S]*\])'
           group: 1
           template: '{{extracted}}'
           dotall: true
@@ -1274,6 +1211,6 @@ graph:
 
   initial_instruction: Describe the scenario for the hospital simulation (e.g., 'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'). The system will simulate multiple patients arriving in parallel.
   start:
-    - InputProcessor
+    - environment
   end:
     - SimulationEnd
