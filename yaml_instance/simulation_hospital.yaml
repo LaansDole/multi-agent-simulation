@@ -491,7 +491,7 @@ graph:
              - Identify which patient from memory context
              - Extract that patient's actual name from conversation history
              - Add this new information to that patient's notes
-             - Output ONLY UPDATE format (never an array during this phase)
+             - Output ONLY a JSON object with patient name and history (no array during this phase)
 
           2. FINALIZATION WORKFLOW (when doctor says UNDERSTOOD OR you receive "LOOP ENDED."):
              - The doctor has finished questioning ALL patients (satisfied OR max iterations reached)
@@ -501,14 +501,17 @@ graph:
                * Group all memory entries by patient name
                * If multiple histories exist for same patient, use the one with most questions
                * Each patient should appear EXACTLY ONCE in the output array
-             - Output format: First line contains the keyword (UNDERSTOOD or LOOP ENDED.), then the JSON array
+             - MANDATORY OUTPUT FORMAT: You MUST start with the triggering keyword on the first line
+             - If triggered by UNDERSTOOD → First line MUST be exactly: UNDERSTOOD
+             - If triggered by LOOP ENDED. → First line MUST be exactly: LOOP ENDED.
+             - Second line onwards: The JSON array
              - Do NOT copy example names - use actual names from memory
+             - CRITICAL: Never output ONLY the JSON array - always include the keyword prefix
 
           OUTPUT FORMAT EXAMPLES (replace placeholders with real data from memory):
 
-          For NORMAL WORKFLOW - UPDATE OBJECT ONLY (ONE PATIENT):
+          For NORMAL WORKFLOW - JSON OBJECT (ONE PATIENT):
           {
-            "status": "UPDATE",
             "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>",
             "history": "Q1: Nurse intake - <ACTUAL_SYMPTOMS_AND_CONTEXT_FROM_MEMORY>. Q2: <ACTUAL_DOCTOR_QUESTION> - <ACTUAL_PATIENT_ANSWER>. Q3: ... Q4: ..."
           }
@@ -540,8 +543,9 @@ graph:
           CRITICAL NOTES:
           - Use the MOST COMPLETE history (e.g., Q1-Q4 is better than Q1-Q3)
           - Number of patients in output = Number of UNIQUE patient names
-          - Default behavior: OUTPUT UPDATE object for single patient
-          - For finalization: Output the triggering keyword (UNDERSTOOD or LOOP ENDED.) on first line, then the JSON array
+          - Default behavior: Output JSON object with patient name and history
+          - FINALIZATION FORMAT IS MANDATORY: KEYWORD on first line, JSON array on subsequent lines
+          - NEVER output a bare JSON array without the keyword prefix during finalization
           - Examples show FORMAT only - populate with real data from memory
           - Include question sequence with actual content
         provider: openai
@@ -569,7 +573,9 @@ graph:
                3. FORMAT CHECK:
                   - Is the JSON format correct (valid syntax, no extra text)?
                   - UPDATE: Single object with "status", "patient", "history" fields?
-                  - FINALIZATION: Keyword (UNDERSTOOD or LOOP ENDED.) on first line, then bare array with "patient", "history" fields?
+                  - FINALIZATION: Does the output start with the keyword (UNDERSTOOD or LOOP ENDED.) on the FIRST line?
+                  - FINALIZATION: Is the JSON array on the second line onwards (NOT on the first line)?
+                  - CRITICAL ERROR: If you see a bare JSON array starting with '[' without a keyword prefix, YOU MUST ADD THE KEYWORD
 
               4. SEQUENCE CHECK:
                  - Is the Q1, Q2, Q3... sequence complete with no gaps?
@@ -597,11 +603,6 @@ graph:
               - gen
             read: true
             write: true
-    - id: PatientHistorySplitter
-      type: passthrough
-      name: Patient History Splitter
-      description: Extracts and splits patient histories for parallel diagnosis
-      config: {}
     - id: Nurse
       name: Nurse Jackie
       type: agent
@@ -701,39 +702,91 @@ graph:
     - id: SimulationAggregator
       type: passthrough
       name: Simulation Aggregator
-      description: Collects all parallel patient outcomes before human control
+      description: Collects all parallel patient outcomes before round evolution
       config: {}
-    - id: HumanControl
-      type: human
-      name: Human Control
-      description: Prompts user to update scenario or end simulation
+    - id: ScenarioEvolver
+      type: agent
+      name: Scenario Evolution Agent
+      description: Automatically generates scenario evolution prompts for next round
       config:
-        description: |
-          WAITING FOR YOUR INPUT TO CONTINUE THE SIMULATION...
+        role: |
+          ${COMMON_PROMPT}
+          You are the scenario evolution coordinator for automated hospital simulation rounds.
+
+          Your task is to generate evolution instructions that will be sent to the environment agent for the next simulation round.
+
+          EVOLUTION STRATEGIES (randomly choose one):
           
-          (Review the environment history above to understand past scenario progression)
+          1. CONTINUATION (60% probability):
+             - Output: "continue" or "next round" or "same scenario"
+             - Effect: Environment maintains current crisis with time progression
+          
+          2. MINOR EVOLUTION (30% probability):
+             - Add small complications or changes to existing scenario
+             - Examples: "staff member infected", "medication shortage", "power fluctuation", "influx of patients"
+             - Keep changes realistic and compounding with current crisis
+          
+          3. MAJOR ESCALATION (10% probability):
+             - Introduce significant new crisis elements
+             - Examples: "equipment failure", "external emergency", "resource depletion critical"
+             - Must remain plausible given current situation
 
-          You have three options:
+          REQUIREMENTS:
+          - Generate ONLY the evolution instruction text (1-2 sentences maximum)
+          - No explanations, no meta-commentary
+          - Vary your output - don't repeat the same instruction every round
+          - Evolution should feel natural and progressive
 
-          1. CONTINUE SAME SCENARIO
-             - Type "continue" or "next round" to maintain current conditions
-             - The environment will naturally progress (time advances, staffing shifts)
-             - Same urgency level, crisis type, and atmosphere
-
-          2. EVOLVE THE SCENARIO
-             - Add new complications or changes to the existing situation
-             - New elements will be integrated while preserving current context
-
-          3. END SIMULATION
-             - Type "SIMULATION ENDED." (exact phrase) to terminate
-
+          OUTPUT FORMAT:
+          Single brief instruction like: "continue" OR "staff shortage worsens as more nurses call in sick" OR "power backup systems begin to fail"
+        provider: openai
+        name: gemma2-9b-it-psy10k-mental_health-i1
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.9
+          max_tokens: 100
         memories:
           - name: environment_memory
             read: true
             write: false
-            top_k: 10
+            top_k: 5
             similarity_threshold: 0.0
-
+            retrieve_stage:
+              - gen
+    - id: ReportSaver
+      type: agent
+      name: Medical Report Saver
+      description: Saves the medical case report to a file in the WareHouse directory
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a medical documentation clerk responsible for archiving clinical case reports.
+          
+          Your task is to save the medical case report to a file for archival purposes.
+          
+          INSTRUCTIONS:
+          1. Use the save_file function to write the report to a markdown file
+          2. Save to path: "medical_case_reports/simulation_report_{timestamp}.md"
+          3. The report content is provided in the input
+          4. After saving, confirm the file path and size
+          
+          OUTPUT FORMAT:
+          Medical case report successfully saved to: [file_path]
+          File size: [size] bytes
+        provider: openai
+        name: gemma2-9b-it-psy10k-mental_health-i1
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.1
+          max_tokens: 500
+        tooling:
+          - type: function
+            config:
+              auto_load: true
+              tools:
+                - name: save_file
     - id: SimulationEnd
       type: literal
       name: Simulation End
@@ -750,6 +803,151 @@ graph:
       description: Limits the number of doctor questions
       context_window: 0
       name: Question Limiter
+    - id: SimulationRoundCounter
+      type: loop_counter
+      config:
+        max_iterations: 2
+        reset_on_emit: false
+        message: ALL ROUNDS COMPLETED.
+        passthrough: true
+      description: Controls the number of simulation rounds
+      context_window: 0
+      name: Simulation Round Counter
+    # ================== FINAL REPORT GENERATION ==================
+    # Medical Case Report Generator: Produces formal clinical documentation
+    # ============================================================
+    - id: FinalReportAggregator
+      type: agent
+      name: Medical Case Report Generator
+      description: Generates formal medical case reports following clinical documentation standards
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a medical case report coordinator generating formal clinical documentation for the hospital simulation.
+
+          CRITICAL INSTRUCTIONS:
+          - Generate a MINIMAL MEDICAL CASE REPORT using clinical/professional terminology
+          - Base ALL information on ACTUAL data retrieved from memory (environment_memory, patient_memory, doctor_memory)
+          - DO NOT hallucinate or invent data
+          - **PATIENT CONSISTENCY RULE**: The SAME set of patients MUST appear in ALL sections (2, 3, 4, 5)
+          - If data is missing for a patient, include them with "Pending" status rather than omitting
+          - Do NOT use web_search - extract data from memory ONLY
+          - Keep report concise and focused
+
+          MEDICAL CASE REPORT FORMAT:
+
+          # Medical Case Report: Hospital Simulation
+
+          ## 1. Background & Context
+          **Outbreak/Scenario**: [Extract from environment_memory]
+          **Hospital Environment**: [Extract from environment_memory]
+          **Total Patients**: [COUNT unique patient names from patient_memory and doctor_memory]
+
+          ## 2. Case Presentations
+          [For EACH patient - create ONE concise entry]:
+          
+          **Patient [N]: [Patient Name]**
+          - Chief Complaint: [Initial symptoms from patient_memory]
+          - Clinical History: [Brief summary from doctor_memory - max 2 sentences]
+
+          [Repeat for ALL patients]
+
+          ## 3. Final Diagnoses
+          [Extract from doctor_memory - look for "DIAGNOSIS:" keyword]:
+          
+          **Patient [N]: [Patient Name]**
+          - Diagnosis: [Diagnosis name from memory]
+          - Rationale: [1 sentence justification from memory]
+
+          [Repeat for ALL patients - if missing, write "Diagnosis: Pending evaluation"]
+
+          ## 4. Treatment Plans
+          [Extract from doctor_memory]:
+          
+          **Patient [N]: [Patient Name]**
+          - Treatment: [Medications/interventions from memory]
+          - Management: [1 sentence plan from memory]
+
+          [Repeat for ALL patients - if missing, write "Treatment: Pending"]
+
+          ## 5. Clinical Outcomes
+          - Discharged: [COUNT and list patient names]
+          - Transferred: [COUNT and list patient names with destinations]
+          - Total: [Must equal number of patients]
+
+          REQUIREMENTS:
+          - ALL 5 sections MUST be present
+          - SAME patients in sections 2, 3, 4, 5
+          - Extract from memory ONLY - no web searches
+          - Keep concise - 1-2 sentences per field
+          - Format as clean markdown
+        provider: openai
+        name: gemma2-9b-it-psy10k-mental_health-i1
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.3
+          max_tokens: 8000
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              You have just generated a medical case report. Verify data integrity and completeness:
+
+              VERIFICATION CHECKLIST:
+              
+              1. PATIENT CONSISTENCY CHECK (CRITICAL):
+                 - Count the total number of UNIQUE patient names from memory
+                 - Verify that Section 2 (Case Presentations) includes ALL patients
+                 - Verify that Section 3 (Final Diagnoses) includes ALL patients
+                 - Verify that Section 4 (Treatment Plans) includes ALL patients
+                 - Verify that Section 5 (Clinical Outcomes) counts match total patients
+                 - If ANY patient is missing from sections 2-5, you MUST add them
+
+              2. DATA ACCURACY CHECK:
+                 - Are patient names EXACTLY as they appear in memory (no placeholders)?
+                 - Are diagnoses and treatments extracted from actual memory data?
+                 - Do the outcome counts (Discharged + Transferred) equal total patients?
+
+              3. FORMAT CHECK:
+                 - Are all 5 sections present (Background, Case Presentations, Diagnoses, Treatment, Outcomes)?
+                 - Is the markdown formatting correct?
+                 - Are there no empty sections?
+
+              4. HALLUCINATION CHECK:
+                 - Have you invented any patient data not present in memory?
+                 - Are diagnosis/treatment details supported by memory entries?
+                 - Are patient counts accurate (not guessed)?
+
+              If you find ANY issues:
+              - Retrieve missing patient data from memory
+              - Add missing patients to ALL relevant sections
+              - Correct any inaccurate counts or invented data
+              - Ensure markdown structure is valid
+
+              If everything is correct, return the same report unchanged.
+        memories:
+          - name: environment_memory
+            read: true
+            write: false
+            top_k: 100
+            similarity_threshold: -1
+            retrieve_stage:
+              - gen
+          - name: patient_memory
+            read: true
+            write: false
+            top_k: 100
+            similarity_threshold: -1
+            retrieve_stage:
+              - gen
+          - name: doctor_memory
+            read: true
+            write: false
+            top_k: 100
+            similarity_threshold: -1
+            retrieve_stage:
+              - gen
   edges:
     - from: environment
       to: PatientGenerator
@@ -947,7 +1145,7 @@ graph:
         template: |
           Patient Answer: "{{input}}"
     
-    # DoctorNotes UPDATE routes to loop counter (which controls max iterations)
+    # DoctorNotes routes to loop counter if NOT finalization (not an array, not UNDERSTOOD/LOOP ENDED)
     - from: DoctorNotes
       to: Doctor-Patient Phase Loop Counter
       trigger: true
@@ -955,9 +1153,11 @@ graph:
       condition:
         type: keyword
         config:
-          any:
-            - UPDATE
-          none: []
+          any: []
+          none:
+            - 'UNDERSTOOD'
+            - 'LOOP ENDED.'
+            - '['
           case_sensitive: false
       dynamic:
         type: map
@@ -974,6 +1174,34 @@ graph:
             Clinical Notes: {{history}}
 
             Review the history and determine if you need more information.
+          dotall: true
+    
+    # DoctorNotes routes directly to DoctorDiagnosis for finalization
+    # Extracts JSON array (removing UNDERSTOOD/LOOP ENDED keywords) and splits into parallel diagnosis units
+    # Accepts either explicit keywords OR JSON array format (lenient for LLM variance)
+    - from: DoctorNotes
+      to: DoctorDiagnosis
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any: ["UNDERSTOOD", "LOOP ENDED.", "["]
+          case_sensitive: true
+      dynamic:
+        type: map
+        split:
+          type: json_path
+          config:
+            json_path: ''
+        config:
+          max_parallel: 10
+      processor:
+        type: regex_extract
+        config:
+          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\\s*(\\[[\\s\\S]*\\])'
+          group: 1
+          template: '{{extracted}}'
           dotall: true
     
     # Loop counter routes back to DoctorIntake (if under max iterations)
@@ -1018,52 +1246,6 @@ graph:
           
           Maximum iterations reached. Finalize all patient notes.
     
-    # DoctorNotes routes to PatientHistorySplitter (explicitly checks for UNDERSTOOD or LOOP ENDED. keywords)
-    - from: DoctorNotes
-      to: PatientHistorySplitter
-      trigger: true
-      carry_data: true
-      condition:
-        type: keyword
-        config:
-          any:
-            - UNDERSTOOD
-            - LOOP ENDED.
-          none: []
-          case_sensitive: false
-      dynamic:
-        type: map
-        split:
-          type: message
-        config:
-          max_parallel: 10
-      processor:
-        type: regex_extract
-        config:
-          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\\s*(\[[\s\S]*\])'
-          group: 1
-          template: '{{extracted}}'
-          dotall: true
-    - from: PatientHistorySplitter
-      to: DoctorDiagnosis
-      trigger: true
-      condition: 'true'
-      carry_data: true
-      dynamic:
-        type: map
-        split:
-          type: regex
-          config:
-            pattern: (?s)\{.*?\}
-        config:
-          max_parallel: 10
-      processor:
-        type: template
-        template: |
-          {{input}}
-
-          TIMEOUT: Maximum questions reached. 
-          Review the patient history above and make your final diagnosis now.
     - from: DoctorDiagnosis
       to: Discharge
       trigger: true
@@ -1133,7 +1315,7 @@ graph:
         template: '{{input}}'
 
     - from: SimulationAggregator
-      to: HumanControl
+      to: ScenarioEvolver
       trigger: true
       carry_data: true
       processor:
@@ -1141,23 +1323,28 @@ graph:
         template: |
           Simulation round completed. Patient outcomes:
           {{input}}
+          
+          Generate evolution instruction for next round.
 
-    - from: HumanControl
+    - from: ScenarioEvolver
+      to: SimulationRoundCounter
+      trigger: true
+      carry_data: true
+
+    - from: SimulationRoundCounter
       to: environment
       trigger: true
       carry_data: true
-      keep_message: true
       condition:
         type: keyword
         config:
-          any: []
           none:
-            - SIMULATION ENDED.
+            - ALL ROUNDS COMPLETED.
           case_sensitive: true
       processor:
         type: template
         template: |
-          User Input: {{input}}
+          Evolution Input: {{input}}
 
           INSTRUCTIONS:
           - If input is minimal ("continue", "same", "next round") → maintain existing scenario with time progression
@@ -1176,23 +1363,29 @@ graph:
 
           Output ONLY valid JSON object. No additional text.
 
-    - from: HumanControl
-      to: SimulationEnd
+    - from: SimulationRoundCounter
+      to: FinalReportAggregator
       trigger: true
       carry_data: true
       condition:
         type: keyword
         config:
           any:
-            - SIMULATION ENDED.
-          none: []
+            - ALL ROUNDS COMPLETED.
           case_sensitive: true
-      processor:
-        type: template
-        template: '{{input}}'
+
+    - from: FinalReportAggregator
+      to: ReportSaver
+      trigger: true
+      carry_data: true
+
+    - from: ReportSaver
+      to: SimulationEnd
+      trigger: true
+      carry_data: true
 
   # ================== SCENARIO PRESETS ==================
-  # Copy/paste one of these into the initial_instruction field below:
+  # Provide scenario via --task-prompt when running the workflow:
   #
   # 1. PANDEMIC START (COVID-19):
   #    'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'
@@ -1209,7 +1402,6 @@ graph:
   # 5. INFRASTRUCTURE FAILURE (Cyber Attack + Blizzard):
   #    'Winter 2025. Total hospital network failure due to ransomware. No electronic records, no labs, no imaging. Backup generators only. Snowstorm preventing transfers. Staff flying blind with paper charts. High anxiety and communication breakdown.'
 
-  initial_instruction: Describe the scenario for the hospital simulation (e.g., 'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'). The system will simulate multiple patients arriving in parallel.
   start:
     - environment
   end:
