@@ -20,7 +20,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-yamls:
+  validate:
+    name: Validate YAML Configuration Files
     runs-on: ubuntu-latest
     
     steps:
@@ -32,7 +33,12 @@ jobs:
         with:
           python-version: '3.12'
       
-      - name: Install system dependencies
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install system dependencies for pycairo
         run: |
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev pkg-config
