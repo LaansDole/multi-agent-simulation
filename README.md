@@ -262,6 +262,7 @@ make dev
     ```
     Checks all YAML files for syntax and schema errors.
 
+
 ---
 
 ## 💡 How to Use
