@@ -103,19 +103,18 @@ graph:
       log_output: true
       name: Triage Report Handler
     - id: StatusReport
-      type: agent
+      type: template
       config:
-        name: ${MODEL_NAME}
-        provider: openai
-        role: You received a status update. Acknowledge it.
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
-        tooling: null
-        thinking: null
-        memories: []
-        retry: null
-      description: ''
+        template: |
+          ==============================================
+          STATUS REPORT RECEIVED
+          ==============================================
+          
+          {{ input }}
+          
+          Report Status: ✓ LOGGED
+          ==============================================
+      description: Formats status acknowledgment
       context_window: 0
       log_output: true
       name: Status Report Handler
