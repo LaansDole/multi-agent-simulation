@@ -57,7 +57,7 @@ class TemplateNodeExecutor(NodeExecutor):
 
         # Get latest input message (consistent with passthrough node behavior)
         latest_input = inputs[-1]
-        input_text = latest_input.text_content
+        input_text = latest_input.text_content()
 
         if len(inputs) > 1:
             self.log_manager.debug(
