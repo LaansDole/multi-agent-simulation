@@ -106,14 +106,11 @@ graph:
       type: template
       config:
         template: |
-          ==============================================
           STATUS REPORT RECEIVED
-          ==============================================
           
           {{ input }}
           
           Report Status: ✓ LOGGED
-          ==============================================
       description: Formats status acknowledgment
       context_window: 0
       log_output: true
@@ -197,10 +194,9 @@ graph:
       type: template
       config:
         template: |
-          ==============================================
-          PATIENT DISCHARGE SUMMARY
-          ==============================================
           {% set patient = input | fromjson %}
+          
+          PATIENT DISCHARGE SUMMARY
           
           Patient Information:
           - Name: {{ patient.patient_name }}
@@ -225,7 +221,6 @@ graph:
           {% if patient.age > 65 %}
           ⚠️  Special Note: Elderly patient - ensure caregiver support.
           {% endif %}
-          ==============================================
       description: Formats patient discharge summary using template node
       context_window: 0
       log_output: true
@@ -246,7 +241,7 @@ graph:
       config:
         template: |
           ╔════════════════════════════════════════╗
-          ║     HOSPITAL METRICS DASHBOARD        ║
+          ║     HOSPITAL METRICS DASHBOARD         ║
           ╚════════════════════════════════════════╝
           
           📊 {{ input | upper }}
@@ -274,9 +269,8 @@ graph:
         type: template
         config:
           template: |
-            ==============================================
             PATIENT ADMISSION REPORT
-            ==============================================
+            
             {% set patient = input | fromjson %}
 
             Patient Information:
@@ -302,7 +296,6 @@ graph:
             {% if patient.age > 60 %}
             Note: Elderly patient - additional monitoring recommended.
             {% endif %}
-            ==============================================
     - from: TriageDataGenerator
       to: TriageReport
       trigger: true
@@ -315,9 +308,8 @@ graph:
         type: template
         config:
           template: |
-            ==============================================
             TRIAGE QUEUE STATUS
-            ==============================================
+            
             {% set patients = input | fromjson %}
 
             Current Queue ({{ patients | length }} patients):
@@ -332,7 +324,6 @@ graph:
                → WARNING: Extended wait time
                {% endif %}
             {% endfor %}
-            ==============================================
     - from: StatusGenerator
       to: StatusReport
       trigger: true
