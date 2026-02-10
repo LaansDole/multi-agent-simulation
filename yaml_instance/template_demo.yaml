@@ -398,10 +398,6 @@ graph:
             Emergency Level: {{ emergency_level | default('None') }}
             Timestamp: {{ timestamp | default('Not specified') }}
     
-    # ===================================================================
-    # TEMPLATE NODE EDGES - Connect to template nodes (no processor needed)
-    # ===================================================================
-    
     - from: DischargeDataGenerator
       to: DischargeSummaryFormatter
       trigger: true

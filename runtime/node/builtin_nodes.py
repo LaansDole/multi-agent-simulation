@@ -55,9 +55,6 @@ register_node_type(
     capabilities=NodeCapabilities(),
     executor_factory=lambda context, subgraphs=None: SubgraphNodeExecutor(
         context, subgraphs or {}
-    capabilities=NodeCapabilities(),
-    executor_factory=lambda context, subgraphs=None: SubgraphNodeExecutor(
-        context, subgraphs or {}
     ),
     summary="Embeds (through file path or inline config) and runs another named subgraph within the current workflow",
 )
@@ -85,7 +82,6 @@ register_node_type(
     "literal",
     config_cls=LiteralNodeConfig,
     executor_cls=LiteralNodeExecutor,
-    capabilities=NodeCapabilities(),
     capabilities=NodeCapabilities(),
     summary="Emits the configured text message every time it is triggered",
 )
