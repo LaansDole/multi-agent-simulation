@@ -210,7 +210,6 @@ On Windows, most packages install from pre-built wheels and do not require syste
 
 ### ⚡️ Run the Application
 
-
 #### Using Makefile (Recommended)
 
 **Start both Backend and Frontent**:
@@ -262,6 +261,24 @@ make dev
     ```
     Checks all YAML files for syntax and schema errors.
 
+### 🐳 Run with Docker
+Alternatively, you can run the entire application using Docker Compose. This method simplifies dependency management and provides a consistent environment.
+
+1.  **Prerequisites**:
+    *   [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed.
+    *   Ensure you have a `.env` file in the project root for your API keys.
+
+2.  **Build and Run**:
+    ```bash
+    # From the project root
+    docker compose up --build
+    ```
+
+3.  **Access**:
+    *   **Backend**: `http://localhost:6400`
+    *   **Frontend**: `http://localhost:5173`
+
+> The services will automatically restart if they crash, and local file changes will be reflected inside the containers for live development.
 
 ---
 
@@ -370,6 +387,7 @@ By contributing to DevAll, you'll be recognized in our **Contributors** list bel
     <td align="center"><a href="https://github.com/kilo2127"><img src="https://github.com/kilo2127.png?size=100" width="64px;" alt=""/><br /><sub><b>kilo2127</b></sub></a></td>
     <td align="center"><a href="https://github.com/AckerlyLau"><img src="https://github.com/AckerlyLau.png?size=100" width="64px;" alt=""/><br /><sub><b>AckerlyLau</b></sub></a></td>
     <td align="center"><a href="https://github.com/LaansDole"><img src="https://github.com/LaansDole.png?size=100" width="64px;" alt=""/><br /><sub><b>LaansDole</b></sub></a></td>
+    <td align="center"><a href="https://github.com/zivkovicp"><img src="https://github.com/zivkovicp.png?size=100" width="64px;" alt=""/><br /><sub><b>zivkovicp</b></sub></a></td>
 </table>
 
 ## 🤝 Acknowledgments
