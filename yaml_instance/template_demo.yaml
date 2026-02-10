@@ -1,5 +1,28 @@
+# ===================================================================
+# TEMPLATE DEMONSTRATION WORKFLOW
+# ===================================================================
+# This workflow demonstrates TWO ways to use Jinja2 templates:
+#
+# 1. EDGE TEMPLATE PROCESSORS (lines 150-227)
+#    - Transform data BETWEEN nodes on edges
+#    - Output appears in the TARGET node's input
+#    - Use case: Data transformation, format conversion
+#    - Examples: PatientDataGenerator → AdmissionReport
+#
+# 2. TEMPLATE NODES (lines 144-228)
+#    - Format data WITHIN node execution
+#    - Output appears in node's own logs
+#    - Use case: Formatted reports, summaries, dashboards
+#    - Examples: DischargeSummaryFormatter, MetricsDashboard
+#
+# Key Difference:
+# - Edge processors transform data in transit
+# - Template nodes are formatting destinations
+# ===================================================================
+
 graph:
   id: template_demo
+  description: Template edge processor and template node demonstration with practical examples
   description: Template edge processor and template node demonstration with practical examples
   log_level: INFO
   is_majority_voting: false
@@ -82,7 +105,15 @@ graph:
       name: Triage Report Handler
     - id: StatusReport
       type: template
+      type: template
       config:
+        template: |
+          STATUS REPORT RECEIVED
+          
+          {{ input }}
+          
+          Report Status: ✓ LOGGED
+      description: Formats status acknowledgment
         template: |
           STATUS REPORT RECEIVED
           
@@ -225,6 +256,10 @@ graph:
       log_output: true
       name: Metrics Dashboard
   edges:
+    # ===================================================================
+    # EDGE TEMPLATE PROCESSORS - Transform data on edges between nodes
+    # ===================================================================
+    
     - from: PatientDataGenerator
       to: AdmissionReport
       trigger: true
@@ -238,6 +273,7 @@ graph:
         config:
           template: |
             PATIENT ADMISSION REPORT
+            
             
             {% set patient = input | fromjson %}
 
@@ -278,6 +314,7 @@ graph:
           template: |
             TRIAGE QUEUE STATUS
             
+            
             {% set patients = input | fromjson %}
 
             Current Queue ({{ patients | length }} patients):
@@ -307,6 +344,32 @@ graph:
             System Status: {{ input }}
             Emergency Level: {{ emergency_level | default('None') }}
             Timestamp: {{ timestamp | default('Not specified') }}
+    
+    # ===================================================================
+    # TEMPLATE NODE EDGES - Connect to template nodes (no processor needed)
+    # ===================================================================
+    
+    - from: DischargeDataGenerator
+      to: DischargeSummaryFormatter
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    
+    - from: HospitalMetrics
+      to: MetricsDashboard
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    
+    # Flow to final aggregator
     
     # ===================================================================
     # TEMPLATE NODE EDGES - Connect to template nodes (no processor needed)
@@ -380,12 +443,34 @@ graph:
       clear_context: false
       clear_kept_context: false
       processor: null
+    
+    - from: DischargeSummaryFormatter
+      to: DailySummary
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    
+    - from: MetricsDashboard
+      to: DailySummary
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
   memory: []
   initial_instruction: ''
   start:
     - PatientDataGenerator
     - TriageDataGenerator
     - StatusGenerator
+    - DischargeDataGenerator
+    - HospitalMetrics
     - DischargeDataGenerator
     - HospitalMetrics
   end:
