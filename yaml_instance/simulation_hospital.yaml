@@ -1371,6 +1371,7 @@ graph:
   # 5. INFRASTRUCTURE FAILURE (Cyber Attack + Blizzard):
   #    'Winter 2025. Total hospital network failure due to ransomware. No electronic records, no labs, no imaging. Backup generators only. Snowstorm preventing transfers. Staff flying blind with paper charts. High anxiety and communication breakdown.'
 
+  initial_instruction: Describe the scenario for the hospital simulation (e.g., 'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'). The system will simulate multiple patients arriving in parallel.
   start:
     - environment
   end:
