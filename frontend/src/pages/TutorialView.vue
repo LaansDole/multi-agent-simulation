@@ -40,7 +40,6 @@ const scrollToHash = () => {
       const targetElement = document.getElementById(targetId)
       
       if (targetElement) {
-        // Add a small delay to ensure rendering is complete
         setTimeout(() => {
           targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 100)
