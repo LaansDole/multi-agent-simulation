@@ -146,21 +146,20 @@ onUnmounted(() => {
         {{ nodeDescription }}
       </div>
 
-        <Handle
-          id="source"
-          type="source"
-          :position="Position.Right"
-          class="workflow-node-handle"
-        />
-        <Handle
-          id="target"
-          type="target"
-          :position="Position.Left"
-          class="workflow-node-handle"
-        />
-      </div>
+      <Handle
+        id="source"
+        type="source"
+        :position="Position.Right"
+        class="workflow-node-handle"
+      />
+      <Handle
+        id="target"
+        type="target"
+        :position="Position.Left"
+        class="workflow-node-handle"
+      />
     </div>
-  </RichTooltip>
+  </div>
 </template>
 
 <style scoped>
