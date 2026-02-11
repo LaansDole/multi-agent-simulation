@@ -175,6 +175,21 @@ config:
   message: ""           # Optional message
 ```
 
+#### **`loop_timer`**
+Controls loops by tracking elapsed time. See `yaml_instance/demo_loop_timer.yaml` for comprehensive demo with both standard and passthrough modes.
+```yaml
+type: loop_timer
+config:
+  max_duration: 2       # Max allowed time
+  duration_unit: minutes # Unit: 'seconds', 'minutes', or 'hours'
+  reset_on_emit: true   # Reset timer when condition is met (standard mode)
+  message: ""           # Optional custom message when time limit reached
+  passthrough: false    # false (standard): suppress until limit
+                        # true (passthrough): pass through, emit at limit, then transparent
+```
+**Standard mode** (`passthrough: false`): Messages suppressed until time limit, then emits message and allows passage.
+**Passthrough mode** (`passthrough: true`): Messages pass through immediately, emits message at limit, then becomes transparent.
+
 #### **`passthrough`**
 A simple node that passes data through without modification.
 ```yaml
