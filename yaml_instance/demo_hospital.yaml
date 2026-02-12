@@ -96,31 +96,14 @@ graph:
       description: Processes triage report
       context_window: 0
       log_output: true
-    - id: StatusGenerator
-      type: agent
-      config:
-        name: ${MODEL_NAME}
-        provider: openai
-        role: 'Output exactly: "Hospital operations normal"'
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
-        tooling: null
-        thinking: null
-        memories: []
-        retry: null
-      description: Generates system status
-      context_window: 0
-      log_output: true
-      name: Status Generator
     - id: StatusReport
       type: template
       config:
         template: |
           STATUS REPORT RECEIVED
-          
+
           {{ input }}
-          
+
           Report Status: LOGGED
       description: Formats status acknowledgment
       context_window: 0
@@ -158,29 +141,29 @@ graph:
       config:
         template: |
           {% set patient = input | fromjson %}
-          
+
           PATIENT DISCHARGE SUMMARY
-          
+
           Patient Information:
           - Name: {{ patient.patient_name }}
           - Age: {{ patient.age }} years
-          
+
           Admission & Discharge:
           - Admitted: {{ patient.admission_date }}
           - Discharged: {{ patient.discharge_date }}
-          
+
           Medical Details:
           - Diagnosis: {{ patient.diagnosis }}
           - Treatment: {{ patient.treatment }}
-          
+
           Medications Prescribed:
           {% for med in patient.medications %}
           {{ loop.index }}. {{ med }}
           {% endfor %}
-          
+
           Follow-up Care:
           {{ patient.follow_up }}
-          
+
           {% if patient.age > 65 %}
           Special Note: Elderly patient - ensure caregiver support.
           {% endif %}
@@ -201,9 +184,9 @@ graph:
       config:
         template: |
           HOSPITAL METRICS DASHBOARD
-          
+
           {{ input | upper }}
-          
+
           Status: ALL SYSTEMS OPERATIONAL
       description: Formats metrics into dashboard
       context_window: 0
@@ -216,12 +199,12 @@ graph:
         role: |
           You received multiple hospital reports for a single simulation round. 
           Each message is prefixed with the simulation day (e.g., "Day 1:", "Day 2:").
-          
+
           Create a brief daily summary that includes:
           1. The simulation day number (extracted from the "Day X:" prefix in your input messages)
           2. Key events (admissions, triage, discharges, status changes)
           3. A one-sentence overall assessment
-          
+
           IMPORTANT: Start your summary with "Day X:" where X matches the day number from your input messages.
           Do NOT use calendar dates as the day identifier.
           Keep it concise (3-4 sentences total).
@@ -238,17 +221,6 @@ graph:
       description: Creates daily summary for each round
       context_window: 0
       log_output: true
-    - id: LoopGate
-      type: loop_timer
-      config:
-        max_duration: 120
-        duration_unit: seconds
-        reset_on_emit: false
-        message: Hospital operation cycle completed - all days processed
-        passthrough: true
-      description: Controls loop timing - releases after duration limit
-      context_window: 0
-      log_output: true
     - id: FinalReport
       type: agent
       config:
@@ -256,13 +228,13 @@ graph:
         provider: openai
         role: |
           You are a hospital simulation report generator. You have access to daily summaries from multiple simulation days stored in memory.
-          
+
           Create a comprehensive final report that includes:
           1. Executive Summary - overall simulation outcome
           2. Day-by-Day Breakdown - key events and metrics from each day's summary
           3. Aggregate Statistics - total patients, common conditions, overall status
           4. Observations - patterns or trends across multiple days
-          
+
           Keep the report professional but concise (8-12 sentences total).
           Begin with "MULTI-DAY HOSPITAL SIMULATION - FINAL REPORT" header.
         base_url: ${BASE_URL}
@@ -277,6 +249,38 @@ graph:
               - gen
         retry: null
       description: Generates final multi-day summary from daily memory
+      context_window: 0
+      log_output: true
+    - id: StatusGenerator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |-
+          You are a hospital status coordinator.
+
+          Based on the outbreak scenario, output hospital operation status. For example:
+          Hospital operation normal.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Generates system status
+      context_window: 0
+      log_output: true
+      name: Status Generator
+    - id: LoopGate
+      type: loop_timer
+      config:
+        max_duration: 60
+        duration_unit: seconds
+        reset_on_emit: false
+        message: Hospital operation cycle completed - all days processed
+        passthrough: true
+      description: Controls loop timing - releases after duration limit
       context_window: 0
       log_output: true
   edges:
@@ -353,15 +357,15 @@ graph:
         config:
           template: |
             PATIENT ADMISSION REPORT
-            
+
             {% set patient = input | fromjson %}
-            
+
             Patient Information:
             - Name: {{ patient.patient_name }}
             - Age: {{ patient.age }} years
             - Condition: {{ patient.condition }}
             - Admission Date: {{ patient.admission_date }}
-            
+
             Severity Assessment:
             {% if patient.severity == "high" %}
             URGENT: Immediate attention required
@@ -373,7 +377,7 @@ graph:
             ROUTINE: Standard processing
             Priority: LOW
             {% endif %}
-            
+
             Case Summary:
             {{ patient.patient_name }} ({{ patient.age }}y) admitted with {{ patient.condition }}.
             {% if patient.age > 60 %}
@@ -392,11 +396,11 @@ graph:
         config:
           template: |
             TRIAGE QUEUE STATUS
-            
+
             {% set patients = input | fromjson %}
-            
+
             Current Queue ({{ patients | length }} patients):
-            
+
             {% for patient in patients %}
             {{ loop.index }}. {{ patient.name }}
                Priority: {{ patient.priority | upper }}
@@ -509,7 +513,8 @@ graph:
       condition:
         type: keyword
         config:
-          none: [Hospital operation cycle completed]
+          none:
+            - Hospital operation cycle completed
       carry_data: false
       keep_message: false
       clear_context: true
@@ -524,7 +529,8 @@ graph:
       condition:
         type: keyword
         config:
-          any: [Hospital operation cycle completed]
+          any:
+            - Hospital operation cycle completed
       carry_data: true
       keep_message: false
       clear_context: false
