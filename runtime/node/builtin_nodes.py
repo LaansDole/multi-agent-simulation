@@ -107,7 +107,7 @@ register_node_type(
     config_cls=TemplateNodeConfig,
     executor_cls=TemplateNodeExecutor,
     capabilities=NodeCapabilities(),
-    summary="Formats input messages using Jinja2 templates and emits the rendered output",
+    summary="Blocks downstream edges until the configured time limit is reached, then emits a message to release the loop.",
 )
 
 # Register subgraph source types (file-based and inline config)
