@@ -27,17 +27,6 @@ stop: ## Stop backend and frontend servers cross-platform
 # Tools & Maintenance
 # ==============================================================================
 
-.PHONY: stop
-stop: ## Stop backend and frontend servers cross-platform
-	@echo "Stopping backend server (port 6400)..."
-	@npx kill-port 6400
-	@echo "Stopping frontend server (port 5173)..."
-	@npx kill-port 5173
-
-# ==============================================================================
-# Tools & Maintenance
-# ==============================================================================
-
 .PHONY: sync
 sync: ## Sync Vue graphs to the server database
 	@uv run python tools/sync_vuegraphs.py
