@@ -1,0 +1,168 @@
+version: 0.0.0
+vars:
+  MODEL_NAME: qwen/qwen3-8b
+
+graph:
+  id: rlm_test
+  description: Validate RLM memory retrieval and agent-side RLM attachments in a deterministic 5-pass loop.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: SeedQuery
+      type: literal
+      config:
+        # Rotate this prompt together with RLMMemoryRetriever.query for playbook tiers.
+        # Keep memory store/path unchanged between runs to accumulate context.
+        content: Summarize what memory currently stores about RLM behavior.
+        role: user
+      description: Provides a stable prompt to trigger retrieval.
+      context_window: 0
+      log_output: true
+
+    - id: RLMMemoryRetriever
+      type: rlm_memory
+      config:
+        memory_store: test_store
+        # Baseline retrieval query for tier-1 recall. Update with SeedQuery.content
+        # when testing grouping/contradiction/trend tiers.
+        query: rlm memory behavior
+        limit: 5
+        time_decay: 1.0
+        max_iterations: 15
+        max_depth: 3
+        backend: openai
+        model: ${MODEL_NAME}
+        persist_env: true
+      description: Pulls memory context through the RLM node executor.
+      context_window: 0
+      log_output: true
+
+    - id: AgentWithRLM
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are validating RLM-backed memory retrieval.
+          Use available memory context and provide a concise status report.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories:
+          - name: test_store
+            retrieve_stage: []
+            top_k: 5
+            use_rlm: true
+            rlm_max_iterations: 10
+            rlm_max_depth: 3
+            rlm_backend: openai
+            rlm_model: ${MODEL_NAME}
+        retry: null
+      description: Verifies attachment-level RLM configuration on an agent.
+      context_window: 0
+      log_output: true
+
+    - id: LoopGate
+      type: loop_counter
+      config:
+        # Deterministic loop budget for prompt-ladder style RLM testing.
+        # passthrough=true keeps loop traffic flowing for passes 1-4, then emits
+        # the terminal message on pass 5.
+        max_iterations: 5
+        reset_on_emit: false
+        passthrough: true
+        message: RLM loop complete after five passes
+      description: Counts agent passes and emits termination signal on the 5th pass.
+      context_window: 0
+      log_output: true
+
+    - id: Finalizer
+      type: literal
+      config:
+        content: RLM iterative demo completed after five passes.
+        role: assistant
+      description: Terminal node triggered when LoopGate reaches the iteration threshold.
+      context_window: 0
+      log_output: true
+
+  edges:
+    - from: SeedQuery
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+
+    - from: LoopGate
+      to: RLMMemoryRetriever
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - RLM loop complete after five passes
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+
+    - from: RLMMemoryRetriever
+      to: AgentWithRLM
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+
+    - from: AgentWithRLM
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+
+    - from: LoopGate
+      to: Finalizer
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - RLM loop complete after five passes
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+
+  memory:
+    - name: test_store
+      type: simple
+      config:
+        # Playbook note:
+        # - First run on empty file is expected to return "No memories found"
+        # - Second run (same path) should retrieve prior run entries
+        memory_path: WareHouse/{{project_name}}/rlm_test_memory.json
+        embedding:
+          provider: openai
+          model: text-embedding-bge-reranker-v2-m3
+          api_key: ${API_KEY}
+          base_url: ${BASE_URL}
+          params: {}
+
+  initial_instruction: ''
+  start:
+    - SeedQuery
+  end:
+    - Finalizer

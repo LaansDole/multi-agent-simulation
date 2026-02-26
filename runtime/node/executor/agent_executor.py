@@ -31,32 +31,38 @@ from runtime.node.agent.memory.memory_base import (
     MemoryRetrievalResult,
     MemoryWritePayload,
 )
+from runtime.node.agent.memory.rlm_memory import RLMMemory
 from runtime.node.agent import ThinkingPayload
 from runtime.node.agent import ModelProvider, ProviderRegistry, ModelResponse
-from tenacity import Retrying, retry_if_exception, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    Retrying,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 
 class AgentNodeExecutor(NodeExecutor):
     """Executor that runs agent nodes."""
-    
+
     def execute(self, node: Node, inputs: List[Message]) -> List[Message]:
         """Execute an agent node.
-        
+
         Args:
             node: Agent node definition
             inputs: Input messages collected from upstream nodes
-        
+
         Returns:
             Agent output messages
         """
         self._ensure_not_cancelled()
         if node.node_type != "agent":
             raise ValueError(f"Node {node.id} is not an agent node")
-        
+
         agent_config = node.as_config(AgentConfig)
         if not agent_config:
             raise ValueError(f"Node {node.id} missing agent config")
-        
+
         try:
             self._current_node_id = node.id
             provider_class = ProviderRegistry.get_provider(agent_config.provider)
@@ -68,7 +74,9 @@ class AgentNodeExecutor(NodeExecutor):
 
             input_data = self._inputs_to_text(inputs)
             input_payload = self._build_thinking_payload_from_inputs(inputs, input_data)
-            memory_query_snapshot = self._build_memory_query_snapshot(inputs, input_data)
+            memory_query_snapshot = self._build_memory_query_snapshot(
+                inputs, input_data
+            )
             input_mode = agent_config.input_mode or AgentInputMode.PROMPT
 
             provider = provider_class(agent_config)
@@ -138,7 +146,9 @@ class AgentNodeExecutor(NodeExecutor):
             final_message: Message | str = response_message
 
             if agent_config.thinking:
-                gen_payload = self._build_thinking_payload_from_message(final_message, source="model_output")
+                gen_payload = self._build_thinking_payload_from_message(
+                    final_message, source="model_output"
+                )
                 final_message = self._apply_post_generation_thinking(
                     node,
                     conversation,
@@ -154,24 +164,28 @@ class AgentNodeExecutor(NodeExecutor):
 
             if isinstance(final_message, Message):
                 return [self._clone_with_source(final_message, node.id)]
-            return [self._build_message(
-                role=MessageRole.ASSISTANT,
-                content=final_message,
-                source=node.id,
-            )]
-            
+            return [
+                self._build_message(
+                    role=MessageRole.ASSISTANT,
+                    content=final_message,
+                    source=node.id,
+                )
+            ]
+
         except Exception as e:
             traceback.print_exc()
             error_msg = f"[Node: {node.id}] Error calling model: {str(e)}"
             self.log_manager.error(error_msg)
-            return [self._build_message(
-                role=MessageRole.ASSISTANT,
-                content=f"Error calling model {node.model_name}: {str(e)}\n\nOriginal input: {input_data[:200]}...",
-                source=node.id,
-            )]
+            return [
+                self._build_message(
+                    role=MessageRole.ASSISTANT,
+                    content=f"Error calling model {node.model_name}: {str(e)}\n\nOriginal input: {input_data[:200]}...",
+                    source=node.id,
+                )
+            ]
         finally:
             self._current_node_id = None
-    
+
     def _prepare_prompt_messages(self, node: Node, input_data: str) -> List[Message]:
         """Prepare the prompt-style message sequence."""
         messages: List[Message] = []
@@ -181,17 +195,23 @@ class AgentNodeExecutor(NodeExecutor):
 
         try:
             if isinstance(input_data, str):
-                clean_input = input_data.encode("utf-8", errors="ignore").decode("utf-8")
+                clean_input = input_data.encode("utf-8", errors="ignore").decode(
+                    "utf-8"
+                )
             else:
                 clean_input = str(input_data)
         except Exception as encoding_error:
-            self.log_manager.error(f"[Node: {node.id}] Encoding error: {encoding_error}")
+            self.log_manager.error(
+                f"[Node: {node.id}] Encoding error: {encoding_error}"
+            )
             clean_input = str(input_data)
 
         messages.append(Message(role=MessageRole.USER, content=clean_input))
         return messages
 
-    def _prepare_message_conversation(self, node: Node, inputs: List[Message]) -> List[Message]:
+    def _prepare_message_conversation(
+        self, node: Node, inputs: List[Message]
+    ) -> List[Message]:
         messages: List[Message] = []
 
         if node.role:
@@ -204,7 +224,7 @@ class AgentNodeExecutor(NodeExecutor):
             messages.append(Message(role=MessageRole.USER, content=""))
 
         return messages
-    
+
     def _prepare_call_options(self, node: Node) -> Dict[str, Any]:
         """Prepare model call options (excluding conversation messages)."""
         call_options: Dict[str, Any] = {}
@@ -279,7 +299,9 @@ class AgentNodeExecutor(NodeExecutor):
                 **call_options,
             )
 
-        last_input = ''.join(msg.text_content() for msg in conversation) if conversation else ""
+        last_input = (
+            "".join(msg.text_content() for msg in conversation) if conversation else ""
+        )
         self._record_model_call(node, last_input, None, CallStage.BEFORE)
         response = self._execute_with_retry(node, retry_policy, _call_provider)
         self.log_manager.debug(response.str_raw_response())
@@ -356,12 +378,16 @@ class AgentNodeExecutor(NodeExecutor):
         if agent_config.retry is not None:
             return agent_config.retry
 
-        base_path = getattr(agent_config, "path", None) or getattr(node, "path", None) or "<runtime>"
+        base_path = (
+            getattr(agent_config, "path", None)
+            or getattr(node, "path", None)
+            or "<runtime>"
+        )
         retry_path = f"{base_path}.retry" if base_path else "retry"
         default_retry = AgentRetryConfig(path=retry_path)
         agent_config.retry = default_retry
         return default_retry
-    
+
     def _apply_pre_generation_thinking(
         self,
         node: Node,
@@ -405,11 +431,17 @@ class AgentNodeExecutor(NodeExecutor):
                 self._persist_message_attachments(thinking_result, node.id)
                 conversation.append(self._clone_with_source(thinking_result, node.id))
             else:
-                self._append_user_message(conversation, thinking_result, node_id=node.id)
+                self._append_user_message(
+                    conversation, thinking_result, node_id=node.id
+                )
         else:
-            content = thinking_result if isinstance(thinking_result, str) else thinking_result.text_content()
+            content = (
+                thinking_result
+                if isinstance(thinking_result, str)
+                else thinking_result.text_content()
+            )
             conversation[-1] = conversation[-1].with_content(content)
-    
+
     def _apply_memory_retrieval(
         self,
         node: Node,
@@ -427,22 +459,26 @@ class AgentNodeExecutor(NodeExecutor):
 
         if retrieved_memory and retrieved_memory.formatted_text:
             if input_mode is AgentInputMode.MESSAGES:
-                self._insert_memory_message(conversation, retrieved_memory.formatted_text, node_id=node.id)
+                self._insert_memory_message(
+                    conversation, retrieved_memory.formatted_text, node_id=node.id
+                )
             else:
                 last_message = conversation[-1]
                 merged_content = f"{retrieved_memory.formatted_text}\n\n{last_message.text_content()}"
                 conversation[-1] = last_message.with_content(merged_content)
-    
+
     def _retrieve_memory(
         self,
         node: Node,
         query_snapshot: MemoryContentSnapshot,
-        stage: AgentExecFlowStage
+        stage: AgentExecFlowStage,
     ) -> MemoryRetrievalResult | None:
         """Retrieve memory for the node."""
         memory_manager = self.context.get_memory_manager(node.id)
         if not memory_manager:
             return None
+
+        agent_config = node.as_config(AgentConfig)
 
         with self.log_manager.memory_timer(node.id, "RETRIEVE", stage.value):
             retrieved_memory = memory_manager.retrieve(
@@ -451,11 +487,27 @@ class AgentNodeExecutor(NodeExecutor):
                 current_stage=stage,
             )
 
+        if not retrieved_memory:
+            return None
+
+        rlm_result = self._run_rlm_exploration(
+            node, retrieved_memory, query_snapshot.text, agent_config
+        )
+
+        if rlm_result:
+            retrieved_memory = MemoryRetrievalResult(
+                formatted_text=f"{retrieved_memory.formatted_text}\n\n===== RLM Exploration =====\n{rlm_result}\n===== End of RLM =====",
+                items=retrieved_memory.items,
+            )
+
         preview_text = retrieved_memory.formatted_text if retrieved_memory else ""
         details = {
             "stage": stage.value,
             "item_count": len(retrieved_memory.items) if retrieved_memory else 0,
-            "attachment_count": len(retrieved_memory.attachment_overview()) if retrieved_memory else 0,
+            "attachment_count": len(retrieved_memory.attachment_overview())
+            if retrieved_memory
+            else 0,
+            "rlm_executed": rlm_result is not None,
         }
 
         self.log_manager.record_memory_operation(
@@ -467,8 +519,55 @@ class AgentNodeExecutor(NodeExecutor):
         )
 
         return retrieved_memory
-    
-    
+
+    def _run_rlm_exploration(
+        self,
+        node: Node,
+        retrieved_memory: MemoryRetrievalResult,
+        query_text: str,
+        agent_config: AgentConfig | None,
+    ) -> str | None:
+        """Run RLM exploration on retrieved memory if enabled."""
+        if not agent_config or not agent_config.memories:
+            return None
+
+        for attachment in agent_config.memories:
+            if not getattr(attachment, "use_rlm", False):
+                continue
+
+            env_name = f"shared_{attachment.name}"
+            shared_env = self.context.get_rlm_environment(env_name)
+
+            if shared_env and shared_env.is_initialized:
+                items = shared_env.retrieve_memories(
+                    store_name=attachment.name,
+                    query=query_text,
+                    top_k=attachment.top_k,
+                )
+                if items:
+                    memory_context = shared_env.serialize_memories(items)
+                    result = shared_env.execute(
+                        query=f"Explore the memories and answer: {query_text}",
+                        memory_context={"memories": memory_context},
+                    )
+                    if result:
+                        return result
+
+            memory_store = self.context.get_memory_store(attachment.name)
+            if not memory_store:
+                continue
+
+            rlm_memory = RLMMemory(memory_store, attachment)
+            _, rlm_result = rlm_memory.retrieve_with_rlm(
+                agent_role=node.role if node.role else "",
+                query=MemoryContentSnapshot(text=query_text),
+            )
+
+            if rlm_result:
+                return rlm_result
+
+        return None
+
     def _handle_tool_calls(
         self,
         node: Node,
@@ -493,20 +592,28 @@ class AgentNodeExecutor(NodeExecutor):
             trace_messages.append(cloned_assistant)
 
             if not assistant_message.tool_calls:
-                return self._finalize_tool_trace(assistant_message, trace_messages, True, node.id)
+                return self._finalize_tool_trace(
+                    assistant_message, trace_messages, True, node.id
+                )
 
             if iteration >= loop_limit:
                 self.log_manager.warning(
                     f"[Node: {node.id}] Tool call limit {loop_limit} reached, returning last assistant response"
                 )
-                return self._finalize_tool_trace(assistant_message, trace_messages, False, node.id)
+                return self._finalize_tool_trace(
+                    assistant_message, trace_messages, False, node.id
+                )
 
             iteration += 1
 
-            tool_call_messages, tool_events = self._execute_tool_batch(node, assistant_message.tool_calls, tool_specs)
+            tool_call_messages, tool_events = self._execute_tool_batch(
+                node, assistant_message.tool_calls, tool_specs
+            )
             conversation.extend(tool_call_messages)
             timeline.extend(tool_events)
-            trace_messages.extend(self._clone_with_source(msg, node.id) for msg in tool_call_messages)
+            trace_messages.extend(
+                self._clone_with_source(msg, node.id) for msg in tool_call_messages
+            )
 
             follow_up_response = self._invoke_provider(
                 provider,
@@ -529,13 +636,15 @@ class AgentNodeExecutor(NodeExecutor):
         messages: List[Message] = []
         events: List[FunctionCallOutputEvent] = []
         model = node.as_config(AgentConfig)
-        
+
         # Build map for fast lookup
         spec_map = {spec.name: spec for spec in tool_specs}
         configs = model.tooling if model else []
 
         context_state = self.context.global_state
-        previous_node_id = context_state.get("node_id") if context_state is not None else None
+        previous_node_id = (
+            context_state.get("node_id") if context_state is not None else None
+        )
         if context_state is not None:
             context_state["node_id"] = node.id
 
@@ -544,28 +653,28 @@ class AgentNodeExecutor(NodeExecutor):
                 self._ensure_not_cancelled()
                 tool_name = tool_call.function_name
                 arguments = self._parse_tool_call_arguments(tool_call.arguments)
-                
+
                 # Resolve tool config
                 spec = spec_map.get(tool_name)
                 tool_config = None
                 execution_name = tool_name
-                
+
                 if spec:
                     idx = spec.metadata.get("_config_index")
                     if idx is not None and 0 <= idx < len(configs):
                         tool_config = configs[idx]
                     # Use original name if prefixed
                     execution_name = spec.metadata.get("original_name", tool_name)
-                
+
                 if not tool_config:
-                     # Fallback check: if we have 1 config, maybe it's that one? 
-                     # But strict routing is safer. If spec not found, it's a hallucination or error.
-                     # We proceed and let tool_manager raise error or handle it.
-                     # But execute_tool requires tool_config. 
-                     
-                     # Construct a helpful error message
-                     error_msg = f"Tool '{tool_name}' configuration not found."
-                     self.log_manager.record_tool_call(
+                    # Fallback check: if we have 1 config, maybe it's that one?
+                    # But strict routing is safer. If spec not found, it's a hallucination or error.
+                    # We proceed and let tool_manager raise error or handle it.
+                    # But execute_tool requires tool_config.
+
+                    # Construct a helpful error message
+                    error_msg = f"Tool '{tool_name}' configuration not found."
+                    self.log_manager.record_tool_call(
                         node.id,
                         tool_name,
                         False,
@@ -573,21 +682,23 @@ class AgentNodeExecutor(NodeExecutor):
                         {"error": error_msg, "arguments": arguments},
                         CallStage.AFTER,
                     )
-                     tool_message = Message(
+                    tool_message = Message(
                         role=MessageRole.TOOL,
                         content=f"Error: {error_msg}",
                         tool_call_id=tool_call.id,
                         metadata={"tool_name": tool_name, "source": node.id},
                     )
-                     events.append(
+                    events.append(
                         FunctionCallOutputEvent(
-                            call_id=tool_call.id or tool_call.function_name or "tool_call",
+                            call_id=tool_call.id
+                            or tool_call.function_name
+                            or "tool_call",
                             function_name=tool_call.function_name,
                             output_text=f"error: {error_msg}",
                         )
                     )
-                     messages.append(tool_message)
-                     continue
+                    messages.append(tool_message)
+                    continue
 
                 try:
                     self.log_manager.record_tool_call(
@@ -646,7 +757,9 @@ class AgentNodeExecutor(NodeExecutor):
                     )
                     events.append(
                         FunctionCallOutputEvent(
-                            call_id=tool_call.id or tool_call.function_name or "tool_call",
+                            call_id=tool_call.id
+                            or tool_call.function_name
+                            or "tool_call",
                             function_name=tool_call.function_name,
                             output_text=f"error: {exc}",
                         )
@@ -684,7 +797,9 @@ class AgentNodeExecutor(NodeExecutor):
     def _stringify_tool_result(self, result: Any) -> str:
         if isinstance(result, Message):
             return result.text_content()
-        if isinstance(result, list) and all(isinstance(item, MessageBlock) for item in result):
+        if isinstance(result, list) and all(
+            isinstance(item, MessageBlock) for item in result
+        ):
             parts = [block.describe() for block in result if block.describe()]
             return "\n".join(parts)
         if isinstance(result, (dict, list)):
@@ -742,12 +857,16 @@ class AgentNodeExecutor(NodeExecutor):
 
         if isinstance(result, AttachmentRecord):
             content = [result.as_message_block()]
-        elif isinstance(result, list) and all(isinstance(item, MessageBlock) for item in result):
+        elif isinstance(result, list) and all(
+            isinstance(item, MessageBlock) for item in result
+        ):
             content = [block.copy() for block in result]
         else:
             content = result
             if isinstance(result, dict):
-                content = json.dumps(self._serialize_tool_result(content), ensure_ascii=False, indent=2)
+                content = json.dumps(
+                    self._serialize_tool_result(content), ensure_ascii=False, indent=2
+                )
             elif not isinstance(result, str):
                 content = str(result)
 
@@ -797,7 +916,9 @@ class AgentNodeExecutor(NodeExecutor):
         if isinstance(result, AttachmentRecord):
             return [result.as_message_block()]
 
-        if isinstance(result, Sequence) and not isinstance(result, (str, bytes, bytearray)):
+        if isinstance(result, Sequence) and not isinstance(
+            result, (str, bytes, bytearray)
+        ):
             blocks: List[MessageBlock] = []
             for item in result:
                 blocks.extend(self._coerce_tool_result_to_blocks(item))
@@ -840,13 +961,21 @@ class AgentNodeExecutor(NodeExecutor):
             try:
                 self._persist_single_attachment(store, block, node_id)
             except Exception as exc:
-                raise RuntimeError(f"Failed to persist attachment '{attachment.name or attachment.attachment_id}': {exc}") from exc
+                raise RuntimeError(
+                    f"Failed to persist attachment '{attachment.name or attachment.attachment_id}': {exc}"
+                ) from exc
 
-    def _persist_single_attachment(self, store: Any, block: MessageBlock, node_id: str) -> None:
+    def _persist_single_attachment(
+        self, store: Any, block: MessageBlock, node_id: str
+    ) -> None:
         attachment = block.attachment
         if attachment is None:
             return
-        if attachment.remote_file_id and not attachment.data_uri and not attachment.local_path:
+        if (
+            attachment.remote_file_id
+            and not attachment.data_uri
+            and not attachment.local_path
+        ):
             record = store.register_remote_file(
                 remote_file_id=attachment.remote_file_id,
                 name=attachment.name or attachment.attachment_id or "remote_file",
@@ -860,23 +989,34 @@ class AgentNodeExecutor(NodeExecutor):
 
         workspace_root = self.context.global_state.get("python_workspace_root")
         if workspace_root is None or not node_id:
-            raise RuntimeError("Workspace or node context missing for attachment persistence")
+            raise RuntimeError(
+                "Workspace or node context missing for attachment persistence"
+            )
 
         target_dir = workspace_root / "generated" / node_id
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        inferred_mime = attachment.mime_type or self._guess_mime_from_data_uri(attachment.data_uri)
+        inferred_mime = attachment.mime_type or self._guess_mime_from_data_uri(
+            attachment.data_uri
+        )
         attachment.mime_type = inferred_mime
 
-        data_bytes = self._decode_data_uri(attachment.data_uri) if attachment.data_uri else None
+        data_bytes = (
+            self._decode_data_uri(attachment.data_uri) if attachment.data_uri else None
+        )
         target_path = None
 
         if data_bytes is None and attachment.local_path:
-            target_path = target_dir / (attachment.name or self._make_generated_filename(attachment))
+            target_path = target_dir / (
+                attachment.name or self._make_generated_filename(attachment)
+            )
             import shutil
+
             shutil.copy2(attachment.local_path, target_path)
         elif data_bytes is not None:
-            target_path = target_dir / (attachment.name or self._make_generated_filename(attachment))
+            target_path = target_dir / (
+                attachment.name or self._make_generated_filename(attachment)
+            )
             with open(target_path, "wb") as handle:
                 handle.write(data_bytes)
         else:
@@ -919,7 +1059,7 @@ class AgentNodeExecutor(NodeExecutor):
         if not ext:
             ext = ".bin"
         return f"{attachment.attachment_id or 'generated'}{ext}"
-    
+
     def _guess_mime_from_data_uri(self, data_uri: Optional[str]) -> Optional[str]:
         if not data_uri or not data_uri.startswith("data:"):
             return None
@@ -927,7 +1067,6 @@ class AgentNodeExecutor(NodeExecutor):
         if ":" in header:
             header = header.split(":", 1)[1]
         return header.split(";")[0] if ";" in header else header
-
 
     def _apply_post_generation_thinking(
         self,
@@ -971,26 +1110,38 @@ class AgentNodeExecutor(NodeExecutor):
         if input_mode is AgentInputMode.MESSAGES:
             if isinstance(result, Message):
                 self._persist_message_attachments(result, node.id)
-                self._reset_conversation_with_user_result(conversation, result, node_id=node.id)
+                self._reset_conversation_with_user_result(
+                    conversation, result, node_id=node.id
+                )
             else:
-                self._reset_conversation_with_user_result(conversation, result, node_id=node.id)
+                self._reset_conversation_with_user_result(
+                    conversation, result, node_id=node.id
+                )
 
         return result
 
     def _coerce_inputs_to_messages(self, inputs: List[Message]) -> List[Message]:
         return [message.clone() for message in inputs if isinstance(message, Message)]
 
-    def _append_user_message(self, conversation: List[Message], content: str, *, node_id: str) -> None:
+    def _append_user_message(
+        self, conversation: List[Message], content: str, *, node_id: str
+    ) -> None:
         conversation.append(
-            Message(role=MessageRole.USER, content=content, metadata={"source": node_id})
+            Message(
+                role=MessageRole.USER, content=content, metadata={"source": node_id}
+            )
         )
 
-    def _insert_memory_message(self, conversation: List[Message], content: str, *, node_id: str) -> None:
+    def _insert_memory_message(
+        self, conversation: List[Message], content: str, *, node_id: str
+    ) -> None:
         last_user_idx = self._find_last_user_index(conversation)
         insert_idx = last_user_idx if last_user_idx is not None else len(conversation)
         conversation.insert(
             insert_idx,
-            Message(role=MessageRole.USER, content=content, metadata={"source": node_id}),
+            Message(
+                role=MessageRole.USER, content=content, metadata={"source": node_id}
+            ),
         )
 
     def _find_last_user_index(self, conversation: List[Message]) -> Optional[int]:
@@ -999,25 +1150,35 @@ class AgentNodeExecutor(NodeExecutor):
                 return idx
         return None
 
-    def _reset_conversation_with_user_result(self, conversation: List[Message], content: Message | str, *, node_id: str) -> None:
-        system_messages = [msg.clone() for msg in conversation if msg.role is MessageRole.SYSTEM]
+    def _reset_conversation_with_user_result(
+        self, conversation: List[Message], content: Message | str, *, node_id: str
+    ) -> None:
+        system_messages = [
+            msg.clone() for msg in conversation if msg.role is MessageRole.SYSTEM
+        ]
         conversation.clear()
         conversation.extend(system_messages)
         if isinstance(content, Message):
-            conversation.append(self._clone_with_source(content.with_role(MessageRole.USER), node_id))
+            conversation.append(
+                self._clone_with_source(content.with_role(MessageRole.USER), node_id)
+            )
         else:
             conversation.append(
-                Message(role=MessageRole.USER, content=content, metadata={"source": node_id})
+                Message(
+                    role=MessageRole.USER, content=content, metadata={"source": node_id}
+                )
             )
-    
-    def _update_memory(self, node: Node, input_data: str, inputs: List[Message], result: Message | str) -> None:
+
+    def _update_memory(
+        self, node: Node, input_data: str, inputs: List[Message], result: Message | str
+    ) -> None:
         """Update the memory store with the latest conversation."""
         memory_manager = self.context.get_memory_manager(node.id)
         if not memory_manager:
             return
-        
+
         stage = AgentExecFlowStage.FINISHED_STAGE
-        
+
         input_snapshot = MemoryContentSnapshot.from_messages(inputs)
         output_snapshot = MemoryContentSnapshot.from_message(result)
         payload = MemoryWritePayload(
@@ -1029,9 +1190,11 @@ class AgentNodeExecutor(NodeExecutor):
 
         with self.log_manager.memory_timer(node.id, "UPDATE", stage.value):
             memory_manager.update(payload)
-        
+
         # Record the memory update
-        normalized_result = result.text_content() if isinstance(result, Message) else str(result)
+        normalized_result = (
+            result.text_content() if isinstance(result, Message) else str(result)
+        )
         self.log_manager.record_memory_operation(
             node.id,
             "UPDATE",
@@ -1041,11 +1204,15 @@ class AgentNodeExecutor(NodeExecutor):
                 "stage": stage.value,
                 "input_size": len(str(input_data)),
                 "output_size": len(normalized_result),
-                "attachment_count": len(output_snapshot.attachment_overview()) if output_snapshot else 0,
-            }
+                "attachment_count": len(output_snapshot.attachment_overview())
+                if output_snapshot
+                else 0,
+            },
         )
 
-    def _build_thinking_payload_from_inputs(self, inputs: List[Message], input_text: str) -> ThinkingPayload:
+    def _build_thinking_payload_from_inputs(
+        self, inputs: List[Message], input_text: str
+    ) -> ThinkingPayload:
         blocks: List[MessageBlock] = []
         for message in inputs:
             blocks.extend(message.blocks())
@@ -1065,7 +1232,9 @@ class AgentNodeExecutor(NodeExecutor):
         blocks = list(base_snapshot.blocks) if base_snapshot else []
         return MemoryContentSnapshot(text=input_text, blocks=blocks)
 
-    def _build_thinking_payload_from_message(self, message: Message | str | None, *, source: str) -> ThinkingPayload:
+    def _build_thinking_payload_from_message(
+        self, message: Message | str | None, *, source: str
+    ) -> ThinkingPayload:
         if isinstance(message, Message):
             return ThinkingPayload(
                 text=message.text_content(),
@@ -1074,7 +1243,9 @@ class AgentNodeExecutor(NodeExecutor):
                 raw=message,
             )
         text = "" if message is None else str(message)
-        return ThinkingPayload(text=text, blocks=[], metadata={"source": source}, raw=text)
+        return ThinkingPayload(
+            text=text, blocks=[], metadata={"source": source}, raw=text
+        )
 
     def _memory_result_to_thinking_payload(
         self,
@@ -1093,4 +1264,6 @@ class AgentNodeExecutor(NodeExecutor):
             "has_multimodal": result.has_multimodal(),
             "attachment_count": len(result.attachment_overview()),
         }
-        return ThinkingPayload(text=result.formatted_text, blocks=blocks, metadata=metadata)
+        return ThinkingPayload(
+            text=result.formatted_text, blocks=blocks, metadata=metadata
+        )

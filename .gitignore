@@ -30,3 +30,9 @@ WareHouse/
 
 # Git worktrees
 .worktrees/
+
+# Ralph TUI
+.ralph-tui/
+tasks/
+
+openspec/

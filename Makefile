@@ -4,13 +4,18 @@
 
 .PHONY: dev
 dev: ## Run both backend and frontend development servers
-	@$(MAKE) -j2 server client
+	@$(MAKE) server wait-backend client
 
 
 .PHONY: server
 server: stop ## Start the backend server in the background
 	@echo "Starting server in background..."
 	@uv run python server_main.py --port 6400 --reload &
+
+.PHONY: wait-backend
+wait-backend: ## Wait until backend port is reachable
+	@echo "Waiting for backend on port 6400..."
+	@for i in $$(seq 1 30); do if curl -fsS "http://127.0.0.1:6400/api/workflows" >/dev/null 2>&1; then echo "Backend is reachable"; exit 0; fi; sleep 1; done; echo "Backend did not become reachable within 30 seconds"; exit 1
 
 .PHONY: client
 client: ## Start the frontend development server
@@ -19,9 +24,9 @@ client: ## Start the frontend development server
 .PHONY: stop
 stop: ## Stop backend and frontend servers cross-platform
 	@echo "Stopping backend server (port 6400)..."
-	@npx kill-port 6400
+	@if npx kill-port 6400 >/dev/null 2>&1; then echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
 	@echo "Stopping frontend server (port 5173)..."
-	@npx kill-port 5173
+	@if npx kill-port 5173 >/dev/null 2>&1; then echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
 
 # ==============================================================================
 # Tools & Maintenance

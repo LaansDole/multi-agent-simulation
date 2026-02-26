@@ -26,6 +26,25 @@ wheels = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "0.83.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "docstring-parser" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/e5/02cd2919ec327b24234abb73082e6ab84c451182cc3cc60681af700f4c63/anthropic-0.83.0.tar.gz", hash = "sha256:a8732c68b41869266c3034541a31a29d8be0f8cd0a714f9edce3128b351eceb4", size = 534058, upload-time = "2026-02-19T19:26:38.904Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/75/b9d58e4e2a4b1fc3e75ffbab978f999baf8b7c4ba9f96e60edb918ba386b/anthropic-0.83.0-py3-none-any.whl", hash = "sha256:f069ef508c73b8f9152e8850830d92bd5ef185645dbacf234bb213344a274810", size = 456991, upload-time = "2026-02-19T19:26:40.114Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -131,6 +150,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/9c/d51486bf366fc7d6735f0e46b5b96ca58dc005b250263525a1eea3cd5d21/brotlicffi-1.2.0.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:33cfb408d0cff64cd50bef268c0fed397c46fbb53944aa37264148614a62e990", size = 1536547, upload-time = "2025-11-21T18:17:45.729Z" },
     { url = "https://files.pythonhosted.org/packages/1b/37/293a9a0a7caf17e6e657668bebb92dfe730305999fe8c0e2703b8888789c/brotlicffi-1.2.0.0-cp38-abi3-win32.whl", hash = "sha256:23e5c912fdc6fd37143203820230374d24babd078fc054e18070a647118158f6", size = 343085, upload-time = "2025-11-21T18:17:48.887Z" },
     { url = "https://files.pythonhosted.org/packages/07/6b/6e92009df3b8b7272f85a0992b306b61c34b7ea1c4776643746e61c380ac/brotlicffi-1.2.0.0-cp38-abi3-win_amd64.whl", hash = "sha256:f139a7cdfe4ae7859513067b736eb44d19fae1186f9e99370092f6915216451b", size = 378586, upload-time = "2025-11-21T18:17:50.531Z" },
+]
+
+[[package]]
+name = "cached-property"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/4b/3d870836119dbe9a5e3c9a61af8cc1a8b69d75aea564572e385882d5aefb/cached_property-2.0.1.tar.gz", hash = "sha256:484d617105e3ee0e4f1f58725e72a8ef9e93deee462222dbd51cd91230897641", size = 10574, upload-time = "2024-10-25T15:43:55.667Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/11/0e/7d8225aab3bc1a0f5811f8e1b557aa034ac04bdf641925b30d3caf586b28/cached_property-2.0.1-py3-none-any.whl", hash = "sha256:f617d70ab1100b7bcf6e42228f9ddcb78c676ffa167278d9f730d1c2fba69ccb", size = 7428, upload-time = "2024-10-25T15:43:54.711Z" },
 ]
 
 [[package]]
@@ -414,6 +442,7 @@ dependencies = [
     { name = "pytest" },
     { name = "pyyaml" },
     { name = "requests" },
+    { name = "rlms" },
     { name = "seaborn" },
     { name = "tenacity" },
     { name = "uvicorn" },
@@ -448,6 +477,7 @@ requires-dist = [
     { name = "pytest" },
     { name = "pyyaml" },
     { name = "requests" },
+    { name = "rlms" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tenacity" },
     { name = "uvicorn" },
@@ -1341,6 +1371,27 @@ wheels = [
 ]
 
 [[package]]
+name = "portkey-ai"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "cached-property" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "tqdm" },
+    { name = "types-requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/b6/b5ff914ed6f171e6e0bc62fdec2b20b9bd812396acf133e10ecae15536ee/portkey_ai-2.2.0.tar.gz", hash = "sha256:ccff66e34c4014d65b18883c92ac242ab61663d02a46bde1d179bbe3157ed36c", size = 605122, upload-time = "2026-02-16T10:50:39.953Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/be/0a817a2ab407f929deff8b94abfe170171ca8ff0e9f81e7a8182328e5bb0/portkey_ai-2.2.0-py3-none-any.whl", hash = "sha256:9d33c2f6f29777904a269da1deb3a34e3517028e779dac95b3297481c005291a", size = 1253175, upload-time = "2026-02-16T10:50:38.634Z" },
+]
+
+[[package]]
 name = "primp"
 version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1861,6 +1912,25 @@ wheels = [
 ]
 
 [[package]]
+name = "rlms"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anthropic" },
+    { name = "google-genai" },
+    { name = "openai" },
+    { name = "portkey-ai" },
+    { name = "pytest" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+    { name = "rich" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/64/09/13fd4abcf935fbbfe33c06f14d2c814513ee43d4ff1e40f6aee51f8b2039/rlms-0.1.1.tar.gz", hash = "sha256:926487e3512526f27505a8306bcc2e20648991f99b232d9be6c5b76e8fec8731", size = 86341, upload-time = "2026-02-18T21:08:37.644Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/a9/6538aec016b4e056c5553336a1b42134c108a9305db3e4ca8945dc00cebd/rlms-0.1.1-py3-none-any.whl", hash = "sha256:3dff7d40013065ef62d57deb50e2578ba658045829ed340f94de9b59a49d5369", size = 84370, upload-time = "2026-02-18T21:08:35.855Z" },
+]
+
+[[package]]
 name = "rlpycairo"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2096,6 +2166,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/36/bf/8825b5929afd84d0dabd606c67cd57b8388cb3ec385f7ef19c5cc2202069/typer-0.21.1.tar.gz", hash = "sha256:ea835607cd752343b6b2b7ce676893e5a0324082268b48f27aa058bdb7d2145d", size = 110371, upload-time = "2026-01-06T11:21:10.989Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/1d/d9257dd49ff2ca23ea5f132edf1281a0c4f9de8a762b9ae399b670a59235/typer-0.21.1-py3-none-any.whl", hash = "sha256:7985e89081c636b88d172c2ee0cfe33c253160994d47bdfdc302defd7d1f1d01", size = 47381, upload-time = "2026-01-06T11:21:09.824Z" },
+]
+
+[[package]]
+name = "types-requests"
+version = "2.32.4.20260107"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/f3/a0663907082280664d745929205a89d41dffb29e89a50f753af7d57d0a96/types_requests-2.32.4.20260107.tar.gz", hash = "sha256:018a11ac158f801bfa84857ddec1650750e393df8a004a8a9ae2a9bec6fcb24f", size = 23165, upload-time = "2026-01-07T03:20:54.091Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/12/709ea261f2bf91ef0a26a9eed20f2623227a8ed85610c1e54c5805692ecb/types_requests-2.32.4.20260107-py3-none-any.whl", hash = "sha256:b703fe72f8ce5b31ef031264fe9395cac8f46a04661a79f7ed31a80fb308730d", size = 20676, upload-time = "2026-01-07T03:20:52.929Z" },
 ]
 
 [[package]]
