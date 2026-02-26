@@ -11,6 +11,7 @@ vars:
   # Number of interactions between doctor and patient
   NUMBER_OF_INTERACTIONS: 2
   MAX_TOKENS: 6000
+  MEMORY_PATH_PREFIX: WareHouse/hospital_simulation
   COMMON_PROMPT: |
     You are an intelligent agent participating in a high-fidelity hospital simulation.
 
@@ -32,35 +33,55 @@ graph:
     - name: nurse_memory
       type: simple
       config:
+        memory_path: ${MEMORY_PATH_PREFIX}/nurse_memory.json
         embedding:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 800
     - name: doctor_memory
       type: simple
       config:
+        memory_path: ${MEMORY_PATH_PREFIX}/doctor_memory.json
         embedding:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 1200
     - name: patient_memory
       type: simple
       config:
+        memory_path: ${MEMORY_PATH_PREFIX}/patient_memory.json
         embedding:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 800
     - name: environment_memory
       type: simple
       config:
+        memory_path: ${MEMORY_PATH_PREFIX}/environment_memory.json
         embedding:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
           model: text-embedding-bge-reranker-v2-m3
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 600
   nodes:
     - id: environment
       name: Hospital Environment
@@ -347,12 +368,12 @@ graph:
         memories:
           - name: nurse_memory
             top_k: 10
-            similarity_threshold: 0.75
+            similarity_threshold: 0.5
             retrieve_stage:
               - gen
           - name: doctor_memory
             top_k: 15
-            similarity_threshold: 0.7
+            similarity_threshold: 0.5
             retrieve_stage:
               - gen
     - id: DoctorIntake
