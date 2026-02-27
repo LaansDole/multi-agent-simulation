@@ -307,7 +307,9 @@ const setBaseYamlFromSource = (source) => {
   }
   try {
     let parsed = source
+    let yamlString = ''
     if (typeof source === 'string') {
+      yamlString = source
       parsed = yaml.load(source) || {}
     } else if (typeof source === 'object') {
       parsed = JSON.parse(JSON.stringify(source))
@@ -315,7 +317,9 @@ const setBaseYamlFromSource = (source) => {
       parsed = {}
     }
     baseYamlObject.value = parsed
-    baseYamlString.value = yaml.dump(parsed ?? null, yamlDumpOptions)
+    // Avoid expensive dump on modal open for object sources.
+    // Save path will generate YAML from current object when needed.
+    baseYamlString.value = yamlString
   } catch (error) {
     console.error('Failed to set base YAML from provided source:', error)
     baseYamlObject.value = null
@@ -1056,7 +1060,7 @@ watch(() => props.initialYaml, (newValue) => {
     baseYamlObject.value = null
     baseYamlString.value = ''
   }
-}, { immediate: true, deep: true })
+}, { immediate: true })
 
 watch(() => props.workflowName, async (newName, oldName) => {
   if (!newName) {
