@@ -206,6 +206,16 @@
             <Controls position="bottom-left"/>
           </VueFlow>
         </div>
+        <div v-show="viewMode === 'spatial'" class="spatial-panel">
+          <SpatialCanvas
+            ref="spatialCanvasRef"
+            :nodes="spatialNodes"
+            :edges="spatialEdges"
+            :active-nodes="activeNodes"
+            :workflow-file="selectedFile"
+            :visible="viewMode === 'spatial'"
+          />
+        </div>
 
         <!-- Input area -->
         <div class="input-area">
@@ -444,6 +454,13 @@
             >
               Graph
             </button>
+            <button
+              class="toggle-button"
+              :class="{ active: viewMode === 'spatial' }"
+              @click="viewMode = 'spatial'"
+            >
+              Spatial
+            </button>
           </div>
 
           <!-- Button area -->
@@ -533,6 +550,7 @@ import WorkflowNode from '../components/WorkflowNode.vue'
 import WorkflowEdge from '../components/WorkflowEdge.vue'
 import StartNode from '../components/StartNode.vue'
 import CollapsibleMessage from '../components/CollapsibleMessage.vue'
+import SpatialCanvas from '../components/SpatialCanvas.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -691,6 +709,7 @@ const showSettingsModal = ref(false)
 
 // View mode
 const viewMode = ref('chat')
+const spatialCanvasRef = ref(null)
 
 // WebSocket reference
 let ws = null
@@ -775,6 +794,16 @@ const onNodeLeave = (_nodeId) => {
 
 // Current workflow YAML content
 const workflowYaml = ref({})
+
+// Spatial view computed data (derived from workflowYaml)
+const spatialNodes = computed(() => {
+  const nodes = workflowYaml.value?.graph?.nodes
+  return Array.isArray(nodes) ? nodes : []
+})
+const spatialEdges = computed(() => {
+  const edges = workflowYaml.value?.graph?.edges
+  return Array.isArray(edges) ? edges : []
+})
 
 // const goBack = () => {
 //   router.push('/workflows')
@@ -1977,8 +2006,13 @@ const handleEdgeConditionMessage = (message) => {
     return
   }
 
-  // Trigger sprite animation along the edge
+  // Trigger sprite animation along the edge (Graph view)
   animateSpriteAlongEdge(edge)
+
+  // Trigger spatial view communication animation
+  if (spatialCanvasRef.value) {
+    spatialCanvasRef.value.triggerCommunication(sourceNode, targetNode)
+  }
 }
 
 // Animate a sprite walking along an edge from source to target
@@ -3399,6 +3433,16 @@ watch(
 
 /* Graph Panel */
 .graph-panel {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+}
+
+/* Spatial Panel */
+.spatial-panel {
   flex: 1;
   background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
