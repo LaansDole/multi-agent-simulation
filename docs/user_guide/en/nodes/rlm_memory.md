@@ -81,26 +81,49 @@ edges:
 
 ## How to Play With `demo_rlm_memory.yaml`
 
-Use this flow when you want to observe the full lifecycle from empty memory to recursive analysis.
+The demo defaults to `memory_path: WareHouse/{{project_name}}/rlm_test_memory.json`. For a **warm start** (recommended for first-time runs), copy the seed data into that path before running so pass 1 returns items immediately.
 
-### Step 1: Cold-start pass (empty store)
+### Pre-seeded Store Setup (warm start)
 
-1. Ensure the demo store file is empty (`[]`) or missing: `WareHouse/{{project_name}}/rlm_test_memory.json`.
-2. Run the workflow once with the baseline prompt:
+`WareHouse/rlm_demo_seed/` ships with seed entries (stub embeddings) for both the standard and tiered demos. Copy them into the project path **before** the first run:
+
+```bash
+cp WareHouse/rlm_demo_seed/rlm_test_memory.json \
+   "WareHouse/{{project_name}}/rlm_test_memory.json"
+```
+
+> **Do not use `rlm_demo_seed/` as `memory_path` directly.** Agent write-back appends run output to the same file, which pollutes the seed store with operational entries ("No memories found" reports, etc.). Always copy seed → project path, then run.
+
+### Step 1: Warm-start pass (seeded project store)
+
+1. Run the seed-copy command above (one-time setup).
+2. Run the workflow with the baseline prompt:
    - `SeedQuery`: `Summarize what memory currently stores about RLM behavior.`
    - `RLMMemoryRetriever.query`: `rlm memory behavior`
 3. Expected behavior:
-   - `RLMMemoryRetriever` returns `No memories found in store 'test_store' ...`
-   - `AgentWithRLM` still responds and then writes the turn to memory at `finished`
+   - `RLMMemoryRetriever` returns one or more seed memories immediately.
+   - `AgentWithRLM` produces a memory-aware response on pass 1, not an empty-store report.
+   - Each pass writes a new entry; the project store grows across runs.
 
-### Step 2: Warm-store pass (same store, second run)
+### Step 2 (Optional): Cold-start pass (empty store)
+
+If you want to reproduce the cold-start scenario intentionally:
+
+1. Delete or empty the project memory file (set contents to `[]`).
+2. Run the workflow.
+3. Expected behavior:
+   - `RLMMemoryRetriever` returns `No memories found in store 'test_store' for query: 'rlm memory behavior'`.
+   - **This is expected on pass 1 — it is not an error.** `AgentWithRLM` still produces a response and writes the turn to memory at `finished`.
+   - Run 2 on the same path should retrieve the entries written in run 1.
+
+### Step 3: Warm-store pass (same store, second run)
 
 1. Run the same workflow again without changing the memory store path.
 2. Expected behavior:
-   - Retrieval should now return one or more memories (up to `limit`)
-   - Agent output should reference prior run content, not only empty-store explanation
+   - Retrieval returns one or more memories (up to `limit`).
+   - Agent output references prior run content, not only an empty-store explanation.
 
-### Step 3: Iterative exploration pass (prompt rotation)
+### Step 4: Iterative exploration pass (prompt rotation)
 
 1. Keep the same memory store path.
 2. Update both `SeedQuery.config.content` and `RLMMemoryRetriever.config.query` to the next prompt from the ladder below.
@@ -170,9 +193,14 @@ Check both output text and logs.
 
 ### Output signals
 
-- Cold-start expected: `No memories found in store 'test_store' ...`
-- Warm-store expected: memory-aware synthesis that references prior turns
-- Deeper tiers expected: grouped themes, conflicts, or trend language instead of single-item recap
+| Scenario | Expected retrieval output | `item_count` in logs |
+|---|---|---|
+| Pre-seeded `rlm_demo_seed` path, pass 1 | Memory-aware synthesis from seed entries | ≥ 1 |
+| `{{project_name}}` path, run 1 (cold-start) | `No memories found in store 'test_store' ...` | 0 |
+| `{{project_name}}` path, run 2+ (warm) | Memory-aware synthesis referencing prior run | ≥ 1 |
+| Deeper tiers | Grouped themes, conflicts, or trend language | ≥ 2 |
+
+> **Note — "No memories found" is informational, not a crash.** When the store is empty (cold-start), this message indicates the expected state for pass 1. If you see it on passes 2–5 within the same run, check whether the agent write stage completed (see Troubleshooting).
 
 ### Log signals
 
@@ -180,6 +208,7 @@ Check both output text and logs.
 - Update phase log appears after generation at `finished` (`Memory UPDATE operation ... at finished`)
 - Retrieval details show non-zero `item_count` on warm-store and later passes
 - Retrieval details include `rlm_executed: true` when RLM exploration path runs successfully in agent memory flow
+- Retrieval details include the effective `query` used; if it starts with `=== INPUT FROM` the executor used upstream input fallback (see Query Provenance below)
 
 ## Notes
 
@@ -191,10 +220,23 @@ Check both output text and logs.
 ## Troubleshooting Demo Playbook
 
 - **Missing API/env vars**: confirm `API_KEY` and `BASE_URL` are set and reachable.
-- **Always empty retrieval**: verify the same `memory_path` is reused across runs and the first run completed successfully.
+
+- **"No memories found" on pass 1 (cold-start path)**:  This is **expected** when `memory_path` points to an empty or missing file. The agent still responds and writes to the store. Passes 2+ should return items if the write succeeded. If you do not want this, switch to the pre-seeded path (`WareHouse/rlm_demo_seed/rlm_test_memory.json`).
+
+- **"No memories found" persists across multiple passes (passes 2–5)**: This indicates the write stage may have been skipped. Check:
+  1. The memory artifact file has grown: `wc -l WareHouse/rlm_demo_seed/rlm_test_memory.json` (or the path you configured) should increase after a run.
+  2. Logs for `Memory UPDATE operation ... at finished` — if absent, the write was skipped (possible reasons: empty agent output, output too short, duplicate content hash, or embedding unavailable).
+  3. Whether `AgentWithRLM` produced non-empty output on prior passes.
+
+- **Query shows `=== INPUT FROM LoopGate (user) ===` in logs (query provenance mismatch)**: This means `RLMMemoryRetriever.config.query` is **empty**, so the executor fell back to serializing upstream input messages as the query. The retrieval query is then the raw LoopGate output text, not the intended topic string. Fix: set an explicit `query:` in the node config (or confirm the edge processor injects it for the tiered variant).
+
+- **Always empty retrieval (warm-store path)**: verify the same `memory_path` is reused across runs and the first run completed successfully. Confirm the file is not being reset between runs.
+
 - **Query drift**: if `SeedQuery` and `RLMMemoryRetriever.query` target different concepts, retrieval quality drops.
+
 - **Sparse memory set**: contradiction/trend tiers need multiple runs; start with recall and grouping tiers first.
-- **Fallback mode**: if `rlm` import/execution fails, output may degrade to deterministic text formatting; install/verify `rlms` and retry.
+
+- **"RLM execution failed for node RLMMemoryRetriever, falling back to text"**: This is a **resilience fallback**, not a workflow crash. The node still returns deterministic plain-text memory output. Causes include `rlms` library not installed, model/backend misconfiguration, or API errors during RLM REPL. Install/verify `rlms` and check `backend`/`model` settings to enable the full RLM path.
 
 ## Upstream Alignment Audit (alexzhang13/rlm)
 
