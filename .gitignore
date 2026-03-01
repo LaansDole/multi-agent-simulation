@@ -33,6 +33,7 @@ WareHouse/
 
 # Ralph TUI
 .ralph-tui/
-tasks/
+# tasks/
 
 openspec/
+.opencode

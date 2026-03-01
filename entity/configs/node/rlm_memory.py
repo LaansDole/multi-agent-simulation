@@ -1,7 +1,7 @@
 """Configuration for RLM memory nodes."""
 
-from dataclasses import dataclass, field
-from typing import Any, Mapping, List
+from dataclasses import dataclass
+from typing import Any, Mapping
 
 from entity.configs.base import (
     BaseConfig,
@@ -11,7 +11,6 @@ from entity.configs.base import (
     require_mapping,
     require_str,
     extend_path,
-    ensure_list,
 )
 
 

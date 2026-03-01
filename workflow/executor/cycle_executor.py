@@ -4,7 +4,7 @@ import copy
 import threading
 from typing import Dict, List, Callable, Any, Set, Optional
 
-from entity.configs import Node, EdgeLink
+from entity.configs import Node
 from utils.log_manager import LogManager
 from workflow.cycle_manager import CycleManager
 from workflow.executor.parallel_executor import ParallelExecutor

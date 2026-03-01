@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Optional, Tuple
+from typing import Annotated, Any, Dict, List, Tuple
 
 from filelock import FileLock
 

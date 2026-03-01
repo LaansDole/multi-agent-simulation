@@ -1,7 +1,6 @@
 """Lightweight schema validation leveraging typed config loaders."""
 
 import argparse
-from pathlib import Path
 from typing import Any, List, Optional
 
 from entity.configs import ConfigError, DesignConfig

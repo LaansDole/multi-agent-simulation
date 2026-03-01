@@ -76,7 +76,7 @@ def validate_all():
             failed_files.append(str(rel_path))
 
     print("\n" + "=" * 40)
-    print(f"YAML Validation Summary")
+    print("YAML Validation Summary")
     print("=" * 40)
     print(f"Total Files: {len(files)}")
     print(f"Passed:      {passed}")

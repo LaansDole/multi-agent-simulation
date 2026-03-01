@@ -1,6 +1,6 @@
 """Custom exceptions for the DevAll workflow system."""
 
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import json
 
 

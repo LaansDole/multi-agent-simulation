@@ -43,7 +43,7 @@ class Registry:
             if target is None and module_path is None:
                 raise RegistryError("Must provide loader, target, or module_path/attr_name")
             if target is not None:
-                loader = lambda target=target: target
+                def loader(target=target): return target
             else:
                 if not attr_name:
                     raise RegistryError("module_path requires attr_name")

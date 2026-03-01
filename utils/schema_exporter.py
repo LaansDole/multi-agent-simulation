@@ -3,7 +3,7 @@
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Type
+from typing import Any, Dict, List, Mapping, Sequence, Type
 
 from entity.configs import BaseConfig
 from entity.configs.graph import DesignConfig

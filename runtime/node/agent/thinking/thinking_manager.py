@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
 from entity.configs import ThinkingConfig
-from entity.messages import Message, MessageRole, MessageBlock
+from entity.messages import Message, MessageBlock
 
 AgentInvoker = Callable[[List[Message]], Message]
 

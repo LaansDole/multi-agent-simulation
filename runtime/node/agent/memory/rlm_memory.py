@@ -4,13 +4,11 @@ import os
 from typing import Any, Dict, List, Literal, Optional
 
 from entity.configs import MemoryAttachmentConfig
-from entity.configs.node.memory import SimpleMemoryConfig
 from runtime.node.agent.memory.memory_base import (
     MemoryBase,
     MemoryContentSnapshot,
     MemoryItem,
     MemoryRetrievalResult,
-    MemoryWritePayload,
 )
 
 ClientBackend = Literal[

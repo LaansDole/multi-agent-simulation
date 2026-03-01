@@ -12,7 +12,6 @@ from entity.configs.node.passthrough import PassthroughConfig
 from entity.configs.node.literal import LiteralNodeConfig
 from entity.configs.node.python_runner import PythonRunnerConfig
 from entity.configs.node.loop_counter import LoopCounterConfig
-from entity.configs.node.template import TemplateNodeConfig
 from entity.configs.node.loop_timer import LoopTimerConfig
 from entity.configs.node.template import TemplateNodeConfig
 from entity.configs.node.rlm_memory import RLMMemoryConfig
@@ -25,7 +24,6 @@ from runtime.node.executor.subgraph_executor import SubgraphNodeExecutor
 from runtime.node.executor.loop_counter_executor import LoopCounterNodeExecutor
 from runtime.node.executor.template_executor import TemplateNodeExecutor
 from runtime.node.executor.loop_timer_executor import LoopTimerNodeExecutor
-from runtime.node.executor.template_executor import TemplateNodeExecutor
 from runtime.node.executor.rlm_memory_executor import RLMMemoryNodeExecutor
 from runtime.node.registry import NodeCapabilities, register_node_type
 

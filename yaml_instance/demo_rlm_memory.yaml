@@ -15,7 +15,7 @@ graph:
         # Keep memory store/path unchanged between runs to accumulate context.
         content: Summarize what memory currently stores about RLM behavior.
         role: user
-      description: Provides a stable prompt to trigger retrieval.
+      description: Provides a stable prompt to trigger retrieval on a warm store.
       context_window: 0
       log_output: true
 
@@ -150,9 +150,19 @@ graph:
     - name: test_store
       type: simple
       config:
-        # Playbook note:
-        # - First run on empty file is expected to return "No memories found"
-        # - Second run (same path) should retrieve prior run entries
+        # Warm-start demo: this file should be pre-populated from the seed store
+        # BEFORE the first run, so pass 1 returns items immediately:
+        #
+        #   cp WareHouse/rlm_demo_seed/rlm_test_memory.json \
+        #      "WareHouse/{{project_name}}/rlm_test_memory.json"
+        #
+        # The seed file (rlm_demo_seed/) ships with stub-embedded entries and
+        # must NOT be used as memory_path directly — agent write-back would
+        # pollute it with run output.
+        #
+        # To reproduce a cold-start instead, delete or empty this file (set
+        # contents to []) before running.  "No memories found" on pass 1 is
+        # expected in cold-start mode and is NOT an error.
         memory_path: WareHouse/{{project_name}}/rlm_test_memory.json
         embedding:
           provider: openai

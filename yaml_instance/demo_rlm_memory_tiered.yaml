@@ -149,7 +149,17 @@ graph:
     - name: test_store
       type: simple
       config:
-        # Dedicated artifact for tiered single-run demo.
+        # Warm-start demo: pre-populate from the seed store BEFORE the first run
+        # so the tiered ladder starts with retrievable content:
+        #
+        #   cp WareHouse/rlm_demo_seed/rlm_test_memory_tiered.json \
+        #      "WareHouse/{{project_name}}/rlm_test_memory_tiered.json"
+        #
+        # The seed file (rlm_demo_seed/) must NOT be used as memory_path directly
+        # — agent write-back would pollute it with run output.
+        #
+        # To reproduce a cold-start, delete or empty this file (set contents
+        # to []) before running.  "No memories found" on pass 1 is expected.
         memory_path: WareHouse/{{project_name}}/rlm_test_memory_tiered.json
         embedding:
           provider: openai

@@ -1,5 +1,6 @@
 """Configuration package exports."""
 
+# ruff: noqa: F401
 from .base import BaseConfig, ConfigError
 from .edge.edge import EdgeConfig
 from .edge.edge_condition import EdgeConditionConfig, FunctionEdgeConditionConfig, KeywordEdgeConditionConfig

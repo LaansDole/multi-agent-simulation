@@ -38,9 +38,9 @@ def wait_for_backend():
         try:
             response = requests.get(health_url, timeout=5)
             if response.status_code == 200:
-                print(f"Backend is ready!")
+                print("Backend is ready!")
                 return True
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             if attempt == MAX_RETRIES:
                 print(f"Backend failed to become ready after {MAX_RETRIES} attempts")
                 return False

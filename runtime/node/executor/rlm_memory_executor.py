@@ -5,7 +5,7 @@ in an RLM REPL context, allowing programmatic exploration of memory.
 """
 
 import os
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal
 
 from entity.configs import Node
 from entity.configs.node.rlm_memory import RLMMemoryConfig
@@ -235,7 +235,7 @@ Now explore the memories and provide your answer."""
     def _format_memory_as_text(self, items: List[MemoryItem], query: str) -> str:
         """Format memory items as plain text when RLM is unavailable."""
         lines = [
-            f"===== Memory Exploration Results =====",
+            "===== Memory Exploration Results =====",
             f"Query: {query}",
             f"Found {len(items)} memories:",
             "",

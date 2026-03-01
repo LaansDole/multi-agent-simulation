@@ -2,6 +2,7 @@
 
 import threading
 from typing import Any, Callable, Dict, List, Optional
+from runtime.node.agent.memory.shared_rlm_environment import SharedRLMEnvironment
 
 from runtime.node.agent.memory import MemoryBase, MemoryFactory, MemoryManager
 from runtime.node.agent.thinking import ThinkingManagerBase, ThinkingManagerFactory
@@ -526,7 +527,6 @@ class GraphExecutor:
 
         Returns the dynamic config if found, or None.
         """
-        from entity.configs.edge.dynamic_edge_config import DynamicEdgeConfig
 
         found_configs = []  # List of (source_node_id, dynamic_config)
 
