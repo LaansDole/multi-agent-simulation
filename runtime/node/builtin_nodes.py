@@ -13,7 +13,6 @@ from entity.configs.node.literal import LiteralNodeConfig
 from entity.configs.node.python_runner import PythonRunnerConfig
 from entity.configs.node.loop_counter import LoopCounterConfig
 from entity.configs.node.loop_timer import LoopTimerConfig
-from entity.configs.node.template import TemplateNodeConfig
 from entity.configs.node.rlm_memory import RLMMemoryConfig
 from runtime.node.executor.agent_executor import AgentNodeExecutor
 from runtime.node.executor.human_executor import HumanNodeExecutor
