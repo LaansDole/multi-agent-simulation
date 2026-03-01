@@ -1,6 +1,6 @@
 """Edge payload processor configuration dataclasses."""
 
-from dataclasses import dataclass, field, fields, replace
+from dataclasses import dataclass, fields, replace
 from typing import Any, Dict, Mapping, Type, TypeVar, cast
 
 from entity.enum_options import enum_options_from_values
@@ -16,7 +16,6 @@ from entity.configs.base import (
     ChildKey,
     ConfigError,
     ConfigFieldSpec,
-    ensure_list,
     optional_bool,
     optional_str,
     require_mapping,

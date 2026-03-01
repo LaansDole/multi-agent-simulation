@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from jinja2 import Environment, TemplateSyntaxError, UndefinedError, StrictUndefined
+from jinja2 import TemplateSyntaxError, UndefinedError, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
 from entity.configs.edge.edge_processor import TemplateEdgeProcessorConfig

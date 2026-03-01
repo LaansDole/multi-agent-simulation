@@ -80,7 +80,7 @@ class OpenAIProvider(ModelProvider):
             self._append_response_output(timeline, response)
             message = self._deserialize_response(response)
             return ModelResponse(message=message, raw_response=response)
-        except Exception as e:
+        except Exception:
             new_request_payload = self._build_chat_payload(conversation, tool_specs, kwargs)
             response = client.chat.completions.create(**new_request_payload)
             self._track_token_usage(response)

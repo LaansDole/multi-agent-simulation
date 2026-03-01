@@ -449,7 +449,6 @@ class GraphExecutor:
         
         Returns the dynamic config if found, or None.
         """
-        from entity.configs.edge.dynamic_edge_config import DynamicEdgeConfig
         
         found_configs = []  # List of (source_node_id, dynamic_config)
         

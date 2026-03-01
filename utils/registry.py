@@ -37,18 +37,28 @@ class Registry:
         attr_name: str | None = None,
     ) -> None:
         if name in self._entries:
-            raise RegistryError(f"Duplicate registration for '{name}' in {self.namespace}")
+            raise RegistryError(
+                f"Duplicate registration for '{name}' in {self.namespace}"
+            )
 
         if loader is None:
             if target is None and module_path is None:
-                raise RegistryError("Must provide loader, target, or module_path/attr_name")
+                raise RegistryError(
+                    "Must provide loader, target, or module_path/attr_name"
+                )
             if target is not None:
-                loader = lambda target=target: target
+
+                def _target_loader(val: Any = target) -> Any:
+                    return val
+
+                loader = _target_loader
             else:
                 if not attr_name:
                     raise RegistryError("module_path requires attr_name")
 
-                def _lazy_loader(mod_path: str = module_path, attr: str = attr_name) -> Any:
+                def _lazy_loader(
+                    mod_path: str = module_path, attr: str = attr_name
+                ) -> Any:
                     module = import_module(mod_path)
                     return getattr(module, attr)
 
@@ -71,4 +81,3 @@ class Registry:
 
     def metadata_for(self, name: str) -> Dict[str, Any]:
         return dict(self.get(name).metadata)
-

@@ -1,9 +1,7 @@
-import asyncio
 from typing import Any, Dict
 
 from entity.enums import LogLevel, EventType
 from utils.logger import WorkflowLogger, LogEntry
-from utils.structured_logger import get_workflow_logger
 
 
 class WebSocketLogger(WorkflowLogger):

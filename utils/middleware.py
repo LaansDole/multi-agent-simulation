@@ -1,16 +1,14 @@
 """Custom middleware for the DevAll workflow system."""
 
 import uuid
-from typing import Callable, Awaitable
+from typing import Callable
 from fastapi import Request, HTTPException, FastAPI
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import re
 import os
 
-from utils.structured_logger import get_server_logger, LogType
-from utils.exceptions import SecurityError
+from utils.structured_logger import get_server_logger
 
 
 async def correlation_id_middleware(request: Request, call_next: Callable):
