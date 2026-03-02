@@ -25,6 +25,7 @@ from entity.configs.base import (
     extend_path,
 )
 from .memory import MemoryAttachmentConfig
+from .skills import AgentSkillsConfig
 from .thinking import ThinkingConfig
 from entity.configs.node.tooling import ToolingConfig
 
@@ -375,6 +376,7 @@ class AgentConfig(BaseConfig):
     tooling: List[ToolingConfig] = field(default_factory=list)
     thinking: ThinkingConfig | None = None
     memories: List[MemoryAttachmentConfig] = field(default_factory=list)
+    skills: AgentSkillsConfig | None = None
 
     # Runtime attributes (attached dynamically)
     token_tracker: Any | None = field(default=None, init=False, repr=False)
@@ -447,6 +449,10 @@ class AgentConfig(BaseConfig):
                 mapping["retry"], path=extend_path(path, "retry")
             )
 
+        skills_cfg = None
+        if "skills" in mapping and mapping["skills"] is not None:
+            skills_cfg = AgentSkillsConfig.from_dict(mapping["skills"], path=extend_path(path, "skills"))
+
         return cls(
             provider=provider,
             base_url=base_url,
@@ -457,6 +463,7 @@ class AgentConfig(BaseConfig):
             tooling=tooling_cfg,
             thinking=thinking_cfg,
             memories=memories_cfg,
+            skills=skills_cfg,
             retry=retry_cfg,
             input_mode=input_mode,
             path=path,
@@ -548,6 +555,15 @@ class AgentConfig(BaseConfig):
             required=False,
             description="Associated memory references",
             child=MemoryAttachmentConfig,
+            advance=True,
+        ),
+        "skills": ConfigFieldSpec(
+            name="skills",
+            display_name="Agent Skills",
+            type_hint="AgentSkillsConfig",
+            required=False,
+            description="Agent Skills allowlist and built-in skill activation/file-read tools.",
+            child=AgentSkillsConfig,
             advance=True,
         ),
         "retry": ConfigFieldSpec(
