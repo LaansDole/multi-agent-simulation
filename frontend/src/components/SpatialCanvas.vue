@@ -264,7 +264,7 @@ async function initPixi() {
 
   // Add background click handler for deselection + panning
   app.stage.eventMode = 'static'
-  app.stage.hitArea = app.screen
+  // hitArea is dynamically set by drawGrid() to track the visible viewport
 
   let bgPointerDown = false
   let bgDragStart = { x: 0, y: 0 }
@@ -444,6 +444,13 @@ function drawGrid() {
   const worldTop = -stageY / zoom
   const worldRight = worldLeft + rendererW / zoom
   const worldBottom = worldTop + rendererH / zoom
+
+  // Keep stage hitArea in sync with visible viewport so pointer events
+  // work at any pan/zoom offset (fixes limited-drag-area bug)
+  app.stage.hitArea = new Rectangle(
+    worldLeft, worldTop,
+    worldRight - worldLeft, worldBottom - worldTop
+  )
 
   // Snap to grid boundaries with extra padding
   const startX = Math.floor(worldLeft / GRID_SIZE) * GRID_SIZE
