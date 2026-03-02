@@ -1,12 +1,6 @@
 <template>
   <div class="obstacle-editor" :class="{ active: isEditorActive }" ref="editorRef">
-    <!-- Preview ghost overlay -->
-    <div
-      v-if="isEditorActive && mousePosition"
-      class="preview-ghost"
-      :class="selectedShape"
-      :style="previewGhostStyle"
-    ></div>
+
     
     <!-- Toggle button (visible when palette is collapsed) -->
     <button
@@ -108,12 +102,7 @@ import { createObstacle } from '../types/spatial.js'
 
 const GRID_SIZE = 40
 
-const props = defineProps({
-  mousePosition: {
-    type: Object,
-    default: null
-  }
-})
+const props = defineProps({})
 
 const emit = defineEmits(['obstacle-added'])
 
@@ -142,47 +131,6 @@ const selectedItem = computed(() => {
 
 const selectedItemName = computed(() => {
   return selectedItem.value ? selectedItem.value.name : ''
-})
-
-const previewGhostStyle = computed(() => {
-  if (!props.mousePosition || !selectedItem.value) {
-    return { display: 'none' }
-  }
-  
-  const x = snapToGrid(props.mousePosition.x)
-  const y = snapToGrid(props.mousePosition.y)
-  const size = getDefaultSize(selectedItem.value.id, selectedShape.value)
-  const color = selectedItem.value.color
-  // Compute offset dynamically from the editor's actual position within the layout
-  const editorEl = editorRef.value
-  const parentEl = editorEl?.parentElement
-  let offsetX = 16, offsetY = 16
-  if (editorEl && parentEl) {
-    const editorRect = editorEl.getBoundingClientRect()
-    const parentRect = parentEl.getBoundingClientRect()
-    offsetX = editorRect.left - parentRect.left
-    offsetY = editorRect.top - parentRect.top
-  }
-  const baseStyle = {
-    left: `${x - offsetX}px`,
-    top: `${y - offsetY}px`,
-    backgroundColor: color,
-    borderColor: color
-  }
-  
-  if (selectedShape.value === 'circle') {
-    return {
-      ...baseStyle,
-      width: `${(size.radius || 20) * 2}px`,
-      height: `${(size.radius || 20) * 2}px`
-    }
-  }
-  
-  return {
-    ...baseStyle,
-    width: `${size.width || 50}px`,
-    height: `${size.height || 50}px`
-  }
 })
 
 function selectItem(item) {
@@ -286,7 +234,16 @@ defineExpose({
   isEditorActive,
   selectType: selectItem,
   cancelEditing,
-  addObstacle
+  addObstacle,
+  getPlacementInfo() {
+    if (!isEditorActive.value || !selectedItem.value) return null
+    const item = selectedItem.value
+    return {
+      color: item.color,
+      shape: selectedShape.value,
+      size: getDefaultSize(item.id, selectedShape.value)
+    }
+  }
 })
 </script>
 

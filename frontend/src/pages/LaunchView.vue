@@ -215,14 +215,13 @@
               :active-nodes="activeNodes"
               :workflow-file="selectedFile"
               :visible="viewMode === 'spatial'"
+              :obstacle-editor-ref="obstacleEditorRef"
               @agent-selected="onSpatialAgentSelected"
               @canvas-click="onCanvasClick"
-              @canvas-mousemove="onCanvasMouseMove"
               @config-changed="onSpatialConfigChanged"
             />
             <ObstacleEditor
               ref="obstacleEditorRef"
-              :mouse-position="mousePosition"
               @obstacle-added="onObstacleAdded"
             />
             <AgentInfoPanel

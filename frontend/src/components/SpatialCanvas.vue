@@ -92,10 +92,11 @@ const props = defineProps({
   edges: { type: Array, default: () => [] },
   activeNodes: { type: Array, default: () => [] },
   workflowFile: { type: String, default: '' },
-  visible: { type: Boolean, default: false }
+  visible: { type: Boolean, default: false },
+  obstacleEditorRef: { type: Object, default: null }
 })
 
-const emit = defineEmits(['agent-selected', 'obstacle-selected', 'canvas-click', 'canvas-mousemove', 'config-changed'])
+const emit = defineEmits(['agent-selected', 'obstacle-selected', 'canvas-click', 'config-changed'])
 
 const wrapperRef = ref(null)
 const canvasRef = ref(null)
@@ -143,6 +144,7 @@ let trailGraphics = null
 let connectionGraphics = null
 let agentContainer = null
 let obstacleContainer = null
+let placementGhostGraphics = null
 let agentSprites = new Map()  // nodeId -> { container, sprite, label, glow, emoteText, interactive }
 let obstacleSprites = new Map()  // obstacleId -> { container, graphics, shape, data, selected }
 let selectedObstacleId = ref(null)
@@ -159,6 +161,11 @@ const MIN_ZOOM = 0.3
 const MAX_ZOOM = 3.0
 const ZOOM_STEP = 0.1
 let currentZoom = 1.0
+
+// Pan state
+let isPanning = false
+let panStart = { x: 0, y: 0 }
+let spaceKeyDown = false
 
 let saveDebounceTimer = null
 
@@ -255,23 +262,71 @@ async function initPixi() {
   obstacleContainer = new Container()
   app.stage.addChild(obstacleContainer)
 
-  // Add background click handler for deselection
+  // Add background click handler for deselection + panning
   app.stage.eventMode = 'static'
   app.stage.hitArea = app.screen
+
+  let bgPointerDown = false
+  let bgDragStart = { x: 0, y: 0 }
+  const PAN_THRESHOLD = 5
+
   app.stage.on('pointerdown', (e) => {
-    if (e.target === app.stage) {
-      deselectObstacle()
-      // Emit canvas click coordinates for obstacle placement
-      const worldPos = app.stage.toLocal(e.global)
-      emit('canvas-click', { x: worldPos.x, y: worldPos.y })
+    // Any click on background starts potential pan
+    if (e.target === app.stage && e.button === 0) {
+      bgPointerDown = true
+      bgDragStart.x = e.global.x
+      bgDragStart.y = e.global.y
+      panStart.x = e.global.x - app.stage.x
+      panStart.y = e.global.y - app.stage.y
+      return
     }
   })
 
-  // Track mouse movement for obstacle preview
+  // Track mouse movement for panning + obstacle preview
   app.stage.on('pointermove', (e) => {
+    if (bgPointerDown && !isPanning) {
+      // Check if drag threshold exceeded
+      const dx = e.global.x - bgDragStart.x
+      const dy = e.global.y - bgDragStart.y
+      if (Math.sqrt(dx * dx + dy * dy) >= PAN_THRESHOLD) {
+        isPanning = true
+        wrapperRef.value.classList.add('panning')
+        deselectObstacle()
+      }
+    }
+    if (isPanning) {
+      app.stage.x = e.global.x - panStart.x
+      app.stage.y = e.global.y - panStart.y
+      drawGrid()
+      return
+    }
     const worldPos = app.stage.toLocal(e.global)
-    emit('canvas-mousemove', { x: worldPos.x, y: worldPos.y })
+    updatePlacementGhost(worldPos.x, worldPos.y)
   })
+
+  const onStagePointerUp = (e) => {
+    if (isPanning) {
+      isPanning = false
+      bgPointerDown = false
+      wrapperRef.value.classList.remove('panning')
+      return
+    }
+    if (bgPointerDown) {
+      // Click without drag — treat as normal click
+      bgPointerDown = false
+      deselectObstacle()
+      const worldPos = app.stage.toLocal(e.global)
+      emit('canvas-click', { x: worldPos.x, y: worldPos.y })
+    }
+  }
+
+  app.stage.on('pointerup', onStagePointerUp)
+  app.stage.on('pointerupoutside', onStagePointerUp)
+
+  // Placement ghost layer (between obstacles and trails)
+  placementGhostGraphics = new Graphics()
+  placementGhostGraphics.visible = false
+  app.stage.addChild(placementGhostGraphics)
 
   // Trail particles layer
   trailGraphics = new Graphics()
@@ -367,6 +422,8 @@ function handleWheel(e) {
   stage.scale.set(currentZoom, currentZoom)
   stage.x = mouseX - worldX * currentZoom
   stage.y = mouseY - worldY * currentZoom
+
+  drawGrid()
 }
 
 // ───────── BACKGROUND GRID ─────────
@@ -375,18 +432,71 @@ function drawGrid() {
   if (!gridGraphics || !app?.renderer) return
   gridGraphics.clear()
 
-  const w = app.renderer.width
-  const h = app.renderer.height
+  const rendererW = app.renderer.width
+  const rendererH = app.renderer.height
 
-  for (let x = 0; x <= w; x += GRID_SIZE) {
-    gridGraphics.moveTo(x, 0)
-    gridGraphics.lineTo(x, h)
+  // Compute visible world bounds from stage transform
+  const stageX = app.stage.x
+  const stageY = app.stage.y
+  const zoom = currentZoom || 1
+
+  const worldLeft = -stageX / zoom
+  const worldTop = -stageY / zoom
+  const worldRight = worldLeft + rendererW / zoom
+  const worldBottom = worldTop + rendererH / zoom
+
+  // Snap to grid boundaries with extra padding
+  const startX = Math.floor(worldLeft / GRID_SIZE) * GRID_SIZE
+  const startY = Math.floor(worldTop / GRID_SIZE) * GRID_SIZE
+  const endX = Math.ceil(worldRight / GRID_SIZE) * GRID_SIZE
+  const endY = Math.ceil(worldBottom / GRID_SIZE) * GRID_SIZE
+
+  for (let x = startX; x <= endX; x += GRID_SIZE) {
+    gridGraphics.moveTo(x, startY)
+    gridGraphics.lineTo(x, endY)
   }
-  for (let y = 0; y <= h; y += GRID_SIZE) {
-    gridGraphics.moveTo(0, y)
-    gridGraphics.lineTo(w, y)
+  for (let y = startY; y <= endY; y += GRID_SIZE) {
+    gridGraphics.moveTo(startX, y)
+    gridGraphics.lineTo(endX, y)
   }
   gridGraphics.stroke({ width: 1, color: 0x2a2a4a, alpha: 0.3 })
+}
+
+// ───────── PLACEMENT GHOST ─────────
+
+function updatePlacementGhost(worldX, worldY) {
+  if (!placementGhostGraphics) return
+
+  const editor = props.obstacleEditorRef
+  const info = editor?.getPlacementInfo?.()
+
+  if (!info) {
+    placementGhostGraphics.visible = false
+    return
+  }
+
+  const snappedX = snapToGrid(worldX)
+  const snappedY = snapToGrid(worldY)
+  const colorInt = parseHexColor(info.color)
+
+  placementGhostGraphics.clear()
+
+  if (info.shape === 'circle') {
+    const radius = info.size.radius || 20
+    placementGhostGraphics.circle(snappedX, snappedY, radius)
+    placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
+    placementGhostGraphics.circle(snappedX, snappedY, radius)
+    placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
+  } else {
+    const w = info.size.width || 50
+    const h = info.size.height || 50
+    placementGhostGraphics.rect(snappedX, snappedY, w, h)
+    placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
+    placementGhostGraphics.rect(snappedX, snappedY, w, h)
+    placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
+  }
+
+  placementGhostGraphics.visible = true
 }
 
 // ───────── OBSTACLES ─────────
@@ -604,9 +714,27 @@ function deselectObstacle() {
 }
 
 function handleKeyDown(e) {
+  if (e.code === 'Space' && !spaceKeyDown) {
+    spaceKeyDown = true
+    if (wrapperRef.value && !isPanning) {
+      wrapperRef.value.classList.add('pan-ready')
+    }
+    e.preventDefault()
+    return
+  }
   if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObstacleId.value) {
     e.preventDefault()
     executeDeleteObstacle()
+  }
+}
+
+function handleKeyUp(e) {
+  if (e.code === 'Space') {
+    spaceKeyDown = false
+    if (wrapperRef.value) {
+      wrapperRef.value.classList.remove('pan-ready')
+      wrapperRef.value.classList.remove('panning')
+    }
   }
 }
 
@@ -1629,10 +1757,12 @@ onMounted(async () => {
     drawObstacles()
   }
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
   destroyPixi()
 })
 </script>
@@ -1645,6 +1775,16 @@ onUnmounted(() => {
   overflow: hidden;
   border-radius: 12px;
   background: #1a1a2e;
+}
+
+.spatial-canvas-wrapper.pan-ready,
+.spatial-canvas-wrapper.pan-ready * {
+  cursor: grab !important;
+}
+
+.spatial-canvas-wrapper.panning,
+.spatial-canvas-wrapper.panning * {
+  cursor: grabbing !important;
 }
 
 .spatial-canvas {
