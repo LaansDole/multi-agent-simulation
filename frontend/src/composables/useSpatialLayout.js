@@ -1,18 +1,198 @@
 import { reactive, toRefs } from 'vue'
 
 const SPATIAL_POSITIONS_PREFIX = 'devall_spatial_'
+const SPATIAL_SPEED_KEY = 'devall_spatial_speed'
+
+// ───────── AGENT STATUS CONSTANTS ─────────
+
+export const AGENT_STATUS = {
+    IDLE: 'idle',
+    THINKING: 'thinking',
+    COMMUNICATING: 'communicating',
+    ERROR: 'error'
+}
+
+export const STATUS_COLORS = {
+    [AGENT_STATUS.IDLE]: 0x6b7280,
+    [AGENT_STATUS.THINKING]: 0x3b82f6,
+    [AGENT_STATUS.COMMUNICATING]: 0x22c55e,
+    [AGENT_STATUS.ERROR]: 0xef4444
+}
+
+// Pulse speed multiplier per status (higher = faster pulse)
+export const STATUS_PULSE = {
+    [AGENT_STATUS.IDLE]: 0,        // no pulse
+    [AGENT_STATUS.THINKING]: 2.5,  // fast pulse
+    [AGENT_STATUS.COMMUNICATING]: 1.5,
+    [AGENT_STATUS.ERROR]: 3.0      // rapid pulse
+}
+
+// ───────── SPEED PRESETS ─────────
+
+export const MOVEMENT_SPEEDS = {
+    SLOW: { id: 'slow', name: 'Slow', value: 0.008 },
+    NORMAL: { id: 'normal', name: 'Normal', value: 0.02 },
+    FAST: { id: 'fast', name: 'Fast', value: 0.04 }
+}
+
+export const SPEED_LIST = [MOVEMENT_SPEEDS.SLOW, MOVEMENT_SPEEDS.NORMAL, MOVEMENT_SPEEDS.FAST]
+
+// ───────── NODE TYPE CLASSIFICATION ─────────
+
+export const INTERACTIVE_NODE_TYPES = ['agent', 'human']
+
+export function isInteractiveNode(node) {
+    return INTERACTIVE_NODE_TYPES.includes(node?.type)
+}
+
+// ───────── COMMUNICATION CONSTANTS ─────────
+
+export const COMMUNICATION_ANIMATION_DISTANCE = 0.85
+export const MIN_MEETING_GAP = 30    // minimum px gap between meeting points
+export const MIN_AGENT_SEPARATION = 40 // per-frame separation threshold
+const ANIMATION_QUEUE_MAX = 10
+const ANIMATION_STAGGER_MS = 500
+
+// ───────── EMOTE SYSTEM ─────────
+
+export const EMOTE_RULES = [
+    { keywords: ['disagree', 'incorrect', 'wrong', 'no,', 'i don\'t think', 'not quite', 'actually'], emoji: '🤔', badge: 'Hmm...' },
+    { keywords: ['agree', 'great point', 'exactly', 'yes', 'correct', 'right', 'good', 'well said', 'makes sense'], emoji: '👍', badge: 'Good point!' },
+    { keywords: ['interesting', 'idea', 'suggest', 'perhaps', 'consider', 'what if', 'could', 'maybe', 'approach'], emoji: '💡', badge: 'Interesting...' },
+    { keywords: ['wait', 'hold on', 'however', 'although', 'on the other hand', 'not sure'], emoji: '❓', badge: 'Wait...' },
+    { keywords: ['urgent', 'critical', 'important', 'warning', 'alert', 'caution', 'error', 'fail'], emoji: '❗', badge: 'Alert!' },
+    { keywords: ['excellent', 'perfect', 'amazing', 'great', 'fantastic', 'wonderful', 'brilliant', 'outstanding'], emoji: '🔥', badge: 'Excellent!' },
+    { keywords: ['thank', 'thanks', 'appreciate', 'helpful', 'assist'], emoji: '🙏', badge: 'Thanks!' },
+    { keywords: ['sorry', 'apologi', 'mistake', 'unfortunately', 'regret'], emoji: '😔', badge: 'Sorry...' },
+    { keywords: ['recommend', 'should', 'must', 'need to', 'require', 'advise'], emoji: '📋', badge: 'Noted' },
+    { keywords: ['complet', 'done', 'finish', 'success', 'ready', 'result'], emoji: '✅', badge: 'Done!' }
+]
+
+const EMOTE_DISMISS_EMOJI_MS = 3000
+const EMOTE_DISMISS_BADGE_MS = 4000
 
 /**
- * Force-directed layout for spatial agent positioning.
- * Connected agents attract; all agents repel.
+ * Match first emote rule against the first 200 chars of text.
+ * Returns { emoji, badge } or null.
  */
-function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
+export function matchEmote(text) {
+    if (!text) return null
+    const sample = text.slice(0, 200).toLowerCase()
+    for (const rule of EMOTE_RULES) {
+        for (const kw of rule.keywords) {
+            if (sample.includes(kw)) {
+                return { emoji: rule.emoji, badge: rule.badge }
+            }
+        }
+    }
+    // Fallback: always show a default emote so agents feel talkative
+    return FALLBACK_EMOTE
+}
+
+// ───────── TRAIL PARTICLE HELPER ─────────
+
+// Fallback emote when no keyword matches (keeps agents "talkative")
+export const FALLBACK_EMOTE = { emoji: '💬', badge: 'Processing...' }
+const MAX_TRAIL_PARTICLES = 20
+
+export function createTrailParticle(x, y, color) {
+    return {
+        x,
+        y,
+        color,
+        opacity: 0.6,
+        size: 4,
+        createdAt: Date.now()
+    }
+}
+
+// ───────── FORCE-DIRECTED LAYOUT ─────────
+
+/**
+ * @typedef {object} Obstacle
+ * @property {string} id
+ * @property {string} shape - 'rectangle' | 'circle'
+ * @property {{x: number, y: number}} position
+ * @property {{width?: number, height?: number, radius?: number}} size
+ */
+
+/**
+ * Check if a point is inside an obstacle.
+ * @param {{x: number, y: number}} point
+ * @param {Obstacle} obstacle
+ * @returns {boolean}
+ */
+function isPointInObstacle(point, obstacle) {
+    const { shape, position, size } = obstacle
+    if (shape === 'rectangle') {
+        const hw = (size.width || 0) / 2
+        const hh = (size.height || 0) / 2
+        return (
+            point.x >= position.x - hw &&
+            point.x <= position.x + hw &&
+            point.y >= position.y - hh &&
+            point.y <= position.y + hh
+        )
+    } else if (shape === 'circle') {
+        const radius = size.radius || 0
+        const dx = point.x - position.x
+        const dy = point.y - position.y
+        return (dx * dx + dy * dy) <= (radius * radius)
+    }
+    return false
+}
+
+/**
+ * Check if a position is valid (not inside any obstacle with collision=true).
+ * @param {{x: number, y: number}} pos
+ * @param {Obstacle[]} obstacles
+ * @returns {boolean}
+ */
+function isPositionValid(pos, obstacles) {
+    return !obstacles.some(obs => obs.collision && isPointInObstacle(pos, obs))
+}
+
+/**
+ * Find a valid position near the target that is not inside any obstacle.
+ * @param {{x: number, y: number}} targetPos
+ * @param {Obstacle[]} obstacles
+ * @param {number} width
+ * @param {number} height
+ * @returns {{x: number, y: number}}
+ */
+function findValidPositionNear(targetPos, obstacles, width, height) {
+    const searchRadius = 150
+    const step = 20
+    
+    if (isPositionValid(targetPos, obstacles)) {
+        return targetPos
+    }
+    
+    // Spiral search outward from target
+    for (let r = step; r <= searchRadius; r += step) {
+        for (let angle = 0; angle < 2 * Math.PI; angle += Math.PI / 8) {
+            const newX = targetPos.x + r * Math.cos(angle)
+            const newY = targetPos.y + r * Math.sin(angle)
+            const pos = {
+                x: Math.max(60, Math.min(width - 60, newX)),
+                y: Math.max(60, Math.min(height - 60, newY))
+            }
+            if (isPositionValid(pos, obstacles)) {
+                return pos
+            }
+        }
+    }
+    
+    // Fallback: return target (user can drag out if needed)
+    return targetPos
+}
+
+function forceDirectedLayout(nodes, edges, width, height, iterations = 100, obstacles = []) {
     if (!nodes.length) return new Map()
 
     const positions = new Map()
     const center = { x: width / 2, y: height / 2 }
 
-    // Initialize positions in a circle around center
     nodes.forEach((node, i) => {
         const angle = (2 * Math.PI * i) / nodes.length
         const radius = Math.min(width, height) * 0.3
@@ -22,7 +202,11 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
         })
     })
 
-    // Build adjacency set for quick lookup
+    // Build interactivity lookup
+    const interactiveSet = new Set(
+        nodes.filter(n => isInteractiveNode(n)).map(n => n.id)
+    )
+
     const neighbors = new Map()
     nodes.forEach(n => neighbors.set(n.id, new Set()))
     edges.forEach(e => {
@@ -33,12 +217,13 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
     const repulsionStrength = 8000
     const attractionStrength = 0.005
     const damping = 0.9
-    const minDistance = 80
+    // Collision-aware min distances: agent-agent = 100px, static = 60px
+    const minDistanceAgentAgent = 100
+    const minDistanceStatic = 60
     const velocities = new Map()
     nodes.forEach(n => velocities.set(n.id, { x: 0, y: 0 }))
 
     for (let iter = 0; iter < iterations; iter++) {
-        // Repulsion between all pairs
         for (let i = 0; i < nodes.length; i++) {
             for (let j = i + 1; j < nodes.length; j++) {
                 const a = positions.get(nodes[i].id)
@@ -56,7 +241,6 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
             }
         }
 
-        // Attraction along edges
         edges.forEach(e => {
             const a = positions.get(e.from)
             const b = positions.get(e.to)
@@ -64,8 +248,11 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
             const dx = b.x - a.x
             const dy = b.y - a.y
             const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist < minDistance) return
-            const force = (dist - minDistance) * attractionStrength
+            // Use appropriate minimum distance based on node types
+            const bothInteractive = interactiveSet.has(e.from) && interactiveSet.has(e.to)
+            const minDist = bothInteractive ? minDistanceAgentAgent : minDistanceStatic
+            if (dist < minDist) return
+            const force = (dist - minDist) * attractionStrength
             const fx = (dx / dist) * force
             const fy = (dy / dist) * force
             velocities.get(e.from).x += fx
@@ -74,7 +261,40 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
             velocities.get(e.to).y -= fy
         })
 
-        // Center gravity
+        // Obstacle repulsion force
+        const obstacleRepulsionStrength = 5000
+        obstacles.forEach(obs => {
+            if (!obs.collision) return
+            nodes.forEach(n => {
+                const pos = positions.get(n.id)
+                const vel = velocities.get(n.id)
+                let dx, dy
+                if (obs.shape === 'rectangle') {
+                    const hw = (obs.size.width || 0) / 2
+                    const hh = (obs.size.height || 0) / 2
+                    const closestX = Math.max(obs.position.x - hw, Math.min(pos.x, obs.position.x + hw))
+                    const closestY = Math.max(obs.position.y - hh, Math.min(pos.y, obs.position.y + hh))
+                    dx = pos.x - closestX
+                    dy = pos.y - closestY
+                } else if (obs.shape === 'circle') {
+                    dx = pos.x - obs.position.x
+                    dy = pos.y - obs.position.y
+                } else {
+                    return
+                }
+                const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1)
+                // Stronger repulsion when close to obstacle
+                const minDist = obs.shape === 'circle' ? obs.size.radius || 30 : 30
+                if (dist < minDist * 2) {
+                    const force = obstacleRepulsionStrength / (dist * dist)
+                    const fx = (dx / dist) * force
+                    const fy = (dy / dist) * force
+                    vel.x += fx
+                    vel.y += fy
+                }
+            })
+        })
+
         nodes.forEach(n => {
             const pos = positions.get(n.id)
             const vel = velocities.get(n.id)
@@ -82,7 +302,6 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
             vel.y += (center.y - pos.y) * 0.001
         })
 
-        // Apply velocities
         nodes.forEach(n => {
             const pos = positions.get(n.id)
             const vel = velocities.get(n.id)
@@ -90,53 +309,194 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100) {
             pos.y += vel.y
             vel.x *= damping
             vel.y *= damping
-
-            // Clamp to canvas bounds (with padding)
             const pad = 60
             pos.x = Math.max(pad, Math.min(width - pad, pos.x))
             pos.y = Math.max(pad, Math.min(height - pad, pos.y))
         })
     }
 
+    // Final pass: ensure all positions are valid (not inside obstacles)
+    let invalidCount = 0
+    positions.forEach((pos, nodeId) => {
+        if (!isPositionValid(pos, obstacles)) {
+            const newPos = findValidPositionNear(pos, obstacles, width, height)
+            positions.set(nodeId, newPos)
+            if (!isPositionValid(newPos, obstacles)) {
+                invalidCount++
+            }
+        }
+    })
+
+    if (invalidCount > 0) {
+        console.warn(
+            `[forceDirectedLayout] Failed to find obstacle-free positions for ${invalidCount} node(s). ` +
+            `Users can drag agents to desired positions.`
+        )
+    }
+
     return positions
 }
 
-/**
- * Composable for spatial view layout and state management.
- */
-export function useSpatialLayout() {
-    const state = reactive({
-        /** @type {Map<string, {x: number, y: number}>} */
-        agentPositions: new Map(),
-        /** @type {Array<{source: string, target: string, startTime: number, duration: number}>} */
-        activeConnections: [],
-        currentWorkflow: '',
-        canvasWidth: 800,
-        canvasHeight: 600
-    })
+// ───────── SINGLETON STATE ─────────
+// Module-level state so all consumers share the same instance.
 
-    /**
-     * Compute initial layout from graph nodes and edges.
-     */
-    function computeLayout(nodes, edges, width, height) {
+const state = reactive({
+    /** @type {Map<string, {x: number, y: number}>} */
+    agentPositions: new Map(),
+    /** @type {Array<{source: string, target: string, startTime: number, duration: number}>} */
+    activeConnections: [],
+    /** @type {Map<string, string>} agentId -> AGENT_STATUS */
+    agentStatuses: new Map(),
+    /** @type {Map<string, string>} agentId -> last output message */
+    agentMessages: new Map(),
+    /** @type {Array<{x: number, y: number, color: number, opacity: number, size: number, createdAt: number}>} */
+    trailParticles: [],
+    currentWorkflow: '',
+    canvasWidth: 800,
+    canvasHeight: 600,
+    /** @type {string} */
+    currentSpeed: loadSavedSpeed(),
+    /** @type {Array<{sourceId: string, targetId: string}>} */
+    animationQueue: [],
+    /** @type {boolean} */
+    isProcessingQueue: false,
+    /** @type {Map<string, {emoji: string, badge: string, startTime: number, timerId: number}>} */
+    agentEmotes: new Map(),
+    /** @type {Map<string, Array<{text: string, timestamp: number}>>} */
+    agentOutputHistory: new Map()
+})
+
+// ───────── COMPOSABLE ─────────
+
+export function useSpatialLayout() {
+
+    function computeLayout(nodes, edges, width, height, obstacles = []) {
         state.canvasWidth = width || 800
         state.canvasHeight = height || 600
-        const positions = forceDirectedLayout(nodes, edges, state.canvasWidth, state.canvasHeight)
+        const positions = forceDirectedLayout(
+            nodes,
+            edges,
+            state.canvasWidth,
+            state.canvasHeight,
+            100,
+            obstacles
+        )
         state.agentPositions = positions
         return positions
     }
 
-    /**
-     * Update a single agent's position (e.g. after drag).
-     */
     function setAgentPosition(agentId, x, y) {
         state.agentPositions.set(agentId, { x, y })
         savePositions()
     }
 
-    /**
-     * Save positions to localStorage for the current workflow.
-     */
+    // ── Status management ──
+
+    function setAgentStatus(agentId, status) {
+        state.agentStatuses.set(agentId, status)
+    }
+
+    function getAgentStatus(agentId) {
+        return state.agentStatuses.get(agentId) || AGENT_STATUS.IDLE
+    }
+
+    // ── Message management + emotes ──
+
+    function setAgentMessage(agentId, message) {
+        state.agentMessages.set(agentId, message)
+
+        // Accumulate output history
+        if (message) {
+            const history = state.agentOutputHistory.get(agentId) || []
+            history.push({ text: message, timestamp: Date.now() })
+            // Keep last 50 entries
+            if (history.length > 50) history.shift()
+            state.agentOutputHistory.set(agentId, history)
+        }
+
+        // Trigger emote matching
+        const emote = matchEmote(message)
+        if (emote) {
+            setAgentEmote(agentId, emote.emoji, emote.badge)
+        }
+    }
+
+    function getAgentMessage(agentId) {
+        return state.agentMessages.get(agentId) || ''
+    }
+
+    function getAgentOutputHistory(agentId) {
+        return state.agentOutputHistory.get(agentId) || []
+    }
+
+    // ── Emote management ──
+
+    function setAgentEmote(agentId, emoji, badge) {
+        // Clear existing emote timers
+        const existing = state.agentEmotes.get(agentId)
+        if (existing?.timerId) {
+            clearTimeout(existing.timerId)
+        }
+
+        const startTime = Date.now()
+        const timerId = setTimeout(() => {
+            state.agentEmotes.delete(agentId)
+        }, Math.max(EMOTE_DISMISS_EMOJI_MS, EMOTE_DISMISS_BADGE_MS))
+
+        state.agentEmotes.set(agentId, {
+            emoji,
+            badge,
+            startTime,
+            timerId
+        })
+    }
+
+    function getAgentEmote(agentId) {
+        const emote = state.agentEmotes.get(agentId)
+        if (!emote) return null
+
+        const elapsed = Date.now() - emote.startTime
+        return {
+            emoji: elapsed < EMOTE_DISMISS_EMOJI_MS ? emote.emoji : null,
+            badge: elapsed < EMOTE_DISMISS_BADGE_MS ? emote.badge : null
+        }
+    }
+
+    // ── Speed management ──
+
+    function setSpeed(speedId) {
+        state.currentSpeed = speedId
+        try {
+            localStorage.setItem(SPATIAL_SPEED_KEY, speedId)
+        } catch (e) {
+            console.warn('Failed to save speed setting:', e)
+        }
+    }
+
+    function getSpeedValue() {
+        const preset = SPEED_LIST.find(s => s.id === state.currentSpeed)
+        return preset ? preset.value : MOVEMENT_SPEEDS.NORMAL.value
+    }
+
+    // ── Trail particles ──
+
+    function addTrailParticle(x, y, color) {
+        if (state.trailParticles.length > MAX_TRAIL_PARTICLES * 2) {
+            // Aggressive cleanup if too many
+            cleanupTrailParticles()
+        }
+        state.trailParticles.push(createTrailParticle(x, y, color))
+    }
+
+    function cleanupTrailParticles() {
+        const now = Date.now()
+        state.trailParticles = state.trailParticles.filter(
+            p => now - p.createdAt < 600
+        )
+    }
+
+    // ── Position persistence ──
+
     function savePositions() {
         if (!state.currentWorkflow) return
         try {
@@ -153,10 +513,6 @@ export function useSpatialLayout() {
         }
     }
 
-    /**
-     * Load positions from localStorage for a given workflow.
-     * Returns true if positions were loaded.
-     */
     function loadPositions(workflowFile) {
         state.currentWorkflow = workflowFile
         if (!workflowFile) return false
@@ -178,9 +534,6 @@ export function useSpatialLayout() {
         return false
     }
 
-    /**
-     * Clear saved positions and re-run layout.
-     */
     function resetPositions(nodes, edges) {
         if (state.currentWorkflow) {
             try {
@@ -192,9 +545,8 @@ export function useSpatialLayout() {
         return computeLayout(nodes, edges, state.canvasWidth, state.canvasHeight)
     }
 
-    /**
-     * Add a communication connection for animation.
-     */
+    // ── Connection management ──
+
     function addConnection(source, target, duration = 2000) {
         state.activeConnections.push({
             source,
@@ -204,14 +556,36 @@ export function useSpatialLayout() {
         })
     }
 
-    /**
-     * Remove expired connections.
-     */
     function cleanupConnections() {
         const now = Date.now()
         state.activeConnections = state.activeConnections.filter(
             c => now - c.startTime < c.duration
         )
+    }
+
+    // ── Animation queue ──
+
+    /**
+     * Push a communication event onto the queue.
+     * Returns a function that should be called to trigger the actual animation.
+     */
+    function enqueueAnimation(sourceId, targetId) {
+        if (state.animationQueue.length >= ANIMATION_QUEUE_MAX) {
+            state.animationQueue.shift()
+        }
+        state.animationQueue.push({ sourceId, targetId })
+    }
+
+    /**
+     * Dequeue the next animation. Returns { sourceId, targetId } or null.
+     */
+    function dequeueAnimation() {
+        if (!state.animationQueue.length) return null
+        return state.animationQueue.shift()
+    }
+
+    function getStaggerDelay() {
+        return ANIMATION_STAGGER_MS
     }
 
     return {
@@ -222,6 +596,34 @@ export function useSpatialLayout() {
         loadPositions,
         resetPositions,
         addConnection,
-        cleanupConnections
+        cleanupConnections,
+        setAgentStatus,
+        getAgentStatus,
+        setAgentMessage,
+        getAgentMessage,
+        getAgentOutputHistory,
+        setAgentEmote,
+        getAgentEmote,
+        setSpeed,
+        getSpeedValue,
+        addTrailParticle,
+        cleanupTrailParticles,
+        enqueueAnimation,
+        dequeueAnimation,
+        getStaggerDelay
     }
+}
+
+// ── Helper ──
+
+function loadSavedSpeed() {
+    try {
+        const saved = localStorage.getItem(SPATIAL_SPEED_KEY)
+        if (saved && SPEED_LIST.some(s => s.id === saved)) {
+            return saved
+        }
+    } catch {
+        // ignore
+    }
+    return MOVEMENT_SPEEDS.NORMAL.id
 }

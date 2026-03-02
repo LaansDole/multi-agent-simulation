@@ -12,7 +12,7 @@
     </div>
     <div class="content">
       <!-- Left panel -->
-      <div class="left-panel">
+      <div class="left-panel" :class="{ 'left-panel-spatial': viewMode === 'spatial' }">
         <!-- Chat area -->
         <div v-show="viewMode === 'chat'" class="chat-box">
           <div class="chat-messages" ref="chatMessagesRef">
@@ -207,14 +207,29 @@
           </VueFlow>
         </div>
         <div v-show="viewMode === 'spatial'" class="spatial-panel">
-          <SpatialCanvas
-            ref="spatialCanvasRef"
-            :nodes="spatialNodes"
-            :edges="spatialEdges"
-            :active-nodes="activeNodes"
-            :workflow-file="selectedFile"
-            :visible="viewMode === 'spatial'"
-          />
+          <div class="spatial-layout" :class="{ 'with-info-panel': selectedSpatialAgent }">
+            <SpatialCanvas
+              ref="spatialCanvasRef"
+              :nodes="spatialNodes"
+              :edges="spatialEdges"
+              :active-nodes="activeNodes"
+              :workflow-file="selectedFile"
+              :visible="viewMode === 'spatial'"
+              @agent-selected="onSpatialAgentSelected"
+              @canvas-click="onCanvasClick"
+              @canvas-mousemove="onCanvasMouseMove"
+              @config-changed="onSpatialConfigChanged"
+            />
+            <ObstacleEditor
+              ref="obstacleEditorRef"
+              :mouse-position="mousePosition"
+              @obstacle-added="onObstacleAdded"
+            />
+            <AgentInfoPanel
+              :agent="selectedSpatialAgent"
+              @close="selectedSpatialAgent = null"
+            />
+          </div>
         </div>
 
         <!-- Input area -->
@@ -341,7 +356,7 @@
       </div>
 
       <!-- Right panel -->
-      <div class="right-panel">
+      <div class="right-panel" :class="{ 'right-panel-compact': viewMode === 'spatial' }">
         <div class="control-section">
           <label class="section-label">Workflow Selection</label>
       <div
@@ -551,6 +566,11 @@ import WorkflowEdge from '../components/WorkflowEdge.vue'
 import StartNode from '../components/StartNode.vue'
 import CollapsibleMessage from '../components/CollapsibleMessage.vue'
 import SpatialCanvas from '../components/SpatialCanvas.vue'
+import AgentInfoPanel from '../components/AgentInfoPanel.vue'
+import ObstacleEditor from '../components/ObstacleEditor.vue'
+import { useSpatialConfig } from '../composables/useSpatialConfig.js'
+
+const { saveConfig, loadConfig } = useSpatialConfig()
 
 const router = useRouter()
 const route = useRoute()
@@ -710,6 +730,32 @@ const showSettingsModal = ref(false)
 // View mode
 const viewMode = ref('chat')
 const spatialCanvasRef = ref(null)
+const obstacleEditorRef = ref(null)
+const selectedSpatialAgent = ref(null)
+const mousePosition = ref(null)
+
+// ───────── OBSTACLE EDITOR HANDLERS ─────────
+
+function onCanvasClick(coords) {
+  const editor = obstacleEditorRef.value
+  if (editor?.isEditorActive) {
+    editor.addObstacle(coords.x, coords.y)
+  }
+}
+
+function onCanvasMouseMove(coords) {
+  mousePosition.value = coords
+}
+
+function onObstacleAdded(obstacle) {
+  console.log('Obstacle added:', obstacle.id)
+}
+
+function onSpatialConfigChanged(config) {
+  console.log('Spatial config changed:', config.obstacles?.length, 'obstacles')
+  const workflowName = selectedFile.value?.replace('.yaml', '') || 'default'
+  saveConfig(workflowName)
+}
 
 // WebSocket reference
 let ws = null
@@ -1329,6 +1375,10 @@ const handleYAMLSelection = async (fileName) => {
 
   // Clear the chat
   chatMessages.value = []
+
+  // Load spatial config for this workflow
+  const workflowName = fileName.replace('.yaml', '')
+  await loadConfig(workflowName)
 
   try {
     // Fetch YAML config and emit initial_instructions to the chat
@@ -1986,6 +2036,15 @@ const downloadArtifact = async (message) => {
   }
 }
 
+// Handle agent selection in the spatial view
+const onSpatialAgentSelected = (data) => {
+  if (selectedSpatialAgent.value?.nodeId === data.nodeId) {
+    selectedSpatialAgent.value = null  // toggle off
+  } else {
+    selectedSpatialAgent.value = data
+  }
+}
+
 // Handle edge condition messages and trigger sprite animation
 const handleEdgeConditionMessage = (message) => {
   // Parse message format: "Edge condition met for Source Node -> Target Node"
@@ -2204,6 +2263,10 @@ const processMessage = async (msg) => {
       if (nodeId && !activeNodes.value.includes(nodeId)) {
         activeNodes.value.push(nodeId)
       }
+      // Update spatial view status
+      if (spatialCanvasRef.value) {
+        spatialCanvasRef.value.updateAgentStatus(nodeId, 'thinking')
+      }
     }
 
     // Model call
@@ -2212,6 +2275,9 @@ const processMessage = async (msg) => {
       if (msg.data.details.stage === "before") {
         const baseKey = `model-${msg.data.details.model_name || 'unknown'}`
         addLoadingEntry(nodeId, baseKey, `Model ${msg.data.details.model_name}`)
+        if (spatialCanvasRef.value) {
+          spatialCanvasRef.value.updateAgentStatus(nodeId, 'thinking')
+        }
       }
 
       // Model call ended
@@ -2227,6 +2293,9 @@ const processMessage = async (msg) => {
       if (msg.data.details.stage === "before") {
         const baseKey = `tool-${msg.data.details.tool_name || 'unknown'}`
         addLoadingEntry(nodeId, baseKey, `Tool ${msg.data.details.tool_name}`)
+        if (spatialCanvasRef.value) {
+          spatialCanvasRef.value.updateAgentStatus(nodeId, 'thinking')
+        }
       }
 
       // Tool call ended
@@ -2256,6 +2325,12 @@ const processMessage = async (msg) => {
       }
 
       addDialogue(`${nodeId}`, `${msg.data.details.output}`)
+
+      // Update spatial view: idle status + store message for speech bubble
+      if (spatialCanvasRef.value) {
+        spatialCanvasRef.value.updateAgentStatus(nodeId, 'idle')
+        spatialCanvasRef.value.updateAgentMessage(nodeId, msg.data.details.output || '')
+      }
     }
 
     // Edge condition met - trigger sprite animation
@@ -2284,6 +2359,13 @@ const processMessage = async (msg) => {
     status.value = 'Error'
     isWorkflowRunning.value = false
     sessionIdToDownload = sessionId
+
+    // Update spatial view error status for all active agents
+    if (spatialCanvasRef.value && activeNodes.value.length) {
+      activeNodes.value.forEach(nId => {
+        spatialCanvasRef.value.updateAgentStatus(nId, 'error')
+      })
+    }
   }
 }
 
@@ -3104,6 +3186,17 @@ watch(
   flex-direction: column;
   gap: 20px;
   min-width: 250px;
+  transition: min-width 0.3s ease, flex 0.3s ease;
+}
+
+.right-panel-compact {
+  flex: 0 0 auto;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+.left-panel-spatial {
+  flex: 5;
 }
 
 .control-section {
@@ -3449,6 +3542,13 @@ watch(
   border-radius: 12px;
   overflow: hidden;
   backdrop-filter: blur(5px);
+}
+
+.spatial-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: all 0.25s ease;
 }
 
 .vueflow-graph {

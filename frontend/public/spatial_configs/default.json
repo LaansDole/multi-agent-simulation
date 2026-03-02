@@ -1,0 +1,361 @@
+{
+  "canvas": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "obstacles": [
+    {
+      "id": "wall-1772449025716",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449026347",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 760,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449026961",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 880,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449027869",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449030013",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1120,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449031400",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449032212",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1240,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449033673",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1400,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449035122",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449035723",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 440,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449036387",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449040499",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 160
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449041378",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 280
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449041879",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 320
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449042515",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 400
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449042962",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 480
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449043483",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 560
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449046791",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 160
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449048012",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 280
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449050548",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 400
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449051381",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 520
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449052896",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 680
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-1772449056572",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 640
+      },
+      "size": {
+        "width": 20,
+        "height": 120
+      },
+      "color": "#64748b",
+      "collision": true
+    }
+  ],
+  "spawnZones": []
+}
