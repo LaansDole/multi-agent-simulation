@@ -692,9 +692,37 @@ gw = [0.5, 3, 2]  # recency, relevance, importance
 
 ---
 
+## Related Papers and Analysis
+
+### Comparative Analysis
+- **Memory Architecture Comparison**: [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Comparison of memory stream implementation with alternatives
+- **Planning Comparison**: [comparison-planning.md](./comparison-planning.md) - Analysis of planning module across frameworks
+- **Communication Comparison**: [comparison-communication.md](./comparison-communication.md) - Communication patterns analysis
+- **Gap Analysis**: [gap-analysis.md](./gap-analysis.md) - Technical gaps between implementation and DevAll
+- **Literature Review**: [literature-review-synthesis.md](./literature-review-synthesis.md) - Academic positioning of the implementation
+
+### Related Stanford Documentation
+- **Research Summary**: [stanford-generative-agents-summary.md](./stanford-generative-agents-summary.md)
+- **Architecture Documentation**: [stanford-generative-agents-architecture.md](./stanford-generative-agents-architecture.md)
+- **DevAll Patterns**: [stanford-generative-agents-devall-patterns.md](./stanford-generative-agents-devall-patterns.md)
+- **Critical Review**: [stanford-generative-agents-critique.md](./stanford-generative-agents-critique.md)
+- **Community Implementations**: [stanford-generative-agents-community.md](./stanford-generative-agents-community.md)
+
+### Related Multi-Agent Papers
+- **ChatDev**: [papers/chatdev-summary.md](./papers/chatdev-summary.md) - Software development multi-agent framework
+- **AutoGen**: [papers/autogen-summary.md](./papers/autogen-summary.md) - Conversational multi-agent framework
+- **MetaGPT**: [papers/metagpt-summary.md](./papers/metagpt-summary.md) - SOP-based framework
+- **CAMEL**: [papers/camel-summary.md](./papers/camel-summary.md) - Role-playing framework
+- **AgentVerse**: [papers/agentverse-summary.md](./papers/agentverse-summary.md) - Emergent behaviors
+
+### Classic Foundations
+- **BDI Architecture**: [papers/classic/bdi-architecture-summary.md](./papers/classic/bdi-architecture-summary.md) - Theoretical foundation
+- **Communication Protocols**: [papers/classic/communication-protocols-summary.md](./papers/classic/communication-protocols-summary.md) - FIPA-ACL and KQML protocols
+
 ## References
 
 - **Repository:** https://github.com/joonspk-research/generative_agents
 - **Paper:** https://arxiv.org/abs/2304.03442
 - **Authors:** Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, Michael S. Bernstein
 - **Conference:** UIST '23 (36th Annual ACM Symposium on User Interface Software and Technology)
+- **Bibliography:** [bibliography.md](./bibliography.md)

@@ -1326,8 +1326,33 @@ Day 7:
 
 ---
 
+## Related Papers and Comparison Matrices
+
+### Architectural Comparisons
+- **Memory Architecture Comparison**: [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Detailed comparison of memory stream architecture with alternatives
+- **Planning Comparison**: [comparison-planning.md](./comparison-planning.md) - Analysis of hierarchical planning vs. other approaches
+- **Communication Comparison**: [comparison-communication.md](./comparison-communication.md) - Agent communication patterns
+- **Gap Analysis**: [gap-analysis.md](./gap-analysis.md) - Technical gaps between Stanford architecture and DevAll
+- **Literature Review**: [literature-review-synthesis.md](./literature-review-synthesis.md) - Academic positioning of the architecture
+
+### Related Stanford Documentation
+- **Research Summary**: [stanford-generative-agents-summary.md](./stanford-generative-agents-summary.md)
+- **Repository Analysis**: [stanford-generative-agents-repo-analysis.md](./stanford-generative-agents-repo-analysis.md)
+- **DevAll Patterns**: [stanford-generative-agents-devall-patterns.md](./stanford-generative-agents-devall-patterns.md)
+- **Critical Review**: [stanford-generative-agents-critique.md](./stanford-generative-agents-critique.md)
+
+### Related Multi-Agent Papers
+- **ChatDev**: [papers/chatdev-summary.md](./papers/chatdev-summary.md) - Chat chain architecture
+- **AutoGen**: [papers/autogen-summary.md](./papers/autogen-summary.md) - Conversational agent patterns
+- **MemGPT**: Referenced in [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Hierarchical memory OS
+
+### Classic Foundations
+- **BDI Architecture**: [papers/classic/bdi-architecture-summary.md](./papers/classic/bdi-architecture-summary.md) - Belief-desire-intention model
+- **Jason (BDI)**: [papers/classic/bdi-agentspeak-jason-summary.md](./papers/classic/bdi-agentspeak-jason-summary.md) - Practical BDI implementation
+
 ## References
 
 - Paper: https://arxiv.org/abs/2304.03442
 - Official Implementation: https://github.com/joonspk-research/generative_agents
-- Summary Document: `./stanford-generative-agents-summary.md`
+- Summary Document: [stanford-generative-agents-summary.md](./stanford-generative-agents-summary.md)
+- Bibliography: [bibliography.md](./bibliography.md)

@@ -1369,13 +1369,60 @@ These three changes provide the foundation for more sophisticated agent behavior
 
 ---
 
+## Related Papers and Analysis
+
+### Comparative Analysis Documents
+- **Memory Architecture Comparison**: [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Detailed comparison of Stanford Memory Stream with DevAll memory systems
+- **Planning Comparison**: [comparison-planning.md](./comparison-planning.md) - Analysis of hierarchical planning approaches across frameworks
+- **Communication Comparison**: [comparison-communication.md](./comparison-communication.md) - Inter-agent communication protocol comparison
+- **Gap Analysis**: [gap-analysis.md](./gap-analysis.md) - Consolidated gap analysis with prioritized roadmap
+- **Literature Review**: [literature-review-synthesis.md](./literature-review-synthesis.md) - Academic synthesis of multi-agent systems
+
+### Related Stanford Documentation
+- **Research Summary**: [stanford-generative-agents-summary.md](./stanford-generative-agents-summary.md)
+- **Architecture Documentation**: [stanford-generative-agents-architecture.md](./stanford-generative-agents-architecture.md)
+- **Repository Analysis**: [stanford-generative-agents-repo-analysis.md](./stanford-generative-agents-repo-analysis.md)
+- **Critical Review**: [stanford-generative-agents-critique.md](./stanford-generative-agents-critique.md)
+- **Community Implementations**: [stanford-generative-agents-community.md](./stanford-generative-agents-community.md)
+
+### Modern Multi-Agent Framework Papers
+- **ChatDev**: [papers/chatdev-summary.md](./papers/chatdev-summary.md) - Chat-powered software development with chat chains and communicative dehallucination
+- **AutoGen**: [papers/autogen-summary.md](./papers/autogen-summary.md) - Conversational multi-agent framework with human-in-the-loop support
+- **MetaGPT**: [papers/metagpt-summary.md](./papers/metagpt-summary.md) - SOP-based software development with role specialization
+- **CAMEL**: [papers/camel-summary.md](./papers/camel-summary.md) - Role-playing collaborative framework for problem-solving
+- **AgentVerse**: [papers/agentverse-summary.md](./papers/agentverse-summary.md) - Emergent collaborative behaviors in expert agent groups
+
+### Classic Multi-Agent Foundations
+- **BDI Architecture**: [papers/classic/bdi-architecture-summary.md](./papers/classic/bdi-architecture-summary.md) - Belief-desire-intention theoretical foundation
+- **Jason (AgentSpeak)**: [papers/classic/bdi-agentspeak-jason-summary.md](./papers/classic/bdi-agentspeak-jason-summary.md) - Practical BDI implementation
+- **GOAL**: [papers/classic/goal-summary.md](./papers/classic/goal-summary.md) - Declarative goal-based agent programming
+- **2APL**: [papers/classic/2apl-summary.md](./papers/classic/2apl-summary.md) - Hybrid BDI programming language
+- **Communication Protocols**: [papers/classic/communication-protocols-summary.md](./papers/classic/communication-protocols-summary.md) - FIPA-ACL and KQML speech act protocols
+
+### Key Insights from Related Papers
+
+#### Memory Architecture Insights (from [comparison-memory-architectures.md](./comparison-memory-architectures.md))
+- Stanford's three-factor retrieval (recency + importance + relevance) is SOTA approach
+- MemGPT's OS-inspired hierarchical memory overcomes context limits
+- DevAll's multimodal support and programmatic exploration are unique strengths
+- **Key Gap**: DevAll lacks automatic reflection synthesis (see [gap-analysis.md](./gap-analysis.md#11-no-automatic-reflection-synthesis))
+
+#### Planning Insights (from [comparison-planning.md](./comparison-planning.md))
+- Stanford uses hierarchical reflection-based planning (daily → hourly → detailed)
+- AutoGen uses conversation-driven planning
+- MetaGPT uses SOP-based sequential planning
+- BDI uses plan libraries with deliberation
+- **Key Gap**: DevAll lacks dynamic re-planning and temporal reasoning (see [gap-analysis.md](./gap-analysis.md#21-no-automatic-re-planning))
+
+#### Communication Insights (from [comparison-communication.md](./comparison-communication.md))
+- FIPA-ACL and KQML provide formal speech act semantics
+- ChatDev uses chat chains for structured dialogue
+- DevAll's edge-based message routing is unique but lacks conversation tracking
+- **Key Gap**: DevAll lacks formal protocol specification (see [gap-analysis.md](./gap-analysis.md#31-no-conversation-id-tracking))
+
 ## References
 
 - Stanford Paper: https://arxiv.org/abs/2304.03442
 - Stanford Repository: https://github.com/joonspk-research/generative_agents
 - DevAll Memory Module: `docs/user_guide/en/modules/memory.md`
-- Related Documents:
-  - `stanford-generative-agents-summary.md`
-  - `stanford-generative-agents-architecture.md`
-  - `stanford-generative-agents-repo-analysis.md`
-  - `stanford-generative-agents-community.md`
+- Bibliography: [bibliography.md](./bibliography.md) - Complete bibliography of multi-agent systems papers

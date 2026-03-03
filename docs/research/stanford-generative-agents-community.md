@@ -422,6 +422,33 @@ For DevAll's multi-agent orchestration platform:
 
 ---
 
+## Related Papers and Analysis
+
+### Comparative Analysis
+- **Memory Architecture Comparison**: [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Memory systems across frameworks
+- **Planning Comparison**: [comparison-planning.md](./comparison-planning.md) - Planning approaches in different frameworks
+- **Communication Comparison**: [comparison-communication.md](./comparison-communication.md) - Communication patterns and protocols
+- **Gap Analysis**: [gap-analysis.md](./gap-analysis.md) - Architectural gaps and improvement priorities
+- **Literature Review**: [literature-review-synthesis.md](./literature-review-synthesis.md) - Academic synthesis of multi-agent systems
+
+### Related Stanford Documentation
+- **Research Summary**: [stanford-generative-agents-summary.md](./stanford-generative-agents-summary.md)
+- **Architecture Documentation**: [stanford-generative-agents-architecture.md](./stanford-generative-agents-architecture.md)
+- **Repository Analysis**: [stanford-generative-agents-repo-analysis.md](./stanford-generative-agents-repo-analysis.md)
+- **DevAll Patterns**: [stanford-generative-agents-devall-patterns.md](./stanford-generative-agents-devall-patterns.md)
+- **Critical Review**: [stanford-generative-agents-critique.md](./stanford-generative-agents-critique.md)
+
+### Framework Paper Summaries
+- **ChatDev**: [papers/chatdev-summary.md](./papers/chatdev-summary.md) - Chat-powered software development framework
+- **AutoGen**: [papers/autogen-summary.md](./papers/autogen-summary.md) - Microsoft's multi-agent conversation framework
+- **MetaGPT**: [papers/metagpt-summary.md](./papers/metagpt-summary.md) - SOP-based software development framework
+- **CAMEL**: [papers/camel-summary.md](./papers/camel-summary.md) - Role-playing collaborative framework
+- **AgentVerse**: [papers/agentverse-summary.md](./papers/agentverse-summary.md) - Emergent collaborative behaviors
+
+### Classic Multi-Agent Papers
+- **BDI Architecture**: [papers/classic/bdi-architecture-summary.md](./papers/classic/bdi-architecture-summary.md) - Theoretical foundation
+- **Communication Protocols**: [papers/classic/communication-protocols-summary.md](./papers/classic/communication-protocols-summary.md) - FIPA-ACL and KQML
+
 ## References
 
 - Stanford Original: https://github.com/joonspk-research/generative_agents
@@ -432,3 +459,4 @@ For DevAll's multi-agent orchestration platform:
 - CAMEL-AI: https://github.com/camel-ai/camel
 - MetaGPT: https://github.com/geekan/MetaGPT
 - Mastra: https://github.com/mastra-ai/mastra
+- Bibliography: [bibliography.md](./bibliography.md)

@@ -235,7 +235,35 @@ The paper instantiated 25 generative agents in an interactive sandbox environmen
 
 ---
 
+## Related Papers and Comparison Matrices
+
+### Comparative Analysis
+- **Memory Architecture Comparison**: [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Detailed comparison of Stanford Memory Stream with DevAll, ChatDev, MemGPT, and BDI systems
+- **Planning Comparison**: [comparison-planning.md](./comparison-planning.md) - Analysis of hierarchical planning approaches across frameworks
+- **Communication Comparison**: [comparison-communication.md](./comparison-communication.md) - Inter-agent communication protocol comparison
+- **Gap Analysis**: [gap-analysis.md](./gap-analysis.md) - Consolidated analysis of gaps between Stanford and DevAll
+- **Literature Review**: [literature-review-synthesis.md](./literature-review-synthesis.md) - Academic synthesis positioning Stanford in the broader multi-agent landscape
+
+### Related Stanford Documentation
+- **Architecture Details**: [stanford-generative-agents-architecture.md](./stanford-generative-agents-architecture.md)
+- **Repository Analysis**: [stanford-generative-agents-repo-analysis.md](./stanford-generative-agents-repo-analysis.md)
+- **DevAll Integration Patterns**: [stanford-generative-agents-devall-patterns.md](./stanford-generative-agents-devall-patterns.md)
+- **Critical Review**: [stanford-generative-agents-critique.md](./stanford-generative-agents-critique.md)
+- **Community Implementations**: [stanford-generative-agents-community.md](./stanford-generative-agents-community.md)
+
+### Related Multi-Agent Papers
+- **ChatDev**: [papers/chatdev-summary.md](./papers/chatdev-summary.md) - Software development multi-agent framework
+- **AutoGen**: [papers/autogen-summary.md](./papers/autogen-summary.md) - Microsoft's conversational multi-agent framework
+- **MetaGPT**: [papers/metagpt-summary.md](./papers/metagpt-summary.md) - SOP-based software development
+- **CAMEL**: [papers/camel-summary.md](./papers/camel-summary.md) - Role-playing collaboration framework
+- **AgentVerse**: [papers/agentverse-summary.md](./papers/agentverse-summary.md) - Emergent collaborative behaviors
+
+### Classic Multi-Agent Foundations
+- **BDI Architecture**: [papers/classic/bdi-architecture-summary.md](./papers/classic/bdi-architecture-summary.md) - Theoretical foundation for goal-directed agents
+- **Communication Protocols**: [papers/classic/communication-protocols-summary.md](./papers/classic/communication-protocols-summary.md) - FIPA-ACL and KQML protocols
+
 ## References
 
 - Paper: https://arxiv.org/abs/2304.03442
 - GitHub (official): https://github.com/joonspk-research/generative_agents
+- Bibliography: [bibliography.md](./bibliography.md) - Complete bibliography of multi-agent systems papers

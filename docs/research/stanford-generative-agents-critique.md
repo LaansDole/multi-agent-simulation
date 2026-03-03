@@ -645,13 +645,35 @@ For DevAll, the Stanford approach provides valuable patterns for memory manageme
 
 ---
 
+## Related Papers and Analysis
+
+### Comparative Analysis
+- **Memory Architecture Comparison**: [comparison-memory-architectures.md](./comparison-memory-architectures.md) - Stanford Memory Stream vs. alternatives
+- **Planning Comparison**: [comparison-planning.md](./comparison-planning.md) - Hierarchical planning analysis
+- **Communication Comparison**: [comparison-communication.md](./comparison-communication.md) - Communication protocol comparison
+- **Gap Analysis**: [gap-analysis.md](./gap-analysis.md) - Consolidated analysis of architectural gaps
+- **Literature Review**: [literature-review-synthesis.md](./literature-review-synthesis.md) - Academic positioning in multi-agent landscape
+
+### Related Stanford Documentation
+- **Research Summary**: [stanford-generative-agents-summary.md](./stanford-generative-agents-summary.md)
+- **Architecture Documentation**: [stanford-generative-agents-architecture.md](./stanford-generative-agents-architecture.md)
+- **Repository Analysis**: [stanford-generative-agents-repo-analysis.md](./stanford-generative-agents-repo-analysis.md)
+- **DevAll Patterns**: [stanford-generative-agents-devall-patterns.md](./stanford-generative-agents-devall-patterns.md)
+- **Community Implementations**: [stanford-generative-agents-community.md](./stanford-generative-agents-community.md)
+
+### Alternative Framework Papers
+- **ChatDev**: [papers/chatdev-summary.md](./papers/chatdev-summary.md) - Alternative approach for software development
+- **AutoGen**: [papers/autogen-summary.md](./papers/autogen-summary.md) - Production-oriented multi-agent framework
+- **MetaGPT**: [papers/metagpt-summary.md](./papers/metagpt-summary.md) - SOP-based approach to reduce hallucination
+- **CAMEL**: [papers/camel-summary.md](./papers/camel-summary.md) - Role-playing for collaborative problem-solving
+- **AgentVerse**: [papers/agentverse-summary.md](./papers/agentverse-summary.md) - Emergent collaborative behaviors
+
+### Classic Foundations
+- **BDI Architecture**: [papers/classic/bdi-architecture-summary.md](./papers/classic/bdi-architecture-summary.md) - Formal foundations for agent systems
+- **Communication Protocols**: [papers/classic/communication-protocols-summary.md](./papers/classic/communication-protocols-summary.md) - FIPA-ACL and KQML standards
+
 ## References
 
 - Paper: https://arxiv.org/abs/2304.03442
 - Official Repository: https://github.com/joonspk-research/generative_agents
-- Related Documents:
-  - `stanford-generative-agents-summary.md`
-  - `stanford-generative-agents-architecture.md`
-  - `stanford-generative-agents-repo-analysis.md`
-  - `stanford-generative-agents-community.md`
-  - `stanford-generative-agents-devall-patterns.md`
+- Bibliography: [bibliography.md](./bibliography.md)
