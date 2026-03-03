@@ -4,6 +4,7 @@
  * drag-and-drop setup, and status glow rendering.
  */
 import { Container, Graphics, Sprite, Text, TextStyle, Assets } from 'pixi.js'
+import { markRaw } from 'vue'
 import { spriteFetcher } from '../../utils/spriteFetcher.js'
 
 // ───────── COMPOSABLE ─────────
@@ -145,6 +146,7 @@ export function useAgentRenderer({
             style: new TextStyle({
                 fontSize: 24,
                 fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif',
+                fill: 0xffffff,
                 align: 'center'
             })
         })
@@ -163,14 +165,14 @@ export function useAgentRenderer({
 
         ctx.agentContainer.addChild(agentGroup)
 
-        ctx.agentSprites.set(node.id, {
+        ctx.agentSprites.set(node.id, markRaw({
             container: agentGroup,
             sprite,
             label,
             glow,
             emoteText,
             interactive: true
-        })
+        }))
     }
 
     /**
@@ -218,14 +220,14 @@ export function useAgentRenderer({
 
         ctx.agentContainer.addChild(markerGroup)
 
-        ctx.agentSprites.set(node.id, {
+        ctx.agentSprites.set(node.id, markRaw({
             container: markerGroup,
             sprite: shape,
             label,
             glow: null,
             emoteText: null,
             interactive: false
-        })
+        }))
     }
 
     // ───────── DRAG SETUP ─────────

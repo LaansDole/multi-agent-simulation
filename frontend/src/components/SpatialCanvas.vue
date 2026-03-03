@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, reactive, markRaw, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { Application, Container, Sprite, Graphics, Text, TextStyle, Assets, Rectangle, Circle } from 'pixi.js'
 import {
   useSpatialLayout,
@@ -154,9 +154,9 @@ const ctx = reactive({
   agentContainer: null,
   obstacleContainer: null,
   placementGhostGraphics: null,
-  agentSprites: new Map(),
-  obstacleSprites: new Map(),
-  animatingAgents: new Map(),
+  agentSprites: markRaw(new Map()),
+  obstacleSprites: markRaw(new Map()),
+  animatingAgents: markRaw(new Map()),
   pathfinder: null
 })
 
