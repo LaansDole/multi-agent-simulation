@@ -15,7 +15,7 @@ import { spriteFetcher } from '../../utils/spriteFetcher.js'
  * @param {object} options.props - Component props
  * @param {Function} options.emit - Component emit
  * @param {import('vue').Ref} options.agentPositions - Agent positions ref
- * @param {Array} options.visibleBadges - Reactive badges array
+
  * @param {Function} options.loadPositions - Load saved positions
  * @param {Function} options.computeLayout - Compute force-directed layout
  * @param {Function} options.setAgentPosition - Set agent position
@@ -33,7 +33,7 @@ export function useAgentRenderer({
     props,
     emit,
     agentPositions,
-    visibleBadges,
+
     loadPositions,
     computeLayout,
     setAgentPosition,
@@ -54,7 +54,6 @@ export function useAgentRenderer({
 
         ctx.agentContainer.removeChildren()
         ctx.agentSprites.clear()
-        visibleBadges.splice(0)
 
         const nodes = props.nodes || []
         const edges = props.edges || []
@@ -155,6 +154,22 @@ export function useAgentRenderer({
         emoteText.visible = false
         agentGroup.addChild(emoteText)
 
+        // Badge text (PixiJS, adjacent to emoji, hidden by default)
+        const badgeText = new Text({
+            text: '',
+            style: new TextStyle({
+                fontSize: 10,
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontWeight: '500',
+                fill: 0xe0e7ff,
+                align: 'left'
+            })
+        })
+        badgeText.anchor.set(0.5, 1)
+        badgeText.y = -44
+        badgeText.visible = false
+        agentGroup.addChild(badgeText)
+
         // Drag-and-drop
         setupDrag(agentGroup, node.id)
 
@@ -171,6 +186,7 @@ export function useAgentRenderer({
             label,
             glow,
             emoteText,
+            badgeText,
             interactive: true
         }))
     }
@@ -226,6 +242,7 @@ export function useAgentRenderer({
             label,
             glow: null,
             emoteText: null,
+            badgeText: null,
             interactive: false
         }))
     }

@@ -19,7 +19,7 @@ const MAX_ZOOM = 3.0
  * @param {object} options.ctx - Shared canvas context
  * @param {import('vue').Ref} options.wrapperRef - Wrapper DOM element ref
  * @param {import('vue').Ref} options.canvasRef - Canvas DOM element ref
- * @param {Array} options.visibleBadges - Reactive badges array
+
  * @param {Function} options.renderLoop - Render loop callback
  * @param {Function} options.buildScene - Build scene callback
  * @param {Function} options.drawObstacles - Draw obstacles callback
@@ -39,7 +39,7 @@ export function usePixiApp({
     ctx,
     wrapperRef,
     canvasRef,
-    visibleBadges,
+
     renderLoop,
     buildScene,
     drawObstacles,
@@ -203,7 +203,7 @@ export function usePixiApp({
         cleanupObstacles()
         ctx.animatingAgents.clear()
         cleanupIdleWander()
-        visibleBadges.splice(0)
+
         currentZoom = 1.0
         if (ctx.app) {
             ctx.app.destroy(true, { children: true })

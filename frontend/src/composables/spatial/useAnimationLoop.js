@@ -21,7 +21,7 @@ function easeInOutQuad(t) {
  * @param {import('vue').Ref} options.agentPositions - Agent positions ref
  * @param {import('vue').Ref} options.trailParticles - Trail particles ref
  * @param {import('vue').Ref} options.activeConnections - Active connections ref
- * @param {Array} options.visibleBadges - Reactive badges array
+
  * @param {Function} options.getAgentStatus - Get agent status
  * @param {Function} options.getAgentEmote - Get agent emote
  * @param {Function} options.addTrailParticle - Add a trail particle
@@ -40,7 +40,7 @@ export function useAnimationLoop({
     agentPositions,
     trailParticles,
     activeConnections,
-    visibleBadges,
+
     getAgentStatus,
     getAgentEmote,
     addTrailParticle,
@@ -245,11 +245,9 @@ export function useAnimationLoop({
     }
 
     /**
-     * Update emote visuals: emoji bubbles (PixiJS) + text badges (HTML overlay)
+     * Update emote visuals: emoji bubbles + text badges (both PixiJS)
      */
     function updateEmotes() {
-        const newBadges = []
-
         ctx.agentSprites.forEach((ag, nodeId) => {
             if (!ag.interactive || !ag.emoteText) return
 
@@ -262,29 +260,20 @@ export function useAnimationLoop({
                 ag.emoteText.visible = false
             }
 
-            // Collect text badges for HTML overlay
-            if (emote && emote.badge) {
-                const canvasRect = canvasRef.value?.getBoundingClientRect()
-                if (canvasRect && ctx.app?.renderer) {
-                    const scaleX = canvasRect.width / ctx.app.renderer.width
-                    const scaleY = canvasRect.height / ctx.app.renderer.height
-                    const screenX = ag.container.x * scaleX
-                    const screenY = (ag.container.y - 80) * scaleY
-                    newBadges.push({
-                        nodeId,
-                        text: emote.badge,
-                        style: {
-                            left: `${screenX}px`,
-                            top: `${screenY}px`,
-                            transform: 'translateX(-50%)'
-                        }
-                    })
+            // Update badge text (PixiJS, adjacent to emoji)
+            if (ag.badgeText) {
+                if (emote && emote.badge) {
+                    ag.badgeText.text = emote.badge
+                    ag.badgeText.visible = true
+                    // Position badge to the right of the emoji
+                    const gap = 2.50
+                    const emojiWidth = ag.emoteText.visible ? ag.emoteText.width / 2 * (1 + gap) : 0
+                    ag.badgeText.x = emojiWidth
+                } else {
+                    ag.badgeText.visible = false
                 }
             }
         })
-
-        // Update reactive badges array
-        visibleBadges.splice(0, visibleBadges.length, ...newBadges)
     }
 
     function drawTrailParticles() {

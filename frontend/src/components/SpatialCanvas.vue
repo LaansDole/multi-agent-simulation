@@ -2,17 +2,7 @@
   <div class="spatial-canvas-wrapper" ref="wrapperRef">
     <canvas ref="canvasRef" class="spatial-canvas"></canvas>
 
-    <!-- HTML overlay for emote text badges -->
-    <div class="emote-overlay" ref="emoteOverlayRef">
-      <div
-        v-for="badge in visibleBadges"
-        :key="badge.nodeId"
-        class="emote-badge"
-        :style="badge.style"
-      >
-        {{ badge.text }}
-      </div>
-    </div>
+
 
     <SpatialControls
       :current-speed="currentSpeed"
@@ -106,7 +96,7 @@ const emit = defineEmits(['agent-selected', 'obstacle-selected', 'canvas-click',
 
 const wrapperRef = ref(null)
 const canvasRef = ref(null)
-const emoteOverlayRef = ref(null)
+
 
 const {
   config: spatialConfig,
@@ -180,8 +170,7 @@ function snapToGrid(value) {
   return Math.round(value / GRID_SIZE) * GRID_SIZE
 }
 
-// Reactive badges for HTML overlay
-const visibleBadges = reactive([])
+
 
 // ───────── OBSTACLE MANAGER COMPOSABLE ─────────
 const spatialConfigForObstacles = {
@@ -256,7 +245,6 @@ const {
   agentPositions,
   trailParticles,
   activeConnections,
-  visibleBadges,
   getAgentStatus,
   getAgentEmote,
   addTrailParticle,
@@ -279,7 +267,6 @@ const {
   props,
   emit,
   agentPositions,
-  visibleBadges,
   loadPositions,
   computeLayout,
   setAgentPosition,
@@ -305,7 +292,6 @@ const {
   ctx,
   wrapperRef,
   canvasRef,
-  visibleBadges,
   renderLoop,
   buildScene,
   drawObstacles,
@@ -526,41 +512,7 @@ onUnmounted(() => {
   height: 100%;
 }
 
-.emote-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: hidden;
-}
 
-.emote-badge {
-  position: absolute;
-  background: rgba(30, 30, 58, 0.92);
-  border: 1px solid rgba(129, 140, 248, 0.5);
-  border-radius: 12px;
-  padding: 3px 10px;
-  font-size: 11px;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 500;
-  color: #e0e7ff;
-  white-space: nowrap;
-  pointer-events: none;
-  animation: badgeFadeIn 0.25s ease-out;
-}
-
-@keyframes badgeFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
 
 .obstacle-tooltip {
   position: absolute;
