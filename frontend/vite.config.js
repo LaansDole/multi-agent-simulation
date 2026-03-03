@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    test: {
+      environment: 'happy-dom',
+      include: ['src/**/*.test.{js,ts}'],
+    },
     server: {
       host: true,
       proxy: {
