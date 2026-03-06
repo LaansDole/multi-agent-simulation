@@ -26,6 +26,7 @@ const MAX_ZOOM = 3.0
  * @param {Function} options.obstacleUpdatePlacementGhost - Update placement ghost callback
  * @param {Function} options.cleanupCommunication - Cleanup communication composable
  * @param {Function} options.cleanupObstacles - Cleanup obstacle composable
+ * @param {Function} options.cleanupFloors - Cleanup floors composable
  * @param {Function} options.cleanupIdleWander - Cleanup idle wander composable
  * @param {Function} options.initPathfinder - Initialize pathfinder
  * @param {Function} options.emit - Component emit
@@ -46,6 +47,7 @@ export function usePixiApp({
     obstacleUpdatePlacementGhost,
     cleanupCommunication,
     cleanupObstacles,
+    cleanupFloors,
     cleanupIdleWander,
     initPathfinder,
     emit,
@@ -89,7 +91,11 @@ export function usePixiApp({
         ctx.app.stage.addChild(ctx.gridGraphics)
         drawGrid()
 
-        // Obstacle layer (between grid and agents)
+        // Floor layer (between grid and obstacles)
+        ctx.floorContainer = new Container()
+        ctx.app.stage.addChild(ctx.floorContainer)
+
+        // Obstacle layer (between floor and agents)
         ctx.obstacleContainer = new Container()
         ctx.app.stage.addChild(ctx.obstacleContainer)
 
@@ -199,6 +205,7 @@ export function usePixiApp({
         }
         ctx.agentSprites.clear()
         cleanupObstacles()
+        cleanupFloors()
         ctx.animatingAgents.clear()
         cleanupIdleWander()
         visibleBadges.splice(0)
@@ -208,6 +215,7 @@ export function usePixiApp({
             ctx.app = null
             ctx.agentContainer = null
             ctx.obstacleContainer = null
+            ctx.floorContainer = null
             ctx.connectionGraphics = null
             ctx.trailGraphics = null
             ctx.gridGraphics = null

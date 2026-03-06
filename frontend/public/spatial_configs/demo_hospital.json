@@ -220,5 +220,8 @@
       "sprite": "hospital_bed.png"
     }
   ],
-  "spawnZones": []
+  "spawnZones": [],
+  "metadata": {
+    "thumbnail": "thumbnails/demo_hospital.png"
+  }
 }

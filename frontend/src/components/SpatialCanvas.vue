@@ -84,6 +84,7 @@ import {
 } from '../composables/useSpatialLayout.js'
 import { useSpatialConfig } from '../composables/useSpatialConfig.js'
 import { useObstacleManager } from '../composables/spatial/useObstacleManager.js'
+import { useFloorManager } from '../composables/spatial/useFloorManager.js'
 import { useIdleWander } from '../composables/spatial/useIdleWander.js'
 import { useCommunicationAnimation } from '../composables/spatial/useCommunicationAnimation.js'
 import { useAnimationLoop } from '../composables/spatial/useAnimationLoop.js'
@@ -153,11 +154,13 @@ const ctx = reactive({
   connectionGraphics: null,
   agentContainer: null,
   obstacleContainer: null,
+  floorContainer: null,
   placementGhostGraphics: null,
   agentSprites: new Map(),
   obstacleSprites: new Map(),
   animatingAgents: new Map(),
-  pathfinder: null
+  pathfinder: null,
+  spatialConfig
 })
 
 let showImportConfirm = ref(false)
@@ -208,6 +211,14 @@ const {
   initPathfinder,
   scheduleConfigSave,
   snapToGrid
+})
+
+// ───────── FLOOR MANAGER COMPOSABLE ─────────
+const {
+  drawFloors,
+  cleanup: cleanupFloors
+} = useFloorManager({
+  ctx
 })
 
 // ───────── IDLE WANDER COMPOSABLE ─────────
@@ -313,6 +324,7 @@ const {
   obstacleUpdatePlacementGhost,
   cleanupCommunication,
   cleanupObstacles,
+  cleanupFloors,
   cleanupIdleWander,
   initPathfinder,
   emit,
@@ -392,6 +404,7 @@ async function executeImportConfig() {
   const { clearCache } = useSpatialConfig()
   clearCache(configName)
   await loadConfig(configName)
+  drawFloors()
   drawObstacles()
 
   if (ctx.app?.renderer) {
@@ -439,15 +452,18 @@ watch(() => props.visible, async (isVisible) => {
     if (!ctx.app) {
       await initPixi()
       await loadConfig(normalizeWorkflowName(props.workflowFile))
+      drawFloors()
       drawObstacles()
     } else {
       await loadConfig(normalizeWorkflowName(props.workflowFile))
       buildScene()
+      drawFloors()
       drawObstacles()
       const wrapper = wrapperRef.value
       if (wrapper && ctx.app?.renderer) {
         ctx.app.renderer.resize(wrapper.clientWidth, wrapper.clientHeight)
         drawGrid()
+        drawFloors()
         drawObstacles()
       }
     }
@@ -473,6 +489,7 @@ watch(() => props.workflowFile, async () => {
 // Watch for config changes to re-render obstacles
 watch(() => spatialConfig.value, () => {
   if (props.visible && ctx.app) {
+    drawFloors()
     drawObstacles()
     if (ctx.app.renderer?.width && ctx.app.renderer?.height) {
       initPathfinder(ctx.app.renderer.width, ctx.app.renderer.height)
@@ -487,6 +504,7 @@ onMounted(async () => {
     await nextTick()
     await initPixi()
     await loadConfig(normalizeWorkflowName(props.workflowFile))
+    drawFloors()
     drawObstacles()
   }
   window.addEventListener('keydown', handleKeyDown)
