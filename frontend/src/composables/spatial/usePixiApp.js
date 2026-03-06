@@ -4,6 +4,7 @@
  * panning, resize observation, and keyboard handlers.
  */
 import { Application, Container, Graphics, Rectangle } from 'pixi.js'
+import { markRaw } from 'vue'
 
 // ───────── CONSTANTS ─────────
 
@@ -18,7 +19,7 @@ const MAX_ZOOM = 3.0
  * @param {object} options.ctx - Shared canvas context
  * @param {import('vue').Ref} options.wrapperRef - Wrapper DOM element ref
  * @param {import('vue').Ref} options.canvasRef - Canvas DOM element ref
- * @param {Array} options.visibleBadges - Reactive badges array
+
  * @param {Function} options.renderLoop - Render loop callback
  * @param {Function} options.buildScene - Build scene callback
  * @param {Function} options.drawObstacles - Draw obstacles callback
@@ -39,7 +40,7 @@ export function usePixiApp({
     ctx,
     wrapperRef,
     canvasRef,
-    visibleBadges,
+
     renderLoop,
     buildScene,
     drawObstacles,
@@ -84,23 +85,24 @@ export function usePixiApp({
             resolution: window.devicePixelRatio || 1,
             autoDensity: true
         })
-        ctx.app = pixiApp
+        ctx.app = markRaw(pixiApp)
 
         // Grid layer (bottommost)
-        ctx.gridGraphics = new Graphics()
+        ctx.gridGraphics = markRaw(new Graphics())
         ctx.app.stage.addChild(ctx.gridGraphics)
         drawGrid()
 
         // Floor layer (between grid and obstacles)
-        ctx.floorContainer = new Container()
+        ctx.floorContainer = markRaw(new Container())
         ctx.app.stage.addChild(ctx.floorContainer)
 
         // Obstacle layer (between floor and agents)
-        ctx.obstacleContainer = new Container()
+        ctx.obstacleContainer = markRaw(new Container())
         ctx.app.stage.addChild(ctx.obstacleContainer)
 
         // Add background click handler for deselection + panning
         ctx.app.stage.eventMode = 'static'
+        ctx.app.stage.hitArea = new Rectangle(0, 0, width, height)
 
         let bgPointerDown = false
         let bgDragStart = { x: 0, y: 0 }
@@ -156,20 +158,20 @@ export function usePixiApp({
         ctx.app.stage.on('pointerupoutside', onStagePointerUp)
 
         // Placement ghost layer
-        ctx.placementGhostGraphics = new Graphics()
+        ctx.placementGhostGraphics = markRaw(new Graphics())
         ctx.placementGhostGraphics.visible = false
         ctx.app.stage.addChild(ctx.placementGhostGraphics)
 
         // Trail particles layer
-        ctx.trailGraphics = new Graphics()
+        ctx.trailGraphics = markRaw(new Graphics())
         ctx.app.stage.addChild(ctx.trailGraphics)
 
         // Connection lines layer
-        ctx.connectionGraphics = new Graphics()
+        ctx.connectionGraphics = markRaw(new Graphics())
         ctx.app.stage.addChild(ctx.connectionGraphics)
 
         // Agent container (on top)
-        ctx.agentContainer = new Container()
+        ctx.agentContainer = markRaw(new Container())
         ctx.app.stage.addChild(ctx.agentContainer)
 
         ctx.app.ticker.add(renderLoop)
@@ -208,7 +210,7 @@ export function usePixiApp({
         cleanupFloors()
         ctx.animatingAgents.clear()
         cleanupIdleWander()
-        visibleBadges.splice(0)
+
         currentZoom = 1.0
         if (ctx.app) {
             ctx.app.destroy(true, { children: true })

@@ -2,7 +2,7 @@
  * @fileoverview Obstacle management composable for the spatial canvas.
  * Handles obstacle rendering, selection, deletion, drag, and placement ghost preview.
  */
-import { ref, computed } from 'vue'
+import { ref, computed, markRaw } from 'vue'
 import { Container, Sprite, Graphics, Assets, Rectangle, Circle } from 'pixi.js'
 
 // ───────── HELPERS ─────────
@@ -260,13 +260,13 @@ export function useObstacleManager({ ctx, canvasRef, spatialConfig, emit, initPa
 
             ctx.obstacleContainer.addChild(obstacleGroup)
 
-            ctx.obstacleSprites.set(id, {
+            ctx.obstacleSprites.set(id, markRaw({
                 container: obstacleGroup,
                 graphics,
                 highlight,
                 shape,
                 data: obstacle
-            })
+            }))
         })
 
         await Promise.all(obstaclePromises)

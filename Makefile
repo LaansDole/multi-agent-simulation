@@ -63,9 +63,15 @@ check-backend: ## Run backend quality checks (tests + linting)
 	@uvx ruff check .
 
 .PHONY: check-frontend
-check-frontend: ## Run frontend quality checks (linting + typecheck)
+check-frontend: ## Run frontend quality checks (tests + linting)
+	@echo "Running frontend tests..."
+	@cd frontend && npx vitest run
 	@echo "Running frontend linting..."
 	@cd frontend && npm run lint
+
+.PHONY: test-frontend
+test-frontend: ## Run frontend unit tests
+	@cd frontend && npx vitest run
 
 # ==============================================================================
 # Help
