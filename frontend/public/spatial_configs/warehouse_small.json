@@ -1,0 +1,410 @@
+{
+  "canvas": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "metadata": {
+    "name": "Small Warehouse",
+    "description": "Compact warehouse layout with shelving areas and loading zones",
+    "tags": [
+      "warehouse",
+      "industrial",
+      "storage",
+      "logistics"
+    ],
+    "recommendedAgentCount": {
+      "min": 10,
+      "max": 15
+    },
+    "thumbnail": "thumbnails/warehouse_small.png"
+  },
+  "floors": [
+    {
+      "id": "floor-main",
+      "tileType": "warehouse_concrete",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 800,
+      "height": 600,
+      "sprite": "warehouse_concrete.png",
+      "color": "#708090"
+    },
+    {
+      "id": "floor-loading-zone",
+      "tileType": "hazard_stripes",
+      "position": {
+        "x": 640,
+        "y": 200
+      },
+      "width": 120,
+      "height": 200,
+      "sprite": "hazard_stripes.png",
+      "color": "#ffd700"
+    },
+    {
+      "id": "floor-walkway-1",
+      "tileType": "hazard_stripes",
+      "position": {
+        "x": 360,
+        "y": 20
+      },
+      "width": 40,
+      "height": 560,
+      "sprite": "hazard_stripes.png",
+      "color": "#ffd700"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "wall-perim-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 800,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-perim-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 580
+      },
+      "size": {
+        "width": 800,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-perim-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 20,
+        "height": 600
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-perim-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 780,
+        "y": 0
+      },
+      "size": {
+        "width": 20,
+        "height": 600
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "shelf-row1-1",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 60
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row1-2",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 60
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row2-1",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row2-2",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 160
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row3-1",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 260
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row3-2",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 260
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row4-1",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 360
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row4-2",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 360
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row5-1",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 460
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-row5-2",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 460
+      },
+      "size": {
+        "width": 120,
+        "height": 60
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "pallet-group1",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 420,
+        "y": 60
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "pallet-group2",
+      "type": "storage",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 60
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "forklift-1",
+      "type": "vehicle",
+      "shape": "rectangle",
+      "position": {
+        "x": 420,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#ffa500",
+      "collision": true,
+      "sprite": "forklift.png"
+    },
+    {
+      "id": "forklift-2",
+      "type": "vehicle",
+      "shape": "rectangle",
+      "position": {
+        "x": 540,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#ffa500",
+      "collision": true,
+      "sprite": "forklift.png"
+    },
+    {
+      "id": "loading-bay-1",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 60
+      },
+      "size": {
+        "width": 100,
+        "height": 80
+      },
+      "color": "#4a5568",
+      "collision": true
+    },
+    {
+      "id": "loading-bay-2",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 460
+      },
+      "size": {
+        "width": 100,
+        "height": 80
+      },
+      "color": "#4a5568",
+      "collision": true
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "main-entrance",
+      "name": "Main Entrance",
+      "position": {
+        "x": 600,
+        "y": 20
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "loading-dock",
+      "name": "Loading Dock",
+      "position": {
+        "x": 600,
+        "y": 500
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#3b82f6"
+    }
+  ]
+}

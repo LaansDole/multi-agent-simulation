@@ -1,0 +1,607 @@
+{
+  "canvas": {
+    "width": 1200,
+    "height": 900,
+    "backgroundColor": "#2d5016"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#1a3a0f",
+    "opacity": 0.2
+  },
+  "metadata": {
+    "name": "Large Park",
+    "description": "Expansive city park with multiple walking paths, recreational areas, and green spaces",
+    "tags": [
+      "park",
+      "outdoor",
+      "nature",
+      "recreation",
+      "large"
+    ],
+    "recommendedAgentCount": {
+      "min": 15,
+      "max": 25
+    },
+    "thumbnail": "thumbnails/park_large.png"
+  },
+  "floors": [
+    {
+      "id": "floor-grass-main",
+      "tileType": "grass",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 1200,
+      "height": 900,
+      "sprite": "grass.png",
+      "color": "#4a7c23"
+    },
+    {
+      "id": "floor-path-main-horizontal",
+      "tileType": "pavement",
+      "position": {
+        "x": 0,
+        "y": 400
+      },
+      "width": 1200,
+      "height": 100,
+      "sprite": "pavement.png",
+      "color": "#a0a0a0"
+    },
+    {
+      "id": "floor-path-main-vertical",
+      "tileType": "pavement",
+      "position": {
+        "x": 550,
+        "y": 0
+      },
+      "width": 100,
+      "height": 400,
+      "sprite": "pavement.png",
+      "color": "#a0a0a0"
+    },
+    {
+      "id": "floor-path-main-vertical-bottom",
+      "tileType": "pavement",
+      "position": {
+        "x": 550,
+        "y": 500
+      },
+      "width": 100,
+      "height": 400,
+      "sprite": "pavement.png",
+      "color": "#a0a0a0"
+    },
+    {
+      "id": "floor-path-loop-left",
+      "tileType": "pavement",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "width": 300,
+      "height": 60,
+      "sprite": "pavement.png",
+      "color": "#a0a0a0"
+    },
+    {
+      "id": "floor-path-loop-right",
+      "tileType": "pavement",
+      "position": {
+        "x": 800,
+        "y": 100
+      },
+      "width": 300,
+      "height": 60,
+      "sprite": "pavement.png",
+      "color": "#a0a0a0"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "tree-cluster-nw-1",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-nw-2",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 140,
+        "y": 220
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-nw-3",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 220,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-ne-1",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 900,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-ne-2",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 980,
+        "y": 220
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-ne-3",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 1060,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "bench-nw-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 300,
+        "y": 320
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-ne-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 820,
+        "y": 320
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "street-lamp-cross-nw",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 340
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "street-lamp-cross-ne",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 660,
+        "y": 340
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "trash-bin-nw",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 420
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#556b2f",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "trash-bin-ne",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1100,
+        "y": 420
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#556b2f",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "tree-cluster-sw-1",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 560
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-sw-2",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 140,
+        "y": 580
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-sw-3",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 220,
+        "y": 560
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-se-1",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 900,
+        "y": 560
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-se-2",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 980,
+        "y": 580
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-cluster-se-3",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 1060,
+        "y": 560
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "bench-sw-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 300,
+        "y": 640
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-se-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 820,
+        "y": 640
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "street-lamp-cross-sw",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 540
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "street-lamp-cross-se",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 660,
+        "y": 540
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "trash-bin-sw",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 420
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#556b2f",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "trash-bin-se",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1100,
+        "y": 420
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#556b2f",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "tree-center-1",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 380,
+        "y": 220
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-center-2",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 760,
+        "y": 220
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-center-3",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 380,
+        "y": 640
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-center-4",
+      "type": "nature",
+      "shape": "rectangle",
+      "position": {
+        "x": 760,
+        "y": 640
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228b22",
+      "collision": true,
+      "sprite": "tree.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "entrance-west",
+      "name": "West Entrance",
+      "position": {
+        "x": 20,
+        "y": 400
+      },
+      "size": {
+        "width": 40,
+        "height": 100
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "entrance-east",
+      "name": "East Entrance",
+      "position": {
+        "x": 1140,
+        "y": 400
+      },
+      "size": {
+        "width": 40,
+        "height": 100
+      },
+      "color": "#3b82f6"
+    },
+    {
+      "id": "entrance-north",
+      "name": "North Entrance",
+      "position": {
+        "x": 550,
+        "y": 20
+      },
+      "size": {
+        "width": 100,
+        "height": 40
+      },
+      "color": "#f59e0b"
+    },
+    {
+      "id": "entrance-south",
+      "name": "South Entrance",
+      "position": {
+        "x": 550,
+        "y": 840
+      },
+      "size": {
+        "width": 100,
+        "height": 40
+      },
+      "color": "#ef4444"
+    }
+  ]
+}

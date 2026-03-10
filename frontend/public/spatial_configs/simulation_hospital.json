@@ -10,6 +10,59 @@
     "color": "#333344",
     "opacity": 0.3
   },
+  "metadata": {
+    "name": "Hospital Simulation",
+    "description": "Multi-floor hospital layout with patient rooms, corridors, nurse stations, and reception area for medical scenario simulations",
+    "tags": [
+      "hospital",
+      "medical",
+      "indoor",
+      "healthcare"
+    ],
+    "recommendedAgentCount": {
+      "min": 15,
+      "max": 30
+    },
+    "thumbnail": "thumbnails/simulation_hospital.png"
+  },
+  "floors": [
+    {
+      "id": "floor-upper-section",
+      "tileType": "hospital_tile",
+      "position": {
+        "x": 20,
+        "y": 20
+      },
+      "width": 2360,
+      "height": 600,
+      "sprite": "hospital_tile.png",
+      "color": "#e8e8e8"
+    },
+    {
+      "id": "floor-corridor",
+      "tileType": "hospital_tile",
+      "position": {
+        "x": 20,
+        "y": 660
+      },
+      "width": 2360,
+      "height": 200,
+      "sprite": "hospital_tile.png",
+      "color": "#f0f0f0"
+    },
+    {
+      "id": "floor-lower-section",
+      "tileType": "hospital_tile",
+      "position": {
+        "x": 20,
+        "y": 900
+      },
+      "width": 2360,
+      "height": 660,
+      "sprite": "hospital_tile.png",
+      "color": "#e8e8e8"
+    }
+  ],
   "obstacles": [
     {
       "id": "wall-perim-top",
@@ -1026,5 +1079,45 @@
       "sprite": "desk.png"
     }
   ],
-  "spawnZones": []
+  "spawnZones": [
+    {
+      "id": "main-entrance",
+      "name": "Main Entrance",
+      "position": {
+        "x": 20,
+        "y": 660
+      },
+      "size": {
+        "width": 80,
+        "height": 200
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "emergency-entrance",
+      "name": "Emergency Entrance",
+      "position": {
+        "x": 2300,
+        "y": 660
+      },
+      "size": {
+        "width": 60,
+        "height": 200
+      },
+      "color": "#ef4444"
+    },
+    {
+      "id": "staff-entrance",
+      "name": "Staff Entrance",
+      "position": {
+        "x": 20,
+        "y": 960
+      },
+      "size": {
+        "width": 60,
+        "height": 120
+      },
+      "color": "#3b82f6"
+    }
+  ]
 }

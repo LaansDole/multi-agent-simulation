@@ -1,0 +1,516 @@
+{
+  "canvas": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "metadata": {
+    "name": "Meeting Rooms",
+    "description": "Office layout with multiple meeting rooms and collaborative spaces",
+    "tags": [
+      "office",
+      "meeting-rooms",
+      "collaborative",
+      "small-team"
+    ],
+    "recommendedAgentCount": {
+      "min": 8,
+      "max": 12
+    },
+    "thumbnail": "thumbnails/meeting_rooms.png"
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "tileType": "office_carpet",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 800,
+      "height": 600,
+      "sprite": "office_carpet.png",
+      "color": "#696969"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "wall-perim-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 800,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-perim-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 580
+      },
+      "size": {
+        "width": 800,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-perim-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 20,
+        "height": 600
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-perim-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 780,
+        "y": 0
+      },
+      "size": {
+        "width": 20,
+        "height": 600
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room1-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 20
+      },
+      "size": {
+        "width": 360,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room1-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 20
+      },
+      "size": {
+        "width": 10,
+        "height": 250
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room1-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 260
+      },
+      "size": {
+        "width": 140,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room1-bottom-2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 240,
+        "y": 260
+      },
+      "size": {
+        "width": 140,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "meeting-table-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 80
+      },
+      "size": {
+        "width": 200,
+        "height": 120
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "whiteboard-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 220
+      },
+      "size": {
+        "width": 200,
+        "height": 30
+      },
+      "color": "#f5f5f5",
+      "collision": true,
+      "sprite": "whiteboard.png"
+    },
+    {
+      "id": "wall-room2-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 420,
+        "y": 20
+      },
+      "size": {
+        "width": 340,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room2-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 750,
+        "y": 20
+      },
+      "size": {
+        "width": 10,
+        "height": 250
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room2-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 420,
+        "y": 260
+      },
+      "size": {
+        "width": 140,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room2-bottom-2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 610,
+        "y": 260
+      },
+      "size": {
+        "width": 150,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "meeting-table-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 80
+      },
+      "size": {
+        "width": 200,
+        "height": 120
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "whiteboard-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 220
+      },
+      "size": {
+        "width": 200,
+        "height": 30
+      },
+      "color": "#f5f5f5",
+      "collision": true,
+      "sprite": "whiteboard.png"
+    },
+    {
+      "id": "wall-room3-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 340
+      },
+      "size": {
+        "width": 10,
+        "height": 220
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room3-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 340
+      },
+      "size": {
+        "width": 360,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room3-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 550
+      },
+      "size": {
+        "width": 140,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room3-bottom-2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 240,
+        "y": 550
+      },
+      "size": {
+        "width": 140,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "meeting-table-3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "size": {
+        "width": 200,
+        "height": 100
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "whiteboard-3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 510
+      },
+      "size": {
+        "width": 200,
+        "height": 30
+      },
+      "color": "#f5f5f5",
+      "collision": true,
+      "sprite": "whiteboard.png"
+    },
+    {
+      "id": "wall-room4-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 420,
+        "y": 340
+      },
+      "size": {
+        "width": 340,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room4-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 750,
+        "y": 340
+      },
+      "size": {
+        "width": 10,
+        "height": 220
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room4-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 420,
+        "y": 550
+      },
+      "size": {
+        "width": 140,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-room4-bottom-2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 610,
+        "y": 550
+      },
+      "size": {
+        "width": 150,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "meeting-table-4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 400
+      },
+      "size": {
+        "width": 200,
+        "height": 100
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "whiteboard-4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 510
+      },
+      "size": {
+        "width": 200,
+        "height": 30
+      },
+      "color": "#f5f5f5",
+      "collision": true,
+      "sprite": "whiteboard.png"
+    },
+    {
+      "id": "water-cooler-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 380,
+        "y": 280
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#87ceeb",
+      "collision": true,
+      "sprite": "water_cooler.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "main-entrance",
+      "name": "Main Entrance",
+      "position": {
+        "x": 360,
+        "y": 40
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "back-entrance",
+      "name": "Back Entrance",
+      "position": {
+        "x": 360,
+        "y": 500
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#3b82f6"
+    }
+  ]
+}

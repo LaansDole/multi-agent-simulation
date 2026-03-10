@@ -10,6 +10,35 @@
     "color": "#333344",
     "opacity": 0.3
   },
+  "metadata": {
+    "name": "Cubicle Office",
+    "description": "Traditional office layout with cubicle partitions and structured workspaces",
+    "tags": [
+      "office",
+      "cubicles",
+      "traditional",
+      "corporate"
+    ],
+    "recommendedAgentCount": {
+      "min": 20,
+      "max": 30
+    },
+    "thumbnail": "thumbnails/office_cubicles.png"
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "tileType": "office_carpet",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 1200,
+      "height": 800,
+      "sprite": "office_carpet.png",
+      "color": "#696969"
+    }
+  ],
   "obstacles": [
     {
       "id": "wall-perim-top",
@@ -961,35 +990,6 @@
         "height": 60
       },
       "color": "#3b82f6"
-    }
-  ],
-  "metadata": {
-    "name": "Cubicle Office",
-    "description": "Traditional office layout with cubicle partitions and structured workspaces",
-    "tags": [
-      "office",
-      "cubicles",
-      "traditional",
-      "corporate"
-    ],
-    "recommendedAgentCount": {
-      "min": 20,
-      "max": 30
-    },
-    "thumbnail": "thumbnails/demo_hospital.png"
-  },
-  "floors": [
-    {
-      "id": "floor-1",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "width": 1200,
-      "height": 800,
-      "tileType": "office_carpet",
-      "sprite": "office_carpet.png",
-      "color": "#696969"
     }
   ]
 }

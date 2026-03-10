@@ -1,0 +1,471 @@
+{
+  "canvas": {
+    "width": 800,
+    "height": 800,
+    "backgroundColor": "#2a2a2a"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#1a1a1a",
+    "opacity": 0.2
+  },
+  "metadata": {
+    "name": "Street Intersection",
+    "description": "Urban four-way intersection with crosswalks and traffic infrastructure",
+    "tags": [
+      "street",
+      "outdoor",
+      "urban",
+      "intersection",
+      "traffic"
+    ],
+    "recommendedAgentCount": {
+      "min": 10,
+      "max": 20
+    },
+    "thumbnail": "thumbnails/street_intersection.png"
+  },
+  "floors": [
+    {
+      "id": "floor-pavement-main",
+      "tileType": "pavement",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 800,
+      "height": 800,
+      "sprite": "pavement.png",
+      "color": "#4a4a4a"
+    },
+    {
+      "id": "floor-road-horizontal",
+      "tileType": "pavement",
+      "position": {
+        "x": 0,
+        "y": 320
+      },
+      "width": 800,
+      "height": 160,
+      "sprite": "pavement.png",
+      "color": "#3a3a3a"
+    },
+    {
+      "id": "floor-road-vertical",
+      "tileType": "pavement",
+      "position": {
+        "x": 320,
+        "y": 0
+      },
+      "width": 160,
+      "height": 320,
+      "sprite": "pavement.png",
+      "color": "#3a3a3a"
+    },
+    {
+      "id": "floor-road-vertical-bottom",
+      "tileType": "pavement",
+      "position": {
+        "x": 320,
+        "y": 480
+      },
+      "width": 160,
+      "height": 320,
+      "sprite": "pavement.png",
+      "color": "#3a3a3a"
+    },
+    {
+      "id": "floor-crosswalk-north",
+      "tileType": "pavement",
+      "position": {
+        "x": 320,
+        "y": 260
+      },
+      "width": 160,
+      "height": 60,
+      "sprite": "pavement.png",
+      "color": "#e0e0e0"
+    },
+    {
+      "id": "floor-crosswalk-south",
+      "tileType": "pavement",
+      "position": {
+        "x": 320,
+        "y": 480
+      },
+      "width": 160,
+      "height": 60,
+      "sprite": "pavement.png",
+      "color": "#e0e0e0"
+    },
+    {
+      "id": "floor-crosswalk-west",
+      "tileType": "pavement",
+      "position": {
+        "x": 260,
+        "y": 320
+      },
+      "width": 60,
+      "height": 160,
+      "sprite": "pavement.png",
+      "color": "#e0e0e0"
+    },
+    {
+      "id": "floor-crosswalk-east",
+      "tileType": "pavement",
+      "position": {
+        "x": 480,
+        "y": 320
+      },
+      "width": 60,
+      "height": 160,
+      "sprite": "pavement.png",
+      "color": "#e0e0e0"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "traffic-light-nw",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 280
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#ff0000",
+      "collision": true,
+      "sprite": "traffic_light.png"
+    },
+    {
+      "id": "traffic-light-ne",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 280
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#ff0000",
+      "collision": true,
+      "sprite": "traffic_light.png"
+    },
+    {
+      "id": "traffic-light-sw",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 480
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#ff0000",
+      "collision": true,
+      "sprite": "traffic_light.png"
+    },
+    {
+      "id": "traffic-light-se",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 480
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#ff0000",
+      "collision": true,
+      "sprite": "traffic_light.png"
+    },
+    {
+      "id": "street-sign-1",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 220,
+        "y": 220
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#2196f3",
+      "collision": true,
+      "sprite": "street_sign.png"
+    },
+    {
+      "id": "street-sign-2",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 540,
+        "y": 220
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#2196f3",
+      "collision": true,
+      "sprite": "street_sign.png"
+    },
+    {
+      "id": "street-sign-3",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 220,
+        "y": 540
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#2196f3",
+      "collision": true,
+      "sprite": "street_sign.png"
+    },
+    {
+      "id": "street-sign-4",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 540,
+        "y": 540
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#2196f3",
+      "collision": true,
+      "sprite": "street_sign.png"
+    },
+    {
+      "id": "fire-hydrant-1",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 140,
+        "y": 300
+      },
+      "size": {
+        "width": 30,
+        "height": 30
+      },
+      "color": "#ff4500",
+      "collision": true,
+      "sprite": "fire_hydrant.png"
+    },
+    {
+      "id": "fire-hydrant-2",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 630,
+        "y": 470
+      },
+      "size": {
+        "width": 30,
+        "height": 30
+      },
+      "color": "#ff4500",
+      "collision": true,
+      "sprite": "fire_hydrant.png"
+    },
+    {
+      "id": "street-lamp-1",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "street-lamp-2",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 660,
+        "y": 100
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "street-lamp-3",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 100,
+        "y": 660
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "street-lamp-4",
+      "type": "infrastructure",
+      "shape": "rectangle",
+      "position": {
+        "x": 660,
+        "y": 660
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#c0c0c0",
+      "collision": true,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "bench-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 380
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 660,
+        "y": 380
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8b4513",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "trash-bin-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 440
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#556b2f",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "trash-bin-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 700,
+        "y": 440
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#556b2f",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "entrance-north",
+      "name": "North Sidewalk",
+      "position": {
+        "x": 320,
+        "y": 20
+      },
+      "size": {
+        "width": 160,
+        "height": 40
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "entrance-south",
+      "name": "South Sidewalk",
+      "position": {
+        "x": 320,
+        "y": 740
+      },
+      "size": {
+        "width": 160,
+        "height": 40
+      },
+      "color": "#3b82f6"
+    },
+    {
+      "id": "entrance-west",
+      "name": "West Sidewalk",
+      "position": {
+        "x": 20,
+        "y": 320
+      },
+      "size": {
+        "width": 40,
+        "height": 160
+      },
+      "color": "#f59e0b"
+    },
+    {
+      "id": "entrance-east",
+      "name": "East Sidewalk",
+      "position": {
+        "x": 740,
+        "y": 320
+      },
+      "size": {
+        "width": 40,
+        "height": 160
+      },
+      "color": "#ef4444"
+    }
+  ]
+}
