@@ -13,14 +13,21 @@
     <div class="content">
       <!-- Left panel -->
       <div class="left-panel">
-        <!-- Persistent Chat Panel -->
-        <div class="chat-panel" :class="{ 'chat-panel-collapsed': !isChatPanelOpen }">
-          <button class="chat-panel-toggle" @click="isChatPanelOpen = !isChatPanelOpen" :title="isChatPanelOpen ? 'Collapse chat' : 'Expand chat'">
+        <!-- Chat Panel: fullscreen in chat mode, overlay in graph -->
+        <div
+          class="chat-panel"
+          :class="{
+            'chat-panel-fullscreen': viewMode === 'chat',
+            'chat-panel-collapsed': viewMode !== 'chat' && !isChatPanelOpen
+          }"
+          v-show="viewMode === 'chat' || true"
+        >
+          <button v-show="viewMode !== 'chat'" class="chat-panel-toggle" @click="isChatPanelOpen = !isChatPanelOpen" :title="isChatPanelOpen ? 'Collapse chat' : 'Expand chat'">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="{ 'chevron-collapsed': !isChatPanelOpen }">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
-          <div v-show="isChatPanelOpen" class="chat-panel-content">
+          <div v-show="viewMode === 'chat' || isChatPanelOpen" class="chat-panel-content">
             <div class="chat-box">
               <div class="chat-messages" ref="chatMessagesRef">
                 <!-- Notifications and dialogues in order -->
@@ -519,6 +526,13 @@
           <div class="view-toggle">
             <button
               class="toggle-button"
+              :class="{ active: viewMode === 'chat' }"
+              @click="viewMode = 'chat'"
+            >
+              Chat
+            </button>
+            <button
+              class="toggle-button"
               :class="{ active: viewMode === 'graph' }"
               @click="switchToGraph"
             >
@@ -767,7 +781,7 @@ const isConnectionReady = ref(false)
 const showSettingsModal = ref(false)
 
 // View mode
-const viewMode = ref('graph')
+const viewMode = ref('chat')
 const isChatPanelOpen = ref(true)
 
 // WebSocket reference
@@ -2505,6 +2519,23 @@ watch(
 .chat-panel-toggle:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #f2f2f2;
+}
+
+/* Full-screen chat mode */
+.chat-panel-fullscreen {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  flex-direction: column;
+  pointer-events: auto;
+  z-index: auto;
+}
+
+.chat-panel-fullscreen .chat-panel-content {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
 }
 
 .chat-panel-toggle svg {
