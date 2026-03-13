@@ -34,7 +34,7 @@
           class="save-option"
           @click="saveToConfig(cfg.name)"
         >
-          {{ cfg.label }}
+          {{ cfg.displayName || cfg.name }}
         </button>
         <div class="save-divider"></div>
         <div v-if="!showNewNameInput" class="save-option save-new-option" @click="showNewNameInput = true" style="padding: 5% 0% 5% 0%;">
@@ -94,21 +94,59 @@
         <span>Import</span>
       </button>
       <div v-if="showImportDropdown" class="import-dropdown">
-        <button
-          v-for="cfg in availableConfigs"
-          :key="cfg.name"
-          class="import-option"
-          @click="selectConfig(cfg.name)"
+        <div
+          v-for="group in groupedConfigs"
+          :key="group.category"
+          class="config-group"
         >
-          {{ cfg.label }}
-        </button>
+          <div class="config-group-header">{{ group.category }}</div>
+          <button
+            v-for="cfg in group.configs"
+            :key="cfg.name"
+            class="import-option"
+            :title="getTooltip(cfg)"
+            @click="selectConfig(cfg.name)"
+          >
+            <div class="config-option-row">
+              <div v-if="cfg.thumbnail" class="config-thumbnail">
+                <img :src="'/spatial_configs/' + cfg.thumbnail" :alt="cfg.displayName" @error="$event.target.style.display='none'" />
+              </div>
+              <div v-else class="config-thumbnail config-thumbnail-placeholder"></div>
+              <div class="config-option-details">
+                <div class="config-option-content">
+                  <div class="config-option-name">{{ cfg.displayName }}</div>
+                  <svg
+                    v-if="cfg.description"
+                    class="config-info-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                </div>
+                <div v-if="cfg.recommendedAgentCount && (cfg.recommendedAgentCount.min || cfg.recommendedAgentCount.max)" class="config-agent-count">
+                  {{ cfg.recommendedAgentCount.min || 0 }}-{{ cfg.recommendedAgentCount.max || '?' }} agents
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import { SPEED_LIST } from '../composables/useSpatialLayout.js'
 
 const props = defineProps({
@@ -126,8 +164,37 @@ const newConfigName = ref('')
 const newNameInputRef = ref(null)
 const availableConfigs = ref([])
 
-function formatLabel(name) {
-  return name.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+const groupedConfigs = computed(() => {
+  const groups = {}
+  const categoryOrder = ['Office', 'Industrial', 'Outdoor', 'Specialized', 'Hospital', 'Other']
+  
+  for (const config of availableConfigs.value) {
+    const category = config.category || 'Other'
+    if (!groups[category]) {
+      groups[category] = []
+    }
+    groups[category].push(config)
+  }
+  
+  return categoryOrder
+    .filter(cat => groups[cat])
+    .map(cat => ({
+      category: cat,
+      configs: groups[cat].sort((a, b) => a.displayName.localeCompare(b.displayName))
+    }))
+})
+
+function getTooltip(config) {
+  if (!config.description && !config.recommendedAgentCount) {
+    return config.displayName
+  }
+  
+  let tooltip = config.description || ''
+  if (config.recommendedAgentCount && (config.recommendedAgentCount.min || config.recommendedAgentCount.max)) {
+    const agents = `${config.recommendedAgentCount.min || 0}-${config.recommendedAgentCount.max || '?'} agents`
+    tooltip += tooltip ? `\nRecommended: ${agents}` : `Recommended: ${agents}`
+  }
+  return tooltip
 }
 
 async function fetchAvailableConfigs() {
@@ -135,10 +202,7 @@ async function fetchAvailableConfigs() {
     const res = await fetch('/api/spatial-configs')
     if (res.ok) {
       const data = await res.json()
-      availableConfigs.value = (data.configs || []).map(name => ({
-        name,
-        label: formatLabel(name)
-      }))
+      availableConfigs.value = data.configs || []
     }
   } catch (err) {
     console.warn('Failed to fetch spatial configs:', err)
@@ -312,8 +376,7 @@ function selectConfig(name) {
   border-color: rgba(99, 102, 241, 0.6);
 }
 
-.save-dropdown,
-.import-dropdown {
+.save-dropdown {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -323,12 +386,29 @@ function selectConfig(name) {
   border-radius: 8px;
   padding: 4px;
   min-width: 160px;
+  max-height: 400px;
+  overflow-y: auto;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   z-index: 20;
 }
 
-.save-option,
-.import-option {
+.import-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 6px;
+  background: rgba(30, 30, 50, 0.96);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  border-radius: 8px;
+  padding: 8px 0;
+  min-width: 280px;
+  max-height: 500px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+}
+
+.save-option {
   display: block;
   width: 100%;
   padding: 8px 12px;
@@ -343,10 +423,102 @@ function selectConfig(name) {
   transition: all 0.15s ease;
 }
 
-.save-option:hover,
+.save-option:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: #fff;
+}
+
+.import-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
 .import-option:hover {
   background: rgba(99, 102, 241, 0.3);
   color: #fff;
+}
+
+.config-group-header {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.config-group:not(:last-child) {
+  margin-bottom: 4px;
+}
+
+.config-option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.config-thumbnail {
+  width: 48px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.config-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.config-thumbnail-placeholder {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+}
+
+.config-option-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-option-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.config-option-name {
+  flex: 1;
+}
+
+.config-info-icon {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.import-option:hover .config-info-icon {
+  opacity: 1;
+}
+
+.config-agent-count {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 2px;
 }
 
 .save-new-option {

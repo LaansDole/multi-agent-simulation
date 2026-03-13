@@ -93,7 +93,7 @@ const props = defineProps({
   obstacleEditorRef: { type: Object, default: null }
 })
 
-const emit = defineEmits(['agent-selected', 'obstacle-selected', 'canvas-click', 'config-changed'])
+const emit = defineEmits(['agent-selected', 'obstacle-selected', 'canvas-click', 'canvas-drag-start', 'canvas-drag', 'canvas-drag-end', 'config-changed'])
 
 const wrapperRef = ref(null)
 const canvasRef = ref(null)
