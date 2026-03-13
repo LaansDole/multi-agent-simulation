@@ -393,6 +393,98 @@ export function useSpatialConfig() {
         return false
     }
 
+    /**
+     * Updates the layout metadata.
+     * Triggers reactivity for re-rendering.
+     *
+     * @param {Partial<import('../types/spatial.js').LayoutMetadata>} metadataUpdates - Metadata fields to update
+     */
+    function updateMetadata(metadataUpdates) {
+        const currentMetadata = state.config.metadata || {}
+        state.config.metadata = {
+            ...currentMetadata,
+            ...metadataUpdates
+        }
+        markUnsaved()
+    }
+
+    /**
+     * Gets the layout metadata.
+     * @returns {import('../types/spatial.js').LayoutMetadata|null} Current metadata or null
+     */
+    function getMetadata() {
+        return state.config.metadata || null
+    }
+
+    /**
+     * Adds a floor tile to the current configuration.
+     * Triggers reactivity for re-rendering.
+     *
+     * @param {import('../types/spatial.js').FloorTile} floorTile - Floor tile to add
+     */
+    function addFloorTile(floorTile) {
+        if (!state.config.floors) {
+            state.config.floors = []
+        }
+        state.config.floors = [...state.config.floors, floorTile]
+        markUnsaved()
+    }
+
+    /**
+     * Updates an existing floor tile in the current configuration.
+     * Triggers reactivity for re-rendering.
+     *
+     * @param {string} floorId - ID of floor tile to update
+     * @param {Partial<import('../types/spatial.js').FloorTile>} updates - Fields to update
+     * @returns {boolean} True if floor tile was found and updated
+     */
+    function updateFloorTile(floorId, updates) {
+        if (!state.config.floors) return false
+        const floors = state.config.floors
+        const index = floors.findIndex(f => f.id === floorId)
+        if (index !== -1) {
+            state.config.floors = floors.map((f, i) =>
+                i === index ? { ...f, ...updates } : f
+            )
+            markUnsaved()
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Removes a floor tile from the current configuration.
+     * Triggers reactivity for re-rendering.
+     *
+     * @param {string} floorId - ID of floor tile to remove
+     * @returns {boolean} True if floor tile was found and removed
+     */
+    function removeFloorTile(floorId) {
+        if (!state.config.floors) return false
+        const floors = state.config.floors
+        const index = floors.findIndex(f => f.id === floorId)
+        if (index !== -1) {
+            const newFloors = [...floors]
+            newFloors.splice(index, 1)
+            state.config.floors = newFloors.length > 0 ? newFloors : undefined
+            if (state.config.floors === undefined) {
+                delete state.config.floors
+            }
+            state.config = { ...state.config }
+            markUnsaved()
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Gets all floor tiles.
+     * @returns {Array<import('../types/spatial.js').FloorTile>} Array of floor tiles
+     */
+    function getFloorTiles() {
+        return state.config.floors || []
+    }
+
     return {
         ...toRefs(state),
         loadConfig,
@@ -405,6 +497,12 @@ export function useSpatialConfig() {
         clearSavedConfig,
         markConfigChanged,
         updateObstaclePosition,
-        removeObstacle
+        removeObstacle,
+        updateMetadata,
+        getMetadata,
+        addFloorTile,
+        updateFloorTile,
+        removeFloorTile,
+        getFloorTiles
     }
 }

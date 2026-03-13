@@ -207,7 +207,7 @@
           </VueFlow>
         </div>
         <div v-show="viewMode === 'spatial'" class="spatial-panel">
-          <div class="spatial-layout" :class="{ 'with-info-panel': selectedSpatialAgent }">
+          <div ref="spatialLayoutRef" class="spatial-layout" :class="{ 'with-info-panel': selectedSpatialAgent }">
             <SpatialCanvas
               ref="spatialCanvasRef"
               :nodes="spatialNodes"
@@ -218,10 +218,14 @@
               :obstacle-editor-ref="obstacleEditorRef"
               @agent-selected="onSpatialAgentSelected"
               @canvas-click="onCanvasClick"
+              @canvas-drag-start="onCanvasDragStart"
+              @canvas-drag="onCanvasDrag"
+              @canvas-drag-end="onCanvasDragEnd"
               @config-changed="onSpatialConfigChanged"
             />
             <ObstacleEditor
               ref="obstacleEditorRef"
+              :canvas-height="spatialLayoutHeight"
               @obstacle-added="onObstacleAdded"
             />
             <AgentInfoPanel
@@ -730,8 +734,11 @@ const showSettingsModal = ref(false)
 const viewMode = ref('chat')
 const spatialCanvasRef = ref(null)
 const obstacleEditorRef = ref(null)
+const spatialLayoutRef = ref(null)
+const spatialLayoutHeight = ref(600)
 const selectedSpatialAgent = ref(null)
 const mousePosition = ref(null)
+let spatialLayoutResizeObserver = null
 
 // ───────── OBSTACLE EDITOR HANDLERS ─────────
 
@@ -739,11 +746,34 @@ function onCanvasClick(coords) {
   const editor = obstacleEditorRef.value
   if (editor?.isEditorActive) {
     editor.addObstacle(coords.x, coords.y)
+  } else if (editor?.isFloorEditorActive) {
+    editor.addFloor(coords.x, coords.y)
   }
 }
 
 function onCanvasMouseMove(coords) {
   mousePosition.value = coords
+}
+
+function onCanvasDragStart(coords) {
+  const editor = obstacleEditorRef.value
+  if (editor?.handleDragStart) {
+    editor.handleDragStart(coords.x, coords.y)
+  }
+}
+
+function onCanvasDrag(coords) {
+  const editor = obstacleEditorRef.value
+  if (editor?.handleDrag) {
+    editor.handleDrag(coords.x, coords.y)
+  }
+}
+
+function onCanvasDragEnd() {
+  const editor = obstacleEditorRef.value
+  if (editor?.handleDragEnd) {
+    editor.handleDragEnd()
+  }
 }
 
 function onObstacleAdded(obstacle) {
@@ -1627,6 +1657,18 @@ onMounted(() => {
       now.value = Date.now()
     }, 1000)
   }
+
+  // Observe spatial-layout height for dynamic palette sizing
+  if (spatialLayoutRef.value) {
+    spatialLayoutResizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          spatialLayoutHeight.value = entry.contentRect.height
+        }
+      }
+    })
+    spatialLayoutResizeObserver.observe(spatialLayoutRef.value)
+  }
 })
 
 onUnmounted(() => {
@@ -1639,6 +1681,11 @@ onUnmounted(() => {
   if (loadingTimerInterval) {
     clearInterval(loadingTimerInterval)
     loadingTimerInterval = null
+  }
+
+  if (spatialLayoutResizeObserver) {
+    spatialLayoutResizeObserver.disconnect()
+    spatialLayoutResizeObserver = null
   }
 })
 
