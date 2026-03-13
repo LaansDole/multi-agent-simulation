@@ -29,6 +29,7 @@ from .node.subgraph import SubgraphConfig
 from .node.node import EdgeLink, Node
 from .node.passthrough import PassthroughConfig
 from .node.python_runner import PythonRunnerConfig
+from .node.skills import AgentSkillsConfig
 from .node.thinking import ReflectionThinkingConfig, ThinkingConfig
 from .node.tooling import (
     FunctionToolConfig,
@@ -40,6 +41,7 @@ from .node.tooling import (
 __all__ = [
     "AgentConfig",
     "AgentRetryConfig",
+    "AgentSkillsConfig",
     "BaseConfig",
     "ConfigError",
     "DesignConfig",
