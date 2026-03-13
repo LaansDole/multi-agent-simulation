@@ -1,734 +1,835 @@
 {
   "canvas": {
-    "width": 1000,
-    "height": 700,
-    "backgroundColor": "#3a3a3a"
+    "width": 2000,
+    "height": 1400,
+    "backgroundColor": "#1a1a2e"
   },
   "grid": {
     "enabled": true,
     "cellSize": 40,
-    "color": "#2a2a2a",
-    "opacity": 0.2
+    "color": "#333344",
+    "opacity": 0.3
   },
   "metadata": {
     "name": "Parking Lot",
-    "description": "Outdoor parking lot with designated parking spots and pedestrian walkways",
+    "description": "Open parking lot with marked spots and parked vehicles",
     "tags": [
       "parking",
       "outdoor",
-      "urban",
-      "vehicles"
+      "vehicles",
+      "urban"
     ],
     "recommendedAgentCount": {
-      "min": 10,
-      "max": 15
+      "min": 5,
+      "max": 20
     },
     "thumbnail": "thumbnails/parking_lot.png"
   },
   "floors": [
     {
-      "id": "floor-asphalt-main",
+      "id": "floor-asphalt",
       "tileType": "pavement",
       "position": {
         "x": 0,
         "y": 0
       },
-      "width": 1000,
-      "height": 700,
+      "width": 2000,
+      "height": 1400,
       "sprite": "pavement.png",
-      "color": "#4a4a4a"
-    },
-    {
-      "id": "floor-parking-row-1",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 40,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-2",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 120,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-3",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 200,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-4",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 280,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-5",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 360,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-6",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 440,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-7",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 520,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-8",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 600,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-9",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 680,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-10",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 760,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-11",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 840,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-12",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 920,
-        "y": 80
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-13",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 40,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-14",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 120,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-15",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 200,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-16",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 280,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-17",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 360,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-18",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 440,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-19",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 520,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-20",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 600,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-21",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 680,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-22",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 760,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-23",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 840,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-parking-row-24",
-      "tileType": "parking_spot",
-      "position": {
-        "x": 920,
-        "y": 420
-      },
-      "width": 40,
-      "height": 200,
-      "sprite": "parking_spot.png",
-      "color": "#2f4f4f"
-    },
-    {
-      "id": "floor-hazard-entrance",
-      "tileType": "hazard_stripes",
-      "position": {
-        "x": 0,
-        "y": 320
-      },
-      "width": 1000,
-      "height": 60,
-      "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
+      "color": "#555555"
     }
   ],
   "obstacles": [
     {
-      "id": "car-1",
-      "type": "vehicle",
+      "id": "wall-top",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 40,
-        "y": 100
+        "x": 0,
+        "y": 0
       },
       "size": {
-        "width": 40,
-        "height": 80
+        "width": 2000,
+        "height": 20
       },
-      "color": "#1e90ff",
-      "collision": true,
-      "sprite": "car_blue.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "car-2",
-      "type": "vehicle",
+      "id": "wall-bottom",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 120,
-        "y": 120
+        "x": 0,
+        "y": 1380
       },
       "size": {
-        "width": 40,
-        "height": 80
+        "width": 2000,
+        "height": 20
       },
-      "color": "#ff4500",
-      "collision": true,
-      "sprite": "car_red.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "car-3",
-      "type": "vehicle",
+      "id": "wall-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1360
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1980,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1360
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c2",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 280,
-        "y": 90
+        "y": 80
       },
       "size": {
-        "width": 40,
-        "height": 80
+        "width": 10,
+        "height": 160
       },
-      "color": "#32cd32",
-      "collision": true,
-      "sprite": "car_green.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "car-4",
-      "type": "vehicle",
+      "id": "divider-r1-c3",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 440,
-        "y": 110
+        "x": 480,
+        "y": 80
       },
       "size": {
-        "width": 40,
-        "height": 80
+        "width": 10,
+        "height": 160
       },
-      "color": "#ffd700",
-      "collision": true,
-      "sprite": "car_yellow.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "car-5",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 600,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "car_brown.png"
-    },
-    {
-      "id": "car-6",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 760,
-        "y": 120
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#9400d3",
-      "collision": true,
-      "sprite": "car_purple.png"
-    },
-    {
-      "id": "car-7",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 920,
-        "y": 90
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#1e90ff",
-      "collision": true,
-      "sprite": "car_blue.png"
-    },
-    {
-      "id": "car-8",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 40,
-        "y": 460
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#ff4500",
-      "collision": true,
-      "sprite": "car_red.png"
-    },
-    {
-      "id": "car-9",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 200,
-        "y": 440
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#32cd32",
-      "collision": true,
-      "sprite": "car_green.png"
-    },
-    {
-      "id": "car-10",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 360,
-        "y": 470
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#ffd700",
-      "collision": true,
-      "sprite": "car_yellow.png"
-    },
-    {
-      "id": "car-11",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 520,
-        "y": 450
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#1e90ff",
-      "collision": true,
-      "sprite": "car_blue.png"
-    },
-    {
-      "id": "car-12",
-      "type": "vehicle",
+      "id": "divider-r1-c4",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 680,
-        "y": 460
+        "y": 80
       },
       "size": {
-        "width": 40,
-        "height": 80
+        "width": 10,
+        "height": 160
       },
-      "color": "#ff4500",
-      "collision": true,
-      "sprite": "car_red.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "car-13",
-      "type": "vehicle",
+      "id": "divider-r1-c5",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 840,
-        "y": 440
+        "x": 880,
+        "y": 80
       },
       "size": {
-        "width": 40,
-        "height": 80
+        "width": 10,
+        "height": 160
       },
-      "color": "#32cd32",
-      "collision": true,
-      "sprite": "car_green.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "street-lamp-1",
-      "type": "infrastructure",
+      "id": "divider-r1-c6",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 20,
-        "y": 20
+        "x": 1080,
+        "y": 80
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 10,
+        "height": 160
       },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "street-lamp-2",
-      "type": "infrastructure",
+      "id": "divider-r1-c7",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c8",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c9",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1680,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c3",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 480,
-        "y": 20
+        "y": 480
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 10,
+        "height": 160
       },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "street-lamp-3",
-      "type": "infrastructure",
+      "id": "divider-r2-c4",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 940,
-        "y": 20
+        "x": 680,
+        "y": 480
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 10,
+        "height": 160
       },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "street-lamp-4",
-      "type": "infrastructure",
+      "id": "divider-r2-c5",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 20,
-        "y": 640
+        "x": 880,
+        "y": 480
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 10,
+        "height": 160
       },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "street-lamp-5",
-      "type": "infrastructure",
+      "id": "divider-r2-c6",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1080,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c7",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c8",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c9",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1680,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c3",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 480,
-        "y": 640
+        "y": 880
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 10,
+        "height": 160
       },
-      "color": "#c0c0c0",
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c4",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 680,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c5",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 880,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c6",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1080,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c7",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c8",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c9",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1680,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "car-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
       "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 720,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1320,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-5",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-6",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 320,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-7",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 920,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-8",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-9",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 320,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-10",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 720,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-11",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1120,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-12",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1720,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "lamp-400",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 300
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
       "sprite": "street_lamp.png"
     },
     {
-      "id": "street-lamp-6",
-      "type": "infrastructure",
+      "id": "lamp-400-b",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 940,
-        "y": 640
+        "x": 400,
+        "y": 700
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 30,
+        "height": 80
       },
-      "color": "#c0c0c0",
-      "collision": true,
+      "color": "#696969",
+      "collision": false,
       "sprite": "street_lamp.png"
     },
     {
-      "id": "trash-bin-1",
-      "type": "furniture",
+      "id": "lamp-1000",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 20,
-        "y": 360
+        "x": 1000,
+        "y": 300
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 30,
+        "height": 80
       },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
     },
     {
-      "id": "trash-bin-2",
-      "type": "furniture",
+      "id": "lamp-1000-b",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 940,
-        "y": 360
+        "x": 1000,
+        "y": 700
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 30,
+        "height": 80
       },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-1600",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 300
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-1600-b",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 700
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
     }
   ],
   "spawnZones": [
     {
-      "id": "entrance-left",
-      "name": "West Entrance",
+      "id": "spawn-lane-1",
+      "name": "Lane 1",
       "position": {
-        "x": 20,
-        "y": 320
+        "x": 80,
+        "y": 260
       },
       "size": {
-        "width": 40,
-        "height": 60
-      },
-      "color": "#22c55e"
+        "width": 1840,
+        "height": 120
+      }
     },
     {
-      "id": "entrance-right",
-      "name": "East Entrance",
+      "id": "spawn-lane-2",
+      "name": "Lane 2",
       "position": {
-        "x": 940,
-        "y": 320
+        "x": 80,
+        "y": 660
       },
       "size": {
-        "width": 40,
-        "height": 60
-      },
-      "color": "#3b82f6"
+        "width": 1840,
+        "height": 120
+      }
     },
     {
-      "id": "entrance-top",
-      "name": "North Entrance",
+      "id": "spawn-lane-3",
+      "name": "Lane 3",
       "position": {
-        "x": 480,
-        "y": 20
+        "x": 80,
+        "y": 1060
       },
       "size": {
-        "width": 60,
-        "height": 40
-      },
-      "color": "#f59e0b"
-    },
-    {
-      "id": "entrance-bottom",
-      "name": "South Entrance",
-      "position": {
-        "x": 480,
-        "y": 640
-      },
-      "size": {
-        "width": 60,
-        "height": 40
-      },
-      "color": "#ef4444"
+        "width": 1840,
+        "height": 120
+      }
     }
   ]
 }

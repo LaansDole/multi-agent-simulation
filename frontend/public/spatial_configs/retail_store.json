@@ -1,59 +1,47 @@
 {
   "canvas": {
-    "width": 900,
-    "height": 600,
-    "backgroundColor": "#f5f5f5"
+    "width": 1800,
+    "height": 1200,
+    "backgroundColor": "#1a1a2e"
   },
   "grid": {
     "enabled": true,
     "cellSize": 40,
-    "color": "#e0e0e0",
-    "opacity": 0.2
+    "color": "#333344",
+    "opacity": 0.3
   },
   "metadata": {
     "name": "Retail Store",
-    "description": "Modern retail store layout with product displays, checkout counters, and storage areas",
+    "description": "Retail store with shelf aisles and checkout counters",
     "tags": [
       "retail",
       "store",
       "shopping",
-      "commercial"
+      "indoor"
     ],
     "recommendedAgentCount": {
-      "min": 8,
-      "max": 12
+      "min": 10,
+      "max": 25
     },
     "thumbnail": "thumbnails/retail_store.png"
   },
   "floors": [
     {
-      "id": "floor-tile-main",
+      "id": "floor-main",
       "tileType": "tile",
       "position": {
         "x": 0,
         "y": 0
       },
-      "width": 900,
-      "height": 600,
+      "width": 1800,
+      "height": 1200,
       "sprite": "tile.png",
-      "color": "#dcdcdc"
-    },
-    {
-      "id": "floor-tile-entry",
-      "tileType": "tile",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "width": 900,
-      "height": 100,
-      "sprite": "tile.png",
-      "color": "#c0c0c0"
+      "color": "#D3D3D3"
     }
   ],
   "obstacles": [
     {
-      "id": "wall-perim-top",
+      "id": "wall-top",
       "type": "wall",
       "shape": "rectangle",
       "position": {
@@ -61,449 +49,322 @@
         "y": 0
       },
       "size": {
-        "width": 900,
+        "width": 1800,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-bottom",
+      "id": "wall-bottom",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 580
+        "y": 1180
       },
       "size": {
-        "width": 900,
+        "width": 1800,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-left",
+      "id": "wall-left",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 0
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 600
+        "height": 1160
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-right",
+      "id": "wall-right",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 880,
-        "y": 0
+        "x": 1780,
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 600
+        "height": 1160
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "shelf-row1-1",
+      "id": "shelf-row-1",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 80,
-        "y": 140
+        "x": 200,
+        "y": 80
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row1-2",
+      "id": "shelf-row-1-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 280,
-        "y": 140
+        "x": 600,
+        "y": 80
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row1-3",
+      "id": "shelf-row-1-c",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 480,
-        "y": 140
+        "x": 1000,
+        "y": 80
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row1-4",
+      "id": "shelf-row-2",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 680,
-        "y": 140
+        "x": 200,
+        "y": 320
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row2-1",
+      "id": "shelf-row-2-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 80,
-        "y": 220
+        "x": 600,
+        "y": 320
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row2-2",
+      "id": "shelf-row-2-c",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 280,
-        "y": 220
+        "x": 1000,
+        "y": 320
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row2-3",
+      "id": "shelf-row-3",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 480,
-        "y": 220
+        "x": 200,
+        "y": 560
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row2-4",
+      "id": "shelf-row-3-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 680,
-        "y": 220
+        "x": 600,
+        "y": 560
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row3-1",
+      "id": "shelf-row-3-c",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 80,
-        "y": 340
+        "x": 1000,
+        "y": 560
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row3-2",
+      "id": "shelf-row-4",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 280,
-        "y": 340
+        "x": 200,
+        "y": 800
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row3-3",
+      "id": "shelf-row-4-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 480,
-        "y": 340
+        "x": 600,
+        "y": 800
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row3-4",
+      "id": "shelf-row-4-c",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 680,
-        "y": 340
+        "x": 1000,
+        "y": 800
       },
       "size": {
-        "width": 160,
-        "height": 40
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row4-1",
+      "id": "counter-1",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 80,
-        "y": 420
-      },
-      "size": {
-        "width": 160,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "shelf_large.png"
-    },
-    {
-      "id": "shelf-row4-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 280,
-        "y": 420
-      },
-      "size": {
-        "width": 160,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "shelf_large.png"
-    },
-    {
-      "id": "shelf-row4-3",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 480,
-        "y": 420
-      },
-      "size": {
-        "width": 160,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "shelf_large.png"
-    },
-    {
-      "id": "shelf-row4-4",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 680,
-        "y": 420
-      },
-      "size": {
-        "width": 160,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "shelf_large.png"
-    },
-    {
-      "id": "checkout-counter-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 80,
-        "y": 520
+        "x": 1500,
+        "y": 200
       },
       "size": {
         "width": 120,
-        "height": 40
+        "height": 80
       },
-      "color": "#4a5568",
+      "color": "#8b5a2b",
       "collision": true,
-      "sprite": "desk.png"
+      "sprite": "meeting_table.png"
     },
     {
-      "id": "checkout-counter-2",
+      "id": "counter-2",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 240,
-        "y": 520
+        "x": 1500,
+        "y": 500
       },
       "size": {
         "width": 120,
-        "height": 40
+        "height": 80
       },
-      "color": "#4a5568",
+      "color": "#8b5a2b",
       "collision": true,
-      "sprite": "desk.png"
+      "sprite": "meeting_table.png"
     },
     {
-      "id": "checkout-counter-3",
+      "id": "counter-3",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 400,
-        "y": 520
+        "x": 1500,
+        "y": 800
       },
       "size": {
         "width": 120,
-        "height": 40
+        "height": 80
       },
-      "color": "#4a5568",
+      "color": "#8b5a2b",
       "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "register-1",
-      "type": "decoration",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 530
-      },
-      "size": {
-        "width": 50,
-        "height": 30
-      },
-      "color": "#2d3748",
-      "collision": false,
-      "sprite": "computer.png"
-    },
-    {
-      "id": "register-2",
-      "type": "decoration",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 530
-      },
-      "size": {
-        "width": 50,
-        "height": 30
-      },
-      "color": "#2d3748",
-      "collision": false,
-      "sprite": "computer.png"
-    },
-    {
-      "id": "register-3",
-      "type": "decoration",
-      "shape": "rectangle",
-      "position": {
-        "x": 420,
-        "y": 530
-      },
-      "size": {
-        "width": 50,
-        "height": 30
-      },
-      "color": "#2d3748",
-      "collision": false,
-      "sprite": "computer.png"
+      "sprite": "meeting_table.png"
     }
   ],
   "spawnZones": [
     {
-      "id": "main-entrance",
-      "name": "Main Entrance",
+      "id": "spawn-aisles",
+      "name": "Aisles",
       "position": {
-        "x": 560,
-        "y": 540
+        "x": 60,
+        "y": 60
       },
       "size": {
-        "width": 100,
-        "height": 40
-      },
-      "color": "#22c55e"
+        "width": 1400,
+        "height": 1080
+      }
     },
     {
-      "id": "staff-entrance",
-      "name": "Staff Entrance",
+      "id": "spawn-checkout",
+      "name": "Checkout",
       "position": {
-        "x": 760,
-        "y": 540
+        "x": 1460,
+        "y": 160
       },
       "size": {
-        "width": 80,
-        "height": 40
-      },
-      "color": "#3b82f6"
-    },
-    {
-      "id": "delivery-entrance",
-      "name": "Delivery Entrance",
-      "position": {
-        "x": 840,
-        "y": 280
-      },
-      "size": {
-        "width": 40,
-        "height": 80
-      },
-      "color": "#f59e0b"
+        "width": 280,
+        "height": 880
+      }
     }
   ]
 }

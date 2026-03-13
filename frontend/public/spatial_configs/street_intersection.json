@@ -1,471 +1,382 @@
 {
   "canvas": {
-    "width": 800,
-    "height": 800,
-    "backgroundColor": "#2a2a2a"
+    "width": 1600,
+    "height": 1600,
+    "backgroundColor": "#1a1a2e"
   },
   "grid": {
     "enabled": true,
     "cellSize": 40,
-    "color": "#1a1a1a",
-    "opacity": 0.2
+    "color": "#333344",
+    "opacity": 0.3
   },
   "metadata": {
     "name": "Street Intersection",
-    "description": "Urban four-way intersection with crosswalks and traffic infrastructure",
+    "description": "Urban intersection with four building blocks and crosswalks",
     "tags": [
       "street",
-      "outdoor",
       "urban",
-      "intersection",
-      "traffic"
+      "outdoor",
+      "intersection"
     ],
     "recommendedAgentCount": {
       "min": 10,
-      "max": 20
+      "max": 30
     },
     "thumbnail": "thumbnails/street_intersection.png"
   },
   "floors": [
     {
-      "id": "floor-pavement-main",
+      "id": "floor-road-h",
       "tileType": "pavement",
+      "position": {
+        "x": 0,
+        "y": 560
+      },
+      "width": 1600,
+      "height": 480,
+      "sprite": "pavement.png",
+      "color": "#555555"
+    },
+    {
+      "id": "floor-road-v",
+      "tileType": "pavement",
+      "position": {
+        "x": 560,
+        "y": 0
+      },
+      "width": 480,
+      "height": 1600,
+      "sprite": "pavement.png",
+      "color": "#555555"
+    },
+    {
+      "id": "floor-nw",
+      "tileType": "concrete",
       "position": {
         "x": 0,
         "y": 0
       },
-      "width": 800,
-      "height": 800,
-      "sprite": "pavement.png",
-      "color": "#4a4a4a"
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
     },
     {
-      "id": "floor-road-horizontal",
-      "tileType": "pavement",
+      "id": "floor-ne",
+      "tileType": "concrete",
       "position": {
-        "x": 0,
-        "y": 320
-      },
-      "width": 800,
-      "height": 160,
-      "sprite": "pavement.png",
-      "color": "#3a3a3a"
-    },
-    {
-      "id": "floor-road-vertical",
-      "tileType": "pavement",
-      "position": {
-        "x": 320,
+        "x": 1040,
         "y": 0
       },
-      "width": 160,
-      "height": 320,
-      "sprite": "pavement.png",
-      "color": "#3a3a3a"
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
     },
     {
-      "id": "floor-road-vertical-bottom",
-      "tileType": "pavement",
+      "id": "floor-sw",
+      "tileType": "concrete",
       "position": {
-        "x": 320,
-        "y": 480
+        "x": 0,
+        "y": 1040
       },
-      "width": 160,
-      "height": 320,
-      "sprite": "pavement.png",
-      "color": "#3a3a3a"
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
     },
     {
-      "id": "floor-crosswalk-north",
-      "tileType": "pavement",
+      "id": "floor-se",
+      "tileType": "concrete",
       "position": {
-        "x": 320,
-        "y": 260
+        "x": 1040,
+        "y": 1040
       },
-      "width": 160,
-      "height": 60,
-      "sprite": "pavement.png",
-      "color": "#e0e0e0"
-    },
-    {
-      "id": "floor-crosswalk-south",
-      "tileType": "pavement",
-      "position": {
-        "x": 320,
-        "y": 480
-      },
-      "width": 160,
-      "height": 60,
-      "sprite": "pavement.png",
-      "color": "#e0e0e0"
-    },
-    {
-      "id": "floor-crosswalk-west",
-      "tileType": "pavement",
-      "position": {
-        "x": 260,
-        "y": 320
-      },
-      "width": 60,
-      "height": 160,
-      "sprite": "pavement.png",
-      "color": "#e0e0e0"
-    },
-    {
-      "id": "floor-crosswalk-east",
-      "tileType": "pavement",
-      "position": {
-        "x": 480,
-        "y": 320
-      },
-      "width": 60,
-      "height": 160,
-      "sprite": "pavement.png",
-      "color": "#e0e0e0"
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
     }
   ],
   "obstacles": [
     {
-      "id": "traffic-light-nw",
-      "type": "infrastructure",
+      "id": "block-nw",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 280,
-        "y": 280
+        "x": 0,
+        "y": 0
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 560,
+        "height": 560
       },
-      "color": "#ff0000",
-      "collision": true,
-      "sprite": "traffic_light.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "traffic-light-ne",
-      "type": "infrastructure",
+      "id": "block-ne",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 480,
-        "y": 280
+        "x": 1040,
+        "y": 0
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 560,
+        "height": 560
       },
-      "color": "#ff0000",
-      "collision": true,
-      "sprite": "traffic_light.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "traffic-light-sw",
-      "type": "infrastructure",
+      "id": "block-sw",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 280,
+        "x": 0,
+        "y": 1040
+      },
+      "size": {
+        "width": 560,
+        "height": 560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "block-se",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1040,
+        "y": 1040
+      },
+      "size": {
+        "width": 560,
+        "height": 560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "lamp-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
         "y": 480
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 30,
+        "height": 80
       },
-      "color": "#ff0000",
-      "collision": true,
-      "sprite": "traffic_light.png"
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
     },
     {
-      "id": "traffic-light-se",
-      "type": "infrastructure",
+      "id": "lamp-2",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 480,
+        "x": 970,
         "y": 480
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 30,
+        "height": 80
       },
-      "color": "#ff0000",
-      "collision": true,
-      "sprite": "traffic_light.png"
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
     },
     {
-      "id": "street-sign-1",
-      "type": "infrastructure",
+      "id": "lamp-3",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 220,
-        "y": 220
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#2196f3",
-      "collision": true,
-      "sprite": "street_sign.png"
-    },
-    {
-      "id": "street-sign-2",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 540,
-        "y": 220
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#2196f3",
-      "collision": true,
-      "sprite": "street_sign.png"
-    },
-    {
-      "id": "street-sign-3",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 220,
-        "y": 540
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#2196f3",
-      "collision": true,
-      "sprite": "street_sign.png"
-    },
-    {
-      "id": "street-sign-4",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 540,
-        "y": 540
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#2196f3",
-      "collision": true,
-      "sprite": "street_sign.png"
-    },
-    {
-      "id": "fire-hydrant-1",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 300
+        "x": 600,
+        "y": 1060
       },
       "size": {
         "width": 30,
-        "height": 30
+        "height": 80
       },
-      "color": "#ff4500",
-      "collision": true,
-      "sprite": "fire_hydrant.png"
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
     },
     {
-      "id": "fire-hydrant-2",
-      "type": "infrastructure",
+      "id": "lamp-4",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 630,
-        "y": 470
+        "x": 970,
+        "y": 1060
       },
       "size": {
         "width": 30,
-        "height": 30
+        "height": 80
       },
-      "color": "#ff4500",
-      "collision": true,
-      "sprite": "fire_hydrant.png"
-    },
-    {
-      "id": "street-lamp-1",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#c0c0c0",
-      "collision": true,
+      "color": "#696969",
+      "collision": false,
       "sprite": "street_lamp.png"
     },
     {
-      "id": "street-lamp-2",
-      "type": "infrastructure",
+      "id": "car-1",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 660,
-        "y": 100
+        "x": 620,
+        "y": 200
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 100,
+        "height": 60
       },
-      "color": "#c0c0c0",
+      "color": "#4a5568",
       "collision": true,
-      "sprite": "street_lamp.png"
+      "sprite": "vehicle_car.png"
     },
     {
-      "id": "street-lamp-3",
-      "type": "infrastructure",
+      "id": "car-2",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 100,
-        "y": 660
+        "x": 620,
+        "y": 1200
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 100,
+        "height": 60
       },
-      "color": "#c0c0c0",
+      "color": "#4a5568",
       "collision": true,
-      "sprite": "street_lamp.png"
+      "sprite": "vehicle_car.png"
     },
     {
-      "id": "street-lamp-4",
-      "type": "infrastructure",
+      "id": "car-3",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 660,
-        "y": 660
+        "x": 1100,
+        "y": 620
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 100,
+        "height": 60
       },
-      "color": "#c0c0c0",
+      "color": "#4a5568",
       "collision": true,
-      "sprite": "street_lamp.png"
+      "sprite": "vehicle_car.png"
     },
     {
-      "id": "bench-1",
-      "type": "furniture",
+      "id": "car-4",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 380
+        "x": 300,
+        "y": 960
       },
       "size": {
-        "width": 80,
-        "height": 40
+        "width": 100,
+        "height": 60
       },
-      "color": "#8b4513",
+      "color": "#4a5568",
       "collision": true,
-      "sprite": "bench.png"
+      "sprite": "vehicle_car.png"
     },
     {
-      "id": "bench-2",
-      "type": "furniture",
+      "id": "tree-1",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 660,
-        "y": 380
+        "x": 600,
+        "y": 200
       },
       "size": {
-        "width": 80,
-        "height": 40
+        "width": 60,
+        "height": 60
       },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "bench.png"
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
     },
     {
-      "id": "trash-bin-1",
-      "type": "furniture",
+      "id": "tree-2",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 440
+        "x": 980,
+        "y": 200
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 60,
+        "height": 60
       },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
     },
     {
-      "id": "trash-bin-2",
-      "type": "furniture",
+      "id": "tree-3",
+      "type": "decoration",
       "shape": "rectangle",
       "position": {
-        "x": 700,
-        "y": 440
+        "x": 600,
+        "y": 1300
       },
       "size": {
-        "width": 40,
-        "height": 40
+        "width": 60,
+        "height": 60
       },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 980,
+        "y": 1300
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
     }
   ],
   "spawnZones": [
     {
-      "id": "entrance-north",
-      "name": "North Sidewalk",
+      "id": "spawn-road-h",
+      "name": "Horizontal Road",
       "position": {
-        "x": 320,
-        "y": 20
+        "x": 0,
+        "y": 600
       },
       "size": {
-        "width": 160,
-        "height": 40
-      },
-      "color": "#22c55e"
+        "width": 1600,
+        "height": 400
+      }
     },
     {
-      "id": "entrance-south",
-      "name": "South Sidewalk",
+      "id": "spawn-road-v",
+      "name": "Vertical Road",
       "position": {
-        "x": 320,
-        "y": 740
+        "x": 600,
+        "y": 0
       },
       "size": {
-        "width": 160,
-        "height": 40
-      },
-      "color": "#3b82f6"
-    },
-    {
-      "id": "entrance-west",
-      "name": "West Sidewalk",
-      "position": {
-        "x": 20,
-        "y": 320
-      },
-      "size": {
-        "width": 40,
-        "height": 160
-      },
-      "color": "#f59e0b"
-    },
-    {
-      "id": "entrance-east",
-      "name": "East Sidewalk",
-      "position": {
-        "x": 740,
-        "y": 320
-      },
-      "size": {
-        "width": 40,
-        "height": 160
-      },
-      "color": "#ef4444"
+        "width": 400,
+        "height": 1600
+      }
     }
   ]
 }

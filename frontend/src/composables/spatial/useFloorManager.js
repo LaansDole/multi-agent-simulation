@@ -2,7 +2,7 @@
  * @fileoverview Floor tile management composable for the spatial canvas.
  * Handles floor tile rendering.
  */
-import { Assets, Sprite, Graphics } from 'pixi.js'
+import { Assets, TilingSprite, Graphics } from 'pixi.js'
 import { parseHexColor } from './useObstacleManager.js'
 
 /**
@@ -40,9 +40,7 @@ export function useFloorManager({ ctx }) {
                     const texture = await Assets.load(spritePath)
 
                     if (texture) {
-                        sprite = new Sprite(texture)
-                        sprite.width = width
-                        sprite.height = height
+                        sprite = new TilingSprite({ texture, width, height })
                         floorGroup.addChild(sprite)
                     }
                 } catch (error) {

@@ -1,7 +1,7 @@
 {
   "canvas": {
-    "width": 1200,
-    "height": 800,
+    "width": 2000,
+    "height": 1400,
     "backgroundColor": "#1a1a2e"
   },
   "grid": {
@@ -12,36 +12,36 @@
   },
   "metadata": {
     "name": "Cubicle Office",
-    "description": "Traditional office layout with cubicle partitions and structured workspaces",
+    "description": "Traditional office with cubicle partitions in organized rows",
     "tags": [
       "office",
       "cubicles",
-      "traditional",
-      "corporate"
+      "corporate",
+      "indoor"
     ],
     "recommendedAgentCount": {
-      "min": 20,
-      "max": 30
+      "min": 15,
+      "max": 35
     },
     "thumbnail": "thumbnails/office_cubicles.png"
   },
   "floors": [
     {
-      "id": "floor-1",
+      "id": "floor-base",
       "tileType": "office_carpet",
       "position": {
         "x": 0,
         "y": 0
       },
-      "width": 1200,
-      "height": 800,
+      "width": 2000,
+      "height": 1400,
       "sprite": "office_carpet.png",
       "color": "#696969"
     }
   ],
   "obstacles": [
     {
-      "id": "wall-perim-top",
+      "id": "wall-top",
       "type": "wall",
       "shape": "rectangle",
       "position": {
@@ -49,154 +49,171 @@
         "y": 0
       },
       "size": {
-        "width": 1200,
+        "width": 2000,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-bottom",
+      "id": "wall-bottom",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 780
+        "y": 1380
       },
       "size": {
-        "width": 1200,
+        "width": 2000,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-left",
+      "id": "wall-left",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 0
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 800
+        "height": 1360
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-right",
+      "id": "wall-right",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 1180,
-        "y": 0
+        "x": 1980,
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 800
+        "height": 1360
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row1-1",
+      "id": "div-r1-c1",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 200,
-        "y": 20
+        "x": 320,
+        "y": 40
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row1-2",
+      "id": "div-r1-c2",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 400,
-        "y": 20
+        "x": 640,
+        "y": 40
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row1-3",
+      "id": "div-r1-c3",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 600,
-        "y": 20
+        "x": 960,
+        "y": 40
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row1-4",
+      "id": "div-r1-c4",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 800,
-        "y": 20
+        "x": 1280,
+        "y": 40
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row1-5",
+      "id": "div-r1-c5",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 1000,
-        "y": 20
+        "x": 1600,
+        "y": 40
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-h1",
-      "type": "wall",
+      "id": "desk-r1-c1-a",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 20,
+        "x": 60,
+        "y": 80
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r1-c1-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
         "y": 240
       },
       "size": {
-        "width": 990,
-        "height": 10
+        "width": 80,
+        "height": 60
       },
-      "color": "#94a3b8",
-      "collision": true
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-1",
+      "id": "desk-r1-c2-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 60
+        "x": 380,
+        "y": 80
       },
       "size": {
         "width": 80,
@@ -207,12 +224,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-2",
+      "id": "desk-r1-c2-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 260,
-        "y": 60
+        "x": 380,
+        "y": 240
       },
       "size": {
         "width": 80,
@@ -223,12 +240,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-3",
+      "id": "desk-r1-c3-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 460,
-        "y": 60
+        "x": 700,
+        "y": 80
       },
       "size": {
         "width": 80,
@@ -239,12 +256,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-4",
+      "id": "desk-r1-c3-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 660,
-        "y": 60
+        "x": 700,
+        "y": 240
       },
       "size": {
         "width": 80,
@@ -255,12 +272,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-5",
+      "id": "desk-r1-c4-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 860,
-        "y": 60
+        "x": 1020,
+        "y": 80
       },
       "size": {
         "width": 80,
@@ -271,12 +288,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-6",
+      "id": "desk-r1-c4-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 1060,
-        "y": 60
+        "x": 1020,
+        "y": 240
       },
       "size": {
         "width": 80,
@@ -287,12 +304,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-7",
+      "id": "desk-r1-c5-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 160
+        "x": 1340,
+        "y": 80
       },
       "size": {
         "width": 80,
@@ -303,12 +320,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-8",
+      "id": "desk-r1-c5-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 260,
-        "y": 160
+        "x": 1340,
+        "y": 240
       },
       "size": {
         "width": 80,
@@ -319,12 +336,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-9",
+      "id": "desk-r1-c6-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 460,
-        "y": 160
+        "x": 1660,
+        "y": 80
       },
       "size": {
         "width": 80,
@@ -335,12 +352,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-10",
+      "id": "desk-r1-c6-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 660,
-        "y": 160
+        "x": 1660,
+        "y": 240
       },
       "size": {
         "width": 80,
@@ -351,114 +368,7 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c1-11",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 860,
-        "y": 160
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c1-12",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 160
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "cubicle-div-row2-1",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 200,
-        "y": 250
-      },
-      "size": {
-        "width": 10,
-        "height": 220
-      },
-      "color": "#94a3b8",
-      "collision": true
-    },
-    {
-      "id": "cubicle-div-row2-2",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 400,
-        "y": 250
-      },
-      "size": {
-        "width": 10,
-        "height": 220
-      },
-      "color": "#94a3b8",
-      "collision": true
-    },
-    {
-      "id": "cubicle-div-row2-3",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 600,
-        "y": 250
-      },
-      "size": {
-        "width": 10,
-        "height": 220
-      },
-      "color": "#94a3b8",
-      "collision": true
-    },
-    {
-      "id": "cubicle-div-row2-4",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 800,
-        "y": 250
-      },
-      "size": {
-        "width": 10,
-        "height": 220
-      },
-      "color": "#94a3b8",
-      "collision": true
-    },
-    {
-      "id": "cubicle-div-row2-5",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 1000,
-        "y": 250
-      },
-      "size": {
-        "width": 10,
-        "height": 220
-      },
-      "color": "#94a3b8",
-      "collision": true
-    },
-    {
-      "id": "cubicle-div-h2",
+      "id": "div-h-1",
       "type": "wall",
       "shape": "rectangle",
       "position": {
@@ -466,281 +376,89 @@
         "y": 470
       },
       "size": {
-        "width": 990,
+        "width": 1960,
         "height": 10
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "desk-c2-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 60,
-        "y": 290
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 290
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-3",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 460,
-        "y": 290
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-4",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 660,
-        "y": 290
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-5",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 860,
-        "y": 290
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-6",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 290
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-7",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 60,
-        "y": 390
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-8",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 390
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-9",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 460,
-        "y": 390
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-10",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 660,
-        "y": 390
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-11",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 860,
-        "y": 390
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c2-12",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 390
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "cubicle-div-row3-1",
+      "id": "div-r2-c1",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 200,
+        "x": 320,
         "y": 480
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row3-2",
+      "id": "div-r2-c2",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 400,
+        "x": 640,
         "y": 480
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row3-3",
+      "id": "div-r2-c3",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 600,
+        "x": 960,
         "y": 480
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row3-4",
+      "id": "div-r2-c4",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 800,
+        "x": 1280,
         "y": 480
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "cubicle-div-row3-5",
+      "id": "div-r2-c5",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 1000,
+        "x": 1600,
         "y": 480
       },
       "size": {
         "width": 10,
-        "height": 220
+        "height": 420
       },
-      "color": "#94a3b8",
+      "color": "#64748b",
       "collision": true
     },
     {
-      "id": "desk-c3-1",
+      "id": "desk-r2-c1-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
@@ -756,92 +474,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c3-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 520
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c3-3",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 460,
-        "y": 520
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c3-4",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 660,
-        "y": 520
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c3-5",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 860,
-        "y": 520
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c3-6",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 520
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "desk-c3-7",
+      "id": "desk-r2-c1-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
         "x": 60,
-        "y": 620
+        "y": 680
       },
       "size": {
         "width": 80,
@@ -852,12 +490,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c3-8",
+      "id": "desk-r2-c2-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 260,
-        "y": 620
+        "x": 380,
+        "y": 520
       },
       "size": {
         "width": 80,
@@ -868,12 +506,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c3-9",
+      "id": "desk-r2-c2-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 460,
-        "y": 620
+        "x": 380,
+        "y": 680
       },
       "size": {
         "width": 80,
@@ -884,12 +522,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c3-10",
+      "id": "desk-r2-c3-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 660,
-        "y": 620
+        "x": 700,
+        "y": 520
       },
       "size": {
         "width": 80,
@@ -900,12 +538,12 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c3-11",
+      "id": "desk-r2-c3-b",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 860,
-        "y": 620
+        "x": 700,
+        "y": 680
       },
       "size": {
         "width": 80,
@@ -916,80 +554,396 @@
       "sprite": "desk.png"
     },
     {
-      "id": "desk-c3-12",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 620
-      },
-      "size": {
-        "width": 80,
-        "height": 60
-      },
-      "color": "#8b5cf6",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "printer-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1100,
-        "y": 740
-      },
-      "size": {
-        "width": 60,
-        "height": 40
-      },
-      "color": "#464646",
-      "collision": true,
-      "sprite": "printer.png"
-    },
-    {
-      "id": "water-cooler-1",
+      "id": "desk-r2-c4-a",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
         "x": 1020,
-        "y": 740
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#87ceeb",
-      "collision": true,
-      "sprite": "water_cooler.png"
-    }
-  ],
-  "spawnZones": [
-    {
-      "id": "main-entrance",
-      "name": "Main Entrance",
-      "position": {
-        "x": 1100,
-        "y": 300
-      },
-      "size": {
-        "width": 60,
-        "height": 80
-      },
-      "color": "#22c55e"
-    },
-    {
-      "id": "side-entrance",
-      "name": "Side Entrance",
-      "position": {
-        "x": 60,
-        "y": 700
+        "y": 520
       },
       "size": {
         "width": 80,
         "height": 60
       },
-      "color": "#3b82f6"
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r2-c4-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1020,
+        "y": 680
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r2-c5-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1340,
+        "y": 520
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r2-c5-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1340,
+        "y": 680
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r2-c6-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1660,
+        "y": 520
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r2-c6-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1660,
+        "y": 680
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "div-h-2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 20,
+        "y": 910
+      },
+      "size": {
+        "width": 1960,
+        "height": 10
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "div-r3-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 320,
+        "y": 920
+      },
+      "size": {
+        "width": 10,
+        "height": 420
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "div-r3-c2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 920
+      },
+      "size": {
+        "width": 10,
+        "height": 420
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "div-r3-c3",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 960,
+        "y": 920
+      },
+      "size": {
+        "width": 10,
+        "height": 420
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "div-r3-c4",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 920
+      },
+      "size": {
+        "width": 10,
+        "height": 420
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "div-r3-c5",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 920
+      },
+      "size": {
+        "width": 10,
+        "height": 420
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "desk-r3-c1-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 960
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c1-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 60,
+        "y": 1120
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c2-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 380,
+        "y": 960
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c2-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 380,
+        "y": 1120
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c3-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 700,
+        "y": 960
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c3-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 700,
+        "y": 1120
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c4-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1020,
+        "y": 960
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c4-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1020,
+        "y": 1120
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c5-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1340,
+        "y": 960
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c5-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1340,
+        "y": 1120
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c6-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1660,
+        "y": 960
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    },
+    {
+      "id": "desk-r3-c6-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1660,
+        "y": 1120
+      },
+      "size": {
+        "width": 80,
+        "height": 60
+      },
+      "color": "#8b5cf6",
+      "collision": true,
+      "sprite": "desk.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "spawn-main",
+      "name": "Office Area",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "size": {
+        "width": 1920,
+        "height": 1320
+      }
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "canvas": {
-    "width": 1400,
-    "height": 900,
+    "width": 2400,
+    "height": 1600,
     "backgroundColor": "#1a1a2e"
   },
   "grid": {
@@ -12,16 +12,16 @@
   },
   "metadata": {
     "name": "Factory Floor",
-    "description": "Industrial factory floor with production machinery, assembly lines, and storage areas",
+    "description": "Industrial factory with conveyor lines, machinery stations, and loading area",
     "tags": [
       "factory",
       "industrial",
       "manufacturing",
-      "production"
+      "indoor"
     ],
     "recommendedAgentCount": {
       "min": 15,
-      "max": 25
+      "max": 35
     },
     "thumbnail": "thumbnails/factory_floor.png"
   },
@@ -33,63 +33,27 @@
         "x": 0,
         "y": 0
       },
-      "width": 1400,
-      "height": 900,
+      "width": 2400,
+      "height": 1600,
       "sprite": "warehouse_concrete.png",
       "color": "#708090"
     },
     {
-      "id": "floor-hazard-zone-1",
+      "id": "floor-loading",
       "tileType": "hazard_stripes",
       "position": {
-        "x": 100,
-        "y": 100
+        "x": 20,
+        "y": 1360
       },
-      "width": 500,
-      "height": 80,
+      "width": 2360,
+      "height": 220,
       "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
-    },
-    {
-      "id": "floor-hazard-zone-2",
-      "tileType": "hazard_stripes",
-      "position": {
-        "x": 100,
-        "y": 700
-      },
-      "width": 500,
-      "height": 80,
-      "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
-    },
-    {
-      "id": "floor-walkway-1",
-      "tileType": "hazard_stripes",
-      "position": {
-        "x": 640,
-        "y": 20
-      },
-      "width": 40,
-      "height": 860,
-      "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
-    },
-    {
-      "id": "floor-loading-zone",
-      "tileType": "hazard_stripes",
-      "position": {
-        "x": 1160,
-        "y": 200
-      },
-      "width": 200,
-      "height": 500,
-      "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
+      "color": "#ff8c00"
     }
   ],
   "obstacles": [
     {
-      "id": "wall-perim-top",
+      "id": "wall-top",
       "type": "wall",
       "shape": "rectangle",
       "position": {
@@ -97,288 +61,448 @@
         "y": 0
       },
       "size": {
-        "width": 1400,
+        "width": 2400,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-bottom",
+      "id": "wall-bottom",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 880
+        "y": 1580
       },
       "size": {
-        "width": 1400,
+        "width": 2400,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-left",
+      "id": "wall-left",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 0
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 900
+        "height": 1560
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-right",
+      "id": "wall-right",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 1380,
-        "y": 0
+        "x": 2380,
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 900
+        "height": 1560
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "machinery-1",
-      "type": "machinery",
+      "id": "conveyor-r1-s1",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 100,
-        "y": 220
-      },
-      "size": {
-        "width": 160,
-        "height": 160
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "machinery.png"
-    },
-    {
-      "id": "machinery-2",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 320,
-        "y": 220
-      },
-      "size": {
-        "width": 160,
-        "height": 160
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "machinery.png"
-    },
-    {
-      "id": "machinery-3",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 500
-      },
-      "size": {
-        "width": 160,
-        "height": 160
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "machinery.png"
-    },
-    {
-      "id": "machinery-4",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 320,
-        "y": 500
-      },
-      "size": {
-        "width": 160,
-        "height": 160
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "machinery.png"
-    },
-    {
-      "id": "conveyor-belt-1",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 60
-      },
-      "size": {
-        "width": 380,
-        "height": 40
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "conveyor_belt.png"
-    },
-    {
-      "id": "conveyor-belt-2",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 780
-      },
-      "size": {
-        "width": 380,
-        "height": 40
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "conveyor_belt.png"
-    },
-    {
-      "id": "conveyor-belt-3",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 540,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 320
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "conveyor_belt.png"
-    },
-    {
-      "id": "conveyor-belt-4",
-      "type": "machinery",
-      "shape": "rectangle",
-      "position": {
-        "x": 540,
-        "y": 480
-      },
-      "size": {
-        "width": 40,
-        "height": 320
-      },
-      "color": "#2f4f4f",
-      "collision": true,
-      "sprite": "conveyor_belt.png"
-    },
-    {
-      "id": "shelf-1",
-      "type": "storage",
-      "shape": "rectangle",
-      "position": {
-        "x": 700,
-        "y": 60
+        "x": 200,
+        "y": 200
       },
       "size": {
         "width": 120,
-        "height": 80
+        "height": 40
       },
-      "color": "#8b4513",
+      "color": "#696969",
       "collision": true,
-      "sprite": "shelf_large.png"
+      "sprite": "conveyor_belt.png"
     },
     {
-      "id": "shelf-2",
-      "type": "storage",
+      "id": "conveyor-r1-s2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r1-s3",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
         "x": 840,
-        "y": 60
+        "y": 200
       },
       "size": {
         "width": 120,
-        "height": 80
+        "height": 40
       },
-      "color": "#8b4513",
+      "color": "#696969",
       "collision": true,
-      "sprite": "shelf_large.png"
+      "sprite": "conveyor_belt.png"
     },
     {
-      "id": "shelf-3",
-      "type": "storage",
+      "id": "conveyor-r1-s4",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 980,
-        "y": 60
+        "x": 1160,
+        "y": 200
       },
       "size": {
         "width": 120,
-        "height": 80
+        "height": 40
       },
-      "color": "#8b4513",
+      "color": "#696969",
       "collision": true,
-      "sprite": "shelf_large.png"
+      "sprite": "conveyor_belt.png"
     },
     {
-      "id": "shelf-4",
-      "type": "storage",
+      "id": "conveyor-r1-s5",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 700,
-        "y": 760
+        "x": 1480,
+        "y": 200
       },
       "size": {
         "width": 120,
-        "height": 80
+        "height": 40
       },
-      "color": "#8b4513",
+      "color": "#696969",
       "collision": true,
-      "sprite": "shelf_large.png"
+      "sprite": "conveyor_belt.png"
     },
     {
-      "id": "shelf-5",
-      "type": "storage",
+      "id": "conveyor-r1-s6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s3",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
         "x": 840,
-        "y": 760
+        "y": 600
       },
       "size": {
         "width": 120,
-        "height": 80
+        "height": 40
       },
-      "color": "#8b4513",
+      "color": "#696969",
       "collision": true,
-      "sprite": "shelf_large.png"
+      "sprite": "conveyor_belt.png"
     },
     {
-      "id": "shelf-6",
-      "type": "storage",
+      "id": "conveyor-r2-s4",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 980,
-        "y": 760
+        "x": 1160,
+        "y": 600
       },
       "size": {
         "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1160,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "machine-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "size": {
+        "width": 80,
         "height": 80
       },
-      "color": "#8b4513",
+      "color": "#708090",
       "collision": true,
-      "sprite": "shelf_large.png"
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 800
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 1200
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 2200,
+        "y": 400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 2200,
+        "y": 800
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 2200,
+        "y": 1200
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
     },
     {
       "id": "pallet-1",
-      "type": "storage",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 700,
-        "y": 400
+        "x": 400,
+        "y": 1400
       },
       "size": {
         "width": 80,
@@ -390,11 +514,11 @@
     },
     {
       "id": "pallet-2",
-      "type": "storage",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 800,
-        "y": 400
+        "x": 600,
+        "y": 1400
       },
       "size": {
         "width": 80,
@@ -406,11 +530,11 @@
     },
     {
       "id": "pallet-3",
-      "type": "storage",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 900,
-        "y": 400
+        "x": 800,
+        "y": 1400
       },
       "size": {
         "width": 80,
@@ -422,11 +546,11 @@
     },
     {
       "id": "pallet-4",
-      "type": "storage",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 1000,
-        "y": 400
+        "x": 1600,
+        "y": 1400
       },
       "size": {
         "width": 80,
@@ -437,126 +561,46 @@
       "sprite": "pallet.png"
     },
     {
-      "id": "forklift-1",
-      "type": "vehicle",
+      "id": "pallet-5",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 700,
-        "y": 200
+        "x": 1800,
+        "y": 1400
       },
       "size": {
-        "width": 100,
-        "height": 60
+        "width": 80,
+        "height": 80
       },
-      "color": "#ffa500",
+      "color": "#deb887",
       "collision": true,
-      "sprite": "forklift.png"
-    },
-    {
-      "id": "forklift-2",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 700,
-        "y": 600
-      },
-      "size": {
-        "width": 100,
-        "height": 60
-      },
-      "color": "#ffa500",
-      "collision": true,
-      "sprite": "forklift.png"
-    },
-    {
-      "id": "forklift-3",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 900,
-        "y": 200
-      },
-      "size": {
-        "width": 100,
-        "height": 60
-      },
-      "color": "#ffa500",
-      "collision": true,
-      "sprite": "forklift.png"
-    },
-    {
-      "id": "forklift-4",
-      "type": "vehicle",
-      "shape": "rectangle",
-      "position": {
-        "x": 900,
-        "y": 600
-      },
-      "size": {
-        "width": 100,
-        "height": 60
-      },
-      "color": "#ffa500",
-      "collision": true,
-      "sprite": "forklift.png"
-    },
-    {
-      "id": "control-station-1",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 1180,
-        "y": 60
-      },
-      "size": {
-        "width": 160,
-        "height": 100
-      },
-      "color": "#4682b4",
-      "collision": true
-    },
-    {
-      "id": "control-station-2",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 1180,
-        "y": 740
-      },
-      "size": {
-        "width": 160,
-        "height": 100
-      },
-      "color": "#4682b4",
-      "collision": true
+      "sprite": "pallet.png"
     }
   ],
   "spawnZones": [
     {
-      "id": "main-entrance",
-      "name": "Main Entrance",
+      "id": "spawn-floor",
+      "name": "Factory Floor",
       "position": {
-        "x": 1200,
-        "y": 300
+        "x": 160,
+        "y": 100
       },
       "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#22c55e"
+        "width": 2080,
+        "height": 1200
+      }
     },
     {
-      "id": "employee-entrance",
-      "name": "Employee Entrance",
+      "id": "spawn-loading",
+      "name": "Loading",
       "position": {
-        "x": 1200,
-        "y": 520
+        "x": 300,
+        "y": 1380
       },
       "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#3b82f6"
+        "width": 1800,
+        "height": 160
+      }
     }
   ]
 }

@@ -1,607 +1,710 @@
 {
   "canvas": {
-    "width": 1200,
-    "height": 900,
-    "backgroundColor": "#2d5016"
+    "width": 2000,
+    "height": 1600,
+    "backgroundColor": "#1a1a2e"
   },
   "grid": {
     "enabled": true,
     "cellSize": 40,
-    "color": "#1a3a0f",
-    "opacity": 0.2
+    "color": "#333344",
+    "opacity": 0.3
   },
+  "obstacles": [
+    {
+      "id": "wall-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 2000,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 1580
+      },
+      "size": {
+        "width": 2000,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1980,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "tree-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 120
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 160,
+        "y": 600
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 400
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-5",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 800,
+        "y": 160
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-6",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-7",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 120
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-8",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 400
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-9",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 800
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-10",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 1000
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-11",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 1200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-12",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 1000
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-13",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1400,
+        "y": 1200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-14",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 1000
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-15",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 1400
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-16",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 1400
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-17",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 1400
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "bench-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 320,
+        "y": 500
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8B6914",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 800,
+        "y": 600
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8B6914",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 500
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8B6914",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 600
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8B6914",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 1000
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8B6914",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "bench-6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1400,
+        "y": 1000
+      },
+      "size": {
+        "width": 80,
+        "height": 40
+      },
+      "color": "#8B6914",
+      "collision": true,
+      "sprite": "bench.png"
+    },
+    {
+      "id": "trash-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 360,
+        "y": 560
+      },
+      "size": {
+        "width": 40,
+        "height": 50
+      },
+      "color": "#555555",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "trash-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 660
+      },
+      "size": {
+        "width": 40,
+        "height": 50
+      },
+      "color": "#555555",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "trash-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1240,
+        "y": 560
+      },
+      "size": {
+        "width": 40,
+        "height": 50
+      },
+      "color": "#555555",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "trash-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1640,
+        "y": 660
+      },
+      "size": {
+        "width": 40,
+        "height": 50
+      },
+      "color": "#555555",
+      "collision": true,
+      "sprite": "trash_bin.png"
+    },
+    {
+      "id": "lamp-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 80
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 80
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1500,
+        "y": 80
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 500,
+        "y": 800
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-5",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 800
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-6",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1500,
+        "y": 800
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "spawn-north",
+      "name": "North",
+      "position": {
+        "x": 200,
+        "y": 200
+      },
+      "size": {
+        "width": 600,
+        "height": 400
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "spawn-south",
+      "name": "South",
+      "position": {
+        "x": 200,
+        "y": 1000
+      },
+      "size": {
+        "width": 600,
+        "height": 400
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "spawn-east",
+      "name": "East",
+      "position": {
+        "x": 1200,
+        "y": 200
+      },
+      "size": {
+        "width": 600,
+        "height": 400
+      },
+      "color": "#22c55e"
+    },
+    {
+      "id": "spawn-west",
+      "name": "West",
+      "position": {
+        "x": 1200,
+        "y": 1000
+      },
+      "size": {
+        "width": 600,
+        "height": 400
+      },
+      "color": "#22c55e"
+    }
+  ],
   "metadata": {
     "name": "Large Park",
-    "description": "Expansive city park with multiple walking paths, recreational areas, and green spaces",
+    "description": "Open outdoor park with trees, benches, and walking paths",
     "tags": [
       "park",
       "outdoor",
       "nature",
-      "recreation",
-      "large"
+      "recreation"
     ],
     "recommendedAgentCount": {
-      "min": 15,
-      "max": 25
+      "min": 10,
+      "max": 40
     },
     "thumbnail": "thumbnails/park_large.png"
   },
   "floors": [
     {
-      "id": "floor-grass-main",
+      "id": "floor-grass",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 2000,
+      "height": 1600,
       "tileType": "grass",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "width": 1200,
-      "height": 900,
       "sprite": "grass.png",
-      "color": "#4a7c23"
+      "color": "#4a7c59"
     },
     {
-      "id": "floor-path-main-horizontal",
+      "id": "floor-path-h",
+      "position": {
+        "x": 40,
+        "y": 700
+      },
+      "width": 1920,
+      "height": 120,
       "tileType": "pavement",
-      "position": {
-        "x": 0,
-        "y": 400
-      },
-      "width": 1200,
-      "height": 100,
       "sprite": "pavement.png",
-      "color": "#a0a0a0"
+      "color": "#888888"
     },
     {
-      "id": "floor-path-main-vertical",
-      "tileType": "pavement",
-      "position": {
-        "x": 550,
-        "y": 0
-      },
-      "width": 100,
-      "height": 400,
-      "sprite": "pavement.png",
-      "color": "#a0a0a0"
-    },
-    {
-      "id": "floor-path-main-vertical-bottom",
-      "tileType": "pavement",
-      "position": {
-        "x": 550,
-        "y": 500
-      },
-      "width": 100,
-      "height": 400,
-      "sprite": "pavement.png",
-      "color": "#a0a0a0"
-    },
-    {
-      "id": "floor-path-loop-left",
-      "tileType": "pavement",
-      "position": {
-        "x": 100,
-        "y": 100
-      },
-      "width": 300,
-      "height": 60,
-      "sprite": "pavement.png",
-      "color": "#a0a0a0"
-    },
-    {
-      "id": "floor-path-loop-right",
-      "tileType": "pavement",
-      "position": {
-        "x": 800,
-        "y": 100
-      },
-      "width": 300,
-      "height": 60,
-      "sprite": "pavement.png",
-      "color": "#a0a0a0"
-    }
-  ],
-  "obstacles": [
-    {
-      "id": "tree-cluster-nw-1",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 60,
-        "y": 200
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-nw-2",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 220
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-nw-3",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 220,
-        "y": 200
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-ne-1",
-      "type": "nature",
-      "shape": "rectangle",
+      "id": "floor-path-v",
       "position": {
         "x": 900,
-        "y": 200
+        "y": 40
       },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-ne-2",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 980,
-        "y": 220
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-ne-3",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 200
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "bench-nw-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 320
-      },
-      "size": {
-        "width": 80,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "bench.png"
-    },
-    {
-      "id": "bench-ne-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 820,
-        "y": 320
-      },
-      "size": {
-        "width": 80,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "bench.png"
-    },
-    {
-      "id": "street-lamp-cross-nw",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 500,
-        "y": 340
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
-    },
-    {
-      "id": "street-lamp-cross-ne",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 660,
-        "y": 340
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
-    },
-    {
-      "id": "trash-bin-nw",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 60,
-        "y": 420
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
-    },
-    {
-      "id": "trash-bin-ne",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1100,
-        "y": 420
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
-    },
-    {
-      "id": "tree-cluster-sw-1",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 60,
-        "y": 560
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-sw-2",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 580
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-sw-3",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 220,
-        "y": 560
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-se-1",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 900,
-        "y": 560
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-se-2",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 980,
-        "y": 580
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-cluster-se-3",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 1060,
-        "y": 560
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "bench-sw-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 640
-      },
-      "size": {
-        "width": 80,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "bench.png"
-    },
-    {
-      "id": "bench-se-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 820,
-        "y": 640
-      },
-      "size": {
-        "width": 80,
-        "height": 40
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "bench.png"
-    },
-    {
-      "id": "street-lamp-cross-sw",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 500,
-        "y": 540
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
-    },
-    {
-      "id": "street-lamp-cross-se",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 660,
-        "y": 540
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#c0c0c0",
-      "collision": true,
-      "sprite": "street_lamp.png"
-    },
-    {
-      "id": "trash-bin-sw",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 60,
-        "y": 420
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
-    },
-    {
-      "id": "trash-bin-se",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 1100,
-        "y": 420
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#556b2f",
-      "collision": true,
-      "sprite": "trash_bin.png"
-    },
-    {
-      "id": "tree-center-1",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 380,
-        "y": 220
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-center-2",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 760,
-        "y": 220
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-center-3",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 380,
-        "y": 640
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    },
-    {
-      "id": "tree-center-4",
-      "type": "nature",
-      "shape": "rectangle",
-      "position": {
-        "x": 760,
-        "y": 640
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#228b22",
-      "collision": true,
-      "sprite": "tree.png"
-    }
-  ],
-  "spawnZones": [
-    {
-      "id": "entrance-west",
-      "name": "West Entrance",
-      "position": {
-        "x": 20,
-        "y": 400
-      },
-      "size": {
-        "width": 40,
-        "height": 100
-      },
-      "color": "#22c55e"
-    },
-    {
-      "id": "entrance-east",
-      "name": "East Entrance",
-      "position": {
-        "x": 1140,
-        "y": 400
-      },
-      "size": {
-        "width": 40,
-        "height": 100
-      },
-      "color": "#3b82f6"
-    },
-    {
-      "id": "entrance-north",
-      "name": "North Entrance",
-      "position": {
-        "x": 550,
-        "y": 20
-      },
-      "size": {
-        "width": 100,
-        "height": 40
-      },
-      "color": "#f59e0b"
-    },
-    {
-      "id": "entrance-south",
-      "name": "South Entrance",
-      "position": {
-        "x": 550,
-        "y": 840
-      },
-      "size": {
-        "width": 100,
-        "height": 40
-      },
-      "color": "#ef4444"
+      "width": 120,
+      "height": 1520,
+      "tileType": "pavement",
+      "sprite": "pavement.png",
+      "color": "#888888"
     }
   ]
 }

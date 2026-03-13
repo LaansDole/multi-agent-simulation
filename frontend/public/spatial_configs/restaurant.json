@@ -1,59 +1,59 @@
 {
   "canvas": {
-    "width": 800,
-    "height": 700,
-    "backgroundColor": "#faf0e6"
+    "width": 1600,
+    "height": 1200,
+    "backgroundColor": "#1a1a2e"
   },
   "grid": {
     "enabled": true,
     "cellSize": 40,
-    "color": "#d4c5b0",
-    "opacity": 0.2
+    "color": "#333344",
+    "opacity": 0.3
   },
   "metadata": {
     "name": "Restaurant",
-    "description": "Cozy restaurant layout with dining area, kitchen, and bar counter",
+    "description": "Restaurant with dining area and kitchen separated by a wall",
     "tags": [
       "restaurant",
+      "food",
       "dining",
-      "food-service",
-      "hospitality"
+      "indoor"
     ],
     "recommendedAgentCount": {
       "min": 10,
-      "max": 15
+      "max": 25
     },
     "thumbnail": "thumbnails/restaurant.png"
   },
   "floors": [
     {
-      "id": "floor-wood-main",
+      "id": "floor-dining",
       "tileType": "wood",
       "position": {
         "x": 0,
         "y": 0
       },
-      "width": 800,
-      "height": 700,
+      "width": 1600,
+      "height": 800,
       "sprite": "wood.png",
-      "color": "#d2b48c"
+      "color": "#8B6914"
     },
     {
-      "id": "floor-wood-kitchen",
+      "id": "floor-kitchen",
       "tileType": "tile",
       "position": {
-        "x": 500,
-        "y": 0
+        "x": 0,
+        "y": 800
       },
-      "width": 280,
-      "height": 300,
+      "width": 1600,
+      "height": 400,
       "sprite": "tile.png",
-      "color": "#c0c0c0"
+      "color": "#D3D3D3"
     }
   ],
   "obstacles": [
     {
-      "id": "wall-perim-top",
+      "id": "wall-top",
       "type": "wall",
       "shape": "rectangle",
       "position": {
@@ -61,671 +61,721 @@
         "y": 0
       },
       "size": {
-        "width": 800,
+        "width": 1600,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-bottom",
+      "id": "wall-bottom",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 680
+        "y": 1180
       },
       "size": {
-        "width": 800,
+        "width": 1600,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-left",
+      "id": "wall-left",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 0
-      },
-      "size": {
-        "width": 20,
-        "height": 700
-      },
-      "color": "#64748b",
-      "collision": true
-    },
-    {
-      "id": "wall-perim-right",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 780,
-        "y": 0
-      },
-      "size": {
-        "width": 20,
-        "height": 700
-      },
-      "color": "#64748b",
-      "collision": true
-    },
-    {
-      "id": "wall-kitchen-left",
-      "type": "wall",
-      "shape": "rectangle",
-      "position": {
-        "x": 500,
         "y": 20
       },
       "size": {
-        "width": 10,
-        "height": 180
+        "width": 20,
+        "height": 1160
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-kitchen-left-bottom",
+      "id": "wall-right",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 500,
-        "y": 260
+        "x": 1580,
+        "y": 20
       },
       "size": {
-        "width": 10,
-        "height": 60
+        "width": 20,
+        "height": 1160
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "table-1",
-      "type": "furniture",
+      "id": "wall-kitchen",
+      "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 80,
-        "y": 80
+        "x": 20,
+        "y": 800
       },
       "size": {
-        "width": 120,
-        "height": 80
+        "width": 1560,
+        "height": 20
       },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
+      "color": "#64748b",
+      "collision": true
     },
     {
-      "id": "table-2",
+      "id": "table-r1-c1",
       "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 240,
-        "y": 80
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-3",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 80,
-        "y": 200
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-4",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 240,
-        "y": 200
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-5",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 80,
-        "y": 340
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-6",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 240,
-        "y": 340
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-7",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 80,
-        "y": 460
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-8",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 240,
-        "y": 460
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-9",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 80,
-        "y": 580
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "table-10",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 240,
-        "y": 580
-      },
-      "size": {
-        "width": 120,
-        "height": 80
-      },
-      "color": "#8b4513",
-      "collision": true,
-      "sprite": "meeting_table.png"
-    },
-    {
-      "id": "bar-counter",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 520,
-        "y": 340
-      },
-      "size": {
-        "width": 240,
-        "height": 60
-      },
-      "color": "#4a5568",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "kitchen-counter-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 520,
-        "y": 40
-      },
-      "size": {
-        "width": 240,
-        "height": 50
-      },
-      "color": "#718096",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "kitchen-counter-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 520,
+        "x": 120,
         "y": 120
       },
       "size": {
-        "width": 240,
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r1-c1-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 130,
+        "y": 70
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r1-c1-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 190,
+        "y": 210
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r1-c2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 120
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r1-c2-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 490,
+        "y": 70
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r1-c2-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 550,
+        "y": 210
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r1-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 120
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r1-c3-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 850,
+        "y": 70
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r1-c3-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 910,
+        "y": 210
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r1-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 120
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r1-c4-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1210,
+        "y": 70
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r1-c4-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1270,
+        "y": 210
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r2-c1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 320
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r2-c1-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 130,
+        "y": 270
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r2-c1-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 190,
+        "y": 410
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r2-c2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 320
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r2-c2-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 490,
+        "y": 270
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r2-c2-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 550,
+        "y": 410
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r2-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 320
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r2-c3-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 850,
+        "y": 270
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r2-c3-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 910,
+        "y": 410
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r2-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 320
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r2-c4-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1210,
+        "y": 270
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r2-c4-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1270,
+        "y": 410
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r3-c1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 520
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r3-c1-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 130,
+        "y": 470
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r3-c1-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 190,
+        "y": 610
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r3-c2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 520
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r3-c2-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 490,
+        "y": 470
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r3-c2-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 550,
+        "y": 610
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r3-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 520
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r3-c3-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 850,
+        "y": 470
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r3-c3-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 910,
+        "y": 610
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "table-r3-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 520
+      },
+      "size": {
+        "width": 120,
+        "height": 80
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "chair-r3-c4-a",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1210,
+        "y": 470
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "chair-r3-c4-b",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1270,
+        "y": 610
+      },
+      "size": {
+        "width": 40,
+        "height": 40
+      },
+      "color": "#6366f1",
+      "collision": true,
+      "sprite": "chair.png"
+    },
+    {
+      "id": "counter-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 880
+      },
+      "size": {
+        "width": 200,
+        "height": 60
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "counter-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 880
+      },
+      "size": {
+        "width": 200,
+        "height": 60
+      },
+      "color": "#8b5a2b",
+      "collision": true,
+      "sprite": "meeting_table.png"
+    },
+    {
+      "id": "printer-kitchen",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1400,
+        "y": 880
+      },
+      "size": {
+        "width": 60,
         "height": 50
       },
-      "color": "#718096",
+      "color": "#464646",
       "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "kitchen-counter-3",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 520,
-        "y": 200
-      },
-      "size": {
-        "width": 240,
-        "height": 50
-      },
-      "color": "#718096",
-      "collision": true,
-      "sprite": "desk.png"
-    },
-    {
-      "id": "chair-table1-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table1-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table2-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table2-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 100
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table3-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 220
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table3-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 220
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table4-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 220
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table4-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 220
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table5-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 360
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table5-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 360
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table6-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 360
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table6-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 360
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table7-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 480
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table7-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 480
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table8-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 480
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table8-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 480
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table9-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 100,
-        "y": 600
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table9-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 140,
-        "y": 600
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table10-1",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 260,
-        "y": 600
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
-    },
-    {
-      "id": "chair-table10-2",
-      "type": "furniture",
-      "shape": "rectangle",
-      "position": {
-        "x": 300,
-        "y": 600
-      },
-      "size": {
-        "width": 40,
-        "height": 40
-      },
-      "color": "#6366f1",
-      "collision": true,
-      "sprite": "chair.png"
+      "sprite": "printer.png"
     }
   ],
   "spawnZones": [
     {
-      "id": "main-entrance",
-      "name": "Main Entrance",
+      "id": "spawn-dining",
+      "name": "Dining",
       "position": {
-        "x": 400,
-        "y": 640
+        "x": 60,
+        "y": 60
       },
       "size": {
-        "width": 80,
-        "height": 40
-      },
-      "color": "#22c55e"
+        "width": 1480,
+        "height": 700
+      }
     },
     {
-      "id": "kitchen-entrance",
-      "name": "Kitchen Entrance",
+      "id": "spawn-kitchen",
+      "name": "Kitchen",
       "position": {
-        "x": 500,
-        "y": 280
+        "x": 60,
+        "y": 840
       },
       "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#ef4444"
-    },
-    {
-      "id": "service-entrance",
-      "name": "Service Entrance",
-      "position": {
-        "x": 720,
-        "y": 280
-      },
-      "size": {
-        "width": 60,
-        "height": 60
-      },
-      "color": "#3b82f6"
+        "width": 1480,
+        "height": 320
+      }
     }
   ]
 }

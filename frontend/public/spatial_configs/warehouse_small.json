@@ -1,7 +1,7 @@
 {
   "canvas": {
-    "width": 800,
-    "height": 600,
+    "width": 1600,
+    "height": 1200,
     "backgroundColor": "#1a1a2e"
   },
   "grid": {
@@ -12,15 +12,15 @@
   },
   "metadata": {
     "name": "Small Warehouse",
-    "description": "Compact warehouse layout with shelving areas and loading zones",
+    "description": "Compact warehouse with organized shelving and staging area",
     "tags": [
       "warehouse",
       "industrial",
       "storage",
-      "logistics"
+      "small"
     ],
     "recommendedAgentCount": {
-      "min": 10,
+      "min": 5,
       "max": 15
     },
     "thumbnail": "thumbnails/warehouse_small.png"
@@ -33,39 +33,15 @@
         "x": 0,
         "y": 0
       },
-      "width": 800,
-      "height": 600,
+      "width": 1600,
+      "height": 1200,
       "sprite": "warehouse_concrete.png",
       "color": "#708090"
-    },
-    {
-      "id": "floor-loading-zone",
-      "tileType": "hazard_stripes",
-      "position": {
-        "x": 640,
-        "y": 200
-      },
-      "width": 120,
-      "height": 200,
-      "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
-    },
-    {
-      "id": "floor-walkway-1",
-      "tileType": "hazard_stripes",
-      "position": {
-        "x": 360,
-        "y": 20
-      },
-      "width": 40,
-      "height": 560,
-      "sprite": "hazard_stripes.png",
-      "color": "#ffd700"
     }
   ],
   "obstacles": [
     {
-      "id": "wall-perim-top",
+      "id": "wall-top",
       "type": "wall",
       "shape": "rectangle",
       "position": {
@@ -73,338 +49,370 @@
         "y": 0
       },
       "size": {
-        "width": 800,
+        "width": 1600,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-bottom",
+      "id": "wall-bottom",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 580
+        "y": 1180
       },
       "size": {
-        "width": 800,
+        "width": 1600,
         "height": 20
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-left",
+      "id": "wall-left",
       "type": "wall",
       "shape": "rectangle",
       "position": {
         "x": 0,
-        "y": 0
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 600
+        "height": 1160
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "wall-perim-right",
+      "id": "wall-right",
       "type": "wall",
       "shape": "rectangle",
       "position": {
-        "x": 780,
-        "y": 0
+        "x": 1580,
+        "y": 20
       },
       "size": {
         "width": 20,
-        "height": 600
+        "height": 1160
       },
       "color": "#64748b",
       "collision": true
     },
     {
-      "id": "shelf-row1-1",
-      "type": "storage",
+      "id": "shelf-r1-c1",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 60
+        "x": 80,
+        "y": 80
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row1-2",
-      "type": "storage",
+      "id": "shelf-r1-c2",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 200,
-        "y": 60
+        "x": 360,
+        "y": 80
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row2-1",
-      "type": "storage",
+      "id": "shelf-r1-c3",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 160
+        "x": 640,
+        "y": 80
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row2-2",
-      "type": "storage",
+      "id": "shelf-r1-c4",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 200,
-        "y": 160
+        "x": 920,
+        "y": 80
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row3-1",
-      "type": "storage",
+      "id": "shelf-r1-c5",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 260
+        "x": 1200,
+        "y": 80
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row3-2",
-      "type": "storage",
+      "id": "shelf-r2-c1",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 200,
-        "y": 260
+        "x": 80,
+        "y": 400
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row4-1",
-      "type": "storage",
+      "id": "shelf-r2-c2",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 360
+        "x": 360,
+        "y": 400
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row4-2",
-      "type": "storage",
+      "id": "shelf-r2-c3",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 200,
-        "y": 360
+        "x": 640,
+        "y": 400
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row5-1",
-      "type": "storage",
+      "id": "shelf-r2-c4",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 60,
-        "y": 460
+        "x": 920,
+        "y": 400
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "shelf-row5-2",
-      "type": "storage",
+      "id": "shelf-r2-c5",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 200,
-        "y": 460
+        "x": 1200,
+        "y": 400
       },
       "size": {
-        "width": 120,
-        "height": 60
+        "width": 100,
+        "height": 200
       },
-      "color": "#8b4513",
+      "color": "#8b6914",
       "collision": true,
       "sprite": "shelf_large.png"
     },
     {
-      "id": "pallet-group1",
-      "type": "storage",
+      "id": "shelf-r3-c1",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 420,
-        "y": 60
+        "x": 80,
+        "y": 720
       },
       "size": {
-        "width": 80,
-        "height": 80
+        "width": 100,
+        "height": 200
       },
-      "color": "#deb887",
+      "color": "#8b6914",
       "collision": true,
-      "sprite": "pallet.png"
+      "sprite": "shelf_large.png"
     },
     {
-      "id": "pallet-group2",
-      "type": "storage",
+      "id": "shelf-r3-c2",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 520,
-        "y": 60
+        "x": 360,
+        "y": 720
       },
       "size": {
-        "width": 80,
-        "height": 80
+        "width": 100,
+        "height": 200
       },
-      "color": "#deb887",
+      "color": "#8b6914",
       "collision": true,
-      "sprite": "pallet.png"
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 920,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
     },
     {
       "id": "forklift-1",
-      "type": "vehicle",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 420,
-        "y": 500
+        "x": 400,
+        "y": 1060
       },
       "size": {
-        "width": 100,
-        "height": 60
+        "width": 80,
+        "height": 120
       },
-      "color": "#ffa500",
+      "color": "#ff8c00",
       "collision": true,
       "sprite": "forklift.png"
     },
     {
-      "id": "forklift-2",
-      "type": "vehicle",
+      "id": "pallet-1",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 540,
-        "y": 500
+        "x": 600,
+        "y": 1080
       },
       "size": {
-        "width": 100,
-        "height": 60
+        "width": 80,
+        "height": 80
       },
-      "color": "#ffa500",
+      "color": "#deb887",
       "collision": true,
-      "sprite": "forklift.png"
+      "sprite": "pallet.png"
     },
     {
-      "id": "loading-bay-1",
-      "type": "infrastructure",
+      "id": "pallet-2",
+      "type": "furniture",
       "shape": "rectangle",
       "position": {
-        "x": 640,
-        "y": 60
+        "x": 800,
+        "y": 1080
       },
       "size": {
-        "width": 100,
+        "width": 80,
         "height": 80
       },
-      "color": "#4a5568",
-      "collision": true
-    },
-    {
-      "id": "loading-bay-2",
-      "type": "infrastructure",
-      "shape": "rectangle",
-      "position": {
-        "x": 640,
-        "y": 460
-      },
-      "size": {
-        "width": 100,
-        "height": 80
-      },
-      "color": "#4a5568",
-      "collision": true
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
     }
   ],
   "spawnZones": [
     {
-      "id": "main-entrance",
-      "name": "Main Entrance",
+      "id": "spawn-main",
+      "name": "Main Area",
       "position": {
-        "x": 600,
-        "y": 20
+        "x": 200,
+        "y": 100
       },
       "size": {
-        "width": 80,
-        "height": 80
-      },
-      "color": "#22c55e"
+        "width": 1200,
+        "height": 800
+      }
     },
     {
-      "id": "loading-dock",
-      "name": "Loading Dock",
+      "id": "spawn-staging",
+      "name": "Staging",
       "position": {
-        "x": 600,
-        "y": 500
+        "x": 200,
+        "y": 1000
       },
       "size": {
-        "width": 80,
-        "height": 80
-      },
-      "color": "#3b82f6"
+        "width": 1200,
+        "height": 160
+      }
     }
   ]
 }
