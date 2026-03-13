@@ -583,7 +583,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import RichTooltip from './RichTooltip.vue'
 
 const props = defineProps({
   field: {
