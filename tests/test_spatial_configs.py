@@ -18,7 +18,8 @@ class TestListSpatialConfigs:
         response = client.get("/api/spatial-configs")
         assert response.status_code == 200
         configs = response.json()["configs"]
-        assert sorted(configs) == ["map1", "map2"]
+        names = sorted(c["name"] for c in configs)
+        assert names == ["map1", "map2"]
 
 
 class TestSaveSpatialConfig:
