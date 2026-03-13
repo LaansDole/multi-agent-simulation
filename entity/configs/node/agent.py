@@ -453,6 +453,10 @@ class AgentConfig(BaseConfig):
         if "skills" in mapping and mapping["skills"] is not None:
             skills_cfg = AgentSkillsConfig.from_dict(mapping["skills"], path=extend_path(path, "skills"))
 
+        skills_cfg = None
+        if "skills" in mapping and mapping["skills"] is not None:
+            skills_cfg = AgentSkillsConfig.from_dict(mapping["skills"], path=extend_path(path, "skills"))
+
         return cls(
             provider=provider,
             base_url=base_url,
