@@ -1,0 +1,63 @@
+\label{sec:intro}
+
+The COVID-19 pandemic fundamentally altered global awareness of epidemiological modeling and highlighted a critical gap in public health infrastructure: the need for accessible, intuitive tools that enable rapid exploration of disease transmission scenarios \cite{who2020pandemic}. While mathematical models have guided epidemiological research for nearly a century \cite{kermack1927contribution,anderson1992infectious}, the tools for creating, configuring, and running simulations remain largely inaccessible to educators, healthcare professionals, and policy analysts who lack programming expertise \cite{wilensky2014agent}. This accessibility gap impedes pandemic preparedness training, limits epidemiology education, and constrains rapid prototyping of intervention strategies.
+
+\subsection{Motivation: The Need for Accessible Simulation Tools}
+
+Agent-based modeling (ABM) has emerged as a powerful paradigm for simulating complex epidemic dynamics, capturing heterogeneous agent behaviors, spatial interactions, and emergent phenomena that compartmental models cannot easily represent \cite{bonabeau2002agent,tesfatsion2002agent}. Platforms such as GAMA \cite{grignard2013gama}, MASON \cite{luke2005mason}, NetLogo \cite{wilensky1999netlogo}, and AnyLogic \cite{borshchev2013anylogic} provide sophisticated capabilities for computational epidemiologists. However, these platforms require users to write code in domain-specific languages, creating a steep learning curve that excludes non-technical stakeholders \cite{north2010introducing}.
+
+The post-COVID-19 landscape presents both urgency and opportunity. Public health educators need simulation tools to train the next generation of epidemiologists and healthcare workers \cite{bennett2015simulation,gaba2004future}. K-12 STEM programs seek engaging platforms to teach emergence, systems thinking, and computational modeling \cite{wilensky2015agent,ngss2013next}. Policy analysts require rapid prototyping environments to explore intervention scenarios before committing to resource-intensive formal modeling \cite{saltelli2020five}. Yet existing platforms, designed for computational researchers rather than diverse stakeholders, fail to meet these needs.
+
+\subsection{Foundation: ChatDev's Communicative Multi-Agent Framework}
+
+This research builds upon ChatDev, a communicative multi-agent framework for software development that pioneered the integration of large language model (LLM)-powered agents in collaborative workflows \cite{qian2023communicative}. ChatDev demonstrates that complex software engineering tasks can be decomposed into role-based agent interactions, where agents communicate through structured dialogues to achieve collective goals. Key innovations include:
+
+\begin{itemize}
+    \item \textbf{Role-Based Agent Architecture}: Specialized agents (Programmer, Reviewer, Tester) collaborate through defined communication protocols
+    \item \textbf{LLM Integration}: Natural language communication enables flexible task specification and adaptive problem-solving
+    \item \textbf{Visual Orchestration}: Graph-based workflow definitions allow configuration of agent interactions without programming
+    \item \textbf{Extensible Platform}: Modular architecture supports domain-specific extensions while preserving core capabilities
+\end{itemize}
+
+The DevAll platform extends ChatDev with a browser-based visual console featuring PixiJS-powered SpatialCanvas environments for real-time agent visualization. This foundation provides the infrastructure for spatial simulation: agents exist within a 2D coordinate system, status updates propagate through reactive bindings, and the rendering loop handles efficient sprite management.
+
+\subsection{Extension: Spatial Contagion Sandbox}
+
+This paper introduces a spatial contagion sandbox that extends the DevAll platform for epidemiological simulation. Drawing inspiration from cellular automata theory---particularly Conway's Game of Life \cite{gardner1970mathematical}---the sandbox implements contagion dynamics through local state transitions, neighborhood interactions, and emergent epidemic patterns.
+
+The extension contributes three technical innovations:
+
+\textbf{1. Agent State Machine}. A finite state machine governing agent health states (HEALTHY, INFECTED, RECOVERED, DECEASED) with probabilistic transition rules. The state machine integrates with DevAll's existing agent status system, requiring no modifications to the core platform.
+
+\textbf{2. Transmission Engine}. A composable JavaScript module implementing proximity-based transmission and environmental contamination. Transmission probability scales with frame-rate independence, enabling consistent dynamics across hardware configurations.
+
+\textbf{3. Configuration-Driven Scenarios}. JSON-based scenario definitions specifying transmission parameters, recovery rates, agent populations, and environmental properties. Non-programmers can create custom scenarios by editing configuration files without writing code.
+
+\subsection{Research Questions}
+
+This research addresses four formal research questions (detailed in Section~\ref{sec:problem}):
+
+\begin{itemize}
+    \item \textbf{RQ1}: Can a contagion simulation engine be designed using cellular automata principles that integrates seamlessly with an existing LLM-powered multi-agent platform?
+    \item \textbf{RQ2}: What emergent epidemiological patterns arise from local agent-level transmission rules and environmental contamination dynamics?
+    \item \textbf{RQ3}: Does a zero-code, configuration-driven approach enable non-programmers to create epidemiological scenarios?
+    \item \textbf{RQ4}: What composable software architecture patterns enable reusable contagion simulation components?
+\end{itemize}
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+
+\begin{enumerate}
+    \item \textbf{Artifact}: A spatial contagion sandbox implemented as a JavaScript extension to the DevAll platform, featuring PixiJS visualization, composable architecture, and JSON-driven configuration
+    
+    \item \textbf{Design Knowledge}: Patterns for integrating cellular automata concepts (local rules, neighborhood interactions, emergent behavior) with agent-based modeling in multi-agent systems
+    
+    \item \textbf{Evaluation}: Analysis of emergent epidemic dynamics demonstrating that simple local transmission rules produce macro-level patterns analogous to compartmental models (infection waves, spatial clustering, recovery patterns)
+    
+    \item \textbf{Accessibility Demonstration}: Configuration-driven scenario creation enabling non-programmers (educators, healthcare professionals) to design and run epidemiological simulations
+\end{enumerate}
+
+\subsection{Paper Organization}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:methodology} justifies the Design Science Research methodology guiding this work. Section~\ref{sec:problem} articulates the problem motivating this research, identifies gaps in existing solutions, and formulates the research questions. Section~\ref{sec:applications} describes real-world applications across public health education, K-12 STEM education, policy exploration, and software engineering research. Section~\ref{sec:related} reviews related work on cellular automata theory and epidemiological modeling platforms. Section~\ref{sec:system-design} presents the system architecture and implementation details. Section~\ref{sec:evaluation} evaluates emergent behaviors and usability. Section~\ref{sec:discussion} discusses implications, limitations, and future directions. Section~\ref{sec:conclusion} summarizes contributions and impact.

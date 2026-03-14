@@ -1,0 +1,142 @@
+\subsection{Epidemiological Applications}
+\label{sec:related-epidemiology}
+
+The application of computational methods to epidemiology has evolved from simple compartmental models to sophisticated spatial and agent-based simulations. This section reviews the progression from classical mathematical epidemiology through cellular automata implementations to contemporary agent-based platforms, identifying gaps that motivate our research.
+
+\subsubsection{Compartmental Models: SIR and SEIR Foundations}
+
+The mathematical foundations of modern epidemiology were established by Kermack and McKendrick's seminal 1927 work on compartmental models \cite{kermack1927contribution}. Their Susceptible-Infectious-Recovered (SIR) model partitions a population into three compartments with flows determined by transmission and recovery rates. The SIR framework captures the fundamental dynamics of epidemic spread through a system of ordinary differential equations, enabling analytical derivation of key quantities such as the basic reproduction number $R_0$ and the epidemic threshold.
+
+The SEIR (Susceptible-Exposed-Infectious-Recovered) model extends SIR by incorporating an exposed/latent period during which individuals are infected but not yet infectious \cite{anderson1992infectious}. This additional compartment is essential for modeling diseases with significant incubation periods, such as influenza, Ebola, and COVID-19. Both SIR and SEIR models assume homogeneous mixing---every individual has equal probability of contact with any other---an assumption that fails to capture spatial heterogeneity and contact network structure observed in real epidemics \cite{keeling2005networks}.
+
+The analytical tractability of compartmental models has made them indispensable for public health planning. Anderson and May's comprehensive treatment \cite{anderson1992infectious} demonstrated how these models could inform vaccination strategies, estimate herd immunity thresholds \cite{fine2011herd}, and evaluate intervention effectiveness. During the COVID-19 pandemic, compartmental models formed the basis for policy decisions regarding lockdowns, social distancing, and vaccination prioritization \cite{flaxman2020estimating}.
+
+\subsubsection{Cellular Automata Implementations of Compartmental Models}
+
+The spatial limitations of homogeneous mixing models motivated researchers to implement compartmental dynamics on cellular automata grids. In CA-based epidemic models, each cell represents an individual or subpopulation, and disease spreads through local neighborhood interactions rather than global mixing \cite{fuentes2004epidemic}.
+
+Boccara and Cheong demonstrated that CA epidemic models can exhibit qualitatively different dynamics than their differential equation counterparts \cite{boccara1997critical}. Spatial clustering of infections creates local depletion of susceptibles, leading to epidemic waves and spatial patterns invisible to compartmental models. The critical transmissibility threshold in CA models depends on neighborhood structure: larger neighborhoods effectively increase mixing, approaching homogeneous model behavior \cite{fuks2001cellular}.
+
+Sirakoulis et al. developed a comprehensive CA framework for epidemic modeling that incorporated multiple disease states, population movement, and intervention strategies \cite{sirakoulis2000cellular}. Their work demonstrated that CA models could capture spatial epidemic phenomena including wave propagation, epidemic frontiers, and the formation of disease-free regions within endemic areas. White et al. extended this approach to model HIV/AIDS transmission with heterogeneous risk groups \cite{white2007modelling}, showing that spatial structure fundamentally alters epidemic trajectories compared to well-mixed models.
+
+The relationship between CA neighborhood size and epidemic dynamics parallels Wolfram's complexity classes \cite{wolfram1984universality}. Small neighborhoods produce localized epidemics that may die out; intermediate neighborhoods support sustained epidemic waves with complex spatial patterns; very large neighborhoods approach the homogeneous mixing limit of classical compartmental models \cite{fuks2001cellular}. This connection between CA complexity theory and epidemiology provides a theoretical foundation for understanding when spatial models are necessary.
+
+\subsubsection{Spatial Epidemic Models and Network Approaches}
+
+Beyond regular CA grids, researchers have developed spatial epidemic models on irregular lattices, continuous space, and complex networks. Keeling and Rohani's influential work demonstrated that spatial structure in contact networks dramatically affects epidemic dynamics, persistence, and intervention effectiveness \cite{keeling2002spatial,keeling2005networks}. Their pair approximation methods provided analytical tools for understanding epidemic spread on networks while avoiding the computational expense of full simulation.
+
+Network-based epidemic models represent individuals as nodes and contacts as edges, enabling representation of heterogeneous contact patterns \cite{pastor2015epidemic}. Scale-free networks, where a few individuals have many contacts (superspreaders), exhibit fundamentally different epidemic behavior than regular lattices or random graphs. Pastor-Satorras and Vespignani showed that on scale-free networks, the epidemic threshold can vanish entirely---epidemics can persist even for arbitrarily low transmission rates \cite{pastor2001epidemic}. This finding has profound implications for disease control: targeting superspreaders is far more effective than uniform interventions.
+
+Hybrid approaches combine CA environmental dynamics with network-based agent movement. Perez and Dragicevic developed an agent-based model where individuals move through space following realistic mobility patterns while disease spreads through both spatial proximity and social network contacts \cite{perez2009agent}. Their work demonstrated that integrating multiple transmission pathways captures epidemic dynamics that neither purely spatial nor purely network models can reproduce.
+
+Recent work on COVID-19 highlighted the importance of spatial heterogeneity. Arenas et al. developed a metapopulation model incorporating mobility data to capture epidemic spread between cities and regions \cite{arenas2020mathematical}. Their model demonstrated that spatial connectivity, rather than local transmission rates, often determines epidemic trajectories at regional scales. This insight informed policies on travel restrictions and regional lockdowns during the pandemic \cite{chinazzi2020effect}.
+
+\subsubsection{Agent-Based Epidemiology Platforms}
+
+The complexity of real-world epidemic dynamics has motivated development of specialized agent-based modeling platforms for epidemiology. These platforms vary in their target users, modeling paradigms, and technical requirements.
+
+\textbf{GAMA} (Generalized Agent-based Modeling Architecture) provides a high-level modeling language for spatially explicit agent-based simulations \cite{grignard2013gama}. GAMA integrates GIS data, supports large-scale simulations (millions of agents), and includes built-in epidemiological model components. Taillandier et al. demonstrated GAMA's application to dengue fever modeling, incorporating vector population dynamics, human mobility, and climate effects \cite{taillandier2014dengue}. However, GAMA requires programming in its domain-specific language (GAML), limiting accessibility for non-technical users.
+
+\textbf{MASON} (Multi-Agent Simulator of Neighborhoods) is a fast, flexible Java-based platform designed for large-scale social simulations \cite{luke2005mason}. MASON's emphasis on performance enables simulation of millions of agents, making it suitable for city-scale epidemic modeling. The platform's extensibility has supported diverse epidemiological applications, from influenza transmission to vector-borne disease dynamics. However, MASON's Java programming requirement creates a steep learning curve for epidemiologists without software development backgrounds.
+
+\textbf{NetLogo} provides an accessible, educational platform for agent-based modeling with a visual interface and simplified programming language \cite{wilensky1999netlogo}. NetLogo's extensive model library includes epidemiological examples demonstrating SIR dynamics, network spread, and spatial epidemic models \cite{edgecombe2013epidemiological}. The platform's accessibility has made it popular in educational settings and for rapid prototyping. However, NetLogo's performance limitations constrain its applicability to large-scale or computationally intensive simulations. Wilensky and Rand's textbook provides comprehensive guidance on agent-based modeling with NetLogo \cite{wilensky2014agent}, establishing it as a standard educational tool.
+
+\textbf{AnyLogic} offers a commercial, multi-method simulation environment supporting agent-based, discrete event, and system dynamics modeling \cite{borshchev2013anylogic}. AnyLogic's visual modeling interface and integration with GIS databases make it attractive for industrial and government applications. The platform has been used for COVID-19 policy analysis, hospital resource planning, and supply chain disruption modeling. However, AnyLogic's commercial licensing and proprietary nature limit its adoption in academic and resource-constrained settings.
+
+\textbf{FRED} (Framework for Reconstructing Epidemic Dynamics) implements synthetic population methods to create realistic agent populations from census data \cite{grefenstette2013fred}. FRED has been extensively validated against historical epidemics and used for public health planning at county, state, and national scales. The platform's emphasis on demographic realism enables detailed policy analysis but requires substantial computational resources and expertise to configure.
+
+\textbf{FluTE}, developed by Chao et al., provides a publicly available stochastic influenza epidemic simulator \cite{chao2020modeling}. FluTE incorporates detailed contact network structures, age-stratified transmission rates, and intervention scenarios. The platform has been used to evaluate vaccination strategies and school closure policies. Its open-source nature and focus on a specific disease (influenza) reduce configuration complexity compared to general-purpose platforms.
+
+\subsubsection{COVID-19 and the Renaissance of Agent-Based Epidemiology}
+
+The COVID-19 pandemic catalyzed unprecedented development and application of agent-based epidemic models. Hoertel et al. developed a stochastic agent-based model of SARS-CoV-2 spread in France, incorporating age structure, contact patterns, and intervention scenarios \cite{hoertel2020stochastic}. Their model informed French government policy on lockdown measures and demonstrated the importance of age-stratified contact patterns for epidemic control.
+
+Silva et al. conducted a comprehensive review of COVID-19 agent-based models, identifying common modeling assumptions, validation approaches, and policy applications \cite{silva2020covid}. They found that most COVID-19 ABM studies incorporated spatial structure, heterogeneous contact networks, and intervention scenarios, reflecting lessons learned from earlier epidemic modeling research. However, they noted significant variation in model assumptions and parameterization, highlighting the need for standardization and reproducibility.
+
+Kerr et al. developed Covasim, an open-source agent-based model designed for COVID-19 policy analysis \cite{kerr2021covasim}. Covasim emphasizes computational efficiency, enabling rapid scenario exploration, and includes calibration tools for fitting to observed epidemic data. The model has been applied in multiple countries to evaluate testing strategies, vaccination rollout, and variant emergence. Covasim's Python implementation and extensive documentation exemplify best practices for accessible, reproducible epidemic modeling.
+
+\subsubsection{Gap Analysis: Limitations of Current Platforms}
+
+Despite the proliferation of agent-based epidemiology platforms, significant gaps remain that motivate our research on visual, composable, LLM-integrated simulation tools.
+
+\textbf{Accessibility Barrier}: Current platforms require substantial technical expertise---programming in Java, Python, or domain-specific languages; configuration of complex parameter files; installation and management of dependencies \cite{kravari2015survey}. This technical barrier excludes public health practitioners, educators, and policymakers who could benefit from epidemic simulation but lack software development skills. While NetLogo reduces this barrier through its visual interface and simplified language, performance limitations constrain its applicability to large-scale scenarios.
+
+\textbf{Composability Gap}: Existing platforms treat epidemic models as monolithic artifacts rather than composable components \cite{north2010introducing}. Adding new disease states, intervention strategies, or environmental factors typically requires modifying core model code. This monolithic approach impedes rapid prototyping, model comparison, and extension by non-expert users. A composable architecture would enable users to assemble epidemic models from reusable modules (transmission mechanisms, intervention components, population structures) without programming.
+
+\textbf{Visual Interaction Limitations}: While platforms like AnyLogic provide visual modeling interfaces, these interfaces target professional modelers rather than end-users. Educators and policymakers need tools for visual configuration and real-time interaction with running simulations---adjusting parameters, introducing interventions, and observing consequences through intuitive visualizations. Current platforms offer limited support for this interactive, exploratory use case.
+
+\textbf{LLM Integration Gap}: Recent advances in large language models (LLMs) offer unprecedented opportunities for natural language interaction with simulation systems. LLMs could enable users to configure simulations through conversational interfaces, receive explanations of model behavior, and generate scenario narratives. No existing epidemiology platform integrates LLM capabilities, missing an opportunity to dramatically reduce barriers to epidemic modeling. Park et al.'s work on generative agents \cite{park2023generative} demonstrates LLMs' potential for creating believable human behavior simulations, suggesting applications for epidemic modeling where agent decision-making follows realistic cognitive processes.
+
+\textbf{Reproducibility and Transparency}: The diversity of agent-based epidemic models, each with different assumptions and implementations, creates reproducibility challenges \cite{silva2020covid}. A composable, well-documented platform with explicit model specifications would improve transparency and enable systematic comparison across modeling approaches. Saltelli et al.'s manifesto for responsible modeling \cite{saltelli2020five} emphasizes the need for models that serve society through clarity, validation, and stakeholder engagement---principles that inform our design approach.
+
+\subsubsection{Comparative Analysis of Agent-Based Epidemiology Platforms}
+
+To contextualize our contribution within the landscape of agent-based epidemiology tools, we present a systematic comparison across four key dimensions: LLM integration capabilities, visual interface design, architectural composability, and accessibility for non-technical users. Table~\ref{tab:platform-comparison} summarizes these characteristics for the most widely-used platforms alongside our DevAll-based contagion simulation.
+
+\begin{table*}[t]
+\centering
+\caption{Comparison of Agent-Based Epidemiology Platforms}
+\label{tab:platform-comparison}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Platform} & \textbf{LLM Integration} & \textbf{Visual Interface} & \textbf{Composable Arch.} & \textbf{Zero-Code Config} & \textbf{Max Scale} \\
+\midrule
+GAMA \cite{grignard2013gama} & None & GIS-based & Partial & No & Millions \\
+MASON \cite{luke2005mason} & None & Minimal (Java Swing) & Yes & No & Millions \\
+NetLogo \cite{wilensky1999netlogo} & None & Built-in 2D & Limited & Partial & Thousands \\
+AnyLogic \cite{borshchev2013anylogic} & None & Professional GUI & Yes & Partial & Millions \\
+FRED \cite{grefenstette2013fred} & None & Limited & No & No & Millions \\
+FluTE \cite{chao2020modeling} & None & CLI only & No & No & Millions \\
+\textbf{DevAll (Ours)} & \textbf{Native} & \textbf{PixiJS WebGL} & \textbf{YAML-based} & \textbf{Yes} & \textbf{$\sim$50 agents} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{LLM Integration}
+DevAll uniquely provides native integration with large language models through its ChatDev heritage \cite{qian2023communicative}. Agents can employ LLM-backed reasoning for decision-making, natural language communication, and adaptive behavior. This capability enables simulation of cognitive processes during epidemic scenarios---agents can exhibit realistic health-seeking behavior, compliance with public health guidance, and information spread through social networks. No other epidemiology platform offers comparable LLM integration; existing tools rely on scripted or rule-based agent behaviors.
+
+\paragraph{Visual Interface and Rendering}
+While platforms like GAMA and AnyLogic provide sophisticated visualization capabilities, DevAll leverages PixiJS \cite{pixijs2024documentation} for hardware-accelerated WebGL rendering. This approach achieves 60 FPS rendering with real-time status updates, animated agent transitions, and environmental overlays (contamination gradients, connection particles, trail effects). NetLogo's built-in visualization, while accessible, lacks the performance characteristics necessary for fluid real-time interaction with complex spatial environments.
+
+\paragraph{Composable Architecture and Zero-Code Configuration}
+DevAll's YAML-based workflow configuration \cite{gamma1994design} enables model composition without programming. Users assemble simulations by combining pre-built modules: transmission mechanisms (proximity, environmental), intervention strategies (vaccination, quarantine), and population structures (household, workplace). This composable approach contrasts with monolithic model architectures in GAMA, MASON, and NetLogo, where extensions typically require modifying source code in Java, Python, or NetLogo's domain-specific language.
+
+\paragraph{Accessibility Trade-offs}
+The zero-code configuration paradigm dramatically reduces barriers to entry for public health practitioners, educators, and policymakers. A user can configure an SEIR simulation with environmental transmission by editing a JSON file:
+\begin{verbatim}
+{
+  "simulation": {
+    "infectionRadius": 80,
+    "infectionProbability": 0.3,
+    "recoveryTimeMs": 15000,
+    "contaminationDecayMs": 10000
+  }
+}
+\end{verbatim}
+This accessibility comes at the cost of flexibility: users cannot implement novel transmission mechanisms or agent behaviors without extending the codebase. Platforms like MASON and GAMA offer greater extensibility at the cost of steeper learning curves.
+
+\paragraph{Scalability Trade-offs}
+The most significant limitation of our approach is scalability. The O($n^2$) pairwise proximity detection algorithm limits practical simulation scale to approximately 50 agents---beyond this threshold, per-frame computation exceeds the 16ms budget for 60 FPS rendering. For comparison:
+\begin{itemize}
+    \item GAMA: Supports millions of agents through spatial partitioning and parallelization
+    \item MASON: Optimized for large-scale social simulations with efficient data structures
+    \item NetLogo: Handles thousands of agents but performance degrades with complex interactions
+\end{itemize}
+
+This scalability constraint reflects a deliberate design trade-off. Our target use case---interactive educational demonstrations, rapid scenario prototyping, and LLM-integrated agent behavior---benefits from the rich visual feedback and cognitive modeling capabilities that smaller-scale simulation enables. For city-scale or national epidemic modeling, platforms like FRED or Covasim \cite{kerr2021covasim} remain more appropriate choices.
+
+\paragraph{Unique Contributions Summary}
+DevAll's contagion simulation contributes three unique capabilities to the agent-based epidemiology landscape:
+\begin{enumerate}
+    \item \textbf{LLM-native agents}: First epidemiology platform with integrated large language model capabilities for realistic cognitive agent behavior
+    \item \textbf{Zero-code configuration}: YAML/JSON-driven simulation assembly eliminates programming requirements for basic epidemic scenarios
+    \item \textbf{Real-time WebGL visualization}: PixiJS-based rendering provides fluid, interactive visual feedback with status glows, contamination overlays, and animated transitions
+\end{enumerate}
+
+These capabilities position DevAll as a complementary tool to existing platforms: optimal for interactive exploration, education, and prototyping, while established platforms remain preferable for large-scale population modeling and computationally intensive scenario analysis.
+
+\subsubsection{Summary}
+
+Epidemiological modeling has progressed from simple compartmental models through CA implementations to sophisticated agent-based platforms. Each paradigmatic advance---from homogeneous mixing to spatial structure, from differential equations to discrete agents---has revealed epidemic dynamics invisible to simpler models. Contemporary platforms (GAMA, MASON, NetLogo, AnyLogic) provide powerful tools for epidemic simulation but require technical expertise that limits accessibility.
+
+The COVID-19 pandemic demonstrated both the value of agent-based epidemic models for policy analysis and the limitations of current platforms for rapid, accessible scenario exploration. Our research addresses the identified gaps by developing a visual, composable, LLM-integrated simulation platform that democratizes access to epidemic modeling while maintaining the spatial and behavioral complexity necessary for realistic contagion simulation.
