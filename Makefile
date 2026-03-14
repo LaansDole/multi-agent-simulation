@@ -6,7 +6,6 @@
 dev: ## Run both backend and frontend development servers
 	@$(MAKE) server wait-backend client
 
-
 .PHONY: server
 server: stop ## Start the backend server in the background
 	@echo "Starting server in background..."
