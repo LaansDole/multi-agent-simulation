@@ -64,6 +64,10 @@ const state = reactive({
     /** @type {Map<string, number>} Snapshot of initial floor contamination for reset */
     initialFloorLevels: new Map(),
 
+    // ── Sandbox interaction mode ──
+    /** @type {'pointer' | 'infect' | 'cure'} */
+    sandboxInteractionMode: 'pointer',
+
     // ── Debug logging ──
     debugEnabled: false,
     /** @type {Array<{ ts: number, category: string, message: string }>} */
@@ -194,6 +198,7 @@ export function useContagionEngine() {
         state.elapsedTimeMs = 0
         state.simulationRunning = false
         state.simulationPaused = false
+        state.sandboxInteractionMode = 'pointer'
         state.infectionTimers.clear()
         state.immunityTimers.clear()
         state.floorContaminationTimers.clear()
@@ -277,6 +282,7 @@ export function useContagionEngine() {
             return
         }
         state.sandboxMode = !state.sandboxMode
+        state.sandboxInteractionMode = 'pointer'
         if (state.sandboxMode) {
             _log('lifecycle', `toggleSandboxMode: ON (agents=${agentPositions.value.size})`)
             initSimulation()
@@ -552,6 +558,16 @@ export function useContagionEngine() {
         state.contagionLog.splice(0, state.contagionLog.length)
     }
 
+    /**
+     * Set the sandbox interaction mode.
+     * @param {'pointer' | 'infect' | 'cure'} mode
+     */
+    function setSandboxInteractionMode(mode) {
+        if (['pointer', 'infect', 'cure'].includes(mode)) {
+            state.sandboxInteractionMode = mode
+        }
+    }
+
     return {
         ...toRefs(state),
         stats,
@@ -568,6 +584,7 @@ export function useContagionEngine() {
         isAgentDeceased,
         toggleDebugLog,
         clearLog,
+        setSandboxInteractionMode,
         CONTAMINATION_COLORS
     }
 }

@@ -40,6 +40,36 @@
       @step="$emit('step')"
       @reset="$emit('reset')"
     />
+    <!-- Sandbox interaction mode selector -->
+    <div class="tool-mode-selector">
+      <span class="tool-mode-label">Tool</span>
+      <div class="tool-mode-buttons">
+        <button
+          class="tool-mode-button"
+          :class="{ selected: interactionMode === 'pointer' }"
+          @click="$emit('update:interaction-mode', 'pointer')"
+          title="Select / Drag agents"
+        >
+          🖱️ Pointer
+        </button>
+        <button
+          class="tool-mode-button"
+          :class="{ selected: interactionMode === 'infect' }"
+          @click="$emit('update:interaction-mode', 'infect')"
+          title="Click to infect"
+        >
+          🦠 Infect
+        </button>
+        <button
+          class="tool-mode-button"
+          :class="{ selected: interactionMode === 'cure' }"
+          @click="$emit('update:interaction-mode', 'cure')"
+          title="Click to cure"
+        >
+          💊 Cure
+        </button>
+      </div>
+    </div>
     <!-- Debug log panel -->
     <div v-if="debugEnabled" class="debug-log-panel">
       <div class="debug-log-header">
@@ -76,10 +106,11 @@ const props = defineProps({
   elapsedTimeMs: { type: Number, default: 0 },
   isPlaying: { type: Boolean, default: false },
   debugEnabled: { type: Boolean, default: false },
-  contagionLog: { type: Array, default: () => [] }
+  contagionLog: { type: Array, default: () => [] },
+  interactionMode: { type: String, default: 'pointer' }
 })
 
-defineEmits(['play', 'pause', 'step', 'reset', 'toggle-debug', 'clear-log'])
+defineEmits(['play', 'pause', 'step', 'reset', 'toggle-debug', 'clear-log', 'update:interaction-mode'])
 
 const logScrollRef = ref(null)
 
@@ -295,5 +326,53 @@ watch(() => props.contagionLog.length, async () => {
   color: #4b5563;
   font-style: italic;
   padding: 4px 0;
+}
+
+/* ── Tool mode selector ── */
+.tool-mode-selector {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tool-mode-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.tool-mode-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.tool-mode-button {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tool-mode-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e0e7ff;
+}
+
+.tool-mode-button.selected {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  font-weight: 600;
 }
 </style>

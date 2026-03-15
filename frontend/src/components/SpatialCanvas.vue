@@ -24,12 +24,14 @@
       :is-playing="simulationRunning && !simulationPaused"
       :debug-enabled="contagionDebugEnabled"
       :contagion-log="contagionLogEntries"
+      :interaction-mode="sandboxInteractionMode"
       @play="contagionPlay"
       @pause="contagionPause"
       @step="contagionStep"
       @reset="contagionReset"
       @toggle-debug="contagionToggleDebug"
       @clear-log="contagionClearLog"
+      @update:interaction-mode="setSandboxInteractionMode"
     />
 
     <!-- Obstacle info tooltip -->
@@ -104,6 +106,7 @@ import { usePixiApp } from '../composables/spatial/usePixiApp.js'
 import { spriteFetcher } from '../utils/spriteFetcher.js'
 import { createPathfinder } from '../utils/pathfinding.js'
 import { useContagionEngine } from '../composables/spatial/useContagionEngine.js'
+import { useInfectionHeatmap } from '../composables/spatial/useInfectionHeatmap.js'
 import SpatialControls from './SpatialControls.vue'
 import ContagionHUD from './simulation/ContagionHUD.vue'
 
@@ -160,7 +163,8 @@ const {
   enqueueAnimation,
   dequeueAnimation,
   getStaggerDelay,
-  setNodeTypes
+  setNodeTypes,
+  isAgentNode
 } = useSpatialLayout()
 
 // ───────── SHARED CANVAS CONTEXT ─────────
@@ -258,8 +262,25 @@ const {
   updateContagion,
   isAgentDeceased,
   toggleDebugLog: contagionToggleDebug,
-  clearLog: contagionClearLog
+  clearLog: contagionClearLog,
+  sandboxInteractionMode,
+  setSandboxInteractionMode,
+  getParams: contagionGetParams
 } = useContagionEngine()
+
+// ───────── INFECTION HEATMAP COMPOSABLE ─────────
+const {
+  updateInfectionHeatmap,
+  cleanup: cleanupHeatmap
+} = useInfectionHeatmap({
+  ctx,
+  agentPositions,
+  getAgentCondition,
+  getParams: contagionGetParams,
+  sandboxMode,
+  simulationRunning,
+  isAgentNode
+})
 
 function onSandboxToggle() {
   toggleSandboxMode()
@@ -328,6 +349,7 @@ const {
   MIN_AGENT_SEPARATION,
   updateContagion,
   updateContaminationOverlays,
+  updateInfectionHeatmap,
   sandboxMode
 })
 
@@ -352,9 +374,9 @@ const {
   STATUS_COLORS,
   AGENT_STATUS,
   sandboxMode,
+  sandboxInteractionMode,
   seedInfection,
   cureAgent,
-  getAgentCondition,
   setNodeTypes
 })
 
@@ -378,6 +400,7 @@ const {
   cleanupCommunication,
   cleanupObstacles,
   cleanupFloors,
+  cleanupHeatmap,
   cleanupIdleWander,
   initPathfinder,
   emit,
