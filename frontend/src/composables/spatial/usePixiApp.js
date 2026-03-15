@@ -49,6 +49,7 @@ export function usePixiApp({
     cleanupCommunication,
     cleanupObstacles,
     cleanupFloors,
+    cleanupHeatmap,
     cleanupIdleWander,
     initPathfinder,
     emit,
@@ -215,6 +216,10 @@ export function usePixiApp({
         ctx.connectionGraphics = markRaw(new Graphics())
         ctx.app.stage.addChild(ctx.connectionGraphics)
 
+        // Infection proximity heatmap layer (below agents, above connections)
+        ctx.heatmapGraphics = markRaw(new Graphics())
+        ctx.app.stage.addChild(ctx.heatmapGraphics)
+
         // Agent container (on top)
         ctx.agentContainer = markRaw(new Container())
         ctx.app.stage.addChild(ctx.agentContainer)
@@ -253,6 +258,7 @@ export function usePixiApp({
         ctx.agentSprites.clear()
         cleanupObstacles()
         cleanupFloors()
+        if (cleanupHeatmap) cleanupHeatmap()
         ctx.animatingAgents.clear()
         cleanupIdleWander()
 
@@ -265,6 +271,7 @@ export function usePixiApp({
             ctx.floorContainer = null
             ctx.connectionGraphics = null
             ctx.trailGraphics = null
+            ctx.heatmapGraphics = null
             ctx.gridGraphics = null
             ctx.placementGhostGraphics = null
         }

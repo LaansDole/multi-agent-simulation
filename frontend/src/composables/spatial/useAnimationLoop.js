@@ -57,6 +57,7 @@ export function useAnimationLoop({
     MIN_AGENT_SEPARATION,
     updateContagion,
     updateContaminationOverlays,
+    updateInfectionHeatmap,
     sandboxMode
 }) {
 
@@ -71,6 +72,7 @@ export function useAnimationLoop({
         updateIdleWanders()
         if (updateContagion) updateContagion(deltaMs)
         if (updateContaminationOverlays) updateContaminationOverlays()
+        if (updateInfectionHeatmap) updateInfectionHeatmap()
         updateAnimations()
         applyPerFrameSeparation()
         updateEmotes()

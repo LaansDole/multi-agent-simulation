@@ -590,4 +590,50 @@ describe('useContagionEngine', () => {
             Date.now = originalNow // restore
         })
     })
+
+    describe('sandboxInteractionMode', () => {
+        it('defaults to pointer when sandbox activates', () => {
+            engine.toggleSandboxMode()
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+
+        it('changes mode via setSandboxInteractionMode', () => {
+            engine.toggleSandboxMode()
+            engine.setSandboxInteractionMode('infect')
+            expect(engine.sandboxInteractionMode.value).toBe('infect')
+
+            engine.setSandboxInteractionMode('cure')
+            expect(engine.sandboxInteractionMode.value).toBe('cure')
+
+            engine.setSandboxInteractionMode('pointer')
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+
+        it('rejects invalid mode values', () => {
+            engine.toggleSandboxMode()
+            engine.setSandboxInteractionMode('infect')
+            engine.setSandboxInteractionMode('invalid')
+            // Should still be 'infect' since 'invalid' was rejected
+            expect(engine.sandboxInteractionMode.value).toBe('infect')
+        })
+
+        it('resets to pointer when sandbox is toggled off and on', () => {
+            engine.toggleSandboxMode() // on
+            engine.setSandboxInteractionMode('cure')
+            expect(engine.sandboxInteractionMode.value).toBe('cure')
+
+            engine.toggleSandboxMode() // off
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+
+            engine.toggleSandboxMode() // on again
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+
+        it('resets to pointer on simulation reset', () => {
+            engine.toggleSandboxMode()
+            engine.setSandboxInteractionMode('infect')
+            engine.resetSimulation()
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+    })
 })
