@@ -2610,50 +2610,7 @@ watch(
   position: relative;
   width: 100%;
   max-width: 100%;
-/* Persistent Chat Panel */
-.chat-panel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 380px;
-  max-width: 50%;
-  z-index: 10;
-  display: flex;
-  flex-direction: row;
-  pointer-events: none;
-  transition: width 0.3s ease;
-}
-
-/* Full-screen chat mode */
-.chat-panel-fullscreen {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
   flex: 1;
-  flex-direction: column;
-  pointer-events: auto;
-  z-index: auto;
-}
-
-.chat-panel-fullscreen .chat-panel-content {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(5px);
-}
-
-.chat-panel-collapsed {
-  width: 0;
-}
-
-.chat-panel-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  pointer-events: auto;
-  background: rgba(26, 26, 26, 0.92);
   flex-direction: column;
   pointer-events: auto;
   z-index: auto;

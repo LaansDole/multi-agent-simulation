@@ -9,6 +9,7 @@
       :save-status="saveStatus"
       :sandbox-mode="sandboxMode"
       @reset-layout="resetLayout"
+      @clear-layout="clearLayout"
       @speed-change="onSpeedChange"
       @save-layout="onSaveLayout"
       @import-config="onImportConfig"
@@ -124,6 +125,9 @@ const canvasRef = ref(null)
 const {
   config: spatialConfig,
   loadConfig,
+  setConfig,
+  clearCache,
+  clearSavedConfig,
   updateObstaclePosition,
   removeObstacle,
   saveConfig,
@@ -250,7 +254,9 @@ const {
   stepSimulation: contagionStep,
   resetSimulation: contagionReset,
   seedInfection,
+  cureAgent,
   updateContagion,
+  isAgentDeceased,
   toggleDebugLog: contagionToggleDebug,
   clearLog: contagionClearLog
 } = useContagionEngine()
@@ -271,7 +277,8 @@ const {
   getAgentStatus,
   getSpeedValue,
   agentPositions,
-  AGENT_STATUS_IDLE: AGENT_STATUS.IDLE
+  AGENT_STATUS_IDLE: AGENT_STATUS.IDLE,
+  isAgentDeceased
 })
 
 // ───────── COMMUNICATION ANIMATION COMPOSABLE ─────────
@@ -346,6 +353,8 @@ const {
   AGENT_STATUS,
   sandboxMode,
   seedInfection,
+  cureAgent,
+  getAgentCondition,
   setNodeTypes
 })
 
@@ -466,6 +475,42 @@ function resetLayout() {
   const edges = props.edges || []
   resetPositions(nodes, edges)
 
+  resetZoom()
+
+  ctx.agentSprites.forEach((ag, nodeId) => {
+    const pos = agentPositions.value.get(nodeId)
+    if (pos) {
+      ag.container.x = pos.x
+      ag.container.y = pos.y
+    }
+  })
+}
+
+function clearLayout() {
+  const workflowName = normalizeWorkflowName(props.workflowFile) || ''
+
+  // Reset config to empty defaults
+  const defaultCfg = { canvas: {}, grid: {}, obstacles: [], spawnZones: [] }
+  if (workflowName) {
+    clearSavedConfig(workflowName)
+    clearCache(workflowName)
+    setConfig(workflowName, defaultCfg)
+  } else {
+    setConfig('', defaultCfg)
+  }
+
+  // Redraw (now empty)
+  drawFloors()
+  drawObstacles()
+
+  if (ctx.app?.renderer) {
+    initPathfinder(ctx.app.renderer.width, ctx.app.renderer.height)
+  }
+
+  // Reset agent positions and zoom
+  const nodes = props.nodes || []
+  const edges = props.edges || []
+  resetPositions(nodes, edges)
   resetZoom()
 
   ctx.agentSprites.forEach((ag, nodeId) => {
