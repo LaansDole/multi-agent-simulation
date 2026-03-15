@@ -30,11 +30,12 @@
           </div>
 
           <!-- Contagion Simulation Settings -->
-          <div class="settings-section-header" @click="showContagion = !showContagion">
+          <div class="settings-item" @click="showContagion = !showContagion">
             <span class="section-chevron" :class="{ open: showContagion }">▶</span>
             Contagion Simulation
           </div>
-          <div v-show="showContagion" class="contagion-settings">
+          <Transition name="collapse">
+          <div v-if="showContagion" class="contagion-settings">
             <p class="section-hint">Parameters for the spatial contagion sandbox. Changes take effect on the next simulation tick.</p>
 
             <div class="settings-group-label">Transmission</div>
@@ -77,6 +78,7 @@
               <input type="number" v-model.number="localConfig.CONTAGION_IMMUNITY_DURATION_MS" min="0" step="1000" />
             </div>
           </div>
+          </Transition>
         </div>
         <div class="modal-footer">
           <button class="cancel-button" @click="close">Cancel</button>
@@ -150,6 +152,7 @@ const save = () => {
 .modal-content.settings-modal {
   width: 500px !important;
   max-width: 90vw;
+  max-height: 80vh;
   background: #1e1e1e;
   border-radius: 8px;
   border: 1px solid #333;
@@ -300,13 +303,30 @@ const save = () => {
 }
 
 .section-chevron {
+  display: inline-block;
   font-size: 10px;
-  transition: transform 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   color: #888;
 }
 
 .section-chevron.open {
   transform: rotate(90deg);
+}
+
+/* Collapse transition for contagion section */
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
 }
 
 .section-hint {
@@ -318,6 +338,21 @@ const save = () => {
 
 .contagion-settings {
   padding-left: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.contagion-settings::-webkit-scrollbar {
+  width: 4px;
+}
+
+.contagion-settings::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 2px;
+}
+
+.contagion-settings::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .settings-group-label {
