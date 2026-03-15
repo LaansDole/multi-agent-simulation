@@ -27,6 +27,7 @@ const MAX_ZOOM = 3.0
  * @param {Function} options.obstacleUpdatePlacementGhost - Update placement ghost callback
  * @param {Function} options.cleanupCommunication - Cleanup communication composable
  * @param {Function} options.cleanupObstacles - Cleanup obstacle composable
+ * @param {Function} options.cleanupFloors - Cleanup floors composable
  * @param {Function} options.cleanupIdleWander - Cleanup idle wander composable
  * @param {Function} options.initPathfinder - Initialize pathfinder
  * @param {Function} options.emit - Component emit
@@ -47,6 +48,7 @@ export function usePixiApp({
     obstacleUpdatePlacementGhost,
     cleanupCommunication,
     cleanupObstacles,
+    cleanupFloors,
     cleanupIdleWander,
     initPathfinder,
     emit,
@@ -90,7 +92,11 @@ export function usePixiApp({
         ctx.app.stage.addChild(ctx.gridGraphics)
         drawGrid()
 
-        // Obstacle layer (between grid and agents)
+        // Floor layer (between grid and obstacles)
+        ctx.floorContainer = markRaw(new Container())
+        ctx.app.stage.addChild(ctx.floorContainer)
+
+        // Obstacle layer (between floor and agents)
         ctx.obstacleContainer = markRaw(new Container())
         ctx.app.stage.addChild(ctx.obstacleContainer)
 
@@ -101,6 +107,18 @@ export function usePixiApp({
         let bgPointerDown = false
         let bgDragStart = { x: 0, y: 0 }
         const PAN_THRESHOLD = 5
+        let isBrushDragging = false
+
+        /**
+         * Check if the obstacle editor has an active brush/eraser tool.
+         * @returns {boolean}
+         */
+        function isBrushOrEraserActive() {
+            const editor = props.obstacleEditorRef
+            if (!editor) return false
+            const mode = editor.toolMode
+            return mode === 'brush' || mode === 'eraser'
+        }
 
         ctx.app.stage.on('pointerdown', (e) => {
             if (e.target === ctx.app.stage && e.button === 0) {
@@ -109,12 +127,20 @@ export function usePixiApp({
                 bgDragStart.y = e.global.y
                 panStart.x = e.global.x - ctx.app.stage.x
                 panStart.y = e.global.y - ctx.app.stage.y
+
+                // If brush/eraser tool is active and not space-panning, start a drag stroke immediately
+                if (!spaceKeyDown && isBrushOrEraserActive()) {
+                    isBrushDragging = true
+                    const worldPos = ctx.app.stage.toLocal(e.global)
+                    emit('canvas-drag-start', { x: worldPos.x, y: worldPos.y })
+                }
                 return
             }
         })
 
         ctx.app.stage.on('pointermove', (e) => {
-            if (bgPointerDown && !isPanning) {
+            // Handle panning detection (only when not brush-dragging)
+            if (bgPointerDown && !isPanning && !isBrushDragging) {
                 const dx = e.global.x - bgDragStart.x
                 const dy = e.global.y - bgDragStart.y
                 if (Math.sqrt(dx * dx + dy * dy) >= PAN_THRESHOLD) {
@@ -123,10 +149,28 @@ export function usePixiApp({
                     deselectObstacle()
                 }
             }
+            // Space+drag panning takes priority and cancels any brush drag
+            if (spaceKeyDown && bgPointerDown && !isPanning) {
+                isPanning = true
+                if (isBrushDragging) {
+                    isBrushDragging = false
+                    emit('canvas-drag-end')
+                }
+                wrapperRef.value.classList.add('panning')
+                deselectObstacle()
+            }
             if (isPanning) {
                 ctx.app.stage.x = e.global.x - panStart.x
                 ctx.app.stage.y = e.global.y - panStart.y
                 drawGrid()
+                return
+            }
+            // Emit continuous drag coordinates for brush/eraser
+            if (isBrushDragging) {
+                const worldPos = ctx.app.stage.toLocal(e.global)
+                emit('canvas-drag', { x: worldPos.x, y: worldPos.y })
+                // Also update placement ghost so user sees cursor feedback
+                obstacleUpdatePlacementGhost(worldPos.x, worldPos.y, props.obstacleEditorRef)
                 return
             }
             const worldPos = ctx.app.stage.toLocal(e.global)
@@ -138,6 +182,13 @@ export function usePixiApp({
                 isPanning = false
                 bgPointerDown = false
                 wrapperRef.value.classList.remove('panning')
+                return
+            }
+            // End brush/eraser drag stroke
+            if (isBrushDragging) {
+                isBrushDragging = false
+                bgPointerDown = false
+                emit('canvas-drag-end')
                 return
             }
             if (bgPointerDown) {
@@ -201,6 +252,7 @@ export function usePixiApp({
         }
         ctx.agentSprites.clear()
         cleanupObstacles()
+        cleanupFloors()
         ctx.animatingAgents.clear()
         cleanupIdleWander()
 
@@ -210,6 +262,7 @@ export function usePixiApp({
             ctx.app = null
             ctx.agentContainer = null
             ctx.obstacleContainer = null
+            ctx.floorContainer = null
             ctx.connectionGraphics = null
             ctx.trailGraphics = null
             ctx.gridGraphics = null

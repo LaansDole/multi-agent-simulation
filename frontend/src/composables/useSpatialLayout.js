@@ -1,9 +1,9 @@
-import { reactive, toRefs } from 'vue'
+import { reactive, ref, toRefs } from 'vue'
 
 const SPATIAL_POSITIONS_PREFIX = 'devall_spatial_'
 const SPATIAL_SPEED_KEY = 'devall_spatial_speed'
 
-// ───────── AGENT STATUS CONSTANTS ─────────
+// ───────── AGENT STATUS CONSTANTS (workflow) ─────────
 
 export const AGENT_STATUS = {
     IDLE: 'idle',
@@ -19,12 +19,34 @@ export const STATUS_COLORS = {
     [AGENT_STATUS.ERROR]: 0xef4444
 }
 
-// Pulse speed multiplier per status (higher = faster pulse)
 export const STATUS_PULSE = {
-    [AGENT_STATUS.IDLE]: 0,        // no pulse
-    [AGENT_STATUS.THINKING]: 2.5,  // fast pulse
+    [AGENT_STATUS.IDLE]: 0,
+    [AGENT_STATUS.THINKING]: 2.5,
     [AGENT_STATUS.COMMUNICATING]: 1.5,
-    [AGENT_STATUS.ERROR]: 3.0      // rapid pulse
+    [AGENT_STATUS.ERROR]: 3.0
+}
+
+// ───────── AGENT CONDITION CONSTANTS (contagion) ─────────
+
+export const AGENT_CONDITION = {
+    HEALTHY: 'healthy',
+    INFECTED: 'infected',
+    RECOVERED: 'recovered',
+    DECEASED: 'deceased'
+}
+
+export const CONDITION_COLORS = {
+    [AGENT_CONDITION.HEALTHY]: 0x22c55e,
+    [AGENT_CONDITION.INFECTED]: 0xef4444,
+    [AGENT_CONDITION.RECOVERED]: 0x3b82f6,
+    [AGENT_CONDITION.DECEASED]: 0x6b7280
+}
+
+export const CONDITION_PULSE = {
+    [AGENT_CONDITION.HEALTHY]: 0,
+    [AGENT_CONDITION.INFECTED]: 3.0,
+    [AGENT_CONDITION.RECOVERED]: 0.5,
+    [AGENT_CONDITION.DECEASED]: 0.8
 }
 
 // ───────── SPEED PRESETS ─────────
@@ -65,7 +87,12 @@ export const EMOTE_RULES = [
     { keywords: ['thank', 'thanks', 'appreciate', 'helpful', 'assist'], emoji: '🙏', badge: 'Thanks!' },
     { keywords: ['sorry', 'apologi', 'mistake', 'unfortunately', 'regret'], emoji: '😔', badge: 'Sorry...' },
     { keywords: ['recommend', 'should', 'must', 'need to', 'require', 'advise'], emoji: '📋', badge: 'Noted' },
-    { keywords: ['complet', 'done', 'finish', 'success', 'ready', 'result'], emoji: '✅', badge: 'Done!' }
+    { keywords: ['complet', 'done', 'finish', 'success', 'ready', 'result'], emoji: '✅', badge: 'Done!' },
+    // Contagion simulation emotes
+    { keywords: ['infected', 'infection', 'contagion', 'sick', 'ill', 'fever'], emoji: '🤒', badge: 'Infected!' },
+    { keywords: ['recovered', 'recovery', 'immune', 'healed', 'cured'], emoji: '💪', badge: 'Recovered!' },
+    { keywords: ['deceased', 'dead', 'fatal', 'died'], emoji: '💀', badge: 'Deceased' },
+    { keywords: ['quarantine', 'isolat', 'lockdown', 'contain'], emoji: '🔒', badge: 'Quarantined' }
 ]
 
 const EMOTE_DISMISS_EMOJI_MS = 3000
@@ -163,11 +190,11 @@ function isPositionValid(pos, obstacles) {
 function findValidPositionNear(targetPos, obstacles, width, height) {
     const searchRadius = 150
     const step = 20
-    
+
     if (isPositionValid(targetPos, obstacles)) {
         return targetPos
     }
-    
+
     // Spiral search outward from target
     for (let r = step; r <= searchRadius; r += step) {
         for (let angle = 0; angle < 2 * Math.PI; angle += Math.PI / 8) {
@@ -182,7 +209,7 @@ function findValidPositionNear(targetPos, obstacles, width, height) {
             }
         }
     }
-    
+
     // Fallback: return target (user can drag out if needed)
     return targetPos
 }
@@ -340,13 +367,23 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100, obst
 // ───────── SINGLETON STATE ─────────
 // Module-level state so all consumers share the same instance.
 
+/** Reactive counter incremented on every setAgentStatus() call. */
+const statusVersion = ref(0)
+
+/** Reactive counter incremented on every setAgentCondition() call.
+ *  External computeds (e.g. useContagionEngine.stats) read this to
+ *  guarantee re-evaluation when any agent condition changes. */
+const conditionVersion = ref(0)
+
 const state = reactive({
     /** @type {Map<string, {x: number, y: number}>} */
     agentPositions: new Map(),
     /** @type {Array<{source: string, target: string, startTime: number, duration: number}>} */
     activeConnections: [],
-    /** @type {Map<string, string>} agentId -> AGENT_STATUS */
+    /** @type {Map<string, string>} agentId -> AGENT_STATUS (workflow) */
     agentStatuses: new Map(),
+    /** @type {Map<string, string>} agentId -> AGENT_CONDITION (contagion) */
+    agentConditions: new Map(),
     /** @type {Map<string, string>} agentId -> last output message */
     agentMessages: new Map(),
     /** @type {Array<{x: number, y: number, color: number, opacity: number, size: number, createdAt: number}>} */
@@ -363,7 +400,9 @@ const state = reactive({
     /** @type {Map<string, {emoji: string, badge: string, startTime: number, timerId: number}>} */
     agentEmotes: new Map(),
     /** @type {Map<string, Array<{text: string, timestamp: number}>>} */
-    agentOutputHistory: new Map()
+    agentOutputHistory: new Map(),
+    /** @type {Map<string, string>} nodeId -> node type string */
+    nodeTypes: new Map()
 })
 
 // ───────── COMPOSABLE ─────────
@@ -382,6 +421,9 @@ export function useSpatialLayout() {
             obstacles
         )
         state.agentPositions = positions
+        // Store node types for contagion engine filtering
+        state.nodeTypes.clear()
+        nodes.forEach(n => state.nodeTypes.set(n.id, n.type))
         return positions
     }
 
@@ -394,10 +436,22 @@ export function useSpatialLayout() {
 
     function setAgentStatus(agentId, status) {
         state.agentStatuses.set(agentId, status)
+        statusVersion.value++
     }
 
     function getAgentStatus(agentId) {
         return state.agentStatuses.get(agentId) || AGENT_STATUS.IDLE
+    }
+
+    // ── Condition management (contagion layer) ──
+
+    function setAgentCondition(agentId, condition) {
+        state.agentConditions.set(agentId, condition)
+        conditionVersion.value++
+    }
+
+    function getAgentCondition(agentId) {
+        return state.agentConditions.get(agentId) || AGENT_CONDITION.HEALTHY
     }
 
     // ── Message management + emotes ──
@@ -431,7 +485,7 @@ export function useSpatialLayout() {
 
     // ── Emote management ──
 
-    function setAgentEmote(agentId, emoji, badge) {
+    function setAgentEmote(agentId, emoji, badge, persistent = false) {
         // Clear existing emote timers
         const existing = state.agentEmotes.get(agentId)
         if (existing?.timerId) {
@@ -439,21 +493,30 @@ export function useSpatialLayout() {
         }
 
         const startTime = Date.now()
-        const timerId = setTimeout(() => {
-            state.agentEmotes.delete(agentId)
-        }, Math.max(EMOTE_DISMISS_EMOJI_MS, EMOTE_DISMISS_BADGE_MS))
+        let timerId = null
+        if (!persistent) {
+            timerId = setTimeout(() => {
+                state.agentEmotes.delete(agentId)
+            }, Math.max(EMOTE_DISMISS_EMOJI_MS, EMOTE_DISMISS_BADGE_MS))
+        }
 
         state.agentEmotes.set(agentId, {
             emoji,
             badge,
             startTime,
-            timerId
+            timerId,
+            persistent
         })
     }
 
     function getAgentEmote(agentId) {
         const emote = state.agentEmotes.get(agentId)
         if (!emote) return null
+
+        // Persistent emotes never expire
+        if (emote.persistent) {
+            return { emoji: emote.emoji, badge: emote.badge }
+        }
 
         const elapsed = Date.now() - emote.startTime
         return {
@@ -588,8 +651,29 @@ export function useSpatialLayout() {
         return ANIMATION_STAGGER_MS
     }
 
+    /**
+     * Populate nodeTypes Map from a list of nodes.
+     * Must be called whenever nodes are available, even if computeLayout()
+     * is skipped (e.g. when positions are loaded from localStorage).
+     */
+    function setNodeTypes(nodes) {
+        state.nodeTypes.clear()
+        nodes.forEach(n => state.nodeTypes.set(n.id, n.type))
+    }
+
+    /**
+     * Check if a node ID corresponds to an agent/human type.
+     * Only these node types participate in the contagion simulation.
+     */
+    function isAgentNode(nodeId) {
+        const type = state.nodeTypes.get(nodeId)
+        return INTERACTIVE_NODE_TYPES.includes(type)
+    }
+
     return {
         ...toRefs(state),
+        statusVersion,
+        conditionVersion,
         computeLayout,
         setAgentPosition,
         savePositions,
@@ -599,6 +683,8 @@ export function useSpatialLayout() {
         cleanupConnections,
         setAgentStatus,
         getAgentStatus,
+        setAgentCondition,
+        getAgentCondition,
         setAgentMessage,
         getAgentMessage,
         getAgentOutputHistory,
@@ -610,7 +696,9 @@ export function useSpatialLayout() {
         cleanupTrailParticles,
         enqueueAnimation,
         dequeueAnimation,
-        getStaggerDelay
+        getStaggerDelay,
+        isAgentNode,
+        setNodeTypes
     }
 }
 

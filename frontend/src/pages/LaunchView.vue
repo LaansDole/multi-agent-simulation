@@ -12,8 +12,8 @@
     </div>
     <div class="content">
       <!-- Left panel -->
-      <div class="left-panel">
-        <!-- Chat Panel: fullscreen in chat mode, overlay in graph -->
+      <div class="left-panel" :class="{ 'left-panel-spatial': viewMode === 'spatial' }">
+        <!-- Chat Panel: fullscreen in chat mode, overlay in graph/spatial -->
         <div
           class="chat-panel"
           :class="{
@@ -260,43 +260,6 @@
                         </div>
                       </Transition>
                     </div>
-                    <button
-                      v-if="false"
-                      type="button"
-                      class="microphone-button"
-                      :class="{ 'recording': isRecording, 'pulsating': isRecording }"
-                      :disabled="!isConnectionReady || !sessionId || isUploadingAttachment || (isWorkflowRunning && status !== 'Waiting for input...')"
-                      @mousedown.prevent="startRecording"
-                      @mouseup.prevent="stopRecording"
-                      @mouseleave="handleMicrophoneMouseLeave"
-                      @touchstart.prevent="startRecording"
-                      @touchend.prevent="stopRecording"
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M12 1C10.34 1 9 2.34 9 4V12C9 13.66 10.34 15 12 15C13.66 15 15 13.66 15 12V4C15 2.34 13.66 1 12 1Z"
-                          fill="currentColor"
-                        />
-                        <path
-                          d="M19 10V12C19 15.87 15.87 19 12 19C8.13 19 5 15.87 5 12V10H7V12C7 14.76 9.24 17 12 17C14.76 17 17 14.76 17 12V10H19Z"
-                          fill="currentColor"
-                        />
-                        <path
-                          d="M11 22H13V20H11V22Z"
-                          fill="currentColor"
-                        />
-                        <path
-                          d="M6 19H18V21H6V19Z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                    </button>
                   </div>
                 </div>
                 <div v-if="isDragActive" class="drag-overlay">
@@ -343,132 +306,38 @@
             <Controls position="bottom-left"/>
           </VueFlow>
         </div>
-
-        <!-- Input area -->
-        <div class="input-area">
-          <div
-            :class="['input-shell', { glow: shouldGlow, 'drag-active': isDragActive }]"
-            @dragenter="handleDragEnter"
-            @dragover="handleDragOver"
-            @dragleave="handleDragLeave"
-            @drop="handleDrop"
-          >
-            <textarea
-              v-model="taskPrompt"
-              class="task-input"
-              :disabled="!isConnectionReady || (isWorkflowRunning && status !== 'Waiting for input...')"
-              placeholder="Please enter task prompt..."
-              ref="taskInputRef"
-              @keydown.enter="handleEnterKey"
-              @paste="handlePaste"
-            ></textarea>
-            <div class="input-footer">
-              <div class="input-footer-buttons">
-                <div
-                  class="attachment-upload"
-                  @mouseenter="handleAttachmentHover(true)"
-                  @mouseleave="handleAttachmentHover(false)"
-                >
-                  <div class="attachment-button-wrapper">
-                    <button
-                      type="button"
-                      class="attachment-button"
-                      :disabled="!isConnectionReady || !sessionId || isUploadingAttachment || (isWorkflowRunning && status !== 'Waiting for input...')"
-                      @click="handleAttachmentButtonClick"
-                    >
-                      {{ isUploadingAttachment ? 'Uploading...' : 'Upload File' }}
-                    </button>
-                    <span
-                      v-if="uploadedAttachments.length"
-                      class="attachment-count"
-                    >
-                      {{ uploadedAttachments.length }}
-                    </span>
-                  </div>
-                  <input
-                    ref="attachmentInputRef"
-                    type="file"
-                    class="hidden-file-input"
-                    @change="onAttachmentSelected"
-                  />
-                  <Transition name="attachment-popover">
-                    <div
-                      v-if="showAttachmentPopover"
-                      class="attachment-modal"
-                      @mouseenter="handleAttachmentHover(true)"
-                      @mouseleave="handleAttachmentHover(false)"
-                    >
-                      <div
-                        v-for="attachment in uploadedAttachments"
-                        :key="attachment.attachmentId"
-                        class="attachment-item"
-                      >
-                        <span class="attachment-name">{{ attachment.name }}</span>
-                        <button
-                          type="button"
-                          class="remove-attachment"
-                          @click.stop="removeAttachment(attachment.attachmentId)"
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <div
-                        v-if="!uploadedAttachments.length"
-                        class="attachment-empty"
-                      >
-                        No files uploaded
-                      </div>
-                    </div>
-                  </Transition>
-                </div>
-                <button
-                  v-if="false"
-                  type="button"
-                  class="microphone-button"
-                  :class="{ 'recording': isRecording, 'pulsating': isRecording }"
-                  :disabled="!isConnectionReady || !sessionId || isUploadingAttachment || (isWorkflowRunning && status !== 'Waiting for input...')"
-                  @mousedown.prevent="startRecording"
-                  @mouseup.prevent="stopRecording"
-                  @mouseleave="handleMicrophoneMouseLeave"
-                  @touchstart.prevent="startRecording"
-                  @touchend.prevent="stopRecording"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 1C10.34 1 9 2.34 9 4V12C9 13.66 10.34 15 12 15C13.66 15 15 13.66 15 12V4C15 2.34 13.66 1 12 1Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M19 10V12C19 15.87 15.87 19 12 19C8.13 19 5 15.87 5 12V10H7V12C7 14.76 9.24 17 12 17C14.76 17 17 14.76 17 12V10H19Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M11 22H13V20H11V22Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M6 19H18V21H6V19Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div v-if="isDragActive" class="drag-overlay">
-              <div class="drag-overlay-content">Drop files to upload</div>
-            </div>
+        <div v-show="viewMode === 'spatial'" class="spatial-panel">
+          <div ref="spatialLayoutRef" class="spatial-layout" :class="{ 'with-info-panel': selectedSpatialAgent }">
+            <SpatialCanvas
+              ref="spatialCanvasRef"
+              :nodes="spatialNodes"
+              :edges="spatialEdges"
+              :active-nodes="activeNodes"
+              :workflow-file="selectedFile"
+              :visible="viewMode === 'spatial'"
+              :obstacle-editor-ref="obstacleEditorRef"
+              @agent-selected="onSpatialAgentSelected"
+              @canvas-click="onCanvasClick"
+              @canvas-drag-start="onCanvasDragStart"
+              @canvas-drag="onCanvasDrag"
+              @canvas-drag-end="onCanvasDragEnd"
+              @config-changed="onSpatialConfigChanged"
+            />
+            <ObstacleEditor
+              ref="obstacleEditorRef"
+              :canvas-height="spatialLayoutHeight"
+              @obstacle-added="onObstacleAdded"
+            />
+            <AgentInfoPanel
+              :agent="selectedSpatialAgent"
+              @close="selectedSpatialAgent = null"
+            />
           </div>
         </div>
       </div>
 
       <!-- Right panel -->
-      <div class="right-panel">
+      <div class="right-panel" :class="{ 'right-panel-compact': viewMode === 'spatial' }">
         <div class="control-section">
           <label class="section-label">Workflow Selection</label>
       <div
@@ -517,6 +386,49 @@
         </Transition>
       </div>
 
+          <label class="section-label">
+            Prompt History
+            <span v-if="currentWorkflowHistory.length" class="history-count">
+              ({{ currentWorkflowHistory.length }}/{{ MAX_HISTORY_ITEMS }})
+            </span>
+          </label>
+          <div class="prompt-history">
+            <div
+              v-if="!currentWorkflowHistory.length"
+              class="prompt-history-empty"
+            >
+              No prompts for this workflow yet
+            </div>
+            <div
+              v-for="(prompt, index) in currentWorkflowHistory"
+              :key="`prompt-${index}`"
+              class="prompt-history-item"
+            >
+              <div class="prompt-history-text">{{ prompt }}</div>
+              <button
+                type="button"
+                class="prompt-copy-button"
+                @click="copyPromptToInput(prompt)"
+                title="Copy to input"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+            
+            <button
+              v-if="currentWorkflowHistory.length"
+              type="button"
+              class="clear-history-button"
+              @click="clearWorkflowHistory(selectedFile)"
+              title="Clear prompt history for this workflow"
+            >
+              Clear History
+            </button>
+          </div>
+
           <label class="section-label">Status</label>
           <div class="status-display" :class="{ 'status-active': status === 'Running...' }">
             {{ status }}
@@ -537,6 +449,13 @@
               @click="switchToGraph"
             >
               Graph
+            </button>
+            <button
+              class="toggle-button"
+              :class="{ active: viewMode === 'spatial' }"
+              @click="viewMode = 'spatial'"
+            >
+              Spatial
             </button>
           </div>
 
@@ -627,12 +546,21 @@ import WorkflowNode from '../components/WorkflowNode.vue'
 import WorkflowEdge from '../components/WorkflowEdge.vue'
 import StartNode from '../components/StartNode.vue'
 import CollapsibleMessage from '../components/CollapsibleMessage.vue'
+import SpatialCanvas from '../components/SpatialCanvas.vue'
+import AgentInfoPanel from '../components/AgentInfoPanel.vue'
+import ObstacleEditor from '../components/ObstacleEditor.vue'
+import { useSpatialConfig } from '../composables/useSpatialConfig.js'
+
+const { saveConfig, loadConfig } = useSpatialConfig()
 
 const router = useRouter()
 const route = useRoute()
 
 // Task input state
 const taskPrompt = ref('')
+const promptHistories = ref({}) // { 'workflow.yaml': ['prompt1', 'prompt2'], ... }
+const MAX_HISTORY_ITEMS = 5
+const PROMPT_HISTORY_STORAGE_KEY = 'devall_workflow_prompt_histories'
 
 // File selector state
 const workflowFiles = ref([])
@@ -783,6 +711,59 @@ const showSettingsModal = ref(false)
 // View mode
 const viewMode = ref('chat')
 const isChatPanelOpen = ref(true)
+const spatialCanvasRef = ref(null)
+const obstacleEditorRef = ref(null)
+const spatialLayoutRef = ref(null)
+const spatialLayoutHeight = ref(600)
+const selectedSpatialAgent = ref(null)
+const mousePosition = ref(null)
+let spatialLayoutResizeObserver = null
+
+// ───────── OBSTACLE EDITOR HANDLERS ─────────
+
+function onCanvasClick(coords) {
+  const editor = obstacleEditorRef.value
+  if (editor?.isEditorActive) {
+    editor.addObstacle(coords.x, coords.y)
+  } else if (editor?.isFloorEditorActive) {
+    editor.addFloor(coords.x, coords.y)
+  }
+}
+
+function onCanvasMouseMove(coords) {
+  mousePosition.value = coords
+}
+
+function onCanvasDragStart(coords) {
+  const editor = obstacleEditorRef.value
+  if (editor?.handleDragStart) {
+    editor.handleDragStart(coords.x, coords.y)
+  }
+}
+
+function onCanvasDrag(coords) {
+  const editor = obstacleEditorRef.value
+  if (editor?.handleDrag) {
+    editor.handleDrag(coords.x, coords.y)
+  }
+}
+
+function onCanvasDragEnd() {
+  const editor = obstacleEditorRef.value
+  if (editor?.handleDragEnd) {
+    editor.handleDragEnd()
+  }
+}
+
+function onObstacleAdded(obstacle) {
+  console.log('Obstacle added:', obstacle.id)
+}
+
+function onSpatialConfigChanged(config) {
+  console.log('Spatial config changed:', config.obstacles?.length, 'obstacles')
+  const workflowName = selectedFile.value?.replace('.yaml', '') || 'default'
+  saveConfig(workflowName)
+}
 
 // WebSocket reference
 let ws = null
@@ -811,6 +792,12 @@ const buttonLabel = computed(() => {
     return 'Relaunch'
   }
   return 'Launch'
+})
+
+// Current workflow's prompt history
+const currentWorkflowHistory = computed(() => {
+  if (!selectedFile.value) return []
+  return promptHistories.value[selectedFile.value] || []
 })
 
 const clearUploadedAttachments = () => {
@@ -861,6 +848,16 @@ const onNodeLeave = (_nodeId) => {
 
 // Current workflow YAML content
 const workflowYaml = ref({})
+
+// Spatial view computed data (derived from workflowYaml)
+const spatialNodes = computed(() => {
+  const nodes = workflowYaml.value?.graph?.nodes
+  return Array.isArray(nodes) ? nodes : []
+})
+const spatialEdges = computed(() => {
+  const edges = workflowYaml.value?.graph?.edges
+  return Array.isArray(edges) ? edges : []
+})
 
 // const goBack = () => {
 //   router.push('/workflows')
@@ -1387,6 +1384,10 @@ const handleYAMLSelection = async (fileName) => {
   // Clear the chat
   chatMessages.value = []
 
+  // Load spatial config for this workflow
+  const workflowName = fileName.replace('.yaml', '')
+  await loadConfig(workflowName)
+
   try {
     // Fetch YAML config and emit initial_instructions to the chat
     const yamlContentString = await fetchWorkflowYAML(fileName)
@@ -1472,6 +1473,11 @@ const sendHumanInput = () => {
       input: trimmedInput,
       attachments: attachmentIds
     }
+  }
+
+  // Add to prompt history
+  if (trimmedInput) {
+    addToPromptHistory(trimmedInput, selectedFile.value)
   }
 
   clearUploadedAttachments()
@@ -1621,11 +1627,26 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
   loadWorkflows()
 
+  // Load prompt histories from localStorage
+  promptHistories.value = loadPromptHistories()
+
   // Start the global timer
   if (!loadingTimerInterval) {
     loadingTimerInterval = setInterval(() => {
       now.value = Date.now()
     }, 1000)
+  }
+
+  // Observe spatial-layout height for dynamic palette sizing
+  if (spatialLayoutRef.value) {
+    spatialLayoutResizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          spatialLayoutHeight.value = entry.contentRect.height
+        }
+      }
+    })
+    spatialLayoutResizeObserver.observe(spatialLayoutRef.value)
   }
 })
 
@@ -1639,6 +1660,11 @@ onUnmounted(() => {
   if (loadingTimerInterval) {
     clearInterval(loadingTimerInterval)
     loadingTimerInterval = null
+  }
+
+  if (spatialLayoutResizeObserver) {
+    spatialLayoutResizeObserver.disconnect()
+    spatialLayoutResizeObserver = null
   }
 })
 
@@ -1844,6 +1870,67 @@ const switchToGraph = async () => {
   await loadVueFlowGraph({ fit: true })
 }
 
+// LocalStorage utility functions for prompt history
+const loadPromptHistories = () => {
+  try {
+    const stored = localStorage.getItem(PROMPT_HISTORY_STORAGE_KEY)
+    if (!stored) return {}
+    const parsed = JSON.parse(stored)
+    return typeof parsed === 'object' && parsed !== null ? parsed : {}
+  } catch (error) {
+    console.warn('Failed to load prompt histories from localStorage:', error)
+    return {}
+  }
+}
+
+const savePromptHistories = () => {
+  try {
+    localStorage.setItem(PROMPT_HISTORY_STORAGE_KEY, JSON.stringify(promptHistories.value))
+  } catch (error) {
+    console.error('Failed to save prompt histories to localStorage:', error)
+  }
+}
+
+const addToPromptHistory = (prompt, workflowFile) => {
+  const trimmed = prompt.trim()
+  if (!trimmed || !workflowFile) return
+  
+  // Get or create history array for this workflow
+  if (!promptHistories.value[workflowFile]) {
+    promptHistories.value[workflowFile] = []
+  }
+  
+  // Remove duplicates within this workflow's history
+  promptHistories.value[workflowFile] = promptHistories.value[workflowFile].filter(p => p !== trimmed)
+  
+  // Add to the beginning
+  promptHistories.value[workflowFile].unshift(trimmed)
+  
+  // Keep only the latest MAX_HISTORY_ITEMS
+  if (promptHistories.value[workflowFile].length > MAX_HISTORY_ITEMS) {
+    promptHistories.value[workflowFile] = promptHistories.value[workflowFile].slice(0, MAX_HISTORY_ITEMS)
+  }
+  
+  // Save to localStorage
+  savePromptHistories()
+}
+
+const clearWorkflowHistory = (workflowFile) => {
+  if (!workflowFile) return
+  
+  if (promptHistories.value[workflowFile]) {
+    delete promptHistories.value[workflowFile]
+    savePromptHistories()
+  }
+}
+
+const copyPromptToInput = (prompt) => {
+  taskPrompt.value = prompt
+  nextTick(() => {
+    taskInputRef.value?.focus()
+  })
+}
+
 const launchWorkflow = async () => {
   if (!selectedFile.value) {
     alert('Please choose a workflow file！')
@@ -1886,6 +1973,11 @@ const launchWorkflow = async () => {
     })
 
     if (response.ok) {
+      // Add to prompt history
+      if (trimmedPrompt) {
+        addToPromptHistory(trimmedPrompt, selectedFile.value)
+      }
+
       // Clear uploaded attachments
       clearUploadedAttachments()
 
@@ -1969,6 +2061,15 @@ const downloadArtifact = async (message) => {
   }
 }
 
+// Handle agent selection in the spatial view
+const onSpatialAgentSelected = (data) => {
+  if (selectedSpatialAgent.value?.nodeId === data.nodeId) {
+    selectedSpatialAgent.value = null  // toggle off
+  } else {
+    selectedSpatialAgent.value = data
+  }
+}
+
 // Handle edge condition messages and trigger sprite animation
 const handleEdgeConditionMessage = (message) => {
   // Parse message format: "Edge condition met for Source Node -> Target Node"
@@ -1989,8 +2090,13 @@ const handleEdgeConditionMessage = (message) => {
     return
   }
 
-  // Trigger sprite animation along the edge
+  // Trigger sprite animation along the edge (Graph view)
   animateSpriteAlongEdge(edge)
+
+  // Trigger spatial view communication animation
+  if (spatialCanvasRef.value) {
+    spatialCanvasRef.value.triggerCommunication(sourceNode, targetNode)
+  }
 }
 
 // Animate a sprite walking along an edge from source to target
@@ -2182,6 +2288,10 @@ const processMessage = async (msg) => {
       if (nodeId && !activeNodes.value.includes(nodeId)) {
         activeNodes.value.push(nodeId)
       }
+      // Update spatial view status
+      if (spatialCanvasRef.value) {
+        spatialCanvasRef.value.updateAgentStatus(nodeId, 'thinking')
+      }
     }
 
     // Model call
@@ -2190,6 +2300,9 @@ const processMessage = async (msg) => {
       if (msg.data.details.stage === "before") {
         const baseKey = `model-${msg.data.details.model_name || 'unknown'}`
         addLoadingEntry(nodeId, baseKey, `Model ${msg.data.details.model_name}`)
+        if (spatialCanvasRef.value) {
+          spatialCanvasRef.value.updateAgentStatus(nodeId, 'thinking')
+        }
       }
 
       // Model call ended
@@ -2205,6 +2318,9 @@ const processMessage = async (msg) => {
       if (msg.data.details.stage === "before") {
         const baseKey = `tool-${msg.data.details.tool_name || 'unknown'}`
         addLoadingEntry(nodeId, baseKey, `Tool ${msg.data.details.tool_name}`)
+        if (spatialCanvasRef.value) {
+          spatialCanvasRef.value.updateAgentStatus(nodeId, 'thinking')
+        }
       }
 
       // Tool call ended
@@ -2234,6 +2350,12 @@ const processMessage = async (msg) => {
       }
 
       addDialogue(`${nodeId}`, `${msg.data.details.output}`)
+
+      // Update spatial view: idle status + store message for speech bubble
+      if (spatialCanvasRef.value) {
+        spatialCanvasRef.value.updateAgentStatus(nodeId, 'idle')
+        spatialCanvasRef.value.updateAgentMessage(nodeId, msg.data.details.output || '')
+      }
     }
 
     // Edge condition met - trigger sprite animation
@@ -2262,6 +2384,13 @@ const processMessage = async (msg) => {
     status.value = 'Error'
     isWorkflowRunning.value = false
     sessionIdToDownload = sessionId
+
+    // Update spatial view error status for all active agents
+    if (spatialCanvasRef.value && activeNodes.value.length) {
+      activeNodes.value.forEach(nId => {
+        spatialCanvasRef.value.updateAgentStatus(nId, 'error')
+      })
+    }
   }
 }
 
@@ -2475,6 +2604,23 @@ watch(
   transition: width 0.3s ease;
 }
 
+/* Full-screen chat mode */
+.chat-panel-fullscreen {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  flex-direction: column;
+  pointer-events: auto;
+  z-index: auto;
+}
+
+.chat-panel-fullscreen .chat-panel-content {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
 .chat-panel-collapsed {
   width: 0;
 }
@@ -2519,23 +2665,6 @@ watch(
 .chat-panel-toggle:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #f2f2f2;
-}
-
-/* Full-screen chat mode */
-.chat-panel-fullscreen {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
-  flex: 1;
-  flex-direction: column;
-  pointer-events: auto;
-  z-index: auto;
-}
-
-.chat-panel-fullscreen .chat-panel-content {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(5px);
 }
 
 .chat-panel-toggle svg {
@@ -2610,6 +2739,8 @@ watch(
   font-size: 13px;
   font-weight: 500;
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .chat-notification-warning .notification-content {
@@ -2624,9 +2755,6 @@ watch(
 .chat-notification-error .notification-content {
   background: rgba(255, 82, 82, 0.12);
   border-color: rgba(255, 82, 82, 0.4);
-}
-
-.chat-notification-error .notification-content {
   color: #ffcccc;
 }
 
@@ -3170,6 +3298,17 @@ watch(
   flex-direction: column;
   gap: 20px;
   min-width: 250px;
+  transition: min-width 0.3s ease, flex 0.3s ease;
+}
+
+.right-panel-compact {
+  flex: 0 0 auto;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+.left-panel-spatial {
+  flex: 5;
 }
 
 .control-section {
@@ -3507,6 +3646,23 @@ watch(
   backdrop-filter: blur(5px);
 }
 
+/* Spatial Panel */
+.spatial-panel {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+}
+
+.spatial-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: all 0.25s ease;
+}
+
 .vueflow-graph {
   width: 100%;
   height: 100%;
@@ -3575,4 +3731,134 @@ watch(
 .settings-button:hover {
   background-color: rgba(160, 196, 255, 0.1);
 }
+
+/* Prompt History */
+.prompt-history {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prompt-history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prompt-history::-webkit-scrollbar-thumb {
+  background-color: rgba(160, 160, 160, 0.28);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.prompt-history::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(160, 160, 160, 0.48);
+}
+
+.prompt-history-empty {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+
+.prompt-history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.prompt-history-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.prompt-history-text {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.prompt-copy-button {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.prompt-copy-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #99eaf9;
+}
+
+.prompt-copy-button:active {
+  transform: scale(0.95);
+}
+
+/* History count indicator */
+.history-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+/* Clear history button */
+.clear-history-button {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  background: rgba(255, 82, 82, 0.1);
+  color: rgba(255, 150, 150, 0.9);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clear-history-button:hover {
+  background: rgba(255, 82, 82, 0.2);
+  border-color: rgba(255, 82, 82, 0.5);
+  color: #ffcccc;
+}
+
+.clear-history-button:active {
+  transform: scale(0.98);
+}
+
 </style>

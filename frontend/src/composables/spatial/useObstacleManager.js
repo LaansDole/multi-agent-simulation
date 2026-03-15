@@ -114,35 +114,85 @@ export function useObstacleManager({ ctx, canvasRef, spatialConfig, emit, initPa
     function updatePlacementGhost(worldX, worldY, obstacleEditorRef) {
         if (!ctx.placementGhostGraphics) return
 
-        const info = obstacleEditorRef?.getPlacementInfo?.()
+        const CELL_SIZE = 40 // GRID_SIZE constant
+        const toolMode = obstacleEditorRef?.toolMode?.value || obstacleEditorRef?.toolMode || 'pointer'
 
-        if (!info) {
-            ctx.placementGhostGraphics.visible = false
+        // ── Eraser ghost: red-tinted cell with X indicator ──
+        if (toolMode === 'eraser') {
+            const snappedX = snapToGrid(worldX)
+            const snappedY = snapToGrid(worldY)
+            const eraserColor = 0xef4444
+
+            ctx.placementGhostGraphics.clear()
+
+            // Red cell background
+            ctx.placementGhostGraphics.rect(snappedX, snappedY, CELL_SIZE, CELL_SIZE)
+            ctx.placementGhostGraphics.fill({ color: eraserColor, alpha: 0.2 })
+            ctx.placementGhostGraphics.rect(snappedX, snappedY, CELL_SIZE, CELL_SIZE)
+            ctx.placementGhostGraphics.stroke({ width: 2, color: eraserColor, alpha: 0.7 })
+
+            // X indicator
+            const pad = 10
+            ctx.placementGhostGraphics.moveTo(snappedX + pad, snappedY + pad)
+            ctx.placementGhostGraphics.lineTo(snappedX + CELL_SIZE - pad, snappedY + CELL_SIZE - pad)
+            ctx.placementGhostGraphics.moveTo(snappedX + CELL_SIZE - pad, snappedY + pad)
+            ctx.placementGhostGraphics.lineTo(snappedX + pad, snappedY + CELL_SIZE - pad)
+            ctx.placementGhostGraphics.stroke({ width: 2, color: eraserColor, alpha: 0.6 })
+
+            ctx.placementGhostGraphics.visible = true
             return
         }
 
-        const snappedX = snapToGrid(worldX)
-        const snappedY = snapToGrid(worldY)
-        const colorInt = parseHexColor(info.color)
+        // ── Obstacle placement ghost ──
+        const info = obstacleEditorRef?.getPlacementInfo?.()
 
-        ctx.placementGhostGraphics.clear()
+        if (info) {
+            const snappedX = snapToGrid(worldX)
+            const snappedY = snapToGrid(worldY)
+            const colorInt = parseHexColor(info.color)
 
-        if (info.shape === 'circle') {
-            const radius = info.size.radius || 20
-            ctx.placementGhostGraphics.circle(snappedX, snappedY, radius)
-            ctx.placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
-            ctx.placementGhostGraphics.circle(snappedX, snappedY, radius)
-            ctx.placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
-        } else {
-            const w = info.size.width || 50
-            const h = info.size.height || 50
-            ctx.placementGhostGraphics.rect(snappedX, snappedY, w, h)
-            ctx.placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
-            ctx.placementGhostGraphics.rect(snappedX, snappedY, w, h)
-            ctx.placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
+            ctx.placementGhostGraphics.clear()
+
+            if (info.shape === 'circle') {
+                const radius = info.size.radius || 20
+                ctx.placementGhostGraphics.circle(snappedX, snappedY, radius)
+                ctx.placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
+                ctx.placementGhostGraphics.circle(snappedX, snappedY, radius)
+                ctx.placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
+            } else {
+                const w = info.size.width || 50
+                const h = info.size.height || 50
+                ctx.placementGhostGraphics.rect(snappedX, snappedY, w, h)
+                ctx.placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
+                ctx.placementGhostGraphics.rect(snappedX, snappedY, w, h)
+                ctx.placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
+            }
+
+            ctx.placementGhostGraphics.visible = true
+            return
         }
 
-        ctx.placementGhostGraphics.visible = true
+        // ── Floor tile ghost: colored cell ──
+        const floorInfo = obstacleEditorRef?.getFloorInfo?.()
+
+        if (floorInfo) {
+            const snappedX = snapToGrid(worldX)
+            const snappedY = snapToGrid(worldY)
+            const colorInt = floorInfo.color ? parseHexColor(floorInfo.color) : 0x4ade80
+
+            ctx.placementGhostGraphics.clear()
+
+            ctx.placementGhostGraphics.rect(snappedX, snappedY, CELL_SIZE, CELL_SIZE)
+            ctx.placementGhostGraphics.fill({ color: colorInt, alpha: 0.25 })
+            ctx.placementGhostGraphics.rect(snappedX, snappedY, CELL_SIZE, CELL_SIZE)
+            ctx.placementGhostGraphics.stroke({ width: 2, color: colorInt, alpha: 0.6 })
+
+            ctx.placementGhostGraphics.visible = true
+            return
+        }
+
+        // No valid ghost to show
+        ctx.placementGhostGraphics.visible = false
     }
 
     // ── Drawing ──

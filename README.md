@@ -217,6 +217,8 @@ On Windows, most packages install from pre-built wheels and do not require syste
 make dev
 ```
 
+`make dev` now starts services in order: it first stops old processes, starts the backend, waits until port `6400` is reachable, and then launches the frontend.
+
 > Then access the Web Console at **[http://localhost:5173](http://localhost:5173)**.
 
 #### Manual Commands

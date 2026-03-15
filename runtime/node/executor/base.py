@@ -5,13 +5,14 @@ Defines the interfaces that every node executor must implement.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 from entity.configs import Node
 from entity.messages import Message, MessageContent, MessageRole, serialize_messages
-from runtime.node.agent import MemoryManager
+from runtime.node.agent import MemoryManager, MemoryBase
 from runtime.node.agent import ThinkingManagerBase
 from runtime.node.agent import ToolManager
+from runtime.node.agent.memory.shared_rlm_environment import SharedRLMEnvironment
 from utils.function_manager import FunctionManager
 from utils.human_prompt import HumanPromptService
 from utils.log_manager import LogManager
@@ -22,12 +23,14 @@ from utils.exceptions import WorkflowCancelledError
 @dataclass
 class ExecutionContext:
     """Node execution context that bundles every service and state the executor needs.
-    
+
     Attributes:
         tool_manager: Tool manager shared by executors
         function_manager: Function manager registry
         log_manager: Structured log manager
         memory_managers: Mapping of node_id to ``MemoryManager`` instances
+        memory_stores: Mapping of store name to ``MemoryBase`` instances
+        rlm_environments: Mapping of environment name to ``SharedRLMEnvironment`` instances
         thinking_managers: Mapping of node_id to ``ThinkingManagerBase`` instances
         token_tracker: Token tracker used for accounting
         global_state: Shared global state dictionary
@@ -37,6 +40,8 @@ class ExecutionContext:
     function_manager: FunctionManager
     log_manager: LogManager
     memory_managers: Dict[str, MemoryManager] = field(default_factory=dict)
+    memory_stores: Dict[str, MemoryBase] = field(default_factory=dict)
+    rlm_environments: Dict[str, SharedRLMEnvironment] = field(default_factory=dict)
     thinking_managers: Dict[str, ThinkingManagerBase] = field(default_factory=dict)
     token_tracker: Optional[TokenTracker] = None
     global_state: Dict[str, Any] = field(default_factory=dict)
@@ -59,6 +64,14 @@ class ExecutionContext:
     def get_human_prompt_service(self) -> Optional[HumanPromptService]:
         """Return the interactive human prompt service."""
         return self.human_prompt_service
+
+    def get_memory_store(self, name: str) -> Optional[MemoryBase]:
+        """Return the memory store by name."""
+        return self.memory_stores.get(name)
+
+    def get_rlm_environment(self, name: str) -> Optional[SharedRLMEnvironment]:
+        """Return the RLM environment by name."""
+        return self.rlm_environments.get(name)
 
 
 class NodeExecutor(ABC):

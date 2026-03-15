@@ -1,0 +1,175 @@
+version: 0.0.0
+vars:
+  MODEL_NAME: qwen/qwen3-8b
+
+graph:
+  id: rlm_tiered_test
+  description: RLM memory demo with automatic 5-tier prompt ladder in one looped run.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: SeedQuery
+      type: literal
+      config:
+        content: Start tiered RLM ladder run.
+        role: user
+      description: Entry trigger for looped tier rotation.
+      context_window: 0
+      log_output: true
+
+    - id: LoopGate
+      type: loop_counter
+      config:
+        # In passthrough mode, count==max emits terminal message.
+        # max_iterations=6 yields five working ladder passes (counts 1..5).
+        max_iterations: 6
+        reset_on_emit: false
+        passthrough: true
+        message: RLM tiered ladder complete after five tiers
+      description: Controls deterministic ladder progression and termination.
+      context_window: 0
+      log_output: true
+
+    - id: RLMMemoryRetriever
+      type: rlm_memory
+      config:
+        memory_store: test_store
+        # Keep empty so query comes from LoopGate->RLMMemoryRetriever edge processor.
+        query: ""
+        limit: 5
+        time_decay: 1.0
+        max_iterations: 15
+        max_depth: 3
+        backend: openai
+        model: ${MODEL_NAME}
+        persist_env: true
+      description: Retrieves memory with per-pass prompt-ladder query.
+      context_window: 0
+      log_output: true
+
+    - id: AgentWithRLM
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are validating RLM-backed memory retrieval.
+          Respond with a concise report for the current prompt tier.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories:
+          - name: test_store
+            retrieve_stage: []
+            top_k: 5
+            use_rlm: true
+            rlm_max_iterations: 10
+            rlm_max_depth: 3
+            rlm_backend: openai
+            rlm_model: ${MODEL_NAME}
+        retry: null
+      description: Executes RLM-aware analysis and writes each tier result to memory.
+      context_window: 0
+      log_output: true
+
+    - id: Finalizer
+      type: literal
+      config:
+        content: RLM tiered demo completed after five prompt tiers.
+        role: assistant
+      description: Terminal node after ladder completion.
+      context_window: 0
+      log_output: true
+
+  edges:
+    - from: SeedQuery
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process: null
+
+    - from: LoopGate
+      to: RLMMemoryRetriever
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - RLM tiered ladder complete after five tiers
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: rlm_prompt_ladder_by_pass
+
+    - from: RLMMemoryRetriever
+      to: AgentWithRLM
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process: null
+
+    - from: AgentWithRLM
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process: null
+
+    - from: LoopGate
+      to: Finalizer
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - RLM tiered ladder complete after five tiers
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process: null
+
+  memory:
+    - name: test_store
+      type: simple
+      config:
+        # Warm-start demo: pre-populate from the seed store BEFORE the first run
+        # so the tiered ladder starts with retrievable content:
+        #
+        #   cp WareHouse/rlm_demo_seed/rlm_test_memory_tiered.json \
+        #      "WareHouse/{{project_name}}/rlm_test_memory_tiered.json"
+        #
+        # The seed file (rlm_demo_seed/) must NOT be used as memory_path directly
+        # — agent write-back would pollute it with run output.
+        #
+        # To reproduce a cold-start, delete or empty this file (set contents
+        # to []) before running.  "No memories found" on pass 1 is expected.
+        memory_path: WareHouse/{{project_name}}/rlm_test_memory_tiered.json
+        embedding:
+          provider: openai
+          model: text-embedding-bge-reranker-v2-m3
+          api_key: ${API_KEY}
+          base_url: ${BASE_URL}
+          params: {}
+
+  initial_instruction: ''
+  start:
+    - SeedQuery
+  end:
+    - Finalizer

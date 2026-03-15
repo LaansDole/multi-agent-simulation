@@ -75,9 +75,11 @@ export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositio
         ctx.agentSprites.forEach((ag, nodeId) => {
             if (!ag.interactive) return
 
-            // Only wander when idle and not already animating
+            // Only wander when idle/healthy and not already animating
+            // DECEASED agents never wander (frozen in place)
             const status = getAgentStatus(nodeId)
-            if (status !== AGENT_STATUS_IDLE) return
+            if (status !== AGENT_STATUS_IDLE && status !== 'healthy' && status !== 'recovered') return
+            if (status === 'deceased') return
             if (ctx.animatingAgents.has(nodeId)) return
 
             // Check cooldown

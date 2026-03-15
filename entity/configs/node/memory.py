@@ -41,7 +41,14 @@ class EmbeddingConfig(BaseConfig):
         api_key = optional_str(mapping, "api_key", path)
         base_url = optional_str(mapping, "base_url", path)
         params = optional_dict(mapping, "params", path) or {}
-        return cls(provider=provider, model=model, api_key=api_key, base_url=base_url, params=params, path=path)
+        return cls(
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
+            params=params,
+            path=path,
+        )
 
     FIELD_SPECS = {
         "provider": ConfigFieldSpec(
@@ -108,16 +115,27 @@ class FileSourceConfig(BaseConfig):
             normalized: List[str] = []
             for idx, item in enumerate(items):
                 if not isinstance(item, str):
-                    raise ConfigError("file_types entries must be strings", extend_path(path, f"file_types[{idx}]") )
+                    raise ConfigError(
+                        "file_types entries must be strings",
+                        extend_path(path, f"file_types[{idx}]"),
+                    )
                 normalized.append(item)
             file_types = normalized
 
         recursive_value = mapping.get("recursive", True)
         if not isinstance(recursive_value, bool):
-            raise ConfigError("recursive must be boolean", extend_path(path, "recursive"))
+            raise ConfigError(
+                "recursive must be boolean", extend_path(path, "recursive")
+            )
 
         encoding = optional_str(mapping, "encoding", path) or "utf-8"
-        return cls(source_path=file_path, file_types=file_types, recursive=recursive_value, encoding=encoding, path=path)
+        return cls(
+            source_path=file_path,
+            file_types=file_types,
+            recursive=recursive_value,
+            encoding=encoding,
+            path=path,
+        )
 
     FIELD_SPECS = {
         "path": ConfigFieldSpec(
@@ -166,7 +184,9 @@ class SimpleMemoryConfig(BaseConfig):
         memory_path = optional_str(mapping, "memory_path", path)
         embedding_cfg = None
         if "embedding" in mapping and mapping["embedding"] is not None:
-            embedding_cfg = EmbeddingConfig.from_dict(mapping["embedding"], path=extend_path(path, "embedding"))
+            embedding_cfg = EmbeddingConfig.from_dict(
+                mapping["embedding"], path=extend_path(path, "embedding")
+            )
         return cls(memory_path=memory_path, embedding=embedding_cfg, path=path)
 
     FIELD_SPECS = {
@@ -200,10 +220,17 @@ class FileMemoryConfig(BaseConfig):
         mapping = require_mapping(data, path)
         sources_raw = ensure_list(mapping.get("file_sources"))
         if not sources_raw:
-            raise ConfigError("file_sources must contain at least one entry", extend_path(path, "file_sources"))
+            raise ConfigError(
+                "file_sources must contain at least one entry",
+                extend_path(path, "file_sources"),
+            )
         sources: List[FileSourceConfig] = []
         for idx, item in enumerate(sources_raw):
-            sources.append(FileSourceConfig.from_dict(item, path=extend_path(path, f"file_sources[{idx}]")))
+            sources.append(
+                FileSourceConfig.from_dict(
+                    item, path=extend_path(path, f"file_sources[{idx}]")
+                )
+            )
 
         index_path = optional_str(mapping, "index_path", path)
         if index_path is None:
@@ -211,9 +238,16 @@ class FileMemoryConfig(BaseConfig):
 
         embedding_cfg = None
         if "embedding" in mapping and mapping["embedding"] is not None:
-            embedding_cfg = EmbeddingConfig.from_dict(mapping["embedding"], path=extend_path(path, "embedding"))
+            embedding_cfg = EmbeddingConfig.from_dict(
+                mapping["embedding"], path=extend_path(path, "embedding")
+            )
 
-        return cls(index_path=index_path, file_sources=sources, embedding=embedding_cfg, path=path)
+        return cls(
+            index_path=index_path,
+            file_sources=sources,
+            embedding=embedding_cfg,
+            path=path,
+        )
 
     FIELD_SPECS = {
         "index_path": ConfigFieldSpec(
@@ -249,12 +283,16 @@ class BlackboardMemoryConfig(BaseConfig):
     max_items: int = 1000
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any], *, path: str) -> "BlackboardMemoryConfig":
+    def from_dict(
+        cls, data: Mapping[str, Any], *, path: str
+    ) -> "BlackboardMemoryConfig":
         mapping = require_mapping(data, path)
         memory_path = optional_str(mapping, "memory_path", path)
         max_items_value = mapping.get("max_items", 1000)
         if not isinstance(max_items_value, int) or max_items_value <= 0:
-            raise ConfigError("max_items must be a positive integer", extend_path(path, "max_items"))
+            raise ConfigError(
+                "max_items must be a positive integer", extend_path(path, "max_items")
+            )
         return cls(memory_path=memory_path, max_items=max_items_value, path=path)
 
     FIELD_SPECS = {
@@ -293,17 +331,26 @@ class MemoryStoreConfig(BaseConfig):
         try:
             schema = get_memory_store_schema(store_type)
         except SchemaLookupError as exc:
-            raise ConfigError(f"unsupported memory store type '{store_type}'", extend_path(path, "type")) from exc
+            raise ConfigError(
+                f"unsupported memory store type '{store_type}'",
+                extend_path(path, "type"),
+            ) from exc
 
         if "config" not in mapping or mapping["config"] is None:
-            raise ConfigError("memory store requires config block", extend_path(path, "config"))
+            raise ConfigError(
+                "memory store requires config block", extend_path(path, "config")
+            )
 
-        config_obj = schema.config_cls.from_dict(mapping["config"], path=extend_path(path, "config"))
+        config_obj = schema.config_cls.from_dict(
+            mapping["config"], path=extend_path(path, "config")
+        )
         return cls(name=name, type=store_type, config=config_obj, path=path)
 
     def require_payload(self) -> BaseConfig:
         if not self.config:
-            raise ConfigError("memory store payload missing", extend_path(self.path, "config"))
+            raise ConfigError(
+                "memory store payload missing", extend_path(self.path, "config")
+            )
         return self.config
 
     FIELD_SPECS = {
@@ -344,11 +391,15 @@ class MemoryStoreConfig(BaseConfig):
         if type_spec:
             registrations = iter_memory_store_schemas()
             names = list(registrations.keys())
-            descriptions = {name: schema.summary for name, schema in registrations.items()}
+            descriptions = {
+                name: schema.summary for name, schema in registrations.items()
+            }
             specs["type"] = replace(
                 type_spec,
                 enum=names,
-                enum_options=enum_options_from_values(names, descriptions, preserve_label_case=True),
+                enum_options=enum_options_from_values(
+                    names, descriptions, preserve_label_case=True
+                ),
             )
         return specs
 
@@ -361,9 +412,16 @@ class MemoryAttachmentConfig(BaseConfig):
     similarity_threshold: float = -1.0
     read: bool = True
     write: bool = True
+    use_rlm: bool = False
+    rlm_max_iterations: int = 5
+    rlm_max_depth: int = 2
+    rlm_backend: str = "openai"
+    rlm_model: str = "gpt-4o"
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any], *, path: str) -> "MemoryAttachmentConfig":
+    def from_dict(
+        cls, data: Mapping[str, Any], *, path: str
+    ) -> "MemoryAttachmentConfig":
         mapping = require_mapping(data, path)
         name = require_str(mapping, "name", path)
 
@@ -384,11 +442,16 @@ class MemoryAttachmentConfig(BaseConfig):
 
         top_k_value = mapping.get("top_k", 3)
         if not isinstance(top_k_value, int) or top_k_value <= 0:
-            raise ConfigError("top_k must be a positive integer", extend_path(path, "top_k"))
+            raise ConfigError(
+                "top_k must be a positive integer", extend_path(path, "top_k")
+            )
 
         threshold_value = mapping.get("similarity_threshold", -1.0)
         if not isinstance(threshold_value, (int, float)):
-            raise ConfigError("similarity_threshold must be numeric", extend_path(path, "similarity_threshold"))
+            raise ConfigError(
+                "similarity_threshold must be numeric",
+                extend_path(path, "similarity_threshold"),
+            )
 
         read_value = mapping.get("read", True)
         if not isinstance(read_value, bool):
@@ -398,6 +461,30 @@ class MemoryAttachmentConfig(BaseConfig):
         if not isinstance(write_value, bool):
             raise ConfigError("write must be boolean", extend_path(path, "write"))
 
+        use_rlm_value = mapping.get("use_rlm", False)
+        if not isinstance(use_rlm_value, bool):
+            raise ConfigError("use_rlm must be boolean", extend_path(path, "use_rlm"))
+
+        rlm_max_iterations_value = mapping.get("rlm_max_iterations", 5)
+        if (
+            not isinstance(rlm_max_iterations_value, int)
+            or rlm_max_iterations_value <= 0
+        ):
+            raise ConfigError(
+                "rlm_max_iterations must be a positive integer",
+                extend_path(path, "rlm_max_iterations"),
+            )
+
+        rlm_max_depth_value = mapping.get("rlm_max_depth", 2)
+        if not isinstance(rlm_max_depth_value, int) or rlm_max_depth_value <= 0:
+            raise ConfigError(
+                "rlm_max_depth must be a positive integer",
+                extend_path(path, "rlm_max_depth"),
+            )
+
+        rlm_backend_value = optional_str(mapping, "rlm_backend", path) or "openai"
+        rlm_model_value = optional_str(mapping, "rlm_model", path) or "gpt-4o"
+
         return cls(
             name=name,
             retrieve_stage=stages,
@@ -405,6 +492,11 @@ class MemoryAttachmentConfig(BaseConfig):
             similarity_threshold=float(threshold_value),
             read=read_value,
             write=write_value,
+            use_rlm=use_rlm_value,
+            rlm_max_iterations=rlm_max_iterations_value,
+            rlm_max_depth=rlm_max_depth_value,
+            rlm_backend=rlm_backend_value,
+            rlm_model=rlm_model_value,
             path=path,
         )
 
@@ -459,6 +551,51 @@ class MemoryAttachmentConfig(BaseConfig):
             required=False,
             default=True,
             description="Whether to write back to this memory after execution",
+            advance=True,
+        ),
+        "use_rlm": ConfigFieldSpec(
+            name="use_rlm",
+            display_name="Enable RLM",
+            type_hint="bool",
+            required=False,
+            default=False,
+            description="Enable RLM (Recursive Language Model) for programmatic memory exploration",
+            advance=True,
+        ),
+        "rlm_max_iterations": ConfigFieldSpec(
+            name="rlm_max_iterations",
+            display_name="RLM Max Iterations",
+            type_hint="int",
+            required=False,
+            default=5,
+            description="Maximum iterations for RLM code execution",
+            advance=True,
+        ),
+        "rlm_max_depth": ConfigFieldSpec(
+            name="rlm_max_depth",
+            display_name="RLM Max Depth",
+            type_hint="int",
+            required=False,
+            default=2,
+            description="Maximum recursion depth for llm_query in RLM",
+            advance=True,
+        ),
+        "rlm_backend": ConfigFieldSpec(
+            name="rlm_backend",
+            display_name="RLM Backend",
+            type_hint="str",
+            required=False,
+            default="openai",
+            description="Backend provider for RLM (openai, anthropic)",
+            advance=True,
+        ),
+        "rlm_model": ConfigFieldSpec(
+            name="rlm_model",
+            display_name="RLM Model",
+            type_hint="str",
+            required=False,
+            default="gpt-4o",
+            description="Model to use for RLM execution",
             advance=True,
         ),
     }

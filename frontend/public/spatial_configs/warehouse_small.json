@@ -1,0 +1,418 @@
+{
+  "canvas": {
+    "width": 1600,
+    "height": 1200,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "metadata": {
+    "name": "Small Warehouse",
+    "description": "Compact warehouse with organized shelving and staging area",
+    "tags": [
+      "warehouse",
+      "industrial",
+      "storage",
+      "small"
+    ],
+    "recommendedAgentCount": {
+      "min": 5,
+      "max": 15
+    },
+    "thumbnail": "thumbnails/warehouse_small.png"
+  },
+  "floors": [
+    {
+      "id": "floor-main",
+      "tileType": "warehouse_concrete",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 1600,
+      "height": 1200,
+      "sprite": "warehouse_concrete.png",
+      "color": "#708090"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "wall-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 1600,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 1180
+      },
+      "size": {
+        "width": 1600,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1580,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "shelf-r1-c1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 80
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r1-c2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 360,
+        "y": 80
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r1-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 80
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r1-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 920,
+        "y": 80
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r1-c5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 80
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r2-c1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r2-c2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 360,
+        "y": 400
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r2-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 400
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r2-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 920,
+        "y": 400
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r2-c5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 400
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 360,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 640,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 920,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "shelf-r3-c5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1200,
+        "y": 720
+      },
+      "size": {
+        "width": 100,
+        "height": 200
+      },
+      "color": "#8b6914",
+      "collision": true,
+      "sprite": "shelf_large.png"
+    },
+    {
+      "id": "forklift-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 1060
+      },
+      "size": {
+        "width": 80,
+        "height": 120
+      },
+      "color": "#ff8c00",
+      "collision": true,
+      "sprite": "forklift.png"
+    },
+    {
+      "id": "pallet-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 1080
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "pallet-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 800,
+        "y": 1080
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "spawn-main",
+      "name": "Main Area",
+      "position": {
+        "x": 200,
+        "y": 100
+      },
+      "size": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "id": "spawn-staging",
+      "name": "Staging",
+      "position": {
+        "x": 200,
+        "y": 1000
+      },
+      "size": {
+        "width": 1200,
+        "height": 160
+      }
+    }
+  ]
+}

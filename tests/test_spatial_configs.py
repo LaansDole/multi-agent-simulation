@@ -18,7 +18,34 @@ class TestListSpatialConfigs:
         response = client.get("/api/spatial-configs")
         assert response.status_code == 200
         configs = response.json()["configs"]
-        assert sorted(configs) == ["map1", "map2"]
+        names = sorted(c["name"] for c in configs)
+        assert names == ["map1", "map2"]
+
+    def test_deduplicates_display_names(self, client, tmp_spatial_dir):
+        tmp_spatial_dir.mkdir(parents=True, exist_ok=True)
+        (tmp_spatial_dir / "hosp_a.json").write_text(
+            json.dumps({"metadata": {"name": "Hospital Simulation"}})
+        )
+        (tmp_spatial_dir / "hosp_b.json").write_text(
+            json.dumps({"metadata": {"name": "Hospital Simulation"}})
+        )
+        response = client.get("/api/spatial-configs")
+        assert response.status_code == 200
+        display_names = sorted(c["displayName"] for c in response.json()["configs"])
+        assert display_names == ["Hospital Simulation", "Hospital Simulation (2)"]
+
+    def test_unique_names_unchanged(self, client, tmp_spatial_dir):
+        tmp_spatial_dir.mkdir(parents=True, exist_ok=True)
+        (tmp_spatial_dir / "alpha.json").write_text(
+            json.dumps({"metadata": {"name": "Alpha Layout"}})
+        )
+        (tmp_spatial_dir / "beta.json").write_text(
+            json.dumps({"metadata": {"name": "Beta Layout"}})
+        )
+        response = client.get("/api/spatial-configs")
+        assert response.status_code == 200
+        display_names = sorted(c["displayName"] for c in response.json()["configs"])
+        assert display_names == ["Alpha Layout", "Beta Layout"]
 
 
 class TestSaveSpatialConfig:

@@ -42,6 +42,7 @@ export function useAnimationLoop({
     activeConnections,
 
     getAgentStatus,
+    getAgentCondition,
     getAgentEmote,
     addTrailParticle,
     cleanupTrailParticles,
@@ -51,14 +52,25 @@ export function useAnimationLoop({
     STATUS_COLORS,
     STATUS_PULSE,
     AGENT_STATUS,
-    MIN_AGENT_SEPARATION
+    CONDITION_COLORS,
+    CONDITION_PULSE,
+    MIN_AGENT_SEPARATION,
+    updateContagion,
+    updateContaminationOverlays,
+    sandboxMode
 }) {
 
-    // ───────── RENDER LOOP ─────────
+    let lastFrameTime = Date.now()
 
     function renderLoop() {
+        const now = Date.now()
+        const deltaMs = now - lastFrameTime
+        lastFrameTime = now
+
         updateActiveStates()
         updateIdleWanders()
+        if (updateContagion) updateContagion(deltaMs)
+        if (updateContaminationOverlays) updateContaminationOverlays()
         updateAnimations()
         applyPerFrameSeparation()
         updateEmotes()
@@ -72,9 +84,18 @@ export function useAnimationLoop({
         ctx.agentSprites.forEach((ag, nodeId) => {
             if (!ag.interactive || !ag.glow) return
 
-            const status = getAgentStatus(nodeId)
-            const color = STATUS_COLORS[status] || STATUS_COLORS[AGENT_STATUS.IDLE]
-            const pulseSpeed = STATUS_PULSE[status] || 0
+            // When sandbox mode is active, use contagion condition for glow;
+            // otherwise fall back to workflow status
+            let color, pulseSpeed
+            if (sandboxMode?.value && getAgentCondition) {
+                const condition = getAgentCondition(nodeId)
+                color = CONDITION_COLORS?.[condition] ?? STATUS_COLORS[AGENT_STATUS.IDLE]
+                pulseSpeed = CONDITION_PULSE?.[condition] ?? 0
+            } else {
+                const status = getAgentStatus(nodeId)
+                color = STATUS_COLORS[status] || STATUS_COLORS[AGENT_STATUS.IDLE]
+                pulseSpeed = STATUS_PULSE[status] || 0
+            }
 
             ag.glow.clear()
             if (pulseSpeed > 0) {
@@ -88,6 +109,14 @@ export function useAnimationLoop({
                 ag.glow.circle(0, 0, 28)
                 ag.glow.fill({ color, alpha: 0.15 })
                 ag.container.scale.set(1, 1)
+            }
+
+            // Deceased agents get reduced opacity for faded/ghostly appearance
+            if (sandboxMode?.value && getAgentCondition) {
+                const condition = getAgentCondition(nodeId)
+                if (ag.sprite) {
+                    ag.sprite.alpha = condition === 'deceased' ? 0.4 : 1.0
+                }
             }
         })
     }

@@ -1,0 +1,606 @@
+{
+  "canvas": {
+    "width": 2400,
+    "height": 1600,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "metadata": {
+    "name": "Factory Floor",
+    "description": "Industrial factory with conveyor lines, machinery stations, and loading area",
+    "tags": [
+      "factory",
+      "industrial",
+      "manufacturing",
+      "indoor"
+    ],
+    "recommendedAgentCount": {
+      "min": 15,
+      "max": 35
+    },
+    "thumbnail": "thumbnails/factory_floor.png"
+  },
+  "floors": [
+    {
+      "id": "floor-main",
+      "tileType": "warehouse_concrete",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 2400,
+      "height": 1600,
+      "sprite": "warehouse_concrete.png",
+      "color": "#708090"
+    },
+    {
+      "id": "floor-loading",
+      "tileType": "hazard_stripes",
+      "position": {
+        "x": 20,
+        "y": 1360
+      },
+      "width": 2360,
+      "height": 220,
+      "sprite": "hazard_stripes.png",
+      "color": "#ff8c00"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "wall-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 2400,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 1580
+      },
+      "size": {
+        "width": 2400,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 2380,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "conveyor-r1-s1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r1-s2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r1-s3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r1-s4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1160,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r1-s5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r1-s6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 200
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1160,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r2-s6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 600
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 200,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 840,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1160,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "conveyor-r3-s6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 1000
+      },
+      "size": {
+        "width": 120,
+        "height": 40
+      },
+      "color": "#696969",
+      "collision": true,
+      "sprite": "conveyor_belt.png"
+    },
+    {
+      "id": "machine-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 800
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 1200
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 2200,
+        "y": 400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 2200,
+        "y": 800
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "machine-6",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 2200,
+        "y": 1200
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#708090",
+      "collision": true,
+      "sprite": "machinery.png"
+    },
+    {
+      "id": "pallet-1",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 1400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "pallet-2",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 1400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "pallet-3",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 800,
+        "y": 1400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "pallet-4",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 1400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    },
+    {
+      "id": "pallet-5",
+      "type": "furniture",
+      "shape": "rectangle",
+      "position": {
+        "x": 1800,
+        "y": 1400
+      },
+      "size": {
+        "width": 80,
+        "height": 80
+      },
+      "color": "#deb887",
+      "collision": true,
+      "sprite": "pallet.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "spawn-floor",
+      "name": "Factory Floor",
+      "position": {
+        "x": 160,
+        "y": 100
+      },
+      "size": {
+        "width": 2080,
+        "height": 1200
+      }
+    },
+    {
+      "id": "spawn-loading",
+      "name": "Loading",
+      "position": {
+        "x": 300,
+        "y": 1380
+      },
+      "size": {
+        "width": 1800,
+        "height": 160
+      }
+    }
+  ]
+}

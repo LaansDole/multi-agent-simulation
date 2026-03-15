@@ -12,8 +12,9 @@ from entity.configs.node.passthrough import PassthroughConfig
 from entity.configs.node.literal import LiteralNodeConfig
 from entity.configs.node.python_runner import PythonRunnerConfig
 from entity.configs.node.loop_counter import LoopCounterConfig
-from entity.configs.node.template import TemplateNodeConfig
 from entity.configs.node.loop_timer import LoopTimerConfig
+from entity.configs.node.template import TemplateNodeConfig
+from entity.configs.node.rlm_memory import RLMMemoryConfig
 from runtime.node.executor.agent_executor import AgentNodeExecutor
 from runtime.node.executor.human_executor import HumanNodeExecutor
 from runtime.node.executor.passthrough_executor import PassthroughNodeExecutor
@@ -23,6 +24,7 @@ from runtime.node.executor.subgraph_executor import SubgraphNodeExecutor
 from runtime.node.executor.loop_counter_executor import LoopCounterNodeExecutor
 from runtime.node.executor.template_executor import TemplateNodeExecutor
 from runtime.node.executor.loop_timer_executor import LoopTimerNodeExecutor
+from runtime.node.executor.rlm_memory_executor import RLMMemoryNodeExecutor
 from runtime.node.registry import NodeCapabilities, register_node_type
 
 
@@ -108,6 +110,14 @@ register_node_type(
     executor_cls=LoopTimerNodeExecutor,
     capabilities=NodeCapabilities(),
     summary="Blocks downstream edges until the configured time limit is reached, then emits a message to release the loop.",
+)
+
+register_node_type(
+    "rlm_memory",
+    config_cls=RLMMemoryConfig,
+    executor_cls=RLMMemoryNodeExecutor,
+    capabilities=NodeCapabilities(),
+    summary="Retrieves memory items and exposes them as Python variables in an RLM REPL context for programmatic exploration.",
 )
 
 # Register subgraph source types (file-based and inline config)
