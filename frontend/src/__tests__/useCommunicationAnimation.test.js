@@ -221,7 +221,7 @@ describe('useCommunicationAnimation - updateAgentStatus', () => {
     it('cancels wander animation when entering non-idle status', () => {
         const options = createMockOptions()
         options.ctx.agentSprites.set('agent1', { interactive: true, container: { x: 50, y: 50 } })
-        options.ctx.animatingAgents.set('agent1', { type: 'wander' })
+        options.ctx.animatingAgents.set('agent1', { type: 'wander', startX: 100, startY: 100 })
         options.agentPositions.value.set('agent1', { x: 100, y: 100 })
 
         const { updateAgentStatus } = useCommunicationAnimation(options)
@@ -229,10 +229,31 @@ describe('useCommunicationAnimation - updateAgentStatus', () => {
 
         // Wander animation should be removed
         expect(options.ctx.animatingAgents.has('agent1')).toBe(false)
-        // Container should be reset to saved position
+        // Container should be reset to home position from anim.startX/startY
         const ag = options.ctx.agentSprites.get('agent1')
         expect(ag.container.x).toBe(100)
         expect(ag.container.y).toBe(100)
+    })
+
+    it('restores home position even when agentPositions is mid-wander (drift fix)', () => {
+        const options = createMockOptions()
+        // Agent is mid-wander: container at (120,100), agentPositions synced to (120,100),
+        // but true home is (100,100) stored in anim.startX/startY
+        options.ctx.agentSprites.set('agent1', { interactive: true, container: { x: 120, y: 100 } })
+        options.ctx.animatingAgents.set('agent1', { type: 'wander', startX: 100, startY: 100 })
+        options.agentPositions.value.set('agent1', { x: 120, y: 100 }) // corrupted mid-wander
+
+        const { updateAgentStatus } = useCommunicationAnimation(options)
+        updateAgentStatus('agent1', AGENT_STATUS.COMMUNICATING)
+
+        // Should restore to HOME (100,100), NOT mid-wander (120,100)
+        const ag = options.ctx.agentSprites.get('agent1')
+        expect(ag.container.x).toBe(100)
+        expect(ag.container.y).toBe(100)
+        // agentPositions should also be corrected
+        const pos = options.agentPositions.value.get('agent1')
+        expect(pos.x).toBe(100)
+        expect(pos.y).toBe(100)
     })
 
     it('resets wander cooldown when returning to idle', () => {

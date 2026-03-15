@@ -57,6 +57,8 @@ export function useAnimationLoop({
     MIN_AGENT_SEPARATION,
     updateContagion,
     updateContaminationOverlays,
+    updateInfectionHeatmap,
+    recordResidual,
     sandboxMode
 }) {
 
@@ -72,6 +74,7 @@ export function useAnimationLoop({
         if (updateContagion) updateContagion(deltaMs)
         if (updateContaminationOverlays) updateContaminationOverlays()
         updateAnimations()
+        if (updateInfectionHeatmap) updateInfectionHeatmap()
         applyPerFrameSeparation()
         updateEmotes()
         drawTrailParticles()
@@ -153,6 +156,11 @@ export function useAnimationLoop({
             ag.container.x = currentX
             ag.container.y = currentY
 
+            // Sync visual position to agentPositions so contagion
+            // proximity checks use the actual on-screen position
+            // during ALL animation types (wander + communication)
+            agentPositions.value.set(nodeId, { x: currentX, y: currentY })
+
             // Skip trail particles for idle wander animations
             if (anim.type !== 'wander' && (!anim.lastTrailTime || now - anim.lastTrailTime > 100)) {
                 addTrailParticle(ag.container.x, ag.container.y, 0x818cf8)
@@ -189,22 +197,34 @@ export function useAnimationLoop({
 
             if (progress >= 1) {
                 toRemove.push(nodeId)
-                const origPos = agentPositions.value.get(nodeId)
-                if (origPos) {
-                    ag.container.x = origPos.x
-                    ag.container.y = origPos.y
+
+                // Record residual heatmap spot for infected agents
+                // before snapping back to home position
+                if (recordResidual && getAgentCondition) {
+                    const condition = getAgentCondition(nodeId)
+                    if (condition === 'infected') {
+                        recordResidual(currentX, currentY)
+                    }
                 }
+
+                // Restore home position from anim.startX/startY
+                // (agentPositions was synced to mid-animation position)
+                const homeX = anim.startX
+                const homeY = anim.startY
+                ag.container.x = homeX
+                ag.container.y = homeY
+                agentPositions.value.set(nodeId, { x: homeX, y: homeY })
+
+                if (anim.type === 'wander') {
+                    resetWanderCooldown(nodeId)
+                }
+
                 const idlePath = spriteFetcher.fetchSprite(nodeId, 'D', 1)
                 Assets.load(idlePath).then(tex => {
                     if (ag.sprite instanceof Sprite) {
                         ag.sprite.texture = tex
                     }
                 }).catch(() => { })
-
-                // Reset wander cooldown when a wander animation completes
-                if (anim.type === 'wander') {
-                    resetWanderCooldown(nodeId)
-                }
             }
         })
 

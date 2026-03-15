@@ -6,6 +6,7 @@ const mockSetAgentStatus = vi.fn()
 const mockSetAgentCondition = vi.fn()
 const mockGetAgentCondition = vi.fn(() => 'healthy')
 const mockSetAgentEmote = vi.fn()
+const mockClearAllEmotes = vi.fn()
 const mockAgentPositions = { value: new Map() }
 const mockConditionVersion = ref(0)
 const mockIsAgentNode = vi.fn((id) => id.startsWith('agent'))
@@ -18,6 +19,7 @@ vi.mock('../composables/useSpatialLayout.js', () => ({
         getAgentCondition: mockGetAgentCondition,
         setAgentStatus: mockSetAgentStatus,
         setAgentEmote: mockSetAgentEmote,
+        clearAllEmotes: mockClearAllEmotes,
         isAgentNode: mockIsAgentNode
     }),
     AGENT_STATUS: {
@@ -265,6 +267,86 @@ describe('useContagionEngine', () => {
         })
     })
 
+    describe('floor contamination by infected agents', () => {
+        const floorTile = {
+            id: 'floor-1',
+            position: { x: 80, y: 80 },
+            width: 60,
+            height: 60,
+            contaminationLevel: 0
+        }
+
+        it('infected agent contaminates the floor tile they stand on', () => {
+            // Floor tile covers (80,80)→(140,140); agent-1 at (100,100) is inside
+            mockGetFloorTiles.mockReturnValue([{ ...floorTile }])
+
+            // Start healthy so seedInfection sets the timer
+            mockGetAgentCondition.mockReturnValue('healthy')
+            engine.toggleSandboxMode()
+            engine.play()
+
+            // Seed infection on agent-1
+            engine.seedInfection('agent-1')
+
+            // Now agent-1 is infected
+            const statusMap = { 'agent-1': 'infected', 'agent-2': 'healthy', 'agent-3': 'healthy' }
+            mockGetAgentCondition.mockImplementation(id => statusMap[id] || 'healthy')
+            mockUpdateFloorTile.mockClear()
+
+            // Advance time past the 1000ms throttle window using Date.now mock
+            const originalNow = Date.now
+            let fakeTime = originalNow.call(Date)
+            Date.now = () => fakeTime
+
+            // First tick at t=0 — should deposit (no previous deposit timestamp)
+            engine.updateContagion(16)
+
+            // Advance time past throttle
+            fakeTime += 1100
+            engine.updateContagion(16)
+
+            Date.now = originalNow
+
+            // updateFloorTile should have been called with incremented contamination
+            const contaminationCalls = mockUpdateFloorTile.mock.calls.filter(
+                c => c[0] === 'floor-1' && c[1]?.contaminationLevel >= 1
+            )
+            expect(contaminationCalls.length).toBeGreaterThan(0)
+        })
+
+        it('throttles contamination deposits within 1000ms', () => {
+            mockGetFloorTiles.mockReturnValue([{ ...floorTile }])
+
+            mockGetAgentCondition.mockReturnValue('healthy')
+            engine.toggleSandboxMode()
+            engine.play()
+
+            engine.seedInfection('agent-1')
+
+            const statusMap = { 'agent-1': 'infected', 'agent-2': 'healthy', 'agent-3': 'healthy' }
+            mockGetAgentCondition.mockImplementation(id => statusMap[id] || 'healthy')
+            mockUpdateFloorTile.mockClear()
+
+            // Mock Date.now so both ticks are within the 1000ms throttle window
+            const originalNow = Date.now
+            let fakeTime = originalNow.call(Date)
+            Date.now = () => fakeTime
+
+            // Two ticks 16ms apart — well within the 1000ms throttle
+            engine.updateContagion(16)
+            fakeTime += 16
+            engine.updateContagion(16)
+
+            Date.now = originalNow
+
+            // At most 1 deposit should have occurred (first tick deposits, second is throttled)
+            const contaminationCalls = mockUpdateFloorTile.mock.calls.filter(
+                c => c[0] === 'floor-1' && c[1]?.contaminationLevel >= 1
+            )
+            expect(contaminationCalls.length).toBeLessThanOrEqual(1)
+        })
+    })
+
     describe('getParams', () => {
         it('returns defaults when no simulation config', () => {
             mockGetConfig.mockReturnValue({})
@@ -506,6 +588,52 @@ describe('useContagionEngine', () => {
             expect(logAfterHeartbeat[0].message).toContain('H:')
 
             Date.now = originalNow // restore
+        })
+    })
+
+    describe('sandboxInteractionMode', () => {
+        it('defaults to pointer when sandbox activates', () => {
+            engine.toggleSandboxMode()
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+
+        it('changes mode via setSandboxInteractionMode', () => {
+            engine.toggleSandboxMode()
+            engine.setSandboxInteractionMode('infect')
+            expect(engine.sandboxInteractionMode.value).toBe('infect')
+
+            engine.setSandboxInteractionMode('cure')
+            expect(engine.sandboxInteractionMode.value).toBe('cure')
+
+            engine.setSandboxInteractionMode('pointer')
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+
+        it('rejects invalid mode values', () => {
+            engine.toggleSandboxMode()
+            engine.setSandboxInteractionMode('infect')
+            engine.setSandboxInteractionMode('invalid')
+            // Should still be 'infect' since 'invalid' was rejected
+            expect(engine.sandboxInteractionMode.value).toBe('infect')
+        })
+
+        it('resets to pointer when sandbox is toggled off and on', () => {
+            engine.toggleSandboxMode() // on
+            engine.setSandboxInteractionMode('cure')
+            expect(engine.sandboxInteractionMode.value).toBe('cure')
+
+            engine.toggleSandboxMode() // off
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+
+            engine.toggleSandboxMode() // on again
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
+        })
+
+        it('resets to pointer on simulation reset', () => {
+            engine.toggleSandboxMode()
+            engine.setSandboxInteractionMode('infect')
+            engine.resetSimulation()
+            expect(engine.sandboxInteractionMode.value).toBe('pointer')
         })
     })
 })

@@ -1,6 +1,6 @@
 <template>
   <div class="spatial-controls">
-    <div class="save-wrapper">
+    <div class="save-wrapper" ref="saveWrapperRef">
       <button
         class="spatial-control-button save-button"
         :class="{ 'save-unsaved': saveStatus === 'unsaved', 'save-saving': saveStatus === 'saving' }"
@@ -67,6 +67,18 @@
       <span>Reset</span>
     </button>
 
+    <button
+      class="spatial-control-button clear-button"
+      title="Clear layout (remove all obstacles)"
+      @click="$emit('clear-layout')"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+      <span>Clear</span>
+    </button>
+
     <div class="speed-selector">
       <button
         v-for="speed in speeds"
@@ -80,7 +92,7 @@
       </button>
     </div>
 
-    <div class="import-wrapper">
+    <div class="import-wrapper" ref="importWrapperRef">
       <button
         class="spatial-control-button import-button"
         title="Import spatial config"
@@ -156,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { SPEED_LIST } from '../composables/useSpatialLayout.js'
 
 const props = defineProps({
@@ -165,7 +177,7 @@ const props = defineProps({
   sandboxMode: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['reset-layout', 'speed-change', 'save-layout', 'import-config', 'sandbox-toggle'])
+const emit = defineEmits(['reset-layout', 'clear-layout', 'speed-change', 'save-layout', 'import-config', 'sandbox-toggle'])
 
 const speeds = SPEED_LIST
 const showImportDropdown = ref(false)
@@ -174,6 +186,28 @@ const showNewNameInput = ref(false)
 const newConfigName = ref('')
 const newNameInputRef = ref(null)
 const availableConfigs = ref([])
+const saveWrapperRef = ref(null)
+const importWrapperRef = ref(null)
+
+// ───────── CLICK-OUTSIDE-TO-COLLAPSE ─────────
+function onPointerDownOutside(event) {
+  if (showSaveDropdown.value && saveWrapperRef.value && !saveWrapperRef.value.contains(event.target)) {
+    showSaveDropdown.value = false
+    showNewNameInput.value = false
+    newConfigName.value = ''
+  }
+  if (showImportDropdown.value && importWrapperRef.value && !importWrapperRef.value.contains(event.target)) {
+    showImportDropdown.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointerDownOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onPointerDownOutside)
+})
 
 const groupedConfigs = computed(() => {
   const groups = {}
@@ -582,6 +616,17 @@ function selectConfig(name) {
 
 .save-new-confirm:hover {
   background: rgba(34, 197, 94, 0.4);
+}
+
+.clear-button {
+  background: rgba(160, 160, 180, 0.15);
+  border-color: rgba(160, 160, 180, 0.3);
+}
+
+.clear-button:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
 }
 
 .sandbox-toggle {

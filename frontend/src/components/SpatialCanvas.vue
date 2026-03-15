@@ -9,6 +9,7 @@
       :save-status="saveStatus"
       :sandbox-mode="sandboxMode"
       @reset-layout="resetLayout"
+      @clear-layout="clearLayout"
       @speed-change="onSpeedChange"
       @save-layout="onSaveLayout"
       @import-config="onImportConfig"
@@ -23,12 +24,14 @@
       :is-playing="simulationRunning && !simulationPaused"
       :debug-enabled="contagionDebugEnabled"
       :contagion-log="contagionLogEntries"
+      :interaction-mode="sandboxInteractionMode"
       @play="contagionPlay"
       @pause="contagionPause"
       @step="contagionStep"
       @reset="contagionReset"
       @toggle-debug="contagionToggleDebug"
       @clear-log="contagionClearLog"
+      @update:interaction-mode="setSandboxInteractionMode"
     />
 
     <!-- Obstacle info tooltip -->
@@ -103,6 +106,7 @@ import { usePixiApp } from '../composables/spatial/usePixiApp.js'
 import { spriteFetcher } from '../utils/spriteFetcher.js'
 import { createPathfinder } from '../utils/pathfinding.js'
 import { useContagionEngine } from '../composables/spatial/useContagionEngine.js'
+import { useInfectionHeatmap } from '../composables/spatial/useInfectionHeatmap.js'
 import SpatialControls from './SpatialControls.vue'
 import ContagionHUD from './simulation/ContagionHUD.vue'
 
@@ -124,6 +128,9 @@ const canvasRef = ref(null)
 const {
   config: spatialConfig,
   loadConfig,
+  setConfig,
+  clearCache,
+  clearSavedConfig,
   updateObstaclePosition,
   removeObstacle,
   saveConfig,
@@ -156,7 +163,8 @@ const {
   enqueueAnimation,
   dequeueAnimation,
   getStaggerDelay,
-  setNodeTypes
+  setNodeTypes,
+  isAgentNode
 } = useSpatialLayout()
 
 // ───────── SHARED CANVAS CONTEXT ─────────
@@ -250,10 +258,30 @@ const {
   stepSimulation: contagionStep,
   resetSimulation: contagionReset,
   seedInfection,
+  cureAgent,
   updateContagion,
+  isAgentDeceased,
   toggleDebugLog: contagionToggleDebug,
-  clearLog: contagionClearLog
+  clearLog: contagionClearLog,
+  sandboxInteractionMode,
+  setSandboxInteractionMode,
+  getParams: contagionGetParams
 } = useContagionEngine()
+
+// ───────── INFECTION HEATMAP COMPOSABLE ─────────
+const {
+  updateInfectionHeatmap,
+  recordResidual,
+  cleanup: cleanupHeatmap
+} = useInfectionHeatmap({
+  ctx,
+  agentPositions,
+  getAgentCondition,
+  getParams: contagionGetParams,
+  sandboxMode,
+  simulationRunning,
+  isAgentNode
+})
 
 function onSandboxToggle() {
   toggleSandboxMode()
@@ -271,7 +299,8 @@ const {
   getAgentStatus,
   getSpeedValue,
   agentPositions,
-  AGENT_STATUS_IDLE: AGENT_STATUS.IDLE
+  AGENT_STATUS_IDLE: AGENT_STATUS.IDLE,
+  isAgentDeceased
 })
 
 // ───────── COMMUNICATION ANIMATION COMPOSABLE ─────────
@@ -321,6 +350,8 @@ const {
   MIN_AGENT_SEPARATION,
   updateContagion,
   updateContaminationOverlays,
+  updateInfectionHeatmap,
+  recordResidual,
   sandboxMode
 })
 
@@ -345,7 +376,9 @@ const {
   STATUS_COLORS,
   AGENT_STATUS,
   sandboxMode,
+  sandboxInteractionMode,
   seedInfection,
+  cureAgent,
   setNodeTypes
 })
 
@@ -369,6 +402,7 @@ const {
   cleanupCommunication,
   cleanupObstacles,
   cleanupFloors,
+  cleanupHeatmap,
   cleanupIdleWander,
   initPathfinder,
   emit,
@@ -466,6 +500,42 @@ function resetLayout() {
   const edges = props.edges || []
   resetPositions(nodes, edges)
 
+  resetZoom()
+
+  ctx.agentSprites.forEach((ag, nodeId) => {
+    const pos = agentPositions.value.get(nodeId)
+    if (pos) {
+      ag.container.x = pos.x
+      ag.container.y = pos.y
+    }
+  })
+}
+
+function clearLayout() {
+  const workflowName = normalizeWorkflowName(props.workflowFile) || ''
+
+  // Reset config to empty defaults
+  const defaultCfg = { canvas: {}, grid: {}, obstacles: [], spawnZones: [] }
+  if (workflowName) {
+    clearSavedConfig(workflowName)
+    clearCache(workflowName)
+    setConfig(workflowName, defaultCfg)
+  } else {
+    setConfig('', defaultCfg)
+  }
+
+  // Redraw (now empty)
+  drawFloors()
+  drawObstacles()
+
+  if (ctx.app?.renderer) {
+    initPathfinder(ctx.app.renderer.width, ctx.app.renderer.height)
+  }
+
+  // Reset agent positions and zoom
+  const nodes = props.nodes || []
+  const edges = props.edges || []
+  resetPositions(nodes, edges)
   resetZoom()
 
   ctx.agentSprites.forEach((ag, nodeId) => {
