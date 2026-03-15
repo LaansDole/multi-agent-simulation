@@ -367,7 +367,7 @@ export function useContagionEngine() {
                 if (Math.random() < scaledMutationProb) {
                     setAgentCondition(agentId, AGENT_CONDITION.DECEASED)
                     state.infectionTimers.delete(agentId)
-                    setAgentEmote(agentId, '💀', 'Mutated! 🧬')
+                    setAgentEmote(agentId, '💀', 'Mutated! 🧬', true)
                     tickMutations++
                     return // skip recovery check — already deceased
                 }
@@ -379,7 +379,7 @@ export function useContagionEngine() {
                     // Death
                     setAgentCondition(agentId, AGENT_CONDITION.DECEASED)
                     state.infectionTimers.delete(agentId)
-                    setAgentEmote(agentId, '💀', 'Deceased')
+                    setAgentEmote(agentId, '💀', 'Deceased', true)
                     tickFatalities++
                 } else {
                     // Recovery

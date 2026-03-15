@@ -191,6 +191,50 @@ describe('useAnimationLoop - updateActiveStates', () => {
         const { renderLoop } = useAnimationLoop(options)
         expect(() => renderLoop()).not.toThrow()
     })
+
+    it('reduces sprite opacity for deceased agents in sandbox mode', () => {
+        const glow = new Graphics()
+        const sprite = { alpha: 1.0 }
+        const options = createMockOptions({
+            sandboxMode: ref(true),
+            getAgentCondition: vi.fn(() => 'deceased'),
+            CONDITION_COLORS: { deceased: 0x6b7280 },
+            CONDITION_PULSE: { deceased: 0.8 }
+        })
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow,
+            sprite,
+            container: { scale: { set: vi.fn() } }
+        })
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        expect(sprite.alpha).toBe(0.4)
+    })
+
+    it('restores sprite opacity for non-deceased agents in sandbox mode', () => {
+        const glow = new Graphics()
+        const sprite = { alpha: 0.4 }
+        const options = createMockOptions({
+            sandboxMode: ref(true),
+            getAgentCondition: vi.fn(() => 'healthy'),
+            CONDITION_COLORS: { healthy: 0x22c55e },
+            CONDITION_PULSE: { healthy: 0 }
+        })
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow,
+            sprite,
+            container: { scale: { set: vi.fn() } }
+        })
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        expect(sprite.alpha).toBe(1.0)
+    })
 })
 
 // ───────── applyPerFrameSeparation (via renderLoop) ─────────
