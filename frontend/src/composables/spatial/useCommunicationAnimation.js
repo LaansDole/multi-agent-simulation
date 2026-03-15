@@ -113,10 +113,14 @@ export function useCommunicationAnimation({
         const targetAg = ctx.agentSprites.get(targetId)
         if (!sourceAg || !targetAg) return
 
-        const sx = sourceAg.container.x
-        const sy = sourceAg.container.y
-        const tx = targetAg.container.x
-        const ty = targetAg.container.y
+        // Read start positions from agentPositions (canonical home),
+        // NOT container.x/y which may be shifted by separation or mid-animation
+        const sourcePos = agentPositions.value.get(sourceId)
+        const targetPos = agentPositions.value.get(targetId)
+        const sx = sourcePos?.x ?? sourceAg.container.x
+        const sy = sourcePos?.y ?? sourceAg.container.y
+        const tx = targetPos?.x ?? targetAg.container.x
+        const ty = targetPos?.y ?? targetAg.container.y
 
         // Use midline-clamped meeting points
         let { sourceMeet, targetMeet } = calculateMeetingPoints(sx, sy, tx, ty)
@@ -218,11 +222,14 @@ export function useCommunicationAnimation({
                 const anim = ctx.animatingAgents.get(agentId)
                 if (anim && anim.type === 'wander') {
                     ctx.animatingAgents.delete(agentId)
-                    const origPos = agentPositions.value.get(agentId)
-                    if (origPos) {
-                        ag.container.x = origPos.x
-                        ag.container.y = origPos.y
-                    }
+                    // Restore to wander's home position (startX/startY),
+                    // NOT agentPositions which is synced to mid-wander
+                    // visual position and would cement the drift.
+                    const homeX = anim.startX
+                    const homeY = anim.startY
+                    ag.container.x = homeX
+                    ag.container.y = homeY
+                    agentPositions.value.set(agentId, { x: homeX, y: homeY })
                 }
             } else {
                 // Returning to idle — reset wander cooldown

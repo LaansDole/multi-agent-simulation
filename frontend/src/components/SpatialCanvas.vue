@@ -271,6 +271,7 @@ const {
 // ───────── INFECTION HEATMAP COMPOSABLE ─────────
 const {
   updateInfectionHeatmap,
+  recordResidual,
   cleanup: cleanupHeatmap
 } = useInfectionHeatmap({
   ctx,
@@ -350,6 +351,7 @@ const {
   updateContagion,
   updateContaminationOverlays,
   updateInfectionHeatmap,
+  recordResidual,
   sandboxMode
 })
 

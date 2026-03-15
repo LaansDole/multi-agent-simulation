@@ -93,8 +93,11 @@ export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositio
 
             let targetX, targetY
             const neighbors = edgeAdjacency.get(nodeId)
+            // 50/50 split: wander toward a neighbor OR in a random direction
+            // to prevent visual clustering from consistently moving toward neighbors
+            const useRandomDirection = Math.random() < 0.5
 
-            if (neighbors && neighbors.size > 0) {
+            if (neighbors && neighbors.size > 0 && !useRandomDirection) {
                 // Pick a random connected neighbor
                 const neighborArray = Array.from(neighbors)
                 const randomNeighbor = neighborArray[Math.floor(Math.random() * neighborArray.length)]
