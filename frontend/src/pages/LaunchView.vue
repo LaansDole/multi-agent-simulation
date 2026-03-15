@@ -2587,8 +2587,29 @@ watch(
   gap: 20px;
   min-width: 0; /* Prevents overflow */
   position: relative;
+  position: relative;
 }
 
+/* Persistent Chat Panel */
+.chat-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 50%;
+  z-index: 10;
+  display: flex;
+  flex-direction: row;
+  pointer-events: none;
+  transition: width 0.3s ease;
+}
+
+/* Full-screen chat mode */
+.chat-panel-fullscreen {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
 /* Persistent Chat Panel */
 .chat-panel {
   position: absolute;
@@ -2633,8 +2654,79 @@ watch(
   min-width: 0;
   pointer-events: auto;
   background: rgba(26, 26, 26, 0.92);
+  flex-direction: column;
+  pointer-events: auto;
+  z-index: auto;
+}
+
+.chat-panel-fullscreen .chat-panel-content {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.chat-panel-collapsed {
+  width: 0;
+}
+
+.chat-panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  pointer-events: auto;
+  background: rgba(26, 26, 26, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  padding: 0;
+}
+
+.chat-panel-toggle {
+  position: absolute;
+  top: 12px;
+  right: -32px;
+  width: 28px;
+  height: 28px;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: none;
+  background: rgba(26, 26, 26, 0.92);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+  padding: 0;
+  z-index: 11;
+}
+
+.chat-panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f2f2f2;
+}
+
+.chat-panel-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+.chat-panel-toggle .chevron-collapsed {
+  transform: rotate(180deg);
+}
+
+.chat-panel-collapsed .chat-panel-toggle {
+  right: -32px;
+  left: auto;
+}
+
+/* Chat Box */
+.chat-box {
+  flex: 1;
   backdrop-filter: blur(12px);
   overflow: hidden;
   padding: 0;
@@ -2739,6 +2831,8 @@ watch(
   font-size: 13px;
   font-weight: 500;
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
