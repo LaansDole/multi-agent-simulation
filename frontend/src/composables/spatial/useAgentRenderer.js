@@ -44,7 +44,10 @@ export function useAgentRenderer({
     normalizeWorkflowName,
     spatialConfig,
     STATUS_COLORS,
-    AGENT_STATUS
+    AGENT_STATUS,
+    sandboxMode,
+    seedInfection,
+    setNodeTypes
 }) {
 
     // ───────── SCENE BUILDING ─────────
@@ -66,6 +69,11 @@ export function useAgentRenderer({
         if (!loaded) {
             const obstacles = spatialConfig.value?.obstacles || []
             computeLayout(nodes, edges, width, height, obstacles)
+        } else {
+            // computeLayout() populates nodeTypes, but when positions are loaded
+            // from localStorage it is skipped. Populate nodeTypes explicitly so
+            // isAgentNode() (used by the contagion engine stats) works correctly.
+            setNodeTypes(nodes)
         }
 
         nodes.forEach(node => {
@@ -173,9 +181,13 @@ export function useAgentRenderer({
         // Drag-and-drop
         setupDrag(agentGroup, node.id)
 
-        // Click to open agent info panel
+        // Click to open agent info panel or seed infection in sandbox mode
         agentGroup.on('pointerdown', () => {
-            emit('agent-selected', { nodeId: node.id, node })
+            if (sandboxMode?.value && seedInfection) {
+                seedInfection(node.id)
+            } else {
+                emit('agent-selected', { nodeId: node.id, node })
+            }
         })
 
         ctx.agentContainer.addChild(agentGroup)

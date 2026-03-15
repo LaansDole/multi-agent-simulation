@@ -118,6 +118,7 @@ function createOptions(overrides = {}) {
         spatialConfig: { value: { obstacles: [] } },
         STATUS_COLORS,
         AGENT_STATUS,
+        setNodeTypes: vi.fn(),
         ...overrides
     }
 }
