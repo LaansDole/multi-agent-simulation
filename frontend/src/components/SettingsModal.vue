@@ -152,6 +152,7 @@ const save = () => {
 .modal-content.settings-modal {
   width: 500px !important;
   max-width: 90vw;
+  max-height: 80vh;
   background: #1e1e1e;
   border-radius: 8px;
   border: 1px solid #333;
@@ -337,6 +338,21 @@ const save = () => {
 
 .contagion-settings {
   padding-left: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.contagion-settings::-webkit-scrollbar {
+  width: 4px;
+}
+
+.contagion-settings::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 2px;
+}
+
+.contagion-settings::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .settings-group-label {
