@@ -56,6 +56,15 @@ async def list_spatial_configs():
 
         configs.append(config_data)
 
+    # Deduplicate displayName values — append " (2)", " (3)", etc.
+    name_counts: Dict[str, int] = {}
+    for cfg in configs:
+        display = cfg["displayName"]
+        count = name_counts.get(display, 0) + 1
+        name_counts[display] = count
+        if count > 1:
+            cfg["displayName"] = f"{display} ({count})"
+
     return {"configs": configs}
 
 

@@ -650,5 +650,14 @@
         "height": 120
       }
     }
-  ]
+  ],
+  "simulation": {
+    "infectionRadius": 120,
+    "infectionProbability": 0.45,
+    "floorInfectionProbability": 0.1,
+    "recoveryTimeMs": 12000,
+    "fatalityProbability": 0.02,
+    "contaminationDecayMs": 8000,
+    "immunityDurationMs": 20000
+  }
 }
