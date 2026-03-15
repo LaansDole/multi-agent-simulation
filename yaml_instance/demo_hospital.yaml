@@ -118,7 +118,7 @@ graph:
         memories:
           - name: daily_summaries
             top_k: 1
-            retrieve_stage: []
+            read: false
         retry: null
       description: Creates daily summary for each round (writes to memory)
       context_window: 0
@@ -320,7 +320,7 @@ graph:
         memory_path: WareHouse/{{project_name}}/daily_summaries.json
         embedding:
           provider: openai
-          model: text-embedding-bge-reranker-v2-m3
+          model: ${MODEL_NAME}
           api_key: ${API_KEY}
           base_url: ${BASE_URL}
           params: {}
