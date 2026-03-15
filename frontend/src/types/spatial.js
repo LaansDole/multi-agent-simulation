@@ -86,6 +86,18 @@
  * @property {number} height - Height in pixels
  * @property {string} [sprite] - Optional sprite filename
  * @property {string} [color] - Optional fallback color in hex format
+ * @property {number} [contaminationLevel] - Contamination level 0-3 (0=clean, 3=severe)
+ */
+
+/**
+ * @typedef {object} SimulationConfig
+ * @property {number} [infectionRadius=80] - Proximity radius for agent-to-agent transmission (px)
+ * @property {number} [infectionProbability=0.3] - Per-tick probability of proximity transmission
+ * @property {number} [floorInfectionProbability=0.15] - Base probability of floor-to-agent transmission
+ * @property {number} [recoveryTimeMs=15000] - Time in ms before infected agent resolves
+ * @property {number} [fatalityProbability=0.05] - Probability of death on recovery roll
+ * @property {number} [contaminationDecayMs=10000] - Time in ms for floor contamination level to decay by 1
+ * @property {number} [immunityDurationMs=30000] - Duration of recovery immunity in ms (0 = permanent)
  */
 
 /**
@@ -96,6 +108,7 @@
  * @property {Array<SpawnZone>} spawnZones - List of spawn zones for agents
  * @property {LayoutMetadata} [metadata] - Optional layout metadata
  * @property {Array<FloorTile>} [floors] - Optional list of floor tiles
+ * @property {SimulationConfig} [simulation] - Optional contagion simulation parameters
  */
 
 // ───────── FACTORY FUNCTIONS ─────────
@@ -210,7 +223,8 @@ export function createFloorTile(options) {
         width,
         height,
         sprite,
-        color
+        color,
+        contaminationLevel
     } = options
 
     if (!id || !position || !width || !height) {
@@ -232,6 +246,9 @@ export function createFloorTile(options) {
     }
     if (color) {
         tile.color = color
+    }
+    if (contaminationLevel !== undefined && contaminationLevel !== null) {
+        tile.contaminationLevel = Math.max(0, Math.min(3, Math.round(contaminationLevel)))
     }
 
     return tile
@@ -300,7 +317,8 @@ export function createSpatialConfig(options = {}) {
         obstacles = [],
         spawnZones = [],
         metadata,
-        floors
+        floors,
+        simulation
     } = options
 
     if (!canvas.width || !canvas.height) {
@@ -329,6 +347,10 @@ export function createSpatialConfig(options = {}) {
 
     if (floors !== undefined && floors !== null) {
         config.floors = floors.map(f => createFloorTile(f))
+    }
+
+    if (simulation !== undefined && simulation !== null) {
+        config.simulation = { ...simulation }
     }
 
     return config

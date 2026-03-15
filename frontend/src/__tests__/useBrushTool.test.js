@@ -203,4 +203,38 @@ describe('useBrushTool', () => {
             expect(brushTool.snapToGrid(80)).toBe(80)   // 80/40=2.0 → round=2
         })
     })
+
+    describe('contamination mode', () => {
+        it('brush in contamination mode does not call addFloorFn or addObstacleFn', () => {
+            getActiveMode.mockReturnValue('contamination')
+            brushTool.setToolMode('brush')
+            brushTool.startStroke(80, 80)
+
+            // Contamination mode does NOT use addFloorFn/addObstacleFn
+            // It calls updateFloorTile internally on matching floor tiles
+            // With mock returning empty floors, nothing should happen
+            expect(addFloorFn).not.toHaveBeenCalled()
+            expect(addObstacleFn).not.toHaveBeenCalled()
+        })
+
+        it('brushAt does nothing in contamination mode when no floor tile matches', () => {
+            getActiveMode.mockReturnValue('contamination')
+            brushTool.setToolMode('brush')
+            brushTool.startStroke(80, 80)
+
+            // With empty floor tiles (from mock), addFloorFn/addObstacleFn should not be called
+            expect(addFloorFn).not.toHaveBeenCalled()
+            expect(addObstacleFn).not.toHaveBeenCalled()
+        })
+
+        it('eraseAt does nothing in contamination mode when no contaminated tile exists', () => {
+            getActiveMode.mockReturnValue('contamination')
+            brushTool.setToolMode('eraser')
+            brushTool.startStroke(80, 80)
+
+            // With empty floor tiles, no erase action should happen
+            expect(addFloorFn).not.toHaveBeenCalled()
+            expect(addObstacleFn).not.toHaveBeenCalled()
+        })
+    })
 })

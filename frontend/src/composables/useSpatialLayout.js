@@ -46,7 +46,7 @@ export const CONDITION_PULSE = {
     [AGENT_CONDITION.HEALTHY]: 0,
     [AGENT_CONDITION.INFECTED]: 3.0,
     [AGENT_CONDITION.RECOVERED]: 0.5,
-    [AGENT_CONDITION.DECEASED]: 0
+    [AGENT_CONDITION.DECEASED]: 0.8
 }
 
 // ───────── SPEED PRESETS ─────────
@@ -485,7 +485,7 @@ export function useSpatialLayout() {
 
     // ── Emote management ──
 
-    function setAgentEmote(agentId, emoji, badge) {
+    function setAgentEmote(agentId, emoji, badge, persistent = false) {
         // Clear existing emote timers
         const existing = state.agentEmotes.get(agentId)
         if (existing?.timerId) {
@@ -493,21 +493,30 @@ export function useSpatialLayout() {
         }
 
         const startTime = Date.now()
-        const timerId = setTimeout(() => {
-            state.agentEmotes.delete(agentId)
-        }, Math.max(EMOTE_DISMISS_EMOJI_MS, EMOTE_DISMISS_BADGE_MS))
+        let timerId = null
+        if (!persistent) {
+            timerId = setTimeout(() => {
+                state.agentEmotes.delete(agentId)
+            }, Math.max(EMOTE_DISMISS_EMOJI_MS, EMOTE_DISMISS_BADGE_MS))
+        }
 
         state.agentEmotes.set(agentId, {
             emoji,
             badge,
             startTime,
-            timerId
+            timerId,
+            persistent
         })
     }
 
     function getAgentEmote(agentId) {
         const emote = state.agentEmotes.get(agentId)
         if (!emote) return null
+
+        // Persistent emotes never expire
+        if (emote.persistent) {
+            return { emoji: emote.emoji, badge: emote.badge }
+        }
 
         const elapsed = Date.now() - emote.startTime
         return {

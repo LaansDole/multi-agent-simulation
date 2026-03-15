@@ -13,7 +13,7 @@ const GRID_SIZE = 40
 
 /**
  * @param {object} options
- * @param {Function} options.getActiveMode - Returns 'obstacles' | 'floors'
+ * @param {Function} options.getActiveMode - Returns 'obstacles' | 'floors' | 'contamination'
  * @param {Function} options.getSelectedItem - Returns the selected obstacle palette item or null
  * @param {Function} options.getSelectedFloor - Returns the selected floor palette item or null
  * @param {Function} options.addObstacleFn - Function to place an obstacle at (x, y)
@@ -67,6 +67,20 @@ export function useBrushTool({
             addFloorFn(x, y)
         } else if (mode === 'obstacles' && getSelectedItem()) {
             addObstacleFn(x, y)
+        } else if (mode === 'contamination') {
+            // Set contamination on existing floor tile at this position
+            const sx = snapToGrid(x)
+            const sy = snapToGrid(y)
+            const floors = getFloorTiles()
+            const match = floors.find(f => {
+                const fp = f.position || {}
+                return sx >= fp.x && sx < fp.x + f.width && sy >= fp.y && sy < fp.y + f.height
+            })
+            if (match) {
+                const { updateFloorTile } = useSpatialConfig()
+                updateFloorTile(match.id, { contaminationLevel: 3 })
+                markConfigChanged()
+            }
         }
     }
 
@@ -86,6 +100,18 @@ export function useBrushTool({
             const match = floors.find(f => f.position?.x === sx && f.position?.y === sy)
             if (match) {
                 removeFloorTile(match.id)
+                markConfigChanged()
+            }
+        } else if (mode === 'contamination') {
+            // Clear contamination on floor tile at this position
+            const floors = getFloorTiles()
+            const match = floors.find(f => {
+                const fp = f.position || {}
+                return sx >= fp.x && sx < fp.x + f.width && sy >= fp.y && sy < fp.y + f.height
+            })
+            if (match && match.contaminationLevel > 0) {
+                const { updateFloorTile } = useSpatialConfig()
+                updateFloorTile(match.id, { contaminationLevel: 0 })
                 markConfigChanged()
             }
         } else if (mode === 'obstacles') {
