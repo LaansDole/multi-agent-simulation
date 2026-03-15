@@ -153,6 +153,12 @@ export function useAnimationLoop({
             ag.container.x = currentX
             ag.container.y = currentY
 
+            // Sync wander position to agentPositions so contagion
+            // proximity checks use the actual visual position
+            if (anim.type === 'wander') {
+                agentPositions.value.set(nodeId, { x: currentX, y: currentY })
+            }
+
             // Skip trail particles for idle wander animations
             if (anim.type !== 'wander' && (!anim.lastTrailTime || now - anim.lastTrailTime > 100)) {
                 addTrailParticle(ag.container.x, ag.container.y, 0x818cf8)
@@ -189,22 +195,31 @@ export function useAnimationLoop({
 
             if (progress >= 1) {
                 toRemove.push(nodeId)
-                const origPos = agentPositions.value.get(nodeId)
-                if (origPos) {
-                    ag.container.x = origPos.x
-                    ag.container.y = origPos.y
+
+                if (anim.type === 'wander') {
+                    // Wander complete: restore home position in both
+                    // the PixiJS sprite and agentPositions so the
+                    // contagion engine sees the correct resting spot.
+                    const homeX = anim.startX
+                    const homeY = anim.startY
+                    ag.container.x = homeX
+                    ag.container.y = homeY
+                    agentPositions.value.set(nodeId, { x: homeX, y: homeY })
+                    resetWanderCooldown(nodeId)
+                } else {
+                    const origPos = agentPositions.value.get(nodeId)
+                    if (origPos) {
+                        ag.container.x = origPos.x
+                        ag.container.y = origPos.y
+                    }
                 }
+
                 const idlePath = spriteFetcher.fetchSprite(nodeId, 'D', 1)
                 Assets.load(idlePath).then(tex => {
                     if (ag.sprite instanceof Sprite) {
                         ag.sprite.texture = tex
                     }
                 }).catch(() => { })
-
-                // Reset wander cooldown when a wander animation completes
-                if (anim.type === 'wander') {
-                    resetWanderCooldown(nodeId)
-                }
             }
         })
 

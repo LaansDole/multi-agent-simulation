@@ -525,6 +525,18 @@ export function useSpatialLayout() {
         }
     }
 
+    /**
+     * Clear all agent emotes. Cancels any pending dismiss timers.
+     * Called during simulation reset to remove persistent emotes
+     * (e.g. deceased skull) that would otherwise survive condition changes.
+     */
+    function clearAllEmotes() {
+        state.agentEmotes.forEach(emote => {
+            if (emote.timerId) clearTimeout(emote.timerId)
+        })
+        state.agentEmotes.clear()
+    }
+
     // ── Speed management ──
 
     function setSpeed(speedId) {
@@ -690,6 +702,7 @@ export function useSpatialLayout() {
         getAgentOutputHistory,
         setAgentEmote,
         getAgentEmote,
+        clearAllEmotes,
         setSpeed,
         getSpeedValue,
         addTrailParticle,

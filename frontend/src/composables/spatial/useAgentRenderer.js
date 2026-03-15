@@ -25,6 +25,9 @@ import { spriteFetcher } from '../../utils/spriteFetcher.js'
  * @param {Function} options.initIdleWanderTimers - Initialize wander timers
  * @param {Function} options.normalizeWorkflowName - Normalize workflow name
  * @param {object} options.spatialConfig - Spatial config composable
+ * @param {Function} options.seedInfection - Seed infection on agent
+ * @param {Function} options.cureAgent - Cure an infected agent
+ * @param {Function} options.getAgentCondition - Get agent condition (HEALTHY/INFECTED/etc)
  * @param {object} options.STATUS_COLORS - Status color map
  * @param {object} options.AGENT_STATUS - Agent status enum
  */
@@ -47,6 +50,8 @@ export function useAgentRenderer({
     AGENT_STATUS,
     sandboxMode,
     seedInfection,
+    cureAgent,
+    getAgentCondition,
     setNodeTypes
 }) {
 
@@ -181,10 +186,15 @@ export function useAgentRenderer({
         // Drag-and-drop
         setupDrag(agentGroup, node.id)
 
-        // Click to open agent info panel or seed infection in sandbox mode
+        // Click to open agent info panel or seed/cure infection in sandbox mode
         agentGroup.on('pointerdown', () => {
             if (sandboxMode?.value && seedInfection) {
-                seedInfection(node.id)
+                const condition = getAgentCondition?.(node.id)
+                if (condition === 'infected' && cureAgent) {
+                    cureAgent(node.id)
+                } else {
+                    seedInfection(node.id)
+                }
             } else {
                 emit('agent-selected', { nodeId: node.id, node })
             }

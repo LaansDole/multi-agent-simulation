@@ -22,8 +22,9 @@ const WANDER_RANDOM_RADIUS = 80
  * @param {Function} options.getSpeedValue - Get current speed value
  * @param {import('vue').Ref} options.agentPositions - Agent positions ref
  * @param {string} options.AGENT_STATUS_IDLE - Idle status constant
+ * @param {Function} [options.isAgentDeceased] - Check if agent is deceased (contagion). Returns true if sandbox mode is active and agent is deceased.
  */
-export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositions, AGENT_STATUS_IDLE }) {
+export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositions, AGENT_STATUS_IDLE, isAgentDeceased }) {
     let edgeAdjacency = new Map()
     let idleWanderTimers = new Map()
 
@@ -75,11 +76,11 @@ export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositio
         ctx.agentSprites.forEach((ag, nodeId) => {
             if (!ag.interactive) return
 
-            // Only wander when idle/healthy and not already animating
             // DECEASED agents never wander (frozen in place)
+            if (isAgentDeceased && isAgentDeceased(nodeId)) return
+            // Only wander when idle and not already animating
             const status = getAgentStatus(nodeId)
-            if (status !== AGENT_STATUS_IDLE && status !== 'healthy' && status !== 'recovered') return
-            if (status === 'deceased') return
+            if (status !== AGENT_STATUS_IDLE) return
             if (ctx.animatingAgents.has(nodeId)) return
 
             // Check cooldown

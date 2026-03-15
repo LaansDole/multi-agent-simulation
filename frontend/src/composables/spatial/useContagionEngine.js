@@ -18,6 +18,27 @@ export const CONTAMINATION_COLORS = {
     3: 0xef4444  // severe – red
 }
 
+// ───────── HELPERS ─────────
+
+/**
+ * Find the first floor tile whose bounding box contains the given position.
+ * @param {{ x: number, y: number }} pos - World position to test
+ * @param {Array<{ id: string, position: { x: number, y: number }, width: number, height: number }>} floors - Floor tiles array
+ * @returns {object|null} The matching floor tile, or null if none found
+ */
+export function findFloorTileAtPosition(pos, floors) {
+    for (const floor of floors) {
+        const fp = floor.position
+        if (
+            pos.x >= fp.x && pos.x < fp.x + floor.width &&
+            pos.y >= fp.y && pos.y < fp.y + floor.height
+        ) {
+            return floor
+        }
+    }
+    return null
+}
+
 // ───────── SINGLETON STATE ─────────
 
 const MAX_LOG_ENTRIES = 200
@@ -36,6 +57,9 @@ const state = reactive({
 
     /** @type {Map<string, number>} floorId → last decay timestamp */
     floorDecayTimers: new Map(),
+
+    /** @type {Map<string, number>} floorId → last contamination timestamp (throttle for infected agent deposits) */
+    floorContaminationTimers: new Map(),
 
     /** @type {Map<string, number>} Snapshot of initial floor contamination for reset */
     initialFloorLevels: new Map(),
@@ -75,6 +99,7 @@ export function useContagionEngine() {
         getAgentCondition,
         setAgentStatus,
         setAgentEmote,
+        clearAllEmotes,
         isAgentNode
     } = useSpatialLayout()
 
@@ -133,6 +158,7 @@ export function useContagionEngine() {
         state.infectionTimers.clear()
         state.immunityTimers.clear()
         state.floorDecayTimers.clear()
+        state.floorContaminationTimers.clear()
         state.initialFloorLevels.clear()
 
         // Set all agent/human nodes to HEALTHY condition (skip non-agent nodes)
@@ -170,6 +196,13 @@ export function useContagionEngine() {
         state.simulationPaused = false
         state.infectionTimers.clear()
         state.immunityTimers.clear()
+        state.floorContaminationTimers.clear()
+
+        // Clear all emotes (including persistent ones like deceased skull)
+        clearAllEmotes()
+
+        // Clear debug log for a fresh start
+        state.contagionLog.splice(0, state.contagionLog.length)
 
         // Restore agent conditions (agent/human nodes only)
         agentPositions.value.forEach((_, agentId) => {
@@ -295,6 +328,7 @@ export function useContagionEngine() {
         // Tick counters for debug summary
         let tickProximityHits = 0
         let tickFloorHits = 0
+        let tickFloorDeposits = 0
         let tickRecoveries = 0
         let tickFatalities = 0
         let tickMutations = 0
@@ -307,25 +341,43 @@ export function useContagionEngine() {
             if (condition !== AGENT_CONDITION.HEALTHY) return
 
             // Find floor tile under agent
-            for (const floor of floors) {
-                if (!floor.contaminationLevel || floor.contaminationLevel <= 0) continue
-                const fp = floor.position
-                if (
-                    pos.x >= fp.x && pos.x < fp.x + floor.width &&
-                    pos.y >= fp.y && pos.y < fp.y + floor.height
-                ) {
-                    const prob = params.floorInfectionProbability * (floor.contaminationLevel / 3)
-                    // Scale probability by deltaMs to make it frame-rate independent
-                    const scaledProb = 1 - Math.pow(1 - prob, deltaMs / 1000)
-                    if (Math.random() < scaledProb) {
-                        setAgentCondition(agentId, AGENT_CONDITION.INFECTED)
-                        state.infectionTimers.set(agentId, { infectedAt: now })
-                        setAgentEmote(agentId, '🤒', 'Infected!')
-                        tickFloorHits++
-                    }
-                    break // only check first matching tile
+            const floor = findFloorTileAtPosition(pos, floors)
+            if (floor && floor.contaminationLevel > 0) {
+                const prob = params.floorInfectionProbability * (floor.contaminationLevel / 3)
+                // Scale probability by deltaMs to make it frame-rate independent
+                const scaledProb = 1 - Math.pow(1 - prob, deltaMs / 1000)
+                if (Math.random() < scaledProb) {
+                    setAgentCondition(agentId, AGENT_CONDITION.INFECTED)
+                    state.infectionTimers.set(agentId, { infectedAt: now })
+                    setAgentEmote(agentId, '🤒', 'Infected!')
+                    tickFloorHits++
                 }
             }
+        })
+
+        // 1b. Infected agents contaminate floor tiles they stand on
+        const FLOOR_CONTAMINATION_THROTTLE_MS = 1000
+        agentPositions.value.forEach((pos, agentId) => {
+            if (!isAgentNode(agentId)) return
+            const condition = getAgentCondition(agentId)
+            if (condition !== AGENT_CONDITION.INFECTED) return
+
+            const floor = findFloorTileAtPosition(pos, floors)
+            if (!floor) return
+            if (floor.contaminationLevel >= 3) return // already at max
+
+            // Throttle: only deposit once per FLOOR_CONTAMINATION_THROTTLE_MS per tile
+            const lastDeposit = state.floorContaminationTimers.get(floor.id) || 0
+            if (now - lastDeposit < FLOOR_CONTAMINATION_THROTTLE_MS) return
+
+            const newLevel = Math.min((floor.contaminationLevel || 0) + 1, 3)
+            updateFloorTile(floor.id, { contaminationLevel: newLevel })
+            state.floorContaminationTimers.set(floor.id, now)
+            // Ensure decay timer is set for newly contaminated tiles
+            if (!state.floorDecayTimers.has(floor.id)) {
+                state.floorDecayTimers.set(floor.id, now)
+            }
+            tickFloorDeposits++
         })
 
         // 2. Proximity transmission: INFECTED ↔ HEALTHY within radius
@@ -351,6 +403,17 @@ export function useContagionEngine() {
                         state.infectionTimers.set(idB, { infectedAt: now })
                         setAgentEmote(idB, '🤒', 'Infected!')
                         tickProximityHits++
+
+                        // Contaminate floor tile under newly infected agent
+                        const floorUnderB = findFloorTileAtPosition(posB, floors)
+                        if (floorUnderB && floorUnderB.contaminationLevel < 3) {
+                            const newLevel = Math.min((floorUnderB.contaminationLevel || 0) + 1, 3)
+                            updateFloorTile(floorUnderB.id, { contaminationLevel: newLevel })
+                            if (!state.floorDecayTimers.has(floorUnderB.id)) {
+                                state.floorDecayTimers.set(floorUnderB.id, now)
+                            }
+                            tickFloorDeposits++
+                        }
                     }
                 }
             }
@@ -402,6 +465,7 @@ export function useContagionEngine() {
                     if (condition === AGENT_CONDITION.RECOVERED) {
                         setAgentCondition(agentId, AGENT_CONDITION.HEALTHY)
                         state.immunityTimers.delete(agentId)
+                        setAgentEmote(agentId, '🛡️', 'Immunity expired')
                         tickImmunityExpiries++
                     }
                 }
@@ -420,7 +484,7 @@ export function useContagionEngine() {
         })
 
         // Count current status distribution (used by both tick summary and heartbeat)
-        const anyEvents = tickProximityHits || tickFloorHits || tickRecoveries || tickFatalities || tickMutations || tickImmunityExpiries
+        const anyEvents = tickProximityHits || tickFloorHits || tickFloorDeposits || tickRecoveries || tickFatalities || tickMutations || tickImmunityExpiries
         let h = 0, inf = 0, rec = 0, dec = 0
         if (state.debugEnabled && (anyEvents || now - state._lastHeartbeatMs >= 2000)) {
             agents.forEach(([id]) => {
@@ -440,6 +504,7 @@ export function useContagionEngine() {
             _log('tick', `Δ${Math.round(deltaMs)}ms | H:${h} I:${inf} R:${rec} D:${dec}`, {
                 proximityHits: tickProximityHits,
                 floorHits: tickFloorHits,
+                floorDeposits: tickFloorDeposits,
                 recoveries: tickRecoveries,
                 fatalities: tickFatalities,
                 mutations: tickMutations,
