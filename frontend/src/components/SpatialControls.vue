@@ -142,6 +142,16 @@
         </div>
       </div>
     </div>
+
+    <button
+      class="spatial-control-button sandbox-toggle"
+      :class="{ active: sandboxMode }"
+      :title="sandboxMode ? 'Exit Sandbox' : 'Outbreak Sandbox'"
+      @click="$emit('sandbox-toggle')"
+    >
+      <span class="sandbox-icon">☣</span>
+      <span>{{ sandboxMode ? 'Exit Sandbox' : 'Sandbox' }}</span>
+    </button>
   </div>
 </template>
 
@@ -151,10 +161,11 @@ import { SPEED_LIST } from '../composables/useSpatialLayout.js'
 
 const props = defineProps({
   currentSpeed: { type: String, default: 'normal' },
-  saveStatus: { type: String, default: 'saved' }
+  saveStatus: { type: String, default: 'saved' },
+  sandboxMode: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['reset-layout', 'speed-change', 'save-layout', 'import-config'])
+const emit = defineEmits(['reset-layout', 'speed-change', 'save-layout', 'import-config', 'sandbox-toggle'])
 
 const speeds = SPEED_LIST
 const showImportDropdown = ref(false)
@@ -571,5 +582,25 @@ function selectConfig(name) {
 
 .save-new-confirm:hover {
   background: rgba(34, 197, 94, 0.4);
+}
+
+.sandbox-toggle {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.sandbox-toggle:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.sandbox-toggle.active {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+}
+
+.sandbox-icon {
+  font-size: 14px;
 }
 </style>

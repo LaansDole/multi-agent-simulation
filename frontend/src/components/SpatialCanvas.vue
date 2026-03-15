@@ -7,10 +7,28 @@
     <SpatialControls
       :current-speed="currentSpeed"
       :save-status="saveStatus"
+      :sandbox-mode="sandboxMode"
       @reset-layout="resetLayout"
       @speed-change="onSpeedChange"
       @save-layout="onSaveLayout"
       @import-config="onImportConfig"
+      @sandbox-toggle="onSandboxToggle"
+    />
+
+    <!-- Contagion Sandbox UI -->
+    <ContagionHUD
+      :visible="sandboxMode"
+      :stats="contagionStats"
+      :elapsed-time-ms="contagionElapsedTimeMs"
+      :is-playing="simulationRunning && !simulationPaused"
+      :debug-enabled="contagionDebugEnabled"
+      :contagion-log="contagionLogEntries"
+      @play="contagionPlay"
+      @pause="contagionPause"
+      @step="contagionStep"
+      @reset="contagionReset"
+      @toggle-debug="contagionToggleDebug"
+      @clear-log="contagionClearLog"
     />
 
     <!-- Obstacle info tooltip -->
@@ -68,6 +86,8 @@ import {
   AGENT_STATUS,
   STATUS_COLORS,
   STATUS_PULSE,
+  CONDITION_COLORS,
+  CONDITION_PULSE,
   COMMUNICATION_ANIMATION_DISTANCE,
   MIN_MEETING_GAP,
   MIN_AGENT_SEPARATION
@@ -82,7 +102,9 @@ import { useAgentRenderer } from '../composables/spatial/useAgentRenderer.js'
 import { usePixiApp } from '../composables/spatial/usePixiApp.js'
 import { spriteFetcher } from '../utils/spriteFetcher.js'
 import { createPathfinder } from '../utils/pathfinding.js'
+import { useContagionEngine } from '../composables/spatial/useContagionEngine.js'
 import SpatialControls from './SpatialControls.vue'
+import ContagionHUD from './simulation/ContagionHUD.vue'
 
 const props = defineProps({
   nodes: { type: Array, default: () => [] },
@@ -124,6 +146,7 @@ const {
   cleanupConnections,
   setAgentStatus,
   getAgentStatus,
+  getAgentCondition,
   setAgentMessage,
   getAgentEmote,
   setSpeed,
@@ -132,7 +155,8 @@ const {
   cleanupTrailParticles,
   enqueueAnimation,
   dequeueAnimation,
-  getStaggerDelay
+  getStaggerDelay,
+  setNodeTypes
 } = useSpatialLayout()
 
 // ───────── SHARED CANVAS CONTEXT ─────────
@@ -205,10 +229,35 @@ const {
 // ───────── FLOOR MANAGER COMPOSABLE ─────────
 const {
   drawFloors,
+  updateContaminationOverlays,
   cleanup: cleanupFloors
 } = useFloorManager({
   ctx
 })
+
+// ───────── CONTAGION ENGINE COMPOSABLE ─────────
+const {
+  sandboxMode,
+  simulationRunning,
+  simulationPaused,
+  elapsedTimeMs: contagionElapsedTimeMs,
+  stats: contagionStats,
+  debugEnabled: contagionDebugEnabled,
+  contagionLog: contagionLogEntries,
+  toggleSandboxMode,
+  play: contagionPlay,
+  pause: contagionPause,
+  stepSimulation: contagionStep,
+  resetSimulation: contagionReset,
+  seedInfection,
+  updateContagion,
+  toggleDebugLog: contagionToggleDebug,
+  clearLog: contagionClearLog
+} = useContagionEngine()
+
+function onSandboxToggle() {
+  toggleSandboxMode()
+}
 
 // ───────── IDLE WANDER COMPOSABLE ─────────
 const {
@@ -257,6 +306,7 @@ const {
   trailParticles,
   activeConnections,
   getAgentStatus,
+  getAgentCondition,
   getAgentEmote,
   addTrailParticle,
   cleanupTrailParticles,
@@ -266,7 +316,12 @@ const {
   STATUS_COLORS,
   STATUS_PULSE,
   AGENT_STATUS,
-  MIN_AGENT_SEPARATION
+  CONDITION_COLORS,
+  CONDITION_PULSE,
+  MIN_AGENT_SEPARATION,
+  updateContagion,
+  updateContaminationOverlays,
+  sandboxMode
 })
 
 // ───────── AGENT RENDERER COMPOSABLE ─────────
@@ -288,7 +343,10 @@ const {
   normalizeWorkflowName,
   spatialConfig,
   STATUS_COLORS,
-  AGENT_STATUS
+  AGENT_STATUS,
+  sandboxMode,
+  seedInfection,
+  setNodeTypes
 })
 
 // ───────── PIXI APP LIFECYCLE COMPOSABLE ─────────
@@ -397,7 +455,9 @@ async function executeImportConfig() {
     initPathfinder(ctx.app.renderer.width, ctx.app.renderer.height)
   }
 
-  emit('config-changed', spatialConfig.value)
+  // Mark as unsaved so the user can explicitly save when ready.
+  // Do NOT emit 'config-changed' here — that triggers auto-save to disk.
+  markConfigChanged()
   pendingImportConfig.value = ''
 }
 
