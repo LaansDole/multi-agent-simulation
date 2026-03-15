@@ -2739,6 +2739,8 @@ watch(
   font-size: 13px;
   font-weight: 500;
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .chat-notification-warning .notification-content {
@@ -2753,9 +2755,6 @@ watch(
 .chat-notification-error .notification-content {
   background: rgba(255, 82, 82, 0.12);
   border-color: rgba(255, 82, 82, 0.4);
-}
-
-.chat-notification-error .notification-content {
   color: #ffcccc;
 }
 

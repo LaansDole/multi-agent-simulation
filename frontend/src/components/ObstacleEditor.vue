@@ -20,7 +20,7 @@
 
     <div v-if="showPalette" class="palette" :style="paletteStyle">
       <div class="palette-header">
-        <span class="palette-title">Add {{ activeMode === 'obstacles' ? 'Obstacle' : 'Floor' }}</span>
+        <span class="palette-title">{{ activeMode === 'contamination' ? 'Paint Contamination' : `Add ${activeMode === 'obstacles' ? 'Obstacle' : 'Floor'}` }}</span>
         <div class="palette-header-actions">
           <button
             class="header-action-btn close-action"
@@ -46,6 +46,14 @@
           @click="activeMode = 'floors'"
         >
           Floors
+        </button>
+        <button
+          v-if="isSandboxMode"
+          class="mode-tab contamination-tab"
+          :class="{ active: activeMode === 'contamination' }"
+          @click="activeMode = 'contamination'"
+        >
+          ☣ Contamination
         </button>
       </div>
       
@@ -240,6 +248,10 @@
     <div v-if="isFloorEditorActive" class="instructions">
       {{ floorInstructionText }}
     </div>
+
+    <div v-if="activeMode === 'contamination'" class="instructions">
+      {{ contaminationInstructionText }}
+    </div>
     
     <div v-if="showUploadModal" class="modal-overlay" @click.self="cancelUpload">
       <div class="modal">
@@ -350,6 +362,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSpatialConfig } from '../composables/useSpatialConfig.js'
 import { createObstacle } from '../types/spatial.js'
 import { useBrushTool } from '../composables/spatial/useBrushTool.js'
+import { useContagionEngine } from '../composables/spatial/useContagionEngine.js'
 
 const props = defineProps({
   canvasHeight: { type: Number, default: 600 }
@@ -360,6 +373,8 @@ const GRID_SIZE = 40
 const emit = defineEmits(['obstacle-added'])
 
 const { config: spatialConfig, currentWorkflow, setConfig, getConfig, markConfigChanged } = useSpatialConfig()
+const { sandboxMode } = useContagionEngine()
+const isSandboxMode = computed(() => sandboxMode.value)
 
 const isEditorActive = ref(false)
 const showPalette = ref(true)
@@ -528,6 +543,12 @@ const floorInstructionText = computed(() => {
   if (currentToolMode.value === 'brush') return `Drag to paint ${selectedFloorName.value}`
   if (currentToolMode.value === 'eraser') return `Drag to erase floor tiles`
   return `Click on canvas to paint ${selectedFloorName.value}`
+})
+
+const contaminationInstructionText = computed(() => {
+  if (currentToolMode.value === 'brush') return 'Drag to paint contamination (level 3) on floor tiles'
+  if (currentToolMode.value === 'eraser') return 'Drag to clear contamination from floor tiles'
+  return 'Select Brush or Eraser to paint or clear contamination zones'
 })
 
 function selectItem(item) {
