@@ -269,7 +269,7 @@ onBeforeUnmount(() => {
   margin: 0 0 8px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #ffffff;
+  color: #f9fafb;
 }
 
 .tooltip-description {

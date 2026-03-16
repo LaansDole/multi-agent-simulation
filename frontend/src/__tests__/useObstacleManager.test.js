@@ -33,11 +33,11 @@ describe('parseHexColor', () => {
     })
 
     it('parses white correctly', () => {
-        expect(parseHexColor('#ffffff')).toBe(0xffffff)
+        expect(parseHexColor('#f9fafb')).toBe(0xf9fafb)
     })
 
     it('parses black correctly', () => {
-        expect(parseHexColor('#000000')).toBe(0x000000)
+        expect(parseHexColor('#1A1A1A')).toBe(0x1A1A1A)
     })
 })
 
