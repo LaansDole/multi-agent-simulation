@@ -127,6 +127,7 @@ const canvasRef = ref(null)
 
 const {
   config: spatialConfig,
+  currentWorkflow,
   loadConfig,
   setConfig,
   clearCache,
@@ -512,14 +513,16 @@ function resetLayout() {
 }
 
 function clearLayout() {
-  const workflowName = normalizeWorkflowName(props.workflowFile) || ''
+  // Use the active config key (which changes after import) with a fallback
+  // to the original workflow file name.
+  const activeKey = currentWorkflow.value || normalizeWorkflowName(props.workflowFile) || ''
 
   // Reset config to empty defaults
   const defaultCfg = { canvas: {}, grid: {}, obstacles: [], spawnZones: [] }
-  if (workflowName) {
-    clearSavedConfig(workflowName)
-    clearCache(workflowName)
-    setConfig(workflowName, defaultCfg)
+  if (activeKey) {
+    clearSavedConfig(activeKey)
+    clearCache(activeKey)
+    setConfig(activeKey, defaultCfg)
   } else {
     setConfig('', defaultCfg)
   }
