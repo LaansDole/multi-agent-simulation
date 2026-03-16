@@ -142,9 +142,19 @@ export function useAgentRenderer({
             style: new TextStyle({
                 fontSize: 11,
                 fontFamily: 'Inter, system-ui, sans-serif',
-                fill: 0xffffff,
+                fill: 0xf9fafb,
                 align: 'center',
-                fontWeight: '500'
+                fontWeight: '500',
+                dropShadow: {
+                    color: '#1A1A1A',
+                    blur: 4,
+                    distance: 2,
+                    alpha: 0.8
+                },
+                stroke: {
+                    color: '#1A1A1A',
+                    width: 3
+                }
             })
         })
         label.anchor.set(0.5, 0)
@@ -157,8 +167,14 @@ export function useAgentRenderer({
             style: new TextStyle({
                 fontSize: 24,
                 fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif',
-                fill: 0xffffff,
-                align: 'center'
+                fill: 0xf9fafb,
+                align: 'center',
+                dropShadow: {
+                    color: '#1A1A1A',
+                    blur: 4,
+                    distance: 2,
+                    alpha: 0.8
+                }
             })
         })
         emoteText.anchor.set(0.5, 1)
@@ -174,7 +190,13 @@ export function useAgentRenderer({
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fontWeight: '500',
                 fill: 0xe0e7ff,
-                align: 'left'
+                align: 'left',
+                dropShadow: {
+                    color: '#1A1A1A',
+                    blur: 4,
+                    distance: 2,
+                    alpha: 0.8
+                }
             })
         })
         badgeText.anchor.set(0.5, 1)
@@ -236,8 +258,8 @@ export function useAgentRenderer({
         shape.lineTo(0, 8)
         shape.lineTo(-8, 0)
         shape.closePath()
-        shape.fill({ color: 0x4b5563, alpha: 0.6 })
-        shape.stroke({ width: 1, color: 0x6b7280, alpha: 0.4 })
+        shape.fill({ color: 0x4b5563, alpha: 0.85 })
+        shape.stroke({ width: 1, color: 0x6b7280, alpha: 0.7 })
         markerGroup.addChild(shape)
 
         // Smaller muted label
@@ -248,7 +270,17 @@ export function useAgentRenderer({
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fill: 0x9ca3af,
                 align: 'center',
-                fontWeight: '400'
+                fontWeight: '400',
+                dropShadow: {
+                    color: '#1A1A1A',
+                    blur: 3,
+                    distance: 1,
+                    alpha: 0.8
+                },
+                stroke: {
+                    color: '#1A1A1A',
+                    width: 2
+                }
             })
         })
         label.anchor.set(0.5, 0)
