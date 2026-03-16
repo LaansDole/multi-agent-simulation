@@ -318,7 +318,7 @@ function selectConfig(name) {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  background: rgba(30, 30, 50, 0.85);
+  background: rgba(30, 30, 50, 0.95);
   color: #e2e8f0;
   font-size: 12px;
   font-family: 'Inter', system-ui, sans-serif;
@@ -328,7 +328,7 @@ function selectConfig(name) {
 }
 
 .spatial-control-button:hover {
-  background: rgba(50, 50, 80, 0.9);
+  background: rgba(50, 50, 80, 0.98);
   border-color: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
@@ -338,22 +338,22 @@ function selectConfig(name) {
 }
 
 .save-button {
-  background: rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.75);
   border-color: rgba(34, 197, 94, 0.4);
 }
 
 .save-button:hover {
-  background: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.85);
   border-color: rgba(34, 197, 94, 0.6);
 }
 
 .save-button.save-unsaved {
-  background: rgba(234, 179, 8, 0.25);
+  background: rgba(234, 179, 8, 0.75);
   border-color: rgba(234, 179, 8, 0.5);
 }
 
 .save-button.save-unsaved:hover {
-  background: rgba(234, 179, 8, 0.4);
+  background: rgba(234, 179, 8, 0.85);
   border-color: rgba(234, 179, 8, 0.7);
 }
 
@@ -383,7 +383,7 @@ function selectConfig(name) {
   padding: 6px 10px;
   border: none;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(30, 30, 50, 0.85);
+  background: rgba(30, 30, 50, 0.95);
   color: #94a3b8;
   font-size: 11px;
   font-family: 'Inter', system-ui, sans-serif;
@@ -396,12 +396,12 @@ function selectConfig(name) {
 }
 
 .speed-button:hover {
-  background: rgba(50, 50, 80, 0.9);
+  background: rgba(50, 50, 80, 0.98);
   color: #e2e8f0;
 }
 
 .speed-button.active {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.6);
   color: #fff;
   font-weight: 600;
 }
@@ -412,12 +412,12 @@ function selectConfig(name) {
 }
 
 .import-button {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.75);
   border-color: rgba(99, 102, 241, 0.4);
 }
 
 .import-button:hover {
-  background: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.85);
   border-color: rgba(99, 102, 241, 0.6);
 }
 
@@ -619,29 +619,29 @@ function selectConfig(name) {
 }
 
 .clear-button {
-  background: rgba(160, 160, 180, 0.15);
+  background: rgba(160, 160, 180, 0.7);
   border-color: rgba(160, 160, 180, 0.3);
 }
 
 .clear-button:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.8);
+  border-color: rgba(239, 68, 68, 0.55);
   color: #fca5a5;
 }
 
 .sandbox-toggle {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.7);
   border-color: rgba(239, 68, 68, 0.3);
 }
 
 .sandbox-toggle:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.8);
+  border-color: rgba(239, 68, 68, 0.55);
 }
 
 .sandbox-toggle.active {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.85);
+  border-color: rgba(239, 68, 68, 0.65);
   color: #ef4444;
 }
 

@@ -2171,7 +2171,7 @@ defineExpose({
 }
 
 .close-button:hover {
-  color: #ffffff;
+  color: #f9fafb;
   transform: scale(1.05);
 }
 

@@ -387,3 +387,150 @@ describe('useAnimationLoop - drawConnections', () => {
         expect(clearSpy).toHaveBeenCalled()
     })
 })
+
+// ───────── updateLabelColors — reset when floors cleared ─────────
+
+describe('useAnimationLoop - updateLabelColors reset', () => {
+    it('resets labels from bright-floor style to dark-floor defaults when floors are cleared', () => {
+        const labelStyle = {
+            fill: '#1e1e3a',           // dark text (bright-floor mode)
+            stroke: { color: '#f9fafb', width: 2 },
+            dropShadow: { color: '#f9fafb', blur: 4, distance: 2, alpha: 0.4 }
+        }
+        const label = { style: labelStyle }
+        const options = createMockOptions()
+
+        // Set up agent with label in bright-floor style
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow: new Graphics(),
+            label,
+            container: { x: 200, y: 200, scale: { set: vi.fn() } }
+        })
+
+        // First run WITH floors so labelColorState gets populated with bright=true
+        options.ctx.spatialConfig = {
+            floors: [{
+                position: { x: 0, y: 0 },
+                width: 1000,
+                height: 1000,
+                color: '#f0f0f0' // bright floor
+            }]
+        }
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop() // populates labelColorState with bright: true
+
+        // Verify label switched to dark text (bright floor)
+        expect(labelStyle.fill).toBe('#1e1e3a')
+
+        // Now clear the floors
+        options.ctx.spatialConfig = { floors: [] }
+        renderLoop()
+
+        // Label should reset to white text (dark-floor defaults)
+        expect(labelStyle.fill).toBe('#f9fafb')
+        expect(labelStyle.stroke.color).toBe('#1A1A1A')
+        expect(labelStyle.dropShadow.color).toBe('#1A1A1A')
+        expect(labelStyle.dropShadow.alpha).toBe(0.8)
+    })
+
+    it('does not re-apply styles when already in dark-floor mode and floors are empty', () => {
+        const labelStyle = {
+            fill: '#f9fafb',           // already white (dark-floor mode)
+            stroke: { color: '#1A1A1A', width: 3 },
+            dropShadow: { color: '#1A1A1A', blur: 4, distance: 2, alpha: 0.8 }
+        }
+        const label = { style: labelStyle }
+        const options = createMockOptions()
+
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow: new Graphics(),
+            label,
+            container: { x: 200, y: 200, scale: { set: vi.fn() } }
+        })
+
+        // No floors at all
+        options.ctx.spatialConfig = { floors: [] }
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        // Should remain in dark-floor defaults — no change
+        expect(labelStyle.fill).toBe('#f9fafb')
+    })
+
+    it('adapts non-interactive (static marker) labels on bright floors', () => {
+        const labelStyle = {
+            fill: '#c9d1d9',
+            stroke: { color: '#1A1A1A', width: 2 },
+            dropShadow: { color: '#1A1A1A', blur: 3, distance: 1, alpha: 0.8 }
+        }
+        const label = { style: labelStyle }
+        const options = createMockOptions()
+
+        // Non-interactive marker
+        options.ctx.agentSprites.set('StartNode', {
+            interactive: false,
+            glow: null,
+            label,
+            container: { x: 200, y: 200, scale: { set: vi.fn() } }
+        })
+
+        // Bright floor covering the marker position
+        options.ctx.spatialConfig = {
+            floors: [{
+                position: { x: 0, y: 0 },
+                width: 1000,
+                height: 1000,
+                color: '#f0f0f0'
+            }]
+        }
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        // Marker label should switch to dark text on bright floor
+        expect(labelStyle.fill).toBe('#1e1e3a')
+        expect(labelStyle.stroke.width).toBe(1.5) // thinner for markers
+    })
+
+    it('resets non-interactive labels to muted gray when floors are cleared', () => {
+        const labelStyle = {
+            fill: '#1e1e3a',
+            stroke: { color: '#f9fafb', width: 1.5 },
+            dropShadow: { color: '#f9fafb', blur: 3, distance: 1, alpha: 0.4 }
+        }
+        const label = { style: labelStyle }
+        const options = createMockOptions()
+
+        options.ctx.agentSprites.set('StartNode', {
+            interactive: false,
+            glow: null,
+            label,
+            container: { x: 200, y: 200, scale: { set: vi.fn() } }
+        })
+
+        // First run WITH bright floors
+        options.ctx.spatialConfig = {
+            floors: [{
+                position: { x: 0, y: 0 },
+                width: 1000,
+                height: 1000,
+                color: '#f0f0f0'
+            }]
+        }
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        // Now clear floors
+        options.ctx.spatialConfig = { floors: [] }
+        renderLoop()
+
+        // Should reset to muted gray (marker default), not full white
+        expect(labelStyle.fill).toBe('#c9d1d9')
+        expect(labelStyle.stroke.width).toBe(2) // marker width
+    })
+})

@@ -5,6 +5,7 @@
  */
 import { Assets, Sprite } from 'pixi.js'
 import { spriteFetcher } from '../../utils/spriteFetcher.js'
+import { getFloorBrightnessAt } from '../../utils/colorUtils.js'
 
 // ───────── HELPERS ─────────
 
@@ -64,6 +65,104 @@ export function useAnimationLoop({
 
     let lastFrameTime = Date.now()
 
+    // ───── Adaptive label color state ─────
+    // Track per-agent: last position when brightness was sampled and last sample time.
+    // Updates are throttled to every 500ms OR when an agent moves >= 40px.
+    const LABEL_UPDATE_INTERVAL_MS = 500
+    const LABEL_UPDATE_DISTANCE_PX = 40
+    const BRIGHTNESS_THRESHOLD = 0.55
+
+    /** @type {Map<string, { x: number, y: number, time: number, bright: boolean }>} */
+    const labelColorState = new Map()
+
+    /**
+     * Apply dark or light label styles based on whether the floor beneath
+     * the agent is bright or dark.
+     *
+     * @param {object} ag - Agent sprite record from ctx.agentSprites
+     * @param {boolean} isBright - true when floor brightness > BRIGHTNESS_THRESHOLD
+     */
+    function applyLabelStyle(ag, isBright) {
+        if (!ag.label?.style) return
+        const isMarker = !ag.interactive
+        if (isBright) {
+            // Dark text on bright floor
+            ag.label.style.fill = '#1e1e3a'
+            ag.label.style.stroke = { color: '#f9fafb', width: isMarker ? 1.5 : 2 }
+            ag.label.style.dropShadow = {
+                color: '#f9fafb',
+                blur: isMarker ? 3 : 4,
+                distance: isMarker ? 1 : 2,
+                alpha: 0.4
+            }
+        } else {
+            // Light text on dark floor
+            ag.label.style.fill = isMarker ? '#c9d1d9' : '#f9fafb'
+            ag.label.style.stroke = { color: '#1A1A1A', width: isMarker ? 2 : 3 }
+            ag.label.style.dropShadow = {
+                color: '#1A1A1A',
+                blur: isMarker ? 3 : 4,
+                distance: isMarker ? 1 : 2,
+                alpha: 0.8
+            }
+        }
+    }
+
+    /**
+     * Throttled per-agent label color update.
+     * Checks each interactive agent and re-evaluates floor brightness
+     * when enough time has passed or the agent moved significantly.
+     */
+    function updateLabelColors() {
+        const config = ctx.spatialConfig
+        // ctx.spatialConfig is the raw object (reactive unwrapped) in SpatialCanvas.vue
+        // If it is a Vue ref, unwrap it; otherwise use as-is.
+        const spatialCfg = config?.value !== undefined ? config.value : config
+        if (!spatialCfg?.floors?.length) {
+            // No floors → reset any agent still in "bright" mode to dark-floor defaults
+            labelColorState.forEach((state, nodeId) => {
+                if (state.bright) {
+                    const ag = ctx.agentSprites.get(nodeId)
+                    if (ag) applyLabelStyle(ag, false)
+                    state.bright = false
+                }
+            })
+            return
+        }
+
+        const now = Date.now()
+
+        ctx.agentSprites.forEach((ag, nodeId) => {
+            if (!ag.label) return
+
+            const cx = ag.container.x
+            const cy = ag.container.y
+
+            const prev = labelColorState.get(nodeId)
+            if (prev) {
+                const dx = cx - prev.x
+                const dy = cy - prev.y
+                const distSq = dx * dx + dy * dy
+                const timeDelta = now - prev.time
+                // Skip unless enough time passed or agent moved >= 40px
+                if (timeDelta < LABEL_UPDATE_INTERVAL_MS &&
+                    distSq < LABEL_UPDATE_DISTANCE_PX * LABEL_UPDATE_DISTANCE_PX) {
+                    return
+                }
+            }
+
+            const brightness = getFloorBrightnessAt(cx, cy, spatialCfg)
+            const isBright = brightness > BRIGHTNESS_THRESHOLD
+
+            // Only repaint if the brightness band changed (or first time)
+            if (!prev || prev.bright !== isBright) {
+                applyLabelStyle(ag, isBright)
+            }
+
+            labelColorState.set(nodeId, { x: cx, y: cy, time: now, bright: isBright })
+        })
+    }
+
     function renderLoop() {
         const now = Date.now()
         const deltaMs = now - lastFrameTime
@@ -77,6 +176,7 @@ export function useAnimationLoop({
         if (updateInfectionHeatmap) updateInfectionHeatmap()
         applyPerFrameSeparation()
         updateEmotes()
+        updateLabelColors()
         drawTrailParticles()
         drawConnections()
         cleanupConnections()
