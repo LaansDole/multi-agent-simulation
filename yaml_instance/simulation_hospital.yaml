@@ -39,7 +39,7 @@ graph:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
-          model: text-embedding-bge-reranker-v2-m3
+          model: ${MODEL}
           params:
             use_chunking: true
             chunk_strategy: weighted
@@ -52,7 +52,7 @@ graph:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
-          model: text-embedding-bge-reranker-v2-m3
+          model: ${MODEL}
           params:
             use_chunking: true
             chunk_strategy: weighted
@@ -65,7 +65,7 @@ graph:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
-          model: text-embedding-bge-reranker-v2-m3
+          model: ${MODEL}
           params:
             use_chunking: true
             chunk_strategy: weighted
@@ -78,7 +78,7 @@ graph:
           provider: openai
           base_url: ${BASE_URL}
           api_key: ${API_KEY}
-          model: text-embedding-bge-reranker-v2-m3
+          model: ${MODEL}
           params:
             use_chunking: true
             chunk_strategy: weighted

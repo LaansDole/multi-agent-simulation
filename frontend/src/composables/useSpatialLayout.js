@@ -89,8 +89,8 @@ export const EMOTE_RULES = [
     { keywords: ['recommend', 'should', 'must', 'need to', 'require', 'advise'], emoji: '📋', badge: 'Noted' },
     { keywords: ['complet', 'done', 'finish', 'success', 'ready', 'result'], emoji: '✅', badge: 'Done!' },
     // Contagion simulation emotes
-    { keywords: ['infected', 'infection', 'contagion', 'sick', 'ill', 'fever'], emoji: '🤒', badge: 'Infected!' },
-    { keywords: ['recovered', 'recovery', 'immune', 'healed', 'cured'], emoji: '💪', badge: 'Recovered!' },
+    { keywords: ['infected', 'infection', 'contagion', 'sick', 'ill', 'fever'], emoji: '🤒', badge: '*Cough cough*' },
+    { keywords: ['recovered', 'recovery', 'immune', 'healed', 'cured'], emoji: '💪', badge: 'I\'m immune now!' },
     { keywords: ['deceased', 'dead', 'fatal', 'died'], emoji: '💀', badge: 'Deceased' },
     { keywords: ['quarantine', 'isolat', 'lockdown', 'contain'], emoji: '🔒', badge: 'Quarantined' }
 ]

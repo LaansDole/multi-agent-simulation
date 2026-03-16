@@ -254,7 +254,7 @@ export function useContagionEngine() {
         if (condition === AGENT_CONDITION.HEALTHY) {
             setAgentCondition(agentId, AGENT_CONDITION.INFECTED)
             state.infectionTimers.set(agentId, { infectedAt: Date.now() })
-            setAgentEmote(agentId, '🤒', 'Infected!')
+            setAgentEmote(agentId, '🦠', 'Infected!')
             _log('infection', `seedInfection: ${agentId} HEALTHY → INFECTED`)
         } else {
             _log('infection', `seedInfection: ${agentId} skipped (condition=${condition})`)
@@ -355,7 +355,7 @@ export function useContagionEngine() {
                 if (Math.random() < scaledProb) {
                     setAgentCondition(agentId, AGENT_CONDITION.INFECTED)
                     state.infectionTimers.set(agentId, { infectedAt: now })
-                    setAgentEmote(agentId, '🤒', 'Infected!')
+                    setAgentEmote(agentId, '🦠', 'Infected!')
                     tickFloorHits++
                 }
             }
@@ -407,7 +407,7 @@ export function useContagionEngine() {
                     if (Math.random() < scaledProb) {
                         setAgentCondition(idB, AGENT_CONDITION.INFECTED)
                         state.infectionTimers.set(idB, { infectedAt: now })
-                        setAgentEmote(idB, '🤒', 'Infected!')
+                        setAgentEmote(idB, '🦠', 'Infected!')
                         tickProximityHits++
 
                         // Contaminate floor tile under newly infected agent
@@ -457,7 +457,7 @@ export function useContagionEngine() {
                     if (params.immunityDurationMs > 0) {
                         state.immunityTimers.set(agentId, { recoveredAt: now })
                     }
-                    setAgentEmote(agentId, '💪', 'Recovered!')
+                    setAgentEmote(agentId, '💊', 'Recovered!')
                     tickRecoveries++
                 }
             }
