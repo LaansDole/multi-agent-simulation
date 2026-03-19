@@ -178,6 +178,7 @@ const ctx = reactive({
   agentContainer: null,
   obstacleContainer: null,
   floorContainer: null,
+  contaminationContainer: null,
   placementGhostGraphics: null,
   agentSprites: markRaw(new Map()),
   obstacleSprites: markRaw(new Map()),
@@ -188,6 +189,7 @@ const ctx = reactive({
 
 let showImportConfirm = ref(false)
 let pendingImportConfig = ref('')
+const moveSelectedAgentId = ref(null)
 
 // Convenience aliases for backward-compatible access
 const getApp = () => ctx.app
@@ -232,7 +234,9 @@ const {
   emit,
   initPathfinder,
   scheduleConfigSave,
-  snapToGrid
+  snapToGrid,
+  moveSelectedAgentId,
+  getExecuteAgentMove: () => executeAgentMove
 })
 
 // ───────── FLOOR MANAGER COMPOSABLE ─────────
@@ -266,7 +270,9 @@ const {
   clearLog: contagionClearLog,
   sandboxInteractionMode,
   setSandboxInteractionMode,
-  getParams: contagionGetParams
+  getParams: contagionGetParams,
+  getCellContamination,
+  cellContamination
 } = useContagionEngine()
 
 // ───────── INFECTION HEATMAP COMPOSABLE ─────────
@@ -308,6 +314,7 @@ const {
 const {
   triggerCommunication,
   updateAgentStatus,
+  executeAgentMove,
   cleanup: cleanupCommunication
 } = useCommunicationAnimation({
   ctx,
@@ -350,10 +357,11 @@ const {
   CONDITION_PULSE,
   MIN_AGENT_SEPARATION,
   updateContagion,
-  updateContaminationOverlays,
+  updateContaminationOverlays: () => updateContaminationOverlays(getCellContamination, cellContamination.value),
   updateInfectionHeatmap,
   recordResidual,
-  sandboxMode
+  sandboxMode,
+  moveSelectedAgentId
 })
 
 // ───────── AGENT RENDERER COMPOSABLE ─────────
@@ -380,7 +388,8 @@ const {
   sandboxInteractionMode,
   seedInfection,
   cureAgent,
-  setNodeTypes
+  setNodeTypes,
+  moveSelectedAgentId
 })
 
 // ───────── PIXI APP LIFECYCLE COMPOSABLE ─────────
@@ -410,7 +419,8 @@ const {
   props,
   selectedObstacleId,
   executeDeleteObstacle,
-  GRID_SIZE
+  GRID_SIZE,
+  moveSelectedAgentId
 })
 
 

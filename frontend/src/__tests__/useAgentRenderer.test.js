@@ -30,6 +30,7 @@ vi.mock('pixi.js', () => {
         }
         clear() { this._lastFill = null; return this }
         rect() { return this }
+        roundRect() { return this }
         circle() { return this }
         fill(opts) { this._lastFill = opts; return this }
         stroke() { return this }
@@ -305,5 +306,44 @@ describe('useAgentRenderer - drawStatusGlow', () => {
 
         drawStatusGlow(glow, AGENT_STATUS.IDLE)
         expect(clearSpy).toHaveBeenCalled()
+    })
+})
+
+// ───────── backdrop presence ─────────
+
+describe('useAgentRenderer - backdrops', () => {
+    it('interactive sprite record includes labelBackdrop and null emoteBackdrop', async () => {
+        const options = createOptions()
+        options.props.nodes = [
+            { id: 'Doctor', type: 'agent' }
+        ]
+        options.agentPositions.value.set('Doctor', { x: 200, y: 200 })
+
+        const { buildScene } = useAgentRenderer(options)
+        buildScene()
+
+        await vi.waitFor(() => {
+            expect(options.ctx.agentSprites.has('Doctor')).toBe(true)
+        })
+
+        const sprite = options.ctx.agentSprites.get('Doctor')
+        expect(sprite.labelBackdrop).toBeDefined()
+        expect(sprite.emoteBackdrop).toBeNull()
+    })
+
+    it('static marker record includes labelBackdrop but null emoteBackdrop', () => {
+        const options = createOptions()
+        options.props.nodes = [
+            { id: 'StartNode', type: 'start' }
+        ]
+        options.agentPositions.value.set('StartNode', { x: 100, y: 100 })
+
+        const { buildScene } = useAgentRenderer(options)
+        buildScene()
+
+        const sprite = options.ctx.agentSprites.get('StartNode')
+        expect(sprite).toBeDefined()
+        expect(sprite.labelBackdrop).toBeDefined()
+        expect(sprite.emoteBackdrop).toBeNull()
     })
 })

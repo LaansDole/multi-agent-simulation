@@ -11,6 +11,7 @@ vi.mock('pixi.js', () => {
         constructor() { this.visible = true }
         clear() { return this }
         rect() { return this }
+        roundRect() { return this }
         circle() { return this }
         fill() { return this }
         stroke() { return this }
@@ -355,6 +356,87 @@ describe('useAnimationLoop - applyPerFrameSeparation', () => {
     })
 })
 
+// ───────── eased animation progress ─────────
+
+describe('useAnimationLoop - eased animation progress', () => {
+    it('produces non-linear motion during forward phase (easeInOutQuad)', () => {
+        const options = createMockOptions()
+
+        // Agent at (0,0) animating toward (200,0)
+        const container = { x: 0, y: 0, scale: { set: vi.fn() } }
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow: null,
+            container,
+            sprite: {}
+        })
+
+        // Set up animation: 25% through the forward phase (progress = 0.125)
+        // Linear would place agent at x=50 (200*0.25), eased should differ
+        const now = Date.now()
+        const duration = 10000
+        options.ctx.animatingAgents.set('agent1', {
+            type: 'wander',
+            startTime: now - duration * 0.125, // 12.5% overall = 25% of forward phase
+            duration,
+            startX: 0, startY: 0,
+            meetX: 200, meetY: 0,
+            path: [{ x: 0, y: 0 }, { x: 200, y: 0 }],
+            pathIndex: 0,
+            currentFrame: 1,
+            lastTrailTime: 0
+        })
+
+        options.agentPositions.value.set('agent1', { x: 0, y: 0 })
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        // With easeInOutQuad, at 25% of the forward phase the agent should have
+        // moved LESS than the linear 50px (since easeInOutQuad starts slow)
+        // easeInOutQuad(0.25) = 2 * 0.25^2 = 0.125, so expected ~25px
+        expect(container.x).toBeGreaterThan(0)
+        expect(container.x).toBeLessThan(50) // less than linear midpoint
+    })
+
+    it('produces non-linear motion during return phase (easeInOutQuad)', () => {
+        const options = createMockOptions()
+
+        const container = { x: 200, y: 0, scale: { set: vi.fn() } }
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow: null,
+            container,
+            sprite: {}
+        })
+
+        // 62.5% overall progress = 25% into the return phase
+        const now = Date.now()
+        const duration = 10000
+        options.ctx.animatingAgents.set('agent1', {
+            type: 'wander',
+            startTime: now - duration * 0.625,
+            duration,
+            startX: 0, startY: 0,
+            meetX: 200, meetY: 0,
+            path: [{ x: 0, y: 0 }, { x: 200, y: 0 }],
+            pathIndex: 0,
+            currentFrame: 1,
+            lastTrailTime: 0
+        })
+
+        options.agentPositions.value.set('agent1', { x: 200, y: 0 })
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        // In the return phase, path is reversed: [200,0] -> [0,0]
+        // At 25% return progress with easing, agent should still be near 200
+        // (easeInOutQuad starts slow). Linear would put it at 150.
+        expect(container.x).toBeGreaterThan(150) // more than linear position (closer to start)
+    })
+})
+
 // ───────── drawConnections (via renderLoop with active connections) ─────────
 
 describe('useAnimationLoop - drawConnections', () => {
@@ -430,9 +512,6 @@ describe('useAnimationLoop - updateLabelColors reset', () => {
 
         // Label should reset to white text (dark-floor defaults)
         expect(labelStyle.fill).toBe('#f9fafb')
-        expect(labelStyle.stroke.color).toBe('#1A1A1A')
-        expect(labelStyle.dropShadow.color).toBe('#1A1A1A')
-        expect(labelStyle.dropShadow.alpha).toBe(0.8)
     })
 
     it('does not re-apply styles when already in dark-floor mode and floors are empty', () => {
@@ -493,7 +572,6 @@ describe('useAnimationLoop - updateLabelColors reset', () => {
 
         // Marker label should switch to dark text on bright floor
         expect(labelStyle.fill).toBe('#1e1e3a')
-        expect(labelStyle.stroke.width).toBe(1.5) // thinner for markers
     })
 
     it('resets non-interactive labels to muted gray when floors are cleared', () => {
@@ -531,6 +609,76 @@ describe('useAnimationLoop - updateLabelColors reset', () => {
 
         // Should reset to muted gray (marker default), not full white
         expect(labelStyle.fill).toBe('#c9d1d9')
-        expect(labelStyle.stroke.width).toBe(2) // marker width
+    })
+})
+
+// ───────── emote backdrop visibility ─────────
+
+describe('useAnimationLoop - emote backdrop', () => {
+    it('shows emote text when emote is active and hides when cleared', () => {
+        const options = createMockOptions()
+
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow: new Graphics(),
+            label: { style: { fill: '#f9fafb' } },
+            labelBackdrop: new Graphics(),
+            emoteText: { text: '', visible: false, width: 28, height: 28, y: -42 },
+            emoteBackdrop: null,
+            badgeText: { text: '', visible: false, width: 0 },
+            container: { x: 200, y: 200, scale: { set: vi.fn() } }
+        })
+
+        // Use a single mock that can switch return values (closure is captured once)
+        let emoteValue = { emoji: '🦠', badge: 'Infected!' }
+        options.getAgentEmote = vi.fn(() => emoteValue)
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        const ag = options.ctx.agentSprites.get('agent1')
+        expect(ag.emoteText.visible).toBe(true)
+
+        // Emote cleared — switch the return value
+        emoteValue = null
+        renderLoop()
+
+        expect(ag.emoteText.visible).toBe(false)
+    })
+
+    it('redraws label backdrop on floor brightness change', () => {
+        const labelBackdrop = new Graphics()
+        const clearSpy = vi.spyOn(labelBackdrop, 'clear')
+        const labelStyle = { fill: '#f9fafb' }
+        const label = { style: labelStyle, width: 40, height: 12, y: 28 }
+        const options = createMockOptions()
+
+        options.ctx.agentSprites.set('agent1', {
+            interactive: true,
+            glow: new Graphics(),
+            label,
+            labelBackdrop,
+            emoteText: null,
+            emoteBackdrop: null,
+            badgeText: null,
+            container: { x: 200, y: 200, scale: { set: vi.fn() } }
+        })
+
+        // Set bright floor
+        options.ctx.spatialConfig = {
+            floors: [{
+                position: { x: 0, y: 0 },
+                width: 1000,
+                height: 1000,
+                color: '#f0f0f0'
+            }]
+        }
+
+        const { renderLoop } = useAnimationLoop(options)
+        renderLoop()
+
+        // Backdrop should have been cleared and redrawn
+        expect(clearSpy).toHaveBeenCalled()
+        expect(labelStyle.fill).toBe('#1e1e3a')
     })
 })

@@ -13,17 +13,21 @@ vi.mock('pixi.js', () => {
         }
         addChild(child) { this.children.push(child); return child }
         removeChildren() { this.children = [] }
+        removeChild(child) {
+            const idx = this.children.indexOf(child)
+            if (idx >= 0) this.children.splice(idx, 1)
+        }
     }
 
-    class MockGraphics {
+    class MockGraphics extends MockContainer {
         constructor() {
+            super()
             this.x = 0
             this.y = 0
-            this.children = []
         }
         rect() { return this }
         fill() { return this }
-        addChild(child) { this.children.push(child); return child }
+        clear() { return this }
     }
 
     class MockSprite {
@@ -33,15 +37,62 @@ vi.mock('pixi.js', () => {
         }
     }
 
+    class MockTilingSprite {
+        constructor({ texture, width, height } = {}) {
+            this.texture = texture
+            this.width = width || 0
+            this.height = height || 0
+        }
+    }
+
     return {
         Container: MockContainer,
         Graphics: MockGraphics,
         Sprite: MockSprite,
+        TilingSprite: MockTilingSprite,
         Assets: {
             load: vi.fn()
         }
     }
 })
+
+// ───────── Transitive dependency mocks for useContagionEngine ─────────
+
+vi.mock('../composables/useSpatialLayout.js', () => ({
+    useSpatialLayout: () => ({
+        agentPositions: { value: new Map() },
+        conditionVersion: { value: 0 },
+        setAgentCondition: vi.fn(),
+        getAgentCondition: vi.fn(() => 'healthy'),
+        setAgentStatus: vi.fn(),
+        setAgentEmote: vi.fn(),
+        clearAllEmotes: vi.fn(),
+        isAgentNode: vi.fn(() => true)
+    }),
+    AGENT_STATUS: { IDLE: 'idle', THINKING: 'thinking', COMMUNICATING: 'communicating', ERROR: 'error' },
+    AGENT_CONDITION: { HEALTHY: 'healthy', INFECTED: 'infected', RECOVERED: 'recovered', DECEASED: 'deceased' }
+}))
+
+vi.mock('../composables/useSpatialConfig.js', () => ({
+    useSpatialConfig: () => ({
+        getConfig: vi.fn(() => ({ simulation: {} })),
+        getFloorTiles: vi.fn(() => []),
+        updateFloorTile: vi.fn()
+    })
+}))
+
+vi.mock('../utils/configStore.js', () => ({
+    configStore: {
+        CONTAGION_INFECTION_RADIUS: 120,
+        CONTAGION_INFECTION_PROBABILITY: 0.7,
+        CONTAGION_FLOOR_INFECTION_PROBABILITY: 0.15,
+        CONTAGION_RECOVERY_TIME_MS: 60000,
+        CONTAGION_FATALITY_PROBABILITY: 0.05,
+        CONTAGION_MUTATION_PROBABILITY: 0.001,
+        CONTAGION_CONTAMINATION_DECAY_MS: 10000,
+        CONTAGION_IMMUNITY_DURATION_MS: 30000,
+    }
+}))
 
 // Import after mock setup
 let useFloorManager
