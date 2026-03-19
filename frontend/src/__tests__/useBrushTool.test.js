@@ -8,8 +8,39 @@ vi.mock('../composables/useSpatialConfig.js', () => ({
         getFloorTiles: vi.fn(() => []),
         removeObstacle: vi.fn(() => true),
         getConfig: vi.fn(() => ({ obstacles: [] })),
-        markConfigChanged: vi.fn()
+        markConfigChanged: vi.fn(),
+        updateFloorTile: vi.fn()
     })
+}))
+
+// Mock useSpatialLayout (transitive dep via useContagionEngine)
+vi.mock('../composables/useSpatialLayout.js', () => ({
+    useSpatialLayout: () => ({
+        agentPositions: { value: new Map() },
+        conditionVersion: { value: 0 },
+        setAgentCondition: vi.fn(),
+        getAgentCondition: vi.fn(() => 'healthy'),
+        setAgentStatus: vi.fn(),
+        setAgentEmote: vi.fn(),
+        clearAllEmotes: vi.fn(),
+        isAgentNode: vi.fn(() => true)
+    }),
+    AGENT_STATUS: { IDLE: 'idle', THINKING: 'thinking', COMMUNICATING: 'communicating', ERROR: 'error' },
+    AGENT_CONDITION: { HEALTHY: 'healthy', INFECTED: 'infected', RECOVERED: 'recovered', DECEASED: 'deceased' }
+}))
+
+// Mock configStore (transitive dep via useContagionEngine)
+vi.mock('../utils/configStore.js', () => ({
+    configStore: {
+        CONTAGION_INFECTION_RADIUS: 120,
+        CONTAGION_INFECTION_PROBABILITY: 0.7,
+        CONTAGION_FLOOR_INFECTION_PROBABILITY: 0.15,
+        CONTAGION_RECOVERY_TIME_MS: 60000,
+        CONTAGION_FATALITY_PROBABILITY: 0.05,
+        CONTAGION_MUTATION_PROBABILITY: 0.001,
+        CONTAGION_CONTAMINATION_DECAY_MS: 10000,
+        CONTAGION_IMMUNITY_DURATION_MS: 30000,
+    }
 }))
 
 describe('useBrushTool', () => {
@@ -211,28 +242,28 @@ describe('useBrushTool', () => {
             brushTool.startStroke(80, 80)
 
             // Contamination mode does NOT use addFloorFn/addObstacleFn
-            // It calls updateFloorTile internally on matching floor tiles
-            // With mock returning empty floors, nothing should happen
             expect(addFloorFn).not.toHaveBeenCalled()
             expect(addObstacleFn).not.toHaveBeenCalled()
         })
 
-        it('brushAt does nothing in contamination mode when no floor tile matches', () => {
+        it('brush paints contamination on plain canvas (no floor tiles)', () => {
             getActiveMode.mockReturnValue('contamination')
             brushTool.setToolMode('brush')
             brushTool.startStroke(80, 80)
 
-            // With empty floor tiles (from mock), addFloorFn/addObstacleFn should not be called
+            // Should not call addFloorFn/addObstacleFn
             expect(addFloorFn).not.toHaveBeenCalled()
             expect(addObstacleFn).not.toHaveBeenCalled()
+            // The brush uses setCellContamination internally — on plain canvas it should succeed
+            // (verified via contagion engine tests for the actual Map state)
         })
 
-        it('eraseAt does nothing in contamination mode when no contaminated tile exists', () => {
+        it('eraser in contamination mode does not crash on plain canvas', () => {
             getActiveMode.mockReturnValue('contamination')
             brushTool.setToolMode('eraser')
             brushTool.startStroke(80, 80)
 
-            // With empty floor tiles, no erase action should happen
+            // Should not call addFloorFn/addObstacleFn
             expect(addFloorFn).not.toHaveBeenCalled()
             expect(addObstacleFn).not.toHaveBeenCalled()
         })

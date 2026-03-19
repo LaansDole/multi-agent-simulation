@@ -4,6 +4,7 @@
  */
 import { ref } from 'vue'
 import { useSpatialConfig } from '../useSpatialConfig.js'
+import { useContagionEngine, _cellKey } from './useContagionEngine.js'
 
 // ───────── CONSTANTS ─────────
 
@@ -36,6 +37,7 @@ export function useBrushTool({
     let isStrokeActive = false
 
     const { removeFloorTile, getFloorTiles, removeObstacle, getConfig, markConfigChanged } = useSpatialConfig()
+    const { getCellContamination, setCellContamination } = useContagionEngine()
 
     /**
      * Snap a world coordinate to the grid.
@@ -68,19 +70,12 @@ export function useBrushTool({
         } else if (mode === 'obstacles' && getSelectedItem()) {
             addObstacleFn(x, y)
         } else if (mode === 'contamination') {
-            // Set contamination on existing floor tile at this position
+            // Set per-cell contamination on the grid cell at this position (any canvas region)
             const sx = snapToGrid(x)
             const sy = snapToGrid(y)
-            const floors = getFloorTiles()
-            const match = floors.find(f => {
-                const fp = f.position || {}
-                return sx >= fp.x && sx < fp.x + f.width && sy >= fp.y && sy < fp.y + f.height
-            })
-            if (match) {
-                const { updateFloorTile } = useSpatialConfig()
-                updateFloorTile(match.id, { contaminationLevel: 3 })
-                markConfigChanged()
-            }
+            const key = _cellKey(sx, sy)
+            setCellContamination(key, 3)
+            markConfigChanged()
         }
     }
 
@@ -95,33 +90,33 @@ export function useBrushTool({
         const mode = getActiveMode()
 
         if (mode === 'floors') {
-            // Find floor tile at this position
-            const floors = getFloorTiles()
-            const match = floors.find(f => f.position?.x === sx && f.position?.y === sy)
-            if (match) {
-                removeFloorTile(match.id)
-                markConfigChanged()
-            }
-        } else if (mode === 'contamination') {
-            // Clear contamination on floor tile at this position
+            // Find floor tile whose bounding box contains this position
             const floors = getFloorTiles()
             const match = floors.find(f => {
                 const fp = f.position || {}
                 return sx >= fp.x && sx < fp.x + f.width && sy >= fp.y && sy < fp.y + f.height
             })
-            if (match && match.contaminationLevel > 0) {
-                const { updateFloorTile } = useSpatialConfig()
-                updateFloorTile(match.id, { contaminationLevel: 0 })
+            if (match) {
+                removeFloorTile(match.id)
+                markConfigChanged()
+            }
+        } else if (mode === 'contamination') {
+            // Clear per-cell contamination at this position (any canvas region)
+            const key = _cellKey(sx, sy)
+            if (getCellContamination(key) > 0) {
+                setCellContamination(key, 0)
                 markConfigChanged()
             }
         } else if (mode === 'obstacles') {
-            // Find obstacle at this position (closest center to the grid cell)
+            // Find obstacle whose bounding box contains this position
             const config = getConfig()
             const obstacles = config.obstacles || []
             const match = obstacles.find(o => {
-                const ox = Math.round(o.position.x / GRID_SIZE) * GRID_SIZE
-                const oy = Math.round(o.position.y / GRID_SIZE) * GRID_SIZE
-                return ox === sx && oy === sy
+                const op = o.position || {}
+                const s = o.size || {}
+                const w = s.width || (s.radius ? s.radius * 2 : GRID_SIZE)
+                const h = s.height || (s.radius ? s.radius * 2 : GRID_SIZE)
+                return sx >= op.x && sx < op.x + w && sy >= op.y && sy < op.y + h
             })
             if (match) {
                 removeObstacle(match.id)
