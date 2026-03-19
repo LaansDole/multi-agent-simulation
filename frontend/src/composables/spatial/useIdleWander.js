@@ -7,11 +7,17 @@
 
 const WANDER_COOLDOWN_MIN = 3000
 const WANDER_COOLDOWN_MAX = 8000
+const POST_COMM_COOLDOWN_MIN = 500
+const POST_COMM_COOLDOWN_MAX = 1500
 const WANDER_INITIAL_DELAY_MAX = 5000
 const WANDER_DISTANCE_RATIO_MIN = 0.3
 const WANDER_DISTANCE_RATIO_MAX = 0.5
 const WANDER_SPEED_FACTOR = 0.5
 const WANDER_RANDOM_RADIUS = 80
+const WANDER_REPULSION_RADIUS = 150
+const WANDER_REPULSION_NOISE = Math.PI / 4 // ±45° angular noise
+const NEIGHBOR_VISIT_CHANCE = 0.3           // 30% chance to visit a neighbor
+const NEIGHBOR_MIN_DISTANCE = 60            // skip visit if already within 60px
 
 // ───────── COMPOSABLE ─────────
 
@@ -59,11 +65,52 @@ export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositio
     /**
      * Reset a single agent's wander cooldown with random delay.
      */
-    function resetWanderCooldown(nodeId) {
-        const delay = WANDER_COOLDOWN_MIN + Math.random() * (WANDER_COOLDOWN_MAX - WANDER_COOLDOWN_MIN)
+    function resetWanderCooldown(nodeId, delayMin, delayMax) {
+        const lo = delayMin ?? WANDER_COOLDOWN_MIN
+        const hi = delayMax ?? WANDER_COOLDOWN_MAX
+        const delay = lo + Math.random() * (hi - lo)
         idleWanderTimers.set(nodeId, {
             nextWanderTime: Date.now() + delay
         })
+    }
+
+    /**
+     * Compute a repulsion direction that biases movement away from nearby agents.
+     * Returns { dx, dy } (unit vector with noise) or null if no agents are nearby.
+     */
+    function computeRepulsionDirection(nodeId, agPos) {
+        let rx = 0, ry = 0
+        let hasNeighbor = false
+
+        agentPositions.value.forEach((otherPos, otherId) => {
+            if (otherId === nodeId) return
+            const dx = agPos.x - otherPos.x
+            const dy = agPos.y - otherPos.y
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            if (dist < 1 || dist > WANDER_REPULSION_RADIUS) return
+            // Weight by inverse distance: closer agents push harder
+            const weight = 1 / dist
+            rx += (dx / dist) * weight
+            ry += (dy / dist) * weight
+            hasNeighbor = true
+        })
+
+        if (!hasNeighbor) return null
+
+        // Normalize
+        const mag = Math.sqrt(rx * rx + ry * ry)
+        if (mag < 0.001) return null
+        rx /= mag
+        ry /= mag
+
+        // Add angular noise for organic feel
+        const noise = (Math.random() - 0.5) * 2 * WANDER_REPULSION_NOISE
+        const cos = Math.cos(noise)
+        const sin = Math.sin(noise)
+        return {
+            dx: rx * cos - ry * sin,
+            dy: rx * sin + ry * cos
+        }
     }
 
     /**
@@ -92,32 +139,40 @@ export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositio
             if (!agPos) return
 
             let targetX, targetY
+
+            // Neighbor visit: occasionally wander toward a connected neighbor
             const neighbors = edgeAdjacency.get(nodeId)
-            // 50/50 split: wander toward a neighbor OR in a random direction
-            // to prevent visual clustering from consistently moving toward neighbors
-            const useRandomDirection = Math.random() < 0.5
-
-            if (neighbors && neighbors.size > 0 && !useRandomDirection) {
-                // Pick a random connected neighbor
-                const neighborArray = Array.from(neighbors)
-                const randomNeighbor = neighborArray[Math.floor(Math.random() * neighborArray.length)]
-                const neighborPos = agentPositions.value.get(randomNeighbor)
-
+            if (neighbors && neighbors.size > 0 && Math.random() < NEIGHBOR_VISIT_CHANCE) {
+                const neighborIds = Array.from(neighbors)
+                const neighborId = neighborIds[Math.floor(Math.random() * neighborIds.length)]
+                const neighborPos = agentPositions.value.get(neighborId)
                 if (neighborPos) {
-                    // Move only part-way toward the neighbor
-                    const ratio = WANDER_DISTANCE_RATIO_MIN +
-                        Math.random() * (WANDER_DISTANCE_RATIO_MAX - WANDER_DISTANCE_RATIO_MIN)
-                    targetX = agPos.x + (neighborPos.x - agPos.x) * ratio
-                    targetY = agPos.y + (neighborPos.y - agPos.y) * ratio
+                    const dx = neighborPos.x - agPos.x
+                    const dy = neighborPos.y - agPos.y
+                    const dist = Math.sqrt(dx * dx + dy * dy)
+                    // Only visit if not already close (prevents clustering)
+                    if (dist > NEIGHBOR_MIN_DISTANCE) {
+                        const ratio = WANDER_DISTANCE_RATIO_MIN + Math.random() *
+                            (WANDER_DISTANCE_RATIO_MAX - WANDER_DISTANCE_RATIO_MIN)
+                        targetX = agPos.x + dx * ratio
+                        targetY = agPos.y + dy * ratio
+                    }
+                }
+            }
+
+            // Fall through to repulsion/random if neighbor visit didn't set target
+            if (targetX === undefined) {
+                // Repulsion-based direction: bias away from nearby agents
+                const repulsion = computeRepulsionDirection(nodeId, agPos)
+                if (repulsion) {
+                    targetX = agPos.x + repulsion.dx * WANDER_RANDOM_RADIUS
+                    targetY = agPos.y + repulsion.dy * WANDER_RANDOM_RADIUS
                 } else {
+                    // No nearby agents — pure random wander
                     const angle = Math.random() * Math.PI * 2
                     targetX = agPos.x + Math.cos(angle) * WANDER_RANDOM_RADIUS
                     targetY = agPos.y + Math.sin(angle) * WANDER_RANDOM_RADIUS
                 }
-            } else {
-                const angle = Math.random() * Math.PI * 2
-                targetX = agPos.x + Math.cos(angle) * WANDER_RANDOM_RADIUS
-                targetY = agPos.y + Math.sin(angle) * WANDER_RANDOM_RADIUS
             }
 
             // Compute path using existing pathfinder
@@ -174,6 +229,7 @@ export function useIdleWander({ ctx, getAgentStatus, getSpeedValue, agentPositio
         initIdleWanderTimers,
         resetWanderCooldown,
         updateIdleWanders,
+        computeRepulsionDirection,
         cleanup
     }
 }
