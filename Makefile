@@ -54,9 +54,15 @@ check: check-backend check-frontend ## Run all quality checks (backend + fronten
 
 .PHONY: check-backend
 check-backend: ## Run backend quality checks (tests + linting)
-	@echo "Running backend tests..."
+	@$(MAKE) backend-tests
+	@$(MAKE) backend-lint
+
+.PHONY: backend-tests
+backend-tests: ## Run backend tests
 	@uv run pytest -v
-	@echo "Running backend linting..."
+
+.PHONY: backend-lint
+backend-lint: ## Run backend linting
 	@uvx ruff check .
 
 .PHONY: check-frontend
@@ -79,3 +85,4 @@ help: ## Display this help message
 	@uv run python -c "import re; \
 	p=r'$(firstword $(MAKEFILE_LIST))'.strip(); \
 	[print(f'{m[0]:<20} {m[1]}') for m in re.findall(r'^([a-zA-Z_-]+):.*?## (.*)$$', open(p, encoding='utf-8').read(), re.M)]" | sort
+
