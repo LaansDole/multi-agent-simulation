@@ -65,7 +65,7 @@ vi.mock('../utils/configStore.js', () => ({
     configStore: mockConfigStore
 }))
 
-import { useContagionEngine } from '../composables/spatial/useContagionEngine.js'
+import { useContagionEngine, _cellKey } from '../composables/spatial/useContagionEngine.js'
 
 describe('useContagionEngine', () => {
     let engine
@@ -291,7 +291,6 @@ describe('useContagionEngine', () => {
             // Now agent-1 is infected
             const statusMap = { 'agent-1': 'infected', 'agent-2': 'healthy', 'agent-3': 'healthy' }
             mockGetAgentCondition.mockImplementation(id => statusMap[id] || 'healthy')
-            mockUpdateFloorTile.mockClear()
 
             // Advance time past the 1000ms throttle window using Date.now mock
             const originalNow = Date.now
@@ -307,11 +306,9 @@ describe('useContagionEngine', () => {
 
             Date.now = originalNow
 
-            // updateFloorTile should have been called with incremented contamination
-            const contaminationCalls = mockUpdateFloorTile.mock.calls.filter(
-                c => c[0] === 'floor-1' && c[1]?.contaminationLevel >= 1
-            )
-            expect(contaminationCalls.length).toBeGreaterThan(0)
+            // Per-cell contamination should be set at agent-1's grid cell
+            const cellKey = _cellKey(100, 100)
+            expect(engine.getCellContamination(cellKey)).toBeGreaterThan(0)
         })
 
         it('throttles contamination deposits within 1000ms', () => {
@@ -325,7 +322,6 @@ describe('useContagionEngine', () => {
 
             const statusMap = { 'agent-1': 'infected', 'agent-2': 'healthy', 'agent-3': 'healthy' }
             mockGetAgentCondition.mockImplementation(id => statusMap[id] || 'healthy')
-            mockUpdateFloorTile.mockClear()
 
             // Mock Date.now so both ticks are within the 1000ms throttle window
             const originalNow = Date.now
@@ -334,16 +330,83 @@ describe('useContagionEngine', () => {
 
             // Two ticks 16ms apart — well within the 1000ms throttle
             engine.updateContagion(16)
+            const cellKey = _cellKey(100, 100)
+            const levelAfterFirst = engine.getCellContamination(cellKey)
+
             fakeTime += 16
             engine.updateContagion(16)
+            const levelAfterSecond = engine.getCellContamination(cellKey)
 
             Date.now = originalNow
 
             // At most 1 deposit should have occurred (first tick deposits, second is throttled)
-            const contaminationCalls = mockUpdateFloorTile.mock.calls.filter(
-                c => c[0] === 'floor-1' && c[1]?.contaminationLevel >= 1
+            expect(levelAfterFirst).toBeLessThanOrEqual(1)
+            expect(levelAfterSecond).toBeLessThanOrEqual(1)
+        })
+    })
+
+    describe('plain-canvas contamination (no floor tiles)', () => {
+        it('infected agent deposits contamination without floor tiles', () => {
+            // No floor tiles
+            mockGetFloorTiles.mockReturnValue([])
+
+            // Start healthy so seedInfection sets the timer
+            mockGetAgentCondition.mockReturnValue('healthy')
+            engine.toggleSandboxMode()
+            engine.play()
+
+            engine.seedInfection('agent-1')
+
+            const statusMap = { 'agent-1': 'infected', 'agent-2': 'healthy', 'agent-3': 'healthy' }
+            mockGetAgentCondition.mockImplementation(id => statusMap[id] || 'healthy')
+
+            const originalNow = Date.now
+            let fakeTime = originalNow.call(Date)
+            Date.now = () => fakeTime
+
+            // First tick — should deposit on cell
+            engine.updateContagion(16)
+
+            // Advance time past 1000ms throttle
+            fakeTime += 1100
+            engine.updateContagion(16)
+
+            Date.now = originalNow
+
+            // Per-cell contamination should be set at agent-1's grid cell even without floor
+            const cellKey = _cellKey(100, 100)
+            expect(engine.getCellContamination(cellKey)).toBeGreaterThan(0)
+        })
+
+        it('healthy agent on contaminated cell gets infected without floor tiles', () => {
+            // No floor tiles
+            mockGetFloorTiles.mockReturnValue([])
+
+            mockGetAgentCondition.mockReturnValue('healthy')
+            engine.toggleSandboxMode()
+            engine.play()
+
+            // Manually set contamination at agent-2's position
+            const cellKey = _cellKey(150, 100)
+            engine.setCellContamination(cellKey, 3)
+
+            // Use high floor infection probability to guarantee hit
+            mockGetConfig.mockReturnValue({
+                simulation: { floorInfectionProbability: 1.0 }
+            })
+
+            mockSetAgentCondition.mockClear()
+
+            // Run many ticks
+            for (let i = 0; i < 50; i++) {
+                engine.updateContagion(100)
+            }
+
+            // agent-2 at (150,100) should have been infected
+            const infectCalls = mockSetAgentCondition.mock.calls.filter(
+                c => c[0] === 'agent-2' && c[1] === 'infected'
             )
-            expect(contaminationCalls.length).toBeLessThanOrEqual(1)
+            expect(infectCalls.length).toBeGreaterThan(0)
         })
     })
 
@@ -355,6 +418,7 @@ describe('useContagionEngine', () => {
             expect(params.infectionProbability).toBe(0.7)
             expect(params.recoveryTimeMs).toBe(60000)
             expect(params.mutationProbability).toBe(0.001)
+            expect(params.heatmapRadius).toBe(60)
         })
 
         it('uses config values when provided', () => {

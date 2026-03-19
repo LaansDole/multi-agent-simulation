@@ -4,6 +4,7 @@
  */
 import { Assets, TilingSprite, Graphics } from 'pixi.js'
 import { parseHexColor } from './useObstacleManager.js'
+import { CELL_GRID_SIZE, _cellKey, findFloorTileAtPosition } from './useContagionEngine.js'
 
 /**
  * @param {object} options
@@ -62,17 +63,8 @@ export function useFloorManager({ ctx }) {
                 floorGroup.fill({ color: colorInt, alpha: 0.6 })
             }
 
-            // Contamination overlay
-            if (contaminationLevel && contaminationLevel > 0) {
-                const overlay = CONTAMINATION_OVERLAY[Math.min(3, contaminationLevel)]
-                if (overlay) {
-                    const contamGraphics = new Graphics()
-                    contamGraphics.rect(0, 0, width, height)
-                    contamGraphics.fill({ color: overlay.color, alpha: overlay.alpha })
-                    contamGraphics.label = 'contamination-overlay'
-                    floorGroup.addChild(contamGraphics)
-                }
-            }
+            // Note: contamination overlay is rendered per-cell in updateContaminationOverlays()
+            // No per-tile contamination overlay at draw time
 
             ctx.floorContainer.addChild(floorGroup)
             floorSprites.set(id, floorGroup)
@@ -82,43 +74,99 @@ export function useFloorManager({ ctx }) {
     }
 
     /**
-     * Update contamination overlays without full redraw.
-     * Iterates floor sprites and adds/updates/removes contamination overlays.
+     * Update contamination overlays using per-cell data from the contagion engine.
+     * Renders 40×40 cell overlays within each floor tile, plus orphan cells on plain canvas.
      */
-    function updateContaminationOverlays() {
+    function updateContaminationOverlays(getCellContaminationFn, cellContaminationMap) {
         const config = ctx.spatialConfig
         const floors = config?.floors || []
 
         floors.forEach(floor => {
             const group = floorSprites.get(floor.id)
             if (!group) return
+            const fp = floor.position || { x: 0, y: 0 }
 
-            // Find existing contamination overlay
-            const existingOverlay = group.children.find(c => c.label === 'contamination-overlay')
-            const level = floor.contaminationLevel || 0
+            // Remove existing contamination overlays
+            const existingOverlays = group.children.filter(c => c.label === 'contamination-overlay')
+            existingOverlays.forEach(o => group.removeChild(o))
 
-            if (level <= 0) {
-                if (existingOverlay) group.removeChild(existingOverlay)
+            // If no getCellContamination function, fall back to per-tile level
+            if (!getCellContaminationFn) {
+                const level = floor.contaminationLevel || 0
+                if (level > 0) {
+                    const overlayStyle = CONTAMINATION_OVERLAY[Math.min(3, level)]
+                    if (overlayStyle) {
+                        const contamGraphics = new Graphics()
+                        contamGraphics.rect(0, 0, floor.width, floor.height)
+                        contamGraphics.fill({ color: overlayStyle.color, alpha: overlayStyle.alpha })
+                        contamGraphics.label = 'contamination-overlay'
+                        group.addChild(contamGraphics)
+                    }
+                }
                 return
             }
 
-            const overlay = CONTAMINATION_OVERLAY[Math.min(3, level)]
-            if (!overlay) return
+            // Render per-cell contamination overlays
+            const contamGraphics = new Graphics()
+            contamGraphics.label = 'contamination-overlay'
+            let hasContamination = false
 
-            if (existingOverlay) {
-                // Update existing overlay
-                existingOverlay.clear()
-                existingOverlay.rect(0, 0, floor.width, floor.height)
-                existingOverlay.fill({ color: overlay.color, alpha: overlay.alpha })
-            } else {
-                // Create new overlay
-                const contamGraphics = new Graphics()
-                contamGraphics.rect(0, 0, floor.width, floor.height)
-                contamGraphics.fill({ color: overlay.color, alpha: overlay.alpha })
-                contamGraphics.label = 'contamination-overlay'
+            for (let cx = fp.x; cx < fp.x + floor.width; cx += CELL_GRID_SIZE) {
+                for (let cy = fp.y; cy < fp.y + floor.height; cy += CELL_GRID_SIZE) {
+                    const key = _cellKey(cx, cy)
+                    const cellLevel = getCellContaminationFn(key)
+                    if (cellLevel > 0) {
+                        const overlayStyle = CONTAMINATION_OVERLAY[Math.min(3, cellLevel)]
+                        if (overlayStyle) {
+                            // Draw relative to the floor group's position
+                            contamGraphics.rect(
+                                cx - fp.x, cy - fp.y,
+                                CELL_GRID_SIZE, CELL_GRID_SIZE
+                            )
+                            contamGraphics.fill({ color: overlayStyle.color, alpha: overlayStyle.alpha })
+                            hasContamination = true
+                        }
+                    }
+                }
+            }
+
+            if (hasContamination) {
                 group.addChild(contamGraphics)
             }
         })
+
+        // ── Orphan-cell rendering: contaminated cells outside any floor tile ──
+        if (ctx.contaminationContainer && cellContaminationMap && getCellContaminationFn) {
+            ctx.contaminationContainer.removeChildren()
+
+            if (cellContaminationMap.size > 0) {
+                const orphanGraphics = new Graphics()
+                orphanGraphics.label = 'orphan-contamination'
+                let hasOrphans = false
+
+                cellContaminationMap.forEach((level, key) => {
+                    if (level <= 0) return
+                    // Parse cell coordinates from key
+                    const [cxStr, cyStr] = key.split(',')
+                    const cx = Number(cxStr)
+                    const cy = Number(cyStr)
+
+                    // Skip cells that fall within a floor tile
+                    if (findFloorTileAtPosition({ x: cx, y: cy }, floors)) return
+
+                    const overlayStyle = CONTAMINATION_OVERLAY[Math.min(3, level)]
+                    if (overlayStyle) {
+                        orphanGraphics.rect(cx, cy, CELL_GRID_SIZE, CELL_GRID_SIZE)
+                        orphanGraphics.fill({ color: overlayStyle.color, alpha: overlayStyle.alpha })
+                        hasOrphans = true
+                    }
+                })
+
+                if (hasOrphans) {
+                    ctx.contaminationContainer.addChild(orphanGraphics)
+                }
+            }
+        }
     }
 
     function cleanup() {

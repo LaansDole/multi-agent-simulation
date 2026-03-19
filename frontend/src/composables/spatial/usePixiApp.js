@@ -56,7 +56,8 @@ export function usePixiApp({
     props,
     selectedObstacleId,
     executeDeleteObstacle,
-    GRID_SIZE
+    GRID_SIZE,
+    moveSelectedAgentId
 }) {
     let currentZoom = 1.0
     let isPanning = false
@@ -93,7 +94,11 @@ export function usePixiApp({
         ctx.app.stage.addChild(ctx.gridGraphics)
         drawGrid()
 
-        // Floor layer (between grid and obstacles)
+        // Plain-canvas contamination overlay layer (below floors)
+        ctx.contaminationContainer = markRaw(new Container())
+        ctx.app.stage.addChild(ctx.contaminationContainer)
+
+        // Floor layer (between contamination and obstacles)
         ctx.floorContainer = markRaw(new Container())
         ctx.app.stage.addChild(ctx.floorContainer)
 
@@ -195,6 +200,7 @@ export function usePixiApp({
             if (bgPointerDown) {
                 bgPointerDown = false
                 deselectObstacle()
+                if (moveSelectedAgentId) moveSelectedAgentId.value = null
                 const worldPos = ctx.app.stage.toLocal(e.global)
                 emit('canvas-click', { x: worldPos.x, y: worldPos.y })
             }
@@ -269,6 +275,7 @@ export function usePixiApp({
             ctx.agentContainer = null
             ctx.obstacleContainer = null
             ctx.floorContainer = null
+            ctx.contaminationContainer = null
             ctx.connectionGraphics = null
             ctx.trailGraphics = null
             ctx.heatmapGraphics = null

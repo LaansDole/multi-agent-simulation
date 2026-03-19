@@ -642,7 +642,7 @@ function selectConfig(name) {
 .sandbox-toggle.active {
   background: rgba(239, 68, 68, 0.85);
   border-color: rgba(239, 68, 68, 0.65);
-  color: #ef4444;
+  color: #fff;
 }
 
 .sandbox-icon {

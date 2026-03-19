@@ -18,6 +18,10 @@ export const CONTAMINATION_COLORS = {
     3: 0xef4444  // severe – red
 }
 
+// ───────── CONSTANTS ─────────
+
+export const CELL_GRID_SIZE = 40
+
 // ───────── HELPERS ─────────
 
 /**
@@ -39,6 +43,18 @@ export function findFloorTileAtPosition(pos, floors) {
     return null
 }
 
+/**
+ * Compute a cell key for per-cell contamination tracking.
+ * @param {number} x - World x coordinate
+ * @param {number} y - World y coordinate
+ * @returns {string} Cell key in "x,y" format
+ */
+export function _cellKey(x, y) {
+    const cx = Math.floor(x / CELL_GRID_SIZE) * CELL_GRID_SIZE
+    const cy = Math.floor(y / CELL_GRID_SIZE) * CELL_GRID_SIZE
+    return `${cx},${cy}`
+}
+
 // ───────── SINGLETON STATE ─────────
 
 const MAX_LOG_ENTRIES = 200
@@ -55,14 +71,17 @@ const state = reactive({
     /** @type {Map<string, { recoveredAt: number }>} */
     immunityTimers: new Map(),
 
-    /** @type {Map<string, number>} floorId → last decay timestamp */
-    floorDecayTimers: new Map(),
+    /** @type {Map<string, number>} cellKey → contamination level (0–3) */
+    cellContamination: new Map(),
 
-    /** @type {Map<string, number>} floorId → last contamination timestamp (throttle for infected agent deposits) */
-    floorContaminationTimers: new Map(),
+    /** @type {Map<string, number>} cellKey → last decay timestamp */
+    cellDecayTimers: new Map(),
 
-    /** @type {Map<string, number>} Snapshot of initial floor contamination for reset */
-    initialFloorLevels: new Map(),
+    /** @type {Map<string, number>} cellKey → last contamination deposit timestamp (throttle) */
+    cellContaminationTimers: new Map(),
+
+    /** @type {Map<string, number>} Snapshot of initial per-cell contamination for reset */
+    initialCellLevels: new Map(),
 
     // ── Sandbox interaction mode ──
     /** @type {'pointer' | 'infect' | 'cure'} */
@@ -123,7 +142,8 @@ export function useContagionEngine() {
             fatalityProbability: sim.fatalityProbability ?? configStore.CONTAGION_FATALITY_PROBABILITY ?? 0.05,
             mutationProbability: sim.mutationProbability ?? configStore.CONTAGION_MUTATION_PROBABILITY ?? 0.001,
             contaminationDecayMs: sim.contaminationDecayMs ?? configStore.CONTAGION_CONTAMINATION_DECAY_MS ?? 10000,
-            immunityDurationMs: sim.immunityDurationMs ?? configStore.CONTAGION_IMMUNITY_DURATION_MS ?? 30000
+            immunityDurationMs: sim.immunityDurationMs ?? configStore.CONTAGION_IMMUNITY_DURATION_MS ?? 30000,
+            heatmapRadius: sim.heatmapRadius ?? configStore.CONTAGION_HEATMAP_RADIUS ?? 60
         }
     }
 
@@ -161,9 +181,10 @@ export function useContagionEngine() {
         state.simulationPaused = false
         state.infectionTimers.clear()
         state.immunityTimers.clear()
-        state.floorDecayTimers.clear()
-        state.floorContaminationTimers.clear()
-        state.initialFloorLevels.clear()
+        state.cellContamination.clear()
+        state.cellDecayTimers.clear()
+        state.cellContaminationTimers.clear()
+        state.initialCellLevels.clear()
 
         // Set all agent/human nodes to HEALTHY condition (skip non-agent nodes)
         let agentCount = 0
@@ -173,24 +194,34 @@ export function useContagionEngine() {
             agentCount++
         })
 
-        // Snapshot floor contamination levels for reset
+        // Seed per-cell contamination from floor tile contaminationLevel (if any)
         const floors = getFloorTiles()
-        let contaminatedFloors = 0
+        let seededCells = 0
         floors.forEach(f => {
-            if (f.contaminationLevel !== undefined) {
-                state.initialFloorLevels.set(f.id, f.contaminationLevel)
-            }
             if (f.contaminationLevel > 0) {
-                state.floorDecayTimers.set(f.id, now)
-                contaminatedFloors++
+                // Seed all grid cells within this tile's bounding box
+                const fp = f.position || { x: 0, y: 0 }
+                for (let cx = fp.x; cx < fp.x + f.width; cx += CELL_GRID_SIZE) {
+                    for (let cy = fp.y; cy < fp.y + f.height; cy += CELL_GRID_SIZE) {
+                        const key = _cellKey(cx, cy)
+                        state.cellContamination.set(key, f.contaminationLevel)
+                        state.cellDecayTimers.set(key, now)
+                        seededCells++
+                    }
+                }
             }
+        })
+
+        // Snapshot for reset
+        state.cellContamination.forEach((level, key) => {
+            state.initialCellLevels.set(key, level)
         })
 
         _log('lifecycle', 'initSimulation', {
             agentCount,
             totalPositions: agentPositions.value.size,
             floorTiles: floors.length,
-            contaminatedFloors
+            seededCells
         })
     }
 
@@ -201,7 +232,7 @@ export function useContagionEngine() {
         state.sandboxInteractionMode = 'pointer'
         state.infectionTimers.clear()
         state.immunityTimers.clear()
-        state.floorContaminationTimers.clear()
+        state.cellContaminationTimers.clear()
 
         // Clear all emotes (including persistent ones like deceased skull)
         clearAllEmotes()
@@ -215,17 +246,14 @@ export function useContagionEngine() {
             setAgentCondition(agentId, AGENT_CONDITION.HEALTHY)
         })
 
-        // Restore floor contamination to initial snapshot
-        state.initialFloorLevels.forEach((level, floorId) => {
-            updateFloorTile(floorId, { contaminationLevel: level })
-        })
-
-        // Reset timers for restored contamination
+        // Restore per-cell contamination from initial snapshot
+        state.cellContamination.clear()
+        state.cellDecayTimers.clear()
         const now = Date.now()
-        state.floorDecayTimers.clear()
-        state.initialFloorLevels.forEach((level, floorId) => {
+        state.initialCellLevels.forEach((level, key) => {
+            state.cellContamination.set(key, level)
             if (level > 0) {
-                state.floorDecayTimers.set(floorId, now)
+                state.cellDecayTimers.set(key, now)
             }
         })
     }
@@ -340,16 +368,16 @@ export function useContagionEngine() {
         let tickMutations = 0
         let tickImmunityExpiries = 0
 
-        // 1. Floor contact: HEALTHY agents on contaminated tiles
+        // 1. Cell contact: HEALTHY agents on contaminated cells (any canvas region)
         agentPositions.value.forEach((pos, agentId) => {
             if (!isAgentNode(agentId)) return // skip non-agent nodes
             const condition = getAgentCondition(agentId)
             if (condition !== AGENT_CONDITION.HEALTHY) return
 
-            // Find floor tile under agent
-            const floor = findFloorTileAtPosition(pos, floors)
-            if (floor && floor.contaminationLevel > 0) {
-                const prob = params.floorInfectionProbability * (floor.contaminationLevel / 3)
+            const key = _cellKey(pos.x, pos.y)
+            const cellLevel = state.cellContamination.get(key) || 0
+            if (cellLevel > 0) {
+                const prob = params.floorInfectionProbability * (cellLevel / 3)
                 // Scale probability by deltaMs to make it frame-rate independent
                 const scaledProb = 1 - Math.pow(1 - prob, deltaMs / 1000)
                 if (Math.random() < scaledProb) {
@@ -361,27 +389,27 @@ export function useContagionEngine() {
             }
         })
 
-        // 1b. Infected agents contaminate floor tiles they stand on
+        // 1b. Infected agents contaminate the grid cell they stand on (any canvas region)
         const FLOOR_CONTAMINATION_THROTTLE_MS = 1000
         agentPositions.value.forEach((pos, agentId) => {
             if (!isAgentNode(agentId)) return
             const condition = getAgentCondition(agentId)
             if (condition !== AGENT_CONDITION.INFECTED) return
 
-            const floor = findFloorTileAtPosition(pos, floors)
-            if (!floor) return
-            if (floor.contaminationLevel >= 3) return // already at max
+            const key = _cellKey(pos.x, pos.y)
+            const currentLevel = state.cellContamination.get(key) || 0
+            if (currentLevel >= 3) return // already at max
 
-            // Throttle: only deposit once per FLOOR_CONTAMINATION_THROTTLE_MS per tile
-            const lastDeposit = state.floorContaminationTimers.get(floor.id) || 0
+            // Throttle: only deposit once per FLOOR_CONTAMINATION_THROTTLE_MS per cell
+            const lastDeposit = state.cellContaminationTimers.get(key) || 0
             if (now - lastDeposit < FLOOR_CONTAMINATION_THROTTLE_MS) return
 
-            const newLevel = Math.min((floor.contaminationLevel || 0) + 1, 3)
-            updateFloorTile(floor.id, { contaminationLevel: newLevel })
-            state.floorContaminationTimers.set(floor.id, now)
-            // Ensure decay timer is set for newly contaminated tiles
-            if (!state.floorDecayTimers.has(floor.id)) {
-                state.floorDecayTimers.set(floor.id, now)
+            const newLevel = Math.min(currentLevel + 1, 3)
+            state.cellContamination.set(key, newLevel)
+            state.cellContaminationTimers.set(key, now)
+            // Ensure decay timer is set for newly contaminated cells
+            if (!state.cellDecayTimers.has(key)) {
+                state.cellDecayTimers.set(key, now)
             }
             tickFloorDeposits++
         })
@@ -410,13 +438,13 @@ export function useContagionEngine() {
                         setAgentEmote(idB, '🦠', 'Infected!')
                         tickProximityHits++
 
-                        // Contaminate floor tile under newly infected agent
-                        const floorUnderB = findFloorTileAtPosition(posB, floors)
-                        if (floorUnderB && floorUnderB.contaminationLevel < 3) {
-                            const newLevel = Math.min((floorUnderB.contaminationLevel || 0) + 1, 3)
-                            updateFloorTile(floorUnderB.id, { contaminationLevel: newLevel })
-                            if (!state.floorDecayTimers.has(floorUnderB.id)) {
-                                state.floorDecayTimers.set(floorUnderB.id, now)
+                        // Contaminate cell under newly infected agent (any canvas region)
+                        const bKey = _cellKey(posB.x, posB.y)
+                        const bLevel = state.cellContamination.get(bKey) || 0
+                        if (bLevel < 3) {
+                            state.cellContamination.set(bKey, Math.min(bLevel + 1, 3))
+                            if (!state.cellDecayTimers.has(bKey)) {
+                                state.cellDecayTimers.set(bKey, now)
                             }
                             tickFloorDeposits++
                         }
@@ -478,14 +506,19 @@ export function useContagionEngine() {
             })
         }
 
-        // 5. Floor contamination decay
-        floors.forEach(floor => {
-            if (!floor.contaminationLevel || floor.contaminationLevel <= 0) return
-            const lastDecay = state.floorDecayTimers.get(floor.id) || now
+        // 5. Per-cell contamination decay
+        state.cellContamination.forEach((level, key) => {
+            if (level <= 0) return
+            const lastDecay = state.cellDecayTimers.get(key) || now
             if (now - lastDecay >= params.contaminationDecayMs) {
-                const newLevel = floor.contaminationLevel - 1
-                updateFloorTile(floor.id, { contaminationLevel: newLevel })
-                state.floorDecayTimers.set(floor.id, now)
+                const newLevel = level - 1
+                if (newLevel <= 0) {
+                    state.cellContamination.delete(key)
+                    state.cellDecayTimers.delete(key)
+                } else {
+                    state.cellContamination.set(key, newLevel)
+                    state.cellDecayTimers.set(key, now)
+                }
             }
         })
 
@@ -568,6 +601,33 @@ export function useContagionEngine() {
         }
     }
 
+    /**
+     * Get contamination level for a specific grid cell.
+     * @param {string} cellKey - Cell key in "x,y" format (use _cellKey helper)
+     * @returns {number} Contamination level (0–3)
+     */
+    function getCellContamination(cellKey) {
+        return state.cellContamination.get(cellKey) || 0
+    }
+
+    /**
+     * Set contamination level for a specific grid cell.
+     * Used by the brush tool contamination mode.
+     * @param {string} cellKey - Cell key in "x,y" format (use _cellKey helper)
+     * @param {number} level - Contamination level (0–3)
+     */
+    function setCellContamination(cellKey, level) {
+        if (level <= 0) {
+            state.cellContamination.delete(cellKey)
+            state.cellDecayTimers.delete(cellKey)
+        } else {
+            state.cellContamination.set(cellKey, Math.min(3, level))
+            if (!state.cellDecayTimers.has(cellKey)) {
+                state.cellDecayTimers.set(cellKey, Date.now())
+            }
+        }
+    }
+
     return {
         ...toRefs(state),
         stats,
@@ -585,6 +645,8 @@ export function useContagionEngine() {
         toggleDebugLog,
         clearLog,
         setSandboxInteractionMode,
+        getCellContamination,
+        setCellContamination,
         CONTAMINATION_COLORS
     }
 }
