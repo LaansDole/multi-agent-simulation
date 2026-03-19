@@ -1,4 +1,3 @@
-import yaml from 'js-yaml'
 
 const apiUrl = (path) => path
 
@@ -69,7 +68,7 @@ export async function postYaml(filename, content) {
 export async function updateYaml(filename, content) {
   try {
     const yamlFilename = addYamlSuffix(filename)
-    const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(yamlFilename)}`), {
+    const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(yamlFilename)}/update`), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -197,11 +196,11 @@ export async function fetchWorkflowsWithDesc() {
     const filesWithDesc = await Promise.all(
       data.workflows.map(async (filename) => {
         try {
-          const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(filename)}`))
+          const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(filename)}/desc`))
           const fileData = await response.json()
           return {
             name: filename,
-            description: getYAMLDescription(fileData.content)
+            description: fileData.description || 'No description'
           }
         } catch {
           return { name: filename, description: 'No description' }
@@ -221,20 +220,12 @@ export async function fetchWorkflowsWithDesc() {
     }
   }
 
-  function getYAMLDescription(content) {
-    try {
-      const doc = yaml.load(content)
-      return doc.graph.description || 'No description'
-    } catch {
-      return 'No description'
-    }
-  }
 }
 
 // Fetch YAML file content
 export async function fetchWorkflowYAML(filename) {
   try {
-    const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(filename)}`))
+    const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(filename)}/get`))
     if (!response.ok) {
       throw new Error(`Failed to load YAML file: ${filename}, status: ${response.status}`)
     }
@@ -250,7 +241,7 @@ export async function fetchWorkflowYAML(filename) {
 export async function fetchYaml(filename) {
   try {
     const yamlFilename = addYamlSuffix(filename)
-    const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(yamlFilename)}`))
+    const response = await fetch(apiUrl(`/api/workflows/${encodeURIComponent(yamlFilename)}/get`))
 
     const data = await response.json().catch(() => ({}))
 
