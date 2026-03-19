@@ -16,6 +16,7 @@ const defaultSettings = {
     CONTAGION_MUTATION_PROBABILITY: 0.001,      // /sec — rare lethal mutation while infected
     CONTAGION_CONTAMINATION_DECAY_MS: 10000,    // ms — floor contamination decay interval
     CONTAGION_IMMUNITY_DURATION_MS: 30000,      // ms — immunity window after recovery
+    CONTAGION_HEATMAP_RADIUS: 60,               // px — heatmap overlay radius around infected agents
 }
 
 // Initialize state from localStorage
