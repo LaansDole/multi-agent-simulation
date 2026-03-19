@@ -70,7 +70,7 @@
                   >
                   <CollapsibleMessage
                     v-if="message.text"
-                    :html-content="renderMarkdown(message.text)"
+                    :html-content="message.htmlContent || renderMarkdown(message.text)"
                     :raw-content="message.text"
                     :default-expanded="configStore.AUTO_EXPAND_MESSAGES"
                   />
@@ -605,6 +605,7 @@ const addTotalLoadingMessage = (nodeId) => {
     type: 'dialogue',
     name: nodeId,
     text: '',
+    htmlContent: '',
     avatar,
     isRight: false,
     isLoading: true,
@@ -646,6 +647,10 @@ const addLoadingEntry = (nodeId, baseKey, label) => {
   nodeState.entryMap.set(key, entry)
   nodeState.baseKeyToKey.set(baseKey, key)
   nodeState.message.loadingEntries.push(entry)
+  runningLoadingEntries.value += 1
+  if (runningLoadingEntries.value === 1) {
+    startLoadingTimer()
+  }
   return entry
 }
 
@@ -658,27 +663,56 @@ const finishLoadingEntry = (nodeId, baseKey) => {
   const entry = key ? nodeState.entryMap.get(key) : null
   if (!entry) return null
 
+  const wasRunning = entry.status === 'running'
   entry.status = 'done'
   entry.endedAt = Date.now()
   nodeState.baseKeyToKey.delete(baseKey)
+  if (wasRunning) {
+    runningLoadingEntries.value = Math.max(0, runningLoadingEntries.value - 1)
+    if (runningLoadingEntries.value === 0) {
+      stopLoadingTimer()
+    }
+  }
   return entry
 }
 
 // Finish all running entries when a node ends or cancels
 const finalizeAllLoadingEntries = (nodeState, endedAt = Date.now()) => {
   if (!nodeState) return
+  let finishedCount = 0
   for (const entry of nodeState.entryMap.values()) {
     if (entry.status === 'running') {
       entry.status = 'done'
       entry.endedAt = endedAt
+      finishedCount += 1
     }
   }
   nodeState.baseKeyToKey.clear()
+  if (finishedCount) {
+    runningLoadingEntries.value = Math.max(0, runningLoadingEntries.value - finishedCount)
+    if (runningLoadingEntries.value === 0) {
+      stopLoadingTimer()
+    }
+  }
 }
 
 // Global timer for updating loading bubble durations
 const now = ref(Date.now())
 let loadingTimerInterval = null
+const runningLoadingEntries = ref(0)
+
+const startLoadingTimer = () => {
+  if (loadingTimerInterval) return
+  loadingTimerInterval = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+}
+
+const stopLoadingTimer = () => {
+  if (!loadingTimerInterval) return
+  clearInterval(loadingTimerInterval)
+  loadingTimerInterval = null
+}
 
 // Map sprites for different roles
 const nameToSpriteMap = ref(new Map())
@@ -996,10 +1030,12 @@ const addDialogue = (name, message) => {
 
   const isRight = name === "User"
 
+  const htmlContent = renderMarkdown(text)
   chatMessages.value.push({
     type: 'dialogue',
     name: name,
     text: text,
+    htmlContent,
     avatar: avatar,
     isRight: isRight,
     timestamp: Date.now()
@@ -1657,10 +1693,8 @@ onUnmounted(() => {
   resetConnectionState()
   cleanupRecording()
 
-  if (loadingTimerInterval) {
-    clearInterval(loadingTimerInterval)
-    loadingTimerInterval = null
-  }
+  stopLoadingTimer()
+  runningLoadingEntries.value = 0
 
   if (spatialLayoutResizeObserver) {
     spatialLayoutResizeObserver.disconnect()
