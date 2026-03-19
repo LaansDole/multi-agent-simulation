@@ -60,7 +60,8 @@ export function useAnimationLoop({
     updateContaminationOverlays,
     updateInfectionHeatmap,
     recordResidual,
-    sandboxMode
+    sandboxMode,
+    moveSelectedAgentId
 }) {
 
     let lastFrameTime = Date.now()
@@ -88,23 +89,23 @@ export function useAnimationLoop({
         if (isBright) {
             // Dark text on bright floor
             ag.label.style.fill = '#1e1e3a'
-            ag.label.style.stroke = { color: '#f9fafb', width: isMarker ? 1.5 : 2 }
-            ag.label.style.dropShadow = {
-                color: '#f9fafb',
-                blur: isMarker ? 3 : 4,
-                distance: isMarker ? 1 : 2,
-                alpha: 0.4
-            }
         } else {
             // Light text on dark floor
             ag.label.style.fill = isMarker ? '#c9d1d9' : '#f9fafb'
-            ag.label.style.stroke = { color: '#1A1A1A', width: isMarker ? 2 : 3 }
-            ag.label.style.dropShadow = {
-                color: '#1A1A1A',
-                blur: isMarker ? 3 : 4,
-                distance: isMarker ? 1 : 2,
-                alpha: 0.8
-            }
+        }
+
+        // Redraw label backdrop with matching brightness
+        if (ag.labelBackdrop && ag.label) {
+            ag.labelBackdrop.clear()
+            const padX = isMarker ? 3 : 4
+            const padY = isMarker ? 1 : 2
+            const w = (ag.label.width || 30) + padX * 2
+            const h = (ag.label.height || 12) + padY * 2
+            const radius = 4
+            const color = isBright ? 0xffffff : 0x000000
+            const alpha = isMarker ? 0.45 : 0.55
+            ag.labelBackdrop.roundRect(-w / 2, ag.label.y - padY, w, h, radius)
+            ag.labelBackdrop.fill({ color, alpha })
         }
     }
 
@@ -221,6 +222,22 @@ export function useAnimationLoop({
                     ag.sprite.alpha = condition === 'deceased' ? 0.4 : 1.0
                 }
             }
+
+            // Move-selection ring (cyan pulsing ring)
+            if (ag.moveSelectRing) {
+                const isSelected = moveSelectedAgentId?.value === nodeId
+                if (isSelected) {
+                    ag.moveSelectRing.clear()
+                    const pulse = 0.5 + 0.3 * Math.sin(Date.now() / 200)
+                    ag.moveSelectRing.circle(0, 0, 32)
+                    ag.moveSelectRing.stroke({ width: 2.5, color: 0x22d3ee, alpha: pulse })
+                    ag.moveSelectRing.circle(0, 0, 36)
+                    ag.moveSelectRing.stroke({ width: 1, color: 0x22d3ee, alpha: pulse * 0.4 })
+                    ag.moveSelectRing.visible = true
+                } else {
+                    ag.moveSelectRing.visible = false
+                }
+            }
         })
     }
 
@@ -241,12 +258,17 @@ export function useAnimationLoop({
             const path = anim.path || []
             let currentX, currentY
 
-            if (progress < 0.5) {
-                const moveProgress = progress * 2
+            if (anim.type === 'move') {
+                // One-way movement: walk forward along path only (no return trip)
+                const moveProgress = easeInOutQuad(progress)
+                currentX = getPositionAlongPath(path, moveProgress, false).x
+                currentY = getPositionAlongPath(path, moveProgress, false).y
+            } else if (progress < 0.5) {
+                const moveProgress = easeInOutQuad(progress * 2)
                 currentX = getPositionAlongPath(path, moveProgress, false).x
                 currentY = getPositionAlongPath(path, moveProgress, false).y
             } else {
-                const returnProgress = (progress - 0.5) * 2
+                const returnProgress = easeInOutQuad((progress - 0.5) * 2)
                 currentX = getPositionAlongPath(path, returnProgress, true).x
                 currentY = getPositionAlongPath(path, returnProgress, true).y
             }
@@ -307,16 +329,29 @@ export function useAnimationLoop({
                     }
                 }
 
-                // Restore home position from anim.startX/startY
-                // (agentPositions was synced to mid-animation position)
-                const homeX = anim.startX
-                const homeY = anim.startY
-                ag.container.x = homeX
-                ag.container.y = homeY
-                agentPositions.value.set(nodeId, { x: homeX, y: homeY })
+                if (anim.type === 'move') {
+                    // Move animation: update home to destination (agent stays there)
+                    const destX = anim.meetX
+                    const destY = anim.meetY
+                    ag.container.x = destX
+                    ag.container.y = destY
+                    agentPositions.value.set(nodeId, { x: destX, y: destY })
+                    resetWanderCooldown(nodeId, 500, 1500)
+                } else {
+                    // Restore home position from anim.startX/startY
+                    // (agentPositions was synced to mid-animation position)
+                    const homeX = anim.startX
+                    const homeY = anim.startY
+                    ag.container.x = homeX
+                    ag.container.y = homeY
+                    agentPositions.value.set(nodeId, { x: homeX, y: homeY })
 
-                if (anim.type === 'wander') {
-                    resetWanderCooldown(nodeId)
+                    if (anim.type === 'wander') {
+                        resetWanderCooldown(nodeId)
+                    } else {
+                        // Communication completed — shorter delay before wander resumes
+                        resetWanderCooldown(nodeId, 500, 1500)
+                    }
                 }
 
                 const idlePath = spriteFetcher.fetchSprite(nodeId, 'D', 1)
@@ -388,6 +423,18 @@ export function useAnimationLoop({
                     agA.container.y += ny * overlap
                     agB.container.x -= nx * overlap
                     agB.container.y -= ny * overlap
+
+                    // Revert if pushed into an obstacle
+                    if (ctx.pathfinder) {
+                        if (ctx.pathfinder.isBlocked(agA.container.x, agA.container.y)) {
+                            agA.container.x -= nx * overlap
+                            agA.container.y -= ny * overlap
+                        }
+                        if (ctx.pathfinder.isBlocked(agB.container.x, agB.container.y)) {
+                            agB.container.x += nx * overlap
+                            agB.container.y += ny * overlap
+                        }
+                    }
                 }
             }
         }

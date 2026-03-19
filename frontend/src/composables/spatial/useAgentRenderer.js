@@ -51,7 +51,8 @@ export function useAgentRenderer({
     sandboxInteractionMode,
     seedInfection,
     cureAgent,
-    setNodeTypes
+    setNodeTypes,
+    moveSelectedAgentId
 }) {
 
     // ───────── SCENE BUILDING ─────────
@@ -136,6 +137,10 @@ export function useAgentRenderer({
         }
         agentGroup.addChild(sprite)
 
+        // Label backdrop (semi-transparent pill behind text)
+        const labelBackdrop = new Graphics()
+        agentGroup.addChild(labelBackdrop)
+
         // Name label
         const label = new Text({
             text: node.id,
@@ -144,22 +149,17 @@ export function useAgentRenderer({
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fill: 0xf9fafb,
                 align: 'center',
-                fontWeight: '500',
-                dropShadow: {
-                    color: '#1A1A1A',
-                    blur: 4,
-                    distance: 2,
-                    alpha: 0.8
-                },
-                stroke: {
-                    color: '#1A1A1A',
-                    width: 3
-                }
+                fontWeight: '500'
             })
         })
         label.anchor.set(0.5, 0)
         label.y = 28
         agentGroup.addChild(label)
+
+        // Draw initial label backdrop
+        _drawLabelBackdrop(labelBackdrop, label, false)
+
+
 
         // Emoji emote text (PixiJS, hidden by default)
         const emoteText = new Text({
@@ -170,10 +170,10 @@ export function useAgentRenderer({
                 fill: 0xf9fafb,
                 align: 'center',
                 dropShadow: {
-                    color: '#1A1A1A',
+                    color: 0x000000,
+                    alpha: 0.65,
                     blur: 4,
-                    distance: 2,
-                    alpha: 0.8
+                    distance: 0
                 }
             })
         })
@@ -190,13 +190,7 @@ export function useAgentRenderer({
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fontWeight: '500',
                 fill: 0xe0e7ff,
-                align: 'left',
-                dropShadow: {
-                    color: '#1A1A1A',
-                    blur: 4,
-                    distance: 2,
-                    alpha: 0.8
-                }
+                align: 'left'
             })
         })
         badgeText.anchor.set(0.5, 1)
@@ -207,7 +201,12 @@ export function useAgentRenderer({
         // Drag-and-drop
         setupDrag(agentGroup, node.id)
 
-        // Click to open agent info panel or seed/cure infection in sandbox mode
+        // Move-selection ring (cyan, hidden by default)
+        const moveSelectRing = new Graphics()
+        moveSelectRing.visible = false
+        agentGroup.addChild(moveSelectRing)
+
+        // Click to open agent info panel, seed/cure infection, or select for movement
         agentGroup.on('pointerdown', () => {
             if (sandboxMode?.value) {
                 const mode = sandboxInteractionMode?.value || 'pointer'
@@ -219,6 +218,14 @@ export function useAgentRenderer({
                     // pointer mode — open agent panel
                     emit('agent-selected', { nodeId: node.id, node })
                 }
+            } else if (moveSelectedAgentId) {
+                // Toggle move selection
+                if (moveSelectedAgentId.value === node.id) {
+                    moveSelectedAgentId.value = null
+                } else {
+                    moveSelectedAgentId.value = node.id
+                }
+                emit('agent-selected', { nodeId: node.id, node })
             } else {
                 emit('agent-selected', { nodeId: node.id, node })
             }
@@ -230,9 +237,12 @@ export function useAgentRenderer({
             container: agentGroup,
             sprite,
             label,
+            labelBackdrop,
             glow,
             emoteText,
+            emoteBackdrop: null,
             badgeText,
+            moveSelectRing,
             interactive: true
         }))
     }
@@ -262,6 +272,10 @@ export function useAgentRenderer({
         shape.stroke({ width: 1, color: 0x6b7280, alpha: 0.7 })
         markerGroup.addChild(shape)
 
+        // Label backdrop for marker
+        const labelBackdrop = new Graphics()
+        markerGroup.addChild(labelBackdrop)
+
         // Smaller muted label
         const label = new Text({
             text: node.id,
@@ -270,22 +284,15 @@ export function useAgentRenderer({
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fill: 0x9ca3af,
                 align: 'center',
-                fontWeight: '400',
-                dropShadow: {
-                    color: '#1A1A1A',
-                    blur: 3,
-                    distance: 1,
-                    alpha: 0.8
-                },
-                stroke: {
-                    color: '#1A1A1A',
-                    width: 2
-                }
+                fontWeight: '400'
             })
         })
         label.anchor.set(0.5, 0)
         label.y = 12
         markerGroup.addChild(label)
+
+        // Draw initial marker label backdrop
+        _drawLabelBackdrop(labelBackdrop, label, false, true)
 
         // Draggable
         setupDrag(markerGroup, node.id)
@@ -296,8 +303,10 @@ export function useAgentRenderer({
             container: markerGroup,
             sprite: shape,
             label,
+            labelBackdrop,
             glow: null,
             emoteText: null,
+            emoteBackdrop: null,
             badgeText: null,
             interactive: false
         }))
@@ -317,6 +326,8 @@ export function useAgentRenderer({
             dragOffset.y = container.y - globalPos.y
             container.alpha = 0.85
             ctx.agentContainer.setChildIndex(container, ctx.agentContainer.children.length - 1)
+            // Clear move selection when starting a drag
+            if (moveSelectedAgentId) moveSelectedAgentId.value = null
         })
 
         container.on('globalpointermove', (e) => {
@@ -349,8 +360,32 @@ export function useAgentRenderer({
         glow.fill({ color, alpha })
     }
 
+    // ───────── BACKDROP HELPERS ─────────
+
+    /**
+     * Draw a semi-transparent rounded-rect backdrop behind a label.
+     * @param {Graphics} backdrop - Graphics object for the backdrop
+     * @param {Text} label - The label Text to size from
+     * @param {boolean} isBright - Whether the floor is bright (light backdrop) or dark (dark backdrop)
+     * @param {boolean} [isMarker=false] - Whether this is a static marker (smaller padding)
+     */
+    function _drawLabelBackdrop(backdrop, label, isBright, isMarker = false) {
+        backdrop.clear()
+        const padX = isMarker ? 3 : 4
+        const padY = isMarker ? 1 : 2
+        const w = (label.width || 30) + padX * 2
+        const h = (label.height || 12) + padY * 2
+        const radius = 4
+        const color = isBright ? 0xffffff : 0x000000
+        const alpha = isMarker ? 0.45 : 0.55
+
+        backdrop.roundRect(-w / 2, label.y - padY, w, h, radius)
+        backdrop.fill({ color, alpha })
+    }
+
     return {
         buildScene,
-        drawStatusGlow
+        drawStatusGlow,
+        _drawLabelBackdrop
     }
 }

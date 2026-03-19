@@ -61,7 +61,7 @@ export function useInfectionHeatmap({
         if (!sandboxMode?.value || !simulationRunning?.value) return
 
         const params = getParams()
-        const radius = params.infectionRadius
+        const radius = params.heatmapRadius ?? params.infectionRadius
         const now = Date.now()
 
         // ── Active infected agents ──
