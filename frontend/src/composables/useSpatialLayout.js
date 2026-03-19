@@ -149,16 +149,16 @@ export function createTrailParticle(x, y, color) {
  * @param {Obstacle} obstacle
  * @returns {boolean}
  */
-function isPointInObstacle(point, obstacle) {
+export function isPointInObstacle(point, obstacle) {
     const { shape, position, size } = obstacle
     if (shape === 'rectangle') {
-        const hw = (size.width || 0) / 2
-        const hh = (size.height || 0) / 2
+        const w = size.width || 0
+        const h = size.height || 0
         return (
-            point.x >= position.x - hw &&
-            point.x <= position.x + hw &&
-            point.y >= position.y - hh &&
-            point.y <= position.y + hh
+            point.x >= position.x &&
+            point.x <= position.x + w &&
+            point.y >= position.y &&
+            point.y <= position.y + h
         )
     } else if (shape === 'circle') {
         const radius = size.radius || 0
@@ -297,10 +297,10 @@ function forceDirectedLayout(nodes, edges, width, height, iterations = 100, obst
                 const vel = velocities.get(n.id)
                 let dx, dy
                 if (obs.shape === 'rectangle') {
-                    const hw = (obs.size.width || 0) / 2
-                    const hh = (obs.size.height || 0) / 2
-                    const closestX = Math.max(obs.position.x - hw, Math.min(pos.x, obs.position.x + hw))
-                    const closestY = Math.max(obs.position.y - hh, Math.min(pos.y, obs.position.y + hh))
+                    const ow = obs.size.width || 0
+                    const oh = obs.size.height || 0
+                    const closestX = Math.max(obs.position.x, Math.min(pos.x, obs.position.x + ow))
+                    const closestY = Math.max(obs.position.y, Math.min(pos.y, obs.position.y + oh))
                     dx = pos.x - closestX
                     dy = pos.y - closestY
                 } else if (obs.shape === 'circle') {

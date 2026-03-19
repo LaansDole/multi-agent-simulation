@@ -4,6 +4,31 @@
  * and communication animation execution between agents.
  */
 
+// ───────── HELPERS ─────────
+
+/**
+ * Check whether a 2-point straight-line path crosses any blocked cells.
+ * Samples intermediate points along the line for collision detection.
+ */
+function pathCrossesBlocked(pathfinder, path) {
+    if (path.length < 2) return false
+    const [start, end] = path
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist < 1) return false
+
+    // Sample every 10px along the line
+    const steps = Math.max(Math.ceil(dist / 10), 2)
+    for (let i = 1; i < steps; i++) {
+        const t = i / steps
+        const px = start.x + dx * t
+        const py = start.y + dy * t
+        if (pathfinder.isBlocked(px, py)) return true
+    }
+    return false
+}
+
 // ───────── COMPOSABLE ─────────
 
 /**
@@ -40,6 +65,10 @@ export function useCommunicationAnimation({
     MIN_MEETING_GAP
 }) {
     let queueTimerId = null
+
+    // Per-agent cooldown to prevent rapid re-animation after communication
+    const COMMUNICATION_COOLDOWN = 2000 // ms
+    const communicationCooldowns = new Map()
 
     /**
      * Calculate meeting points that never cross the midline.
@@ -113,14 +142,28 @@ export function useCommunicationAnimation({
         const targetAg = ctx.agentSprites.get(targetId)
         if (!sourceAg || !targetAg) return
 
-        // Read start positions from agentPositions (canonical home),
-        // NOT container.x/y which may be shifted by separation or mid-animation
+        // Prefer existing animation's home position (startX/startY) to prevent
+        // drift when a new communication interrupts an in-progress animation.
+        // agentPositions is synced to mid-animation visual position and would
+        // cement the drift if used as the new start.
+        const existingSourceAnim = ctx.animatingAgents.get(sourceId)
+        const existingTargetAnim = ctx.animatingAgents.get(targetId)
         const sourcePos = agentPositions.value.get(sourceId)
         const targetPos = agentPositions.value.get(targetId)
-        const sx = sourcePos?.x ?? sourceAg.container.x
-        const sy = sourcePos?.y ?? sourceAg.container.y
-        const tx = targetPos?.x ?? targetAg.container.x
-        const ty = targetPos?.y ?? targetAg.container.y
+
+        // Check per-agent cooldown: skip agents still in cooldown and re-enqueue
+        const now = Date.now()
+        const sourceCooldown = communicationCooldowns.get(sourceId) || 0
+        const targetCooldown = communicationCooldowns.get(targetId) || 0
+        if (now - sourceCooldown < COMMUNICATION_COOLDOWN || now - targetCooldown < COMMUNICATION_COOLDOWN) {
+            enqueueAnimation(sourceId, targetId)
+            return
+        }
+
+        const sx = existingSourceAnim?.startX ?? sourcePos?.x ?? sourceAg.container.x
+        const sy = existingSourceAnim?.startY ?? sourcePos?.y ?? sourceAg.container.y
+        const tx = existingTargetAnim?.startX ?? targetPos?.x ?? targetAg.container.x
+        const ty = existingTargetAnim?.startY ?? targetPos?.y ?? targetAg.container.y
 
         // Use midline-clamped meeting points
         let { sourceMeet, targetMeet } = calculateMeetingPoints(sx, sy, tx, ty)
@@ -147,6 +190,18 @@ export function useCommunicationAnimation({
             const tgtPath = ctx.pathfinder.findPath(tx, ty, targetMeet.x, targetMeet.y)
             if (tgtPath && tgtPath.length > 0) {
                 targetPath = tgtPath
+            }
+
+            // Validate paths: if a path is a degenerate 2-point straight line
+            // that crosses blocked cells, cancel that agent's approach by
+            // resetting the meeting point to the agent's current position.
+            if (sourcePath.length === 2 && pathCrossesBlocked(ctx.pathfinder, sourcePath)) {
+                sourceMeet = { x: sx, y: sy }
+                sourcePath = [{ x: sx, y: sy }]
+            }
+            if (targetPath.length === 2 && pathCrossesBlocked(ctx.pathfinder, targetPath)) {
+                targetMeet = { x: tx, y: ty }
+                targetPath = [{ x: tx, y: ty }]
             }
         }
 
@@ -209,6 +264,9 @@ export function useCommunicationAnimation({
             if (targetAg.interactive && getAgentStatus(targetId) === AGENT_STATUS.COMMUNICATING) {
                 setAgentStatus(targetId, AGENT_STATUS.IDLE)
             }
+            // Record cooldown so the agent isn't immediately re-animated
+            communicationCooldowns.set(sourceId, Date.now())
+            communicationCooldowns.set(targetId, Date.now())
         }, duration)
     }
 
@@ -232,10 +290,73 @@ export function useCommunicationAnimation({
                     agentPositions.value.set(agentId, { x: homeX, y: homeY })
                 }
             } else {
-                // Returning to idle — reset wander cooldown
-                resetWanderCooldown(agentId)
+                // Returning to idle — use shorter cooldown after communication
+                resetWanderCooldown(agentId, 500, 1500)
             }
         }
+    }
+
+    // ───────── DIRECTED MOVEMENT ─────────
+
+    /**
+     * Animate an agent walking to a target position (one-way, no return).
+     * The agent's home position will be updated to the target on arrival.
+     */
+    function executeAgentMove(agentId, targetX, targetY) {
+        const ag = ctx.agentSprites.get(agentId)
+        if (!ag || !ag.interactive) return
+
+        // Read home position: prefer existing animation's startX/startY
+        const existingAnim = ctx.animatingAgents.get(agentId)
+        const agPos = agentPositions.value.get(agentId)
+        const sx = existingAnim?.startX ?? agPos?.x ?? ag.container.x
+        const sy = existingAnim?.startY ?? agPos?.y ?? ag.container.y
+
+        // Compute path using pathfinder
+        let movePath = [{ x: sx, y: sy }, { x: targetX, y: targetY }]
+        if (ctx.pathfinder) {
+            if (ctx.pathfinder.isBlocked(targetX, targetY)) {
+                const safe = ctx.pathfinder.findNearestUnblocked(targetX, targetY)
+                targetX = safe.x
+                targetY = safe.y
+                movePath[1] = { x: targetX, y: targetY }
+            }
+            const computed = ctx.pathfinder.findPath(sx, sy, targetX, targetY)
+            if (computed && computed.length > 0) {
+                movePath = computed
+            }
+        }
+
+        // Calculate duration from path distance
+        let pathDist = 0
+        for (let i = 1; i < movePath.length; i++) {
+            const dx = movePath[i].x - movePath[i - 1].x
+            const dy = movePath[i].y - movePath[i - 1].y
+            pathDist += Math.sqrt(dx * dx + dy * dy)
+        }
+        const speed = getSpeedValue()
+        const duration = Math.max(1000, Math.min(pathDist / speed, 6000))
+
+        setAgentStatus(agentId, AGENT_STATUS.COMMUNICATING)
+        ctx.animatingAgents.set(agentId, {
+            startTime: Date.now(),
+            duration,
+            startX: sx,
+            startY: sy,
+            meetX: targetX,
+            meetY: targetY,
+            path: movePath,
+            pathIndex: 0,
+            currentFrame: 1,
+            lastTrailTime: 0,
+            type: 'move'
+        })
+
+        setTimeout(() => {
+            if (ag.interactive && getAgentStatus(agentId) === AGENT_STATUS.COMMUNICATING) {
+                setAgentStatus(agentId, AGENT_STATUS.IDLE)
+            }
+        }, duration)
     }
 
     function cleanup() {
@@ -243,12 +364,14 @@ export function useCommunicationAnimation({
             clearTimeout(queueTimerId)
             queueTimerId = null
         }
+        communicationCooldowns.clear()
     }
 
     return {
         triggerCommunication,
         updateAgentStatus,
         calculateMeetingPoints,
+        executeAgentMove,
         cleanup
     }
 }

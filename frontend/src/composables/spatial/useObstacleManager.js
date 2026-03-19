@@ -36,6 +36,67 @@ function getObstacleAlpha(type) {
     }
 }
 
+// Agent approach offset from obstacle edge
+const EDGE_APPROACH_OFFSET = 10
+
+/**
+ * Compute the nearest point on an obstacle's edge from an agent's position.
+ * @param {number} agentX - Agent X
+ * @param {number} agentY - Agent Y
+ * @param {number} obstacleX - Obstacle position X
+ * @param {number} obstacleY - Obstacle position Y
+ * @param {string} shape - 'rectangle' or 'circle'
+ * @param {object} size - { width, height } or { radius }
+ * @returns {{ x: number, y: number }}
+ */
+export function computeObstacleEdgePosition(agentX, agentY, obstacleX, obstacleY, shape, size) {
+    if (shape === 'circle') {
+        const radius = (size.radius || 25) + EDGE_APPROACH_OFFSET
+        const dx = agentX - obstacleX
+        const dy = agentY - obstacleY
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 1) {
+            // Agent is at center — pick arbitrary edge
+            return { x: obstacleX + radius, y: obstacleY }
+        }
+        return {
+            x: obstacleX + (dx / dist) * radius,
+            y: obstacleY + (dy / dist) * radius
+        }
+    }
+
+    // Rectangle: find nearest point on perimeter
+    const w = size.width || 50
+    const h = size.height || 50
+    // Rectangle origin is top-left corner
+    const cx = obstacleX + w / 2
+    const cy = obstacleY + h / 2
+    const hw = w / 2 + EDGE_APPROACH_OFFSET
+    const hh = h / 2 + EDGE_APPROACH_OFFSET
+
+    const dx = agentX - cx
+    const dy = agentY - cy
+
+    // Clamp to box edge
+    const clampedX = Math.max(-hw, Math.min(hw, dx))
+    const clampedY = Math.max(-hh, Math.min(hh, dy))
+
+    // If agent is inside the expanded box, project to nearest edge
+    if (Math.abs(clampedX) < hw && Math.abs(clampedY) < hh) {
+        const distToLeft = clampedX + hw
+        const distToRight = hw - clampedX
+        const distToTop = clampedY + hh
+        const distToBottom = hh - clampedY
+        const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom)
+        if (minDist === distToLeft) return { x: cx - hw, y: cy + clampedY }
+        if (minDist === distToRight) return { x: cx + hw, y: cy + clampedY }
+        if (minDist === distToTop) return { x: cx + clampedX, y: cy - hh }
+        return { x: cx + clampedX, y: cy + hh }
+    }
+
+    return { x: cx + clampedX, y: cy + clampedY }
+}
+
 // ───────── COMPOSABLE ─────────
 
 /**
@@ -48,7 +109,7 @@ function getObstacleAlpha(type) {
  * @param {Function} options.scheduleConfigSave - Debounced config save callback
  * @param {Function} options.snapToGrid - Grid snap helper
  */
-export function useObstacleManager({ ctx, canvasRef, spatialConfig, emit, initPathfinder, scheduleConfigSave, snapToGrid }) {
+export function useObstacleManager({ ctx, canvasRef, spatialConfig, emit, initPathfinder, scheduleConfigSave, snapToGrid, moveSelectedAgentId, getExecuteAgentMove }) {
     const selectedObstacleId = ref(null)
     const showDeleteConfirm = ref(false)
 
@@ -302,6 +363,22 @@ export function useObstacleManager({ ctx, canvasRef, spatialConfig, emit, initPa
             // Click handler
             obstacleGroup.on('pointerdown', (e) => {
                 e.stopPropagation()
+                // If an agent is move-selected, animate it to this obstacle's edge
+                const executeFn = getExecuteAgentMove?.()
+                if (moveSelectedAgentId?.value && executeFn) {
+                    const agentId = moveSelectedAgentId.value
+                    const agPos = ctx.agentSprites.get(agentId)
+                    if (agPos) {
+                        const ax = agPos.container.x
+                        const ay = agPos.container.y
+                        const edge = computeObstacleEdgePosition(
+                            ax, ay, obstacleGroup.x, obstacleGroup.y, shape, size
+                        )
+                        executeFn(agentId, edge.x, edge.y)
+                        moveSelectedAgentId.value = null
+                    }
+                    return
+                }
                 selectObstacle(id, obstacle, obstacleGroup, highlight, graphics, shape, size)
             })
 

@@ -263,11 +263,352 @@ describe('useCommunicationAnimation - updateAgentStatus', () => {
         const { updateAgentStatus } = useCommunicationAnimation(options)
         updateAgentStatus('agent1', AGENT_STATUS.IDLE)
 
-        expect(options.resetWanderCooldown).toHaveBeenCalledWith('agent1')
+        expect(options.resetWanderCooldown).toHaveBeenCalledWith('agent1', 500, 1500)
     })
 })
 
-// ───────── cleanup ─────────
+// ───────── executeCommunicationAnimation — home anchoring on interruption ─────────
+
+describe('useCommunicationAnimation - home anchoring on interruption', () => {
+    it('uses existing animation startX/startY when source is already animating', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 300, y: 300 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 500, y: 500 } })
+        // A is mid-animation: agentPositions drifted to (300,300), but home is (100,100)
+        options.ctx.animatingAgents.set('A', {
+            startX: 100, startY: 100,
+            startTime: Date.now(), duration: 5000,
+            meetX: 300, meetY: 300, path: [], pathIndex: 0
+        })
+        options.agentPositions.value.set('A', { x: 300, y: 300 })
+        options.agentPositions.value.set('B', { x: 500, y: 500 })
+
+        // Dequeue returns a queued animation
+        let called = false
+        options.dequeueAnimation = vi.fn(() => {
+            if (!called) { called = true; return { sourceId: 'A', targetId: 'B' } }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+        triggerCommunication('A', 'B')
+
+        // After the animation is executed, A's new animation should start from home (100,100)
+        const animA = options.ctx.animatingAgents.get('A')
+        expect(animA).toBeDefined()
+        expect(animA.startX).toBe(100)
+        expect(animA.startY).toBe(100)
+    })
+
+    it('uses existing animation startX/startY when target is already animating', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 100, y: 100 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 400, y: 400 } })
+        // B is mid-animation: drifted to (400,400), but home is (500,500)
+        options.ctx.animatingAgents.set('B', {
+            startX: 500, startY: 500,
+            startTime: Date.now(), duration: 5000,
+            meetX: 400, meetY: 400, path: [], pathIndex: 0
+        })
+        options.agentPositions.value.set('A', { x: 100, y: 100 })
+        options.agentPositions.value.set('B', { x: 400, y: 400 })
+
+        let called = false
+        options.dequeueAnimation = vi.fn(() => {
+            if (!called) { called = true; return { sourceId: 'A', targetId: 'B' } }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+        triggerCommunication('A', 'B')
+
+        const animB = options.ctx.animatingAgents.get('B')
+        expect(animB).toBeDefined()
+        expect(animB.startX).toBe(500)
+        expect(animB.startY).toBe(500)
+    })
+
+    it('falls back to agentPositions when no existing animation', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 0, y: 0 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 200, y: 200 } })
+        options.agentPositions.value.set('A', { x: 50, y: 50 })
+        options.agentPositions.value.set('B', { x: 200, y: 200 })
+
+        let called = false
+        options.dequeueAnimation = vi.fn(() => {
+            if (!called) { called = true; return { sourceId: 'A', targetId: 'B' } }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+        triggerCommunication('A', 'B')
+
+        const animA = options.ctx.animatingAgents.get('A')
+        expect(animA).toBeDefined()
+        expect(animA.startX).toBe(50)
+        expect(animA.startY).toBe(50)
+    })
+})
+
+// ───────── communication cooldown ─────────
+
+describe('useCommunicationAnimation - communication cooldown', () => {
+    it('re-enqueues animation when source agent is still in cooldown', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 0, y: 0 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 200, y: 200 } })
+        options.agentPositions.value.set('A', { x: 0, y: 0 })
+        options.agentPositions.value.set('B', { x: 200, y: 200 })
+
+        // Set up dequeue to return one animation (twice: first for initial, second after re-enqueue check)
+        let callCount = 0
+        options.dequeueAnimation = vi.fn(() => {
+            callCount++
+            if (callCount === 1) return { sourceId: 'A', targetId: 'B' }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+
+        // First communication — should execute normally (no cooldown yet)
+        triggerCommunication('A', 'B')
+        expect(options.enqueueAnimation).toHaveBeenCalledWith('A', 'B')
+
+        // Simulate animation completion by fast-forwarding the setTimeout
+        // The cooldown is recorded inside the setTimeout callback
+        vi.useFakeTimers()
+        vi.advanceTimersByTime(10000) // advance past any animation duration
+
+        // Now trigger a second communication within cooldown window
+        callCount = 0
+        options.enqueueAnimation.mockClear()
+        options.dequeueAnimation = vi.fn(() => {
+            callCount++
+            if (callCount === 1) return { sourceId: 'A', targetId: 'B' }
+            return null
+        })
+
+        triggerCommunication('A', 'B')
+
+        // The animation should have been re-enqueued because A is in cooldown
+        expect(options.enqueueAnimation).toHaveBeenCalledWith('A', 'B')
+        // But no new animation entry should be created for A
+        // (the executeCommunicationAnimation returned early after re-enqueue)
+
+        vi.useRealTimers()
+    })
+
+    it('allows animation when cooldown has expired', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 0, y: 0 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 200, y: 200 } })
+        options.agentPositions.value.set('A', { x: 0, y: 0 })
+        options.agentPositions.value.set('B', { x: 200, y: 200 })
+
+        let callCount = 0
+        options.dequeueAnimation = vi.fn(() => {
+            callCount++
+            if (callCount === 1) return { sourceId: 'A', targetId: 'B' }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+
+        // First: trigger and let it complete
+        triggerCommunication('A', 'B')
+
+        vi.useFakeTimers()
+        vi.advanceTimersByTime(10000) // past animation duration → cooldown recorded
+
+        // Advance past the 2000ms cooldown
+        vi.advanceTimersByTime(3000)
+
+        // Reset mocks for second trigger
+        callCount = 0
+        options.enqueueAnimation.mockClear()
+        options.dequeueAnimation = vi.fn(() => {
+            callCount++
+            if (callCount === 1) return { sourceId: 'A', targetId: 'B' }
+            return null
+        })
+
+        triggerCommunication('A', 'B')
+
+        // Animation should have been created (not just re-enqueued)
+        const animA = options.ctx.animatingAgents.get('A')
+        expect(animA).toBeDefined()
+
+        vi.useRealTimers()
+    })
+})
+
+// ───────── executeAgentMove — directed movement ─────────
+
+describe('useCommunicationAnimation - executeAgentMove', () => {
+    it('creates a type:move animation entry', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 100, y: 100 } })
+        options.agentPositions.value.set('A', { x: 100, y: 100 })
+
+        const { executeAgentMove } = useCommunicationAnimation(options)
+        executeAgentMove('A', 300, 400)
+
+        const anim = options.ctx.animatingAgents.get('A')
+        expect(anim).toBeDefined()
+        expect(anim.type).toBe('move')
+        expect(anim.startX).toBe(100)
+        expect(anim.startY).toBe(100)
+        expect(anim.meetX).toBe(300)
+        expect(anim.meetY).toBe(400)
+    })
+
+    it('sets agent status to COMMUNICATING', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 0, y: 0 } })
+        options.agentPositions.value.set('A', { x: 0, y: 0 })
+
+        const { executeAgentMove } = useCommunicationAnimation(options)
+        executeAgentMove('A', 200, 200)
+
+        expect(options.setAgentStatus).toHaveBeenCalledWith('A', AGENT_STATUS.COMMUNICATING)
+    })
+
+    it('uses existing animation startX/startY when agent is mid-animation', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 300, y: 300 } })
+        options.ctx.animatingAgents.set('A', {
+            startX: 50, startY: 50,
+            startTime: Date.now(), duration: 5000,
+            meetX: 300, meetY: 300, path: [], pathIndex: 0
+        })
+        options.agentPositions.value.set('A', { x: 300, y: 300 })
+
+        const { executeAgentMove } = useCommunicationAnimation(options)
+        executeAgentMove('A', 500, 500)
+
+        const anim = options.ctx.animatingAgents.get('A')
+        expect(anim.startX).toBe(50)
+        expect(anim.startY).toBe(50)
+    })
+
+    it('ignores non-interactive agents', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: false, container: { x: 0, y: 0 } })
+
+        const { executeAgentMove } = useCommunicationAnimation(options)
+        executeAgentMove('A', 200, 200)
+
+        expect(options.ctx.animatingAgents.has('A')).toBe(false)
+    })
+
+    it('creates path with start and target positions', () => {
+        const options = createMockOptions()
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 10, y: 20 } })
+        options.agentPositions.value.set('A', { x: 10, y: 20 })
+
+        const { executeAgentMove } = useCommunicationAnimation(options)
+        executeAgentMove('A', 100, 200)
+
+        const anim = options.ctx.animatingAgents.get('A')
+        expect(anim.path).toBeDefined()
+        expect(anim.path.length).toBeGreaterThanOrEqual(2)
+        expect(anim.path[0]).toEqual({ x: 10, y: 20 })
+        expect(anim.path[anim.path.length - 1]).toEqual({ x: 100, y: 200 })
+    })
+})
+
+// ───────── obstacle-aware communication paths ─────────
+
+/**
+ * Creates a mock pathfinder where a rectangular region is blocked.
+ * isBlocked returns true for any point inside the blocked bounds.
+ * findPath returns a 2-point direct path (simulating A* fallback).
+ * findNearestUnblocked shifts to blockEndX + 10.
+ */
+function createMockPathfinder(blockMinX, blockMaxX, blockMinY, blockMaxY) {
+    return {
+        isBlocked(px, py) {
+            return px >= blockMinX && px <= blockMaxX && py >= blockMinY && py <= blockMaxY
+        },
+        findNearestUnblocked(px, py) {
+            // Shift just outside the block to the right
+            return { x: blockMaxX + 10, y: py }
+        },
+        findPath(sx, sy, tx, ty) {
+            // Always return a 2-point direct path (simulating A* fallback)
+            return [{ x: sx, y: sy }, { x: tx, y: ty }]
+        }
+    }
+}
+
+describe('useCommunicationAnimation - obstacle-aware communication paths', () => {
+    it('cancels approach when path to meeting point crosses through obstacle', () => {
+        // Agent A at (50,200), Agent B at (350,200)
+        // Obstacle blocks [150,250] × [150,250]
+        const pathfinder = createMockPathfinder(150, 250, 150, 250)
+        const options = createMockOptions()
+        options.ctx.pathfinder = pathfinder
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 50, y: 200 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 350, y: 200 } })
+        options.agentPositions.value.set('A', { x: 50, y: 200 })
+        options.agentPositions.value.set('B', { x: 350, y: 200 })
+
+        let called = false
+        options.dequeueAnimation = vi.fn(() => {
+            if (!called) { called = true; return { sourceId: 'A', targetId: 'B' } }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+        triggerCommunication('A', 'B')
+
+        // Both agents should have animation entries
+        const animA = options.ctx.animatingAgents.get('A')
+        const animB = options.ctx.animatingAgents.get('B')
+        expect(animA).toBeDefined()
+        expect(animB).toBeDefined()
+
+        // Agent A's path (50→meeting ~260) crosses the obstacle [150,250],
+        // so its approach is cancelled — meeting point falls back to start.
+        expect(animA.meetX).toBe(50)
+        expect(animA.meetY).toBe(200)
+        // Agent B's path (350→260) does NOT cross the obstacle, so its
+        // meeting point is the adjusted position (blockMaxX + 10 = 260).
+        expect(animB.meetX).toBe(260)
+        expect(animB.meetY).toBe(200)
+    })
+
+    it('allows normal approach when path does not cross obstacles', () => {
+        // Agent A at (50,50), Agent B at (200,50)
+        // Obstacle far away at [400,500] × [400,500]
+        const pathfinder = createMockPathfinder(400, 500, 400, 500)
+        const options = createMockOptions()
+        options.ctx.pathfinder = pathfinder
+        options.ctx.agentSprites.set('A', { interactive: true, container: { x: 50, y: 50 } })
+        options.ctx.agentSprites.set('B', { interactive: true, container: { x: 200, y: 50 } })
+        options.agentPositions.value.set('A', { x: 50, y: 50 })
+        options.agentPositions.value.set('B', { x: 200, y: 50 })
+
+        let called = false
+        options.dequeueAnimation = vi.fn(() => {
+            if (!called) { called = true; return { sourceId: 'A', targetId: 'B' } }
+            return null
+        })
+
+        const { triggerCommunication } = useCommunicationAnimation(options)
+        triggerCommunication('A', 'B')
+
+        const animA = options.ctx.animatingAgents.get('A')
+        const animB = options.ctx.animatingAgents.get('B')
+        expect(animA).toBeDefined()
+        expect(animB).toBeDefined()
+
+        // Agents should have moved toward each other (meeting point != start)
+        expect(animA.meetX).toBeGreaterThan(50)
+        expect(animB.meetX).toBeLessThan(200)
+    })
+})
 
 describe('useCommunicationAnimation - cleanup', () => {
     it('clears without error when no timer is active', () => {
