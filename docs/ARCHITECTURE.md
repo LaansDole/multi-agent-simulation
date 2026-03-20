@@ -6,143 +6,22 @@ This document provides a comprehensive visual architecture of the DevAll backend
 
 ## 1. High-Level System Architecture
 
-```mermaid
-graph TB
-    subgraph Clients["Clients"]
-        WebUI["Web UI (Vue.js)"]
-        CLI["CLI (run.py)"]
-        SDK["Python SDK (runtime/sdk.py)"]
-    end
 
-    subgraph Server["Server Layer (FastAPI)"]
-        direction TB
-        App["FastAPI App (server/app.py)"]
-        Bootstrap["Bootstrap (server/bootstrap.py)"]
-        MW["Middleware (CORS, Error Handling, Logging)"]
+![High-Level System Architecture](diagrams/Multi-agent-Sim.drawio.svg)
 
-        subgraph Routes["HTTP/WS Routes"]
-            WorkflowR["Workflow Routes"]
-            ExecuteR["Execute Routes"]
-            SessionR["Session Routes"]
-            ArtifactR["Artifact Routes"]
-            UploadR["Upload Routes"]
-            WS["WebSocket Endpoint"]
-            ConfigR["Config Schema Router"]
-            SpatialR["Spatial Config Routes"]
-        end
+The diagram shows seven architectural layers with color-coded swimlane containers:
 
-        subgraph Services["Services"]
-            WRS["WorkflowRunService"]
-            WSManager["WebSocketManager"]
-            SessionStore["SessionStore"]
-            BatchService["BatchRunService"]
-            ArtifactSvc["ArtifactDispatcher"]
-            PromptCh["PromptChannel"]
-        end
-    end
+| Layer | Color | Key Components |
+|-------|-------|---------------|
+| **Clients** | Blue | Web UI (Vue.js), CLI (run.py), Python SDK |
+| **Server (FastAPI)** | Green | Routes (Workflow, Execute, Session, Artifact, Upload, WebSocket, Config Schema, Spatial), Services (WorkflowRunService, WebSocketManager, SessionStore, BatchRunService, ArtifactDispatcher, PromptChannel) |
+| **Workflow Engine** | Red | GraphExecutor, GraphManager, TopologyBuilder, CycleManager/CycleDetector, GraphContext, Execution Strategies (DAG, Cycle, Dynamic Edge, Parallel, Majority Vote) |
+| **Runtime** | Purple | Node Executors (Agent, Python, Human, Subgraph, Passthrough, Literal, LoopCounter, LoopTimer), Agent Modules (LLM Providers, Memory, Thinking, Tooling), Edge Layer (Conditions, Processors) |
+| **Entity / Config** | Gray | GraphConfig, Node/Edge Configs, Message Objects, Enums |
+| **Utilities** | Gray | Logger, LogManager, AttachmentStore, FunctionCatalog, TokenTracker, ErrorHandler |
+| **Storage** | Light Blue | WareHouse/ (session outputs), logs/ (structured logs), yaml_instance/ (workflows), schema_registry/ |
 
-    subgraph Workflow["Workflow Engine (workflow/)"]
-        GE["GraphExecutor"]
-        GM["GraphManager"]
-        TB2["TopologyBuilder"]
-        CM["CycleManager / CycleDetector"]
-        GCtx["GraphContext"]
-
-        subgraph Executors["Execution Strategies"]
-            DAG["DagExecutionStrategy"]
-            CYC["CycleExecutionStrategy"]
-            DYN["DynamicEdgeExecutor"]
-            PAR["ParallelExecutor"]
-            MV["MajorityVoteStrategy"]
-        end
-    end
-
-    subgraph Runtime["Runtime Layer (runtime/)"]
-        subgraph NodeExec["Node Executors (runtime/node/)"]
-            AgentEx["AgentExecutor"]
-            PythonEx["PythonExecutor"]
-            HumanEx["HumanExecutor"]
-            SubgraphEx["SubgraphExecutor"]
-            PassEx["PassthroughExecutor"]
-            LiteralEx["LiteralExecutor"]
-            LoopCEx["LoopCounterExecutor"]
-            LoopTEx["LoopTimerExecutor"]
-        end
-
-        subgraph AgentModules["Agent Modules (runtime/node/agent/)"]
-            Providers["LLM Providers (OpenAI, Gemini)"]
-            Memory["Memory (Simple, File, Blackboard, RLM)"]
-            Thinking["Thinking (SelfReflection)"]
-            Tooling["Tool Manager (Function, MCP)"]
-        end
-
-        subgraph EdgeLayer["Edge Layer (runtime/edge/)"]
-            Conditions["Edge Conditions (Keyword, Function, Custom)"]
-            Processors["Edge Processors (Regex, Function)"]
-        end
-    end
-
-    subgraph Entity["Entity / Config Layer (entity/)"]
-        GraphCfg["GraphConfig / GraphDefinition"]
-        NodeCfg["Node Configs"]
-        EdgeCfg["Edge Configs"]
-        Messages["Message Objects"]
-        Enums["Enums / EnumOptions"]
-    end
-
-    subgraph Utils["Utilities (utils/)"]
-        Logger["Logger / StructuredLogger"]
-        LogMgr["LogManager"]
-        AttachStore["AttachmentStore"]
-        FnCatalog["FunctionCatalog"]
-        FnMgr["FunctionManager"]
-        TokenTrack["TokenTracker"]
-        SchemaExp["SchemaExporter"]
-        ErrHandler["ErrorHandler"]
-    end
-
-    subgraph Storage["Storage / Output"]
-        WareHouse["WareHouse/ (Session Outputs)"]
-        Logs["logs/ (Structured Logs)"]
-        YAMLDir["yaml_instance/ (Workflows)"]
-        SchemaReg["schema_registry/"]
-    end
-
-    WebUI -->|"HTTP/WS"| App
-    CLI -->|"Direct"| GE
-    SDK -->|"Direct"| GE
-
-    App --> Bootstrap
-    Bootstrap --> MW
-    Bootstrap --> Routes
-    Routes --> Services
-
-    WRS --> GE
-    WSManager --> WS
-    SessionStore --> SessionR
-
-    GE --> GM
-    GM --> TB2
-    GM --> CM
-    GE --> GCtx
-    GE --> Executors
-
-    DAG --> NodeExec
-    CYC --> NodeExec
-    DYN --> NodeExec
-    PAR --> NodeExec
-
-    AgentEx --> AgentModules
-    AgentEx --> Providers
-
-    GE --> EdgeLayer
-    GE --> Entity
-
-    GE --> Utils
-    GCtx --> WareHouse
-    LogMgr --> Logs
-    Entity --> YAMLDir
-```
+**Data flow**: Clients connect to the Server via HTTP/WebSocket (or directly to the Workflow Engine via CLI/SDK). The Server delegates to the Workflow Engine via WorkflowRunService → GraphExecutor. The Workflow Engine dispatches execution strategies to the Runtime's node executors. Outputs are written to the Storage layer.
 
 ---
 
