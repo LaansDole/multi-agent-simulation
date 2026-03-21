@@ -243,7 +243,7 @@ Context management controls how messages accumulate in a node's execution contex
 
 #### **Context vs Memory**
 - **Context**: Message queue visible to a node during execution (temporary, workflow-scoped)
-- **Memory**: Persistent storage across workflow runs (permanent, stored in vector database)
+- **Memory**: Persistent storage across workflow runs (permanent, stored as JSON with FAISS in-memory vector indexing)
 
 #### **Message Lifecycle**
 1. Source node produces output
