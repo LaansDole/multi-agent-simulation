@@ -139,4 +139,4 @@ graph:
     - ReportAggregator
 version: 0.0.0
 vars:
-  MODEL_NAME: qwen/qwen3-8b
+  MODEL_NAME: qwen3.5-4b
