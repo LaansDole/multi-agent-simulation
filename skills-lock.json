@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "academic-research-writer": {
+      "source": "endigo/claude-skills",
+      "sourceType": "github",
+      "computedHash": "229d37b33edb8d684aa75827ce84e4eb9ef0fd1961c3d5404cd77b77e81ba2f5"
+    }
+  }
+}
