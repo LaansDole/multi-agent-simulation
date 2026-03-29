@@ -31,9 +31,13 @@ WareHouse/
 # Git worktrees
 .worktrees/
 
-# Ralph TUI
+# AI Tools
 .ralph-tui/
-# tasks/
-
-openspec/
 .opencode
+
+# tasks/
+openspec/
+**/.agent/
+**/.agents/
+
+docs/research/
