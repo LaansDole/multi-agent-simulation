@@ -1,0 +1,57 @@
+graph:
+  id: local_model_demo
+  description: Demo workflow using local GGUF model inference (no LM Studio needed)
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: LocalWriter
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: local
+        role: |
+          You are a helpful writing assistant. Write concise, clear responses.
+        params:
+          n_ctx: 4096
+          n_gpu_layers: 0
+          temperature: 0.7
+          max_tokens: 512
+          verbose: false
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Local agent that writes responses using a GGUF model
+      context_window: 0
+      log_output: true
+      name: Local Writer
+    - id: SummaryFormatter
+      type: template
+      config:
+        template: |
+          === Local Model Output ===
+          {{ input }}
+          ==========================
+      description: Formats the local model output
+      context_window: 0
+      log_output: true
+      name: Summary Formatter
+  edges:
+    - from: LocalWriter
+      to: SummaryFormatter
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+  memory: []
+  initial_instruction: 'Write a short paragraph about the benefits of local AI models.'
+  start:
+    - LocalWriter
+  end:
+    - SummaryFormatter
+version: 0.0.0
+vars:
+  MODEL_NAME: /Users/<whoami>/.lmstudio/models/lmstudio-community/Llama-3.3-70B-Instruct-GGUF/Llama-3.3-70B-Instruct-Q4_K_M.gguf

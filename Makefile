@@ -14,7 +14,7 @@ server: stop ## Start the backend server in the background
 .PHONY: wait-backend
 wait-backend: ## Wait until backend port is reachable
 	@echo "Waiting for backend on port 6400..."
-	@for i in $$(seq 1 30); do if curl -fsS "http://127.0.0.1:6400/api/workflows" >/dev/null 2>&1; then echo "Backend is reachable"; exit 0; fi; sleep 1; done; echo "Backend did not become reachable within 30 seconds"; exit 1
+	@for i in $$(seq 1 60); do if curl -fsS "http://127.0.0.1:6400/api/workflows" >/dev/null 2>&1; then echo "Backend is reachable"; exit 0; fi; sleep 1; done; echo "Backend did not become reachable within 60 seconds"; exit 1
 
 .PHONY: client
 client: ## Start the frontend development server
@@ -23,11 +23,56 @@ client: ## Start the frontend development server
 .PHONY: stop
 stop: ## Stop backend and frontend servers cross-platform
 	@echo "Stopping backend server (port 6400)..."
-	@if npx kill-port 6400 >/dev/null 2>&1; then echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
-	@if npx kill-port 6400 >/dev/null 2>&1; then echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
+	@PIDS=$$(lsof -ti :6400 2>/dev/null); if [ -n "$$PIDS" ]; then echo "$$PIDS" | xargs kill -9 2>/dev/null && echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
 	@echo "Stopping frontend server (port 5173)..."
-	@if npx kill-port 5173 >/dev/null 2>&1; then echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
-	@if npx kill-port 5173 >/dev/null 2>&1; then echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
+	@PIDS=$$(lsof -ti :5173 2>/dev/null); if [ -n "$$PIDS" ]; then echo "$$PIDS" | xargs kill -9 2>/dev/null && echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
+
+# ==============================================================================
+# Desktop Launcher
+# ==============================================================================
+
+.PHONY: install-launcher
+install-launcher: ## Install clickable launcher apps to ~/Desktop
+	@echo ""
+	@echo "=== Installing Desktop Launchers ==="
+	@echo ""
+	@chmod +x scripts/launch-dev.command scripts/stop-dev.command
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "macOS detected - building .app bundles..."; \
+		echo "  Generating icon..."; \
+		bash scripts/build-icon.sh "$(CURDIR)/assets/icon.png" "$(CURDIR)/assets/icon.icns"; \
+		echo "  Building DevAll Launch.app..."; \
+		bash scripts/build-app-bundle.sh "DevAll Launch" "$(CURDIR)/scripts/launch-dev.command" "$(CURDIR)/assets/icon.icns" ~/Desktop; \
+		echo "  Building DevAll Stop.app..."; \
+		bash scripts/build-app-bundle.sh "DevAll Stop" "$(CURDIR)/scripts/stop-dev.command" "$(CURDIR)/assets/icon.icns" ~/Desktop; \
+		echo "Verifying bundles..."; \
+		ls -d ~/Desktop/DevAll\ Launch.app >/dev/null 2>&1 && echo "  DevAll Launch.app - OK" || echo "  DevAll Launch.app - MISSING"; \
+		ls -d ~/Desktop/DevAll\ Stop.app >/dev/null 2>&1 && echo "  DevAll Stop.app - OK" || echo "  DevAll Stop.app - MISSING"; \
+		echo ""; \
+		echo "Done! App bundles installed to ~/Desktop:"; \
+		echo "  DevAll Launch.app  - Double-click to start the platform"; \
+		echo "  DevAll Stop.app    - Double-click to stop the platform"; \
+		echo ""; \
+		echo "NOTE: On first launch, macOS may block the app."; \
+		echo "  Right-click the app > Open, or run:"; \
+		echo "    xattr -cr ~/Desktop/DevAll\\ Launch.app"; \
+		echo "    xattr -cr ~/Desktop/DevAll\\ Stop.app"; \
+	else \
+		echo "Non-macOS detected - creating .command symlinks..."; \
+		ln -sf "$(CURDIR)/scripts/launch-dev.command" ~/Desktop/launch-dev.command; \
+		ln -sf "$(CURDIR)/scripts/stop-dev.command" ~/Desktop/stop-dev.command; \
+		echo "Done! Launcher scripts installed to ~/Desktop:"; \
+		echo "  launch-dev.command  - Double-click to start the platform"; \
+		echo "  stop-dev.command    - Double-click to stop the platform"; \
+	fi
+	@echo ""
+
+.PHONY: uninstall-launcher
+uninstall-launcher: ## Remove launcher apps from ~/Desktop
+	@echo "Removing desktop launchers..."
+	@rm -rf ~/Desktop/DevAll\ Launch.app ~/Desktop/DevAll\ Stop.app 2>/dev/null || true
+	@rm -f ~/Desktop/launch-dev.command ~/Desktop/stop-dev.command 2>/dev/null || true
+	@echo "Done."
 
 # ==============================================================================
 # Tools & Maintenance
