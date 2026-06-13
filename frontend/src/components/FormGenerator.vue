@@ -14,7 +14,7 @@
           </div>
           <button class="close-button" @click="closeModal(modal.id)">×</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" data-local-scroll @wheel="handleLocalScrollWheel">
           <div
             v-for="field in getMainDisplayFields(modal)"
             :key="field.name + '-' + (modal.formData[field.name]?.type || '')"
@@ -45,7 +45,7 @@
             />
           </div>
 
-          <!-- Advanced Settings Toggle (Between Normal Fields and Inline Config) -->
+          <!-- {{ $t('form_generator.advanced_settings') }} Toggle (Between Normal Fields and Inline Config) -->
           <div
             v-if="modal.hasAdvancedFields"
             class="advanced-toggle"
@@ -55,7 +55,7 @@
               class="advanced-toggle-button"
               @click="toggleAdvancedFields(modal.id)"
             >
-              Advanced Settings
+              {{ $t('form_generator.advanced_settings') }}
               <span class="advanced-toggle-arrow">
                 {{ modal.showAdvanced ? '▲' : '▼' }}
               </span>
@@ -102,7 +102,7 @@
             class="add-child-button"
             :disabled="modal.submitting"
           >
-            Copy Node
+            {{ $t('form_generator.copy_node') }}
           </button>
           <button
             v-if="showDeleteButton(modal)"
@@ -117,7 +117,7 @@
             class="submit-button"
             :disabled="modal.submitting"
           >
-            Submit
+            {{ $t('form_generator.submit') }}
           </button>
         </div>
       </div>
@@ -130,12 +130,12 @@
       <div class="modal-header">
         <button class="close-button" @click="closeVarModal">×</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" data-local-scroll @wheel="handleLocalScrollWheel">
         <div v-if="varFormError" class="submit-error">
           {{ varFormError }}
         </div>
         <div class="form-group">
-          <label for="var-key">Key <span class="required-asterisk">*</span></label>
+          <label for="var-key">{{ $t('form_generator.key') }} <span class="required-asterisk">*</span></label>
           <input
             id="var-key"
             v-model="varForm.key"
@@ -144,7 +144,7 @@
           />
         </div>
         <div class="form-group">
-          <label for="var-value">Value <span class="required-asterisk">*</span></label>
+          <label for="var-value">{{ $t('form_generator.value') }} <span class="required-asterisk">*</span></label>
           <input
             id="var-value"
             v-model="varForm.value"
@@ -153,8 +153,8 @@
           />
         </div>
         <div class="modal-actions">
-          <button @click="closeVarModal" class="cancel-button">Cancel</button>
-          <button @click="confirmVar" class="confirm-button">Confirm</button>
+          <button @click="closeVarModal" class="cancel-button">{{ $t('form_generator.cancel') }}</button>
+          <button @click="confirmVar" class="confirm-button">{{ $t('form_generator.confirm') }}</button>
         </div>
       </div>
     </div>
@@ -168,15 +168,15 @@
   >
     <div class="modal-content list-item-modal">
       <div class="modal-header">
-        <h3 class="modal-title">{{ editingListItemIndex !== null ? 'Edit Entry' : 'Add Entry' }}</h3>
+        <h3 class="modal-title">{{ editingListItemIndex !== null ? t('form_generator.edit_entry') : t('form_generator.add_entry') }}</h3>
         <button class="close-button" @click="closeListItemModal">×</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" data-local-scroll @wheel="handleLocalScrollWheel">
         <div v-if="listItemFormError" class="submit-error">
           {{ listItemFormError }}
         </div>
         <div class="form-group">
-          <label for="list-item-value">Value <span class="required-asterisk">*</span></label>
+          <label for="list-item-value">{{ $t('form_generator.value') }} <span class="required-asterisk">*</span></label>
           <input
             id="list-item-value"
             v-model="listItemForm.value"
@@ -185,8 +185,8 @@
           />
         </div>
         <div class="modal-actions">
-          <button @click="closeListItemModal" class="cancel-button">Cancel</button>
-          <button @click="confirmListItem" class="confirm-button">Confirm</button>
+          <button @click="closeListItemModal" class="cancel-button">{{ $t('form_generator.cancel') }}</button>
+          <button @click="confirmListItem" class="confirm-button">{{ $t('form_generator.confirm') }}</button>
         </div>
       </div>
     </div>
@@ -195,6 +195,7 @@
 
 <script setup>
 import { ref, reactive, watch, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import yaml from 'js-yaml'
 import { fetchConfigSchema, postYaml, fetchWorkflowYAML, updateYaml } from '../utils/apiFunctions.js'
 import { configStore } from '../utils/configStore.js'
@@ -252,6 +253,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'submit', 'copy'])
+
+const { t } = useI18n()
 
 // Stores all "layers" of forms
 const modalStack = reactive([])
@@ -618,7 +621,7 @@ const validateModalForm = (modal) => {
 
     const value = modal.formData[field.name]
     if (isValueEmpty(value)) {
-      modal.formError = `"${field.displayName || field.name}" is required`
+      modal.formError = t('form_generator.field_required', { field: field.displayName || field.name })
       return false
     }
   }
@@ -1165,15 +1168,15 @@ const generateChildSummary = (modal, formData) => {
         // For list fields, show number of entries configured 
         const entryCount = Array.isArray(value) ? value.length : 0
         if (entryCount > 0 && entryCount===1) {
-          summaryParts.push(`${label}: 1 entry configured`)
+          summaryParts.push(t('form_generator.entry_configured_single', { label }))
         } else if (entryCount > 0 && entryCount > 1) {
-          summaryParts.push(`${label}: ${entryCount} entries configured`)
+          summaryParts.push(t('form_generator.entry_configured_multiple', { label, count: entryCount }))
         }
       } else {
         // For non-list fields, show configuration status 
         const isConfigured = value !== null && value !== undefined && value !== ''
         if (isConfigured) {
-          summaryParts.push(`${label}: Configured`)
+          summaryParts.push(t('form_generator.configured', { label }))
         }
       }
       continue
@@ -1380,7 +1383,7 @@ const validateModalFormEnhanced = (modal) => {
          // Inline modal has its own error display capabilities? 
          // Actually `DynamicFormField` doesn't render headers. 
          // We might need to bubble the error to the parent.
-         modal.formError = `Error in ${key}: ${childModal.formError || 'Invalid configuration'}`
+         modal.formError = t('form_generator.error_in', { key, error: childModal.formError || t('form_generator.invalid_configuration') })
          return false
       }
     }
@@ -1415,12 +1418,12 @@ const showCopyButton = (modal) => {
 const deleteButtonLabel = (modal) => {
   const field = getUpperBreadcrumbsField(modal)
   if (field === 'nodes') {
-    return 'Delete Node'
+    return t('form_generator.delete_node')
   }
   if (field === 'edges') {
-    return 'Delete Edge'
+    return t('form_generator.delete_edge')
   }
-  return 'Delete'
+  return t('form_generator.delete')
 }
 
 const isNodeModal = (modal) => {
@@ -1488,7 +1491,7 @@ const deleteEntry = async (modalId) => {
   // Ask for user confirmation before deleting node/edge
   const collectionField = getUpperBreadcrumbsField(modal)
   const entityLabel = collectionField === 'nodes' ? 'node' : collectionField === 'edges' ? 'edge' : 'entry'
-  const confirmed = window.confirm(`Are you sure you want to delete this ${entityLabel}?`)
+  const confirmed = window.confirm(t('form_generator.confirm_delete', { entity: entityLabel }))
   if (!confirmed) {
     return
   }
@@ -1500,7 +1503,7 @@ const deleteEntry = async (modalId) => {
     if (props.workflowName) {
       const ready = await ensureBaseYamlReady()
       if (!ready || !baseYamlObject.value) {
-        modal.formError = baseYamlError.value || 'Failed to load existing workflow YAML'
+        modal.formError = baseYamlError.value || t('form_generator.failed_to_load_yaml')
         return
       }
     }
@@ -1508,7 +1511,7 @@ const deleteEntry = async (modalId) => {
     // filename without the .yaml suffix
     const filename = resolveTargetFilename()
     if (!filename) {
-      modal.formError = 'Graph ID is required to save workflow'
+      modal.formError = t('form_generator.graph_id_required')
       return
     }
 
@@ -1517,14 +1520,14 @@ const deleteEntry = async (modalId) => {
       : null
 
     if (!yamlObjectToSave) {
-      modal.formError = 'No workflow context available for deletion'
+      modal.formError = t('form_generator.no_workflow_context')
       return
     }
 
     if (collectionField === 'nodes') {
       const targetNodeId = resolveNodeIdForDeletion(modal)
       if (!targetNodeId) {
-        modal.formError = 'Node ID is required for deletion'
+        modal.formError = t('form_generator.node_id_required')
         return
       }
       removeNodeRelatedYamlInfo(yamlObjectToSave, targetNodeId)
@@ -1536,7 +1539,7 @@ const deleteEntry = async (modalId) => {
 
     const result = await saveWorkflowYaml(filename, yamlString)
     if (!result.success) {
-      modal.formError = result.detail || result.message || 'Failed to save workflow'
+      modal.formError = result.detail || result.message || t('form_generator.failed_to_save')
       return
     }
 
@@ -1554,7 +1557,7 @@ const deleteEntry = async (modalId) => {
     closeModal(modalId)
   } catch (error) {
     console.error('Error deleting entry:', error)
-    modal.formError = 'Failed to delete entry'
+    modal.formError = t('form_generator.failed_to_delete')
   } finally {
     modal.submitting = false
   }
@@ -1613,7 +1616,7 @@ const submitForm = async (modalId) => {
     const { structuredData } = buildPartialYamlPayload(modal, payload)
 
     if (!structuredData) {
-      modal.formError = 'Failed to generate YAML output'
+      modal.formError = t('form_generator.failed_to_generate_yaml')
       return
     }
 
@@ -1672,13 +1675,36 @@ const submitForm = async (modalId) => {
     closeModal(modalId)
   } catch (error) {
     console.error('Error submitting form:', error)
-    modal.formError = 'Failed to submit form, error:\n' + error
+    modal.formError = t('form_generator.failed_to_submit') + error
   } finally {
     modal.submitting = false
   }
 }
 
 // Press Enter to submit topmost modal, Esc to close
+const handleLocalScrollWheel = (event) => {
+  const target = event.currentTarget
+  if (!target) {
+    return
+  }
+
+  event.stopPropagation()
+
+  if (target.scrollHeight <= target.clientHeight) {
+    event.preventDefault()
+    return
+  }
+
+  const isScrollingUp = event.deltaY < 0
+  const isScrollingDown = event.deltaY > 0
+  const atTop = target.scrollTop <= 0
+  const atBottom = Math.ceil(target.scrollTop + target.clientHeight) >= target.scrollHeight
+
+  if ((isScrollingUp && atTop) || (isScrollingDown && atBottom)) {
+    event.preventDefault()
+  }
+}
+
 const handleKeystrokes = (event) => {
   if (event.key === 'Enter') {
     // Do not intercept Enter inside textarea to allow newlines
@@ -1791,7 +1817,7 @@ const openChildModal = async (modalId, field, listIndex = null) => {
   try {
     await generateForm(nextBreadcrumbs, true, context, initialData)
   } catch (error) {
-    parentModal.formError = 'Failed to load child schema, error:\n' + error
+    parentModal.formError = t('form_generator.failed_to_load_child') + error
   }
 }
 
@@ -1952,17 +1978,17 @@ const editVar = (modalId, fieldName, key) => {
 
 const validateVarForm = (modal) => {
   if (!varForm.key.trim()) {
-    varFormError.value = 'Key is required'
+    varFormError.value = t('form_generator.key_required')
     return false
   }
   if (!varForm.value.trim()) {
-    varFormError.value = 'Value is required'
+    varFormError.value = t('form_generator.value_required')
     return false
   }
 
   const fieldName = activeVarFieldName.value
   if (!fieldName) {
-    varFormError.value = 'Invalid field context'
+    varFormError.value = t('form_generator.invalid_field_context')
     return false
   }
 
@@ -1976,7 +2002,7 @@ const validateVarForm = (modal) => {
     Object.prototype.hasOwnProperty.call(modal.formData[fieldName], trimmedKey) &&
     editingVarIndex.value !== trimmedKey
   ) {
-    varFormError.value = 'Key already exists'
+    varFormError.value = t('form_generator.key_exists')
     return false
   }
 
@@ -2057,7 +2083,7 @@ const resetListItemForm = () => {
 
 const validateListItemForm = () => {
   if (!listItemForm.value.trim()) {
-    listItemFormError.value = 'Value is required'
+    listItemFormError.value = t('form_generator.value_required')
     return false
   }
   return true
@@ -2147,6 +2173,7 @@ defineExpose({
   padding: 15px 20px 30px 15px;
   max-height: none;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   scrollbar-width: none;

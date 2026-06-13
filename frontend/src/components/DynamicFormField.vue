@@ -3,11 +3,11 @@
     <template v-if="field.childNode">
       <div v-if="recursive" class="form-group form-group-inline child-node-group">
         <label>
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -62,7 +62,7 @@
               v-if="hasChildValue"
               class="clear-child-button"
               @click.stop="$emit('clear-child-entry', field.name)"
-              title="Clear configuration"
+              :title="$t('dynamic_form_field.clear_configuration')"
             >
               ×
             </button>
@@ -87,7 +87,7 @@
                   <button
                     class="delete-child-button"
                     @click.stop="$emit('delete-child-entry', field.name, childIndex)"
-                    title="Delete child"
+                    :title="$t('dynamic_form_field.delete_child')"
                   >
                     ×
                   </button>
@@ -118,11 +118,11 @@
       <!-- Standard Popup Style (if not expanded) -->
       <div v-if="!expandInline" class="form-group form-group-inline child-node-group">
         <label>
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -189,7 +189,7 @@
             v-if="!canOpenConditionalChildModal"
             class="child-node-hint"
           >
-            Please select a type and configure
+            {{ $t('dynamic_form_field.select_type_and_configure') }}
           </div>
           <div
             v-if="hasChildValue && childSummaries[field.name]"
@@ -230,56 +230,64 @@
       <!-- Choice dropdown fields-->
       <div v-if="field.enum && !isList" class="form-group">
         <label :for="`${modalId}-${field.name}`">
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
           </RichTooltip>
         </label>
-        <div class="custom-select-wrapper" :class="{ 'select-disabled': isReadOnly }">
+        <div ref="selectWrapper" class="custom-select-wrapper" :class="{ 'select-disabled': isReadOnly }" @click="toggleDropdown">
           <input
             :id="`${modalId}-${field.name}`"
             :value="inputValue"
-            @input="onFilterInput"
-            @focus="showDropdown = true"
-            @blur="handleInputBlur"
             class="form-input custom-select-input"
-            :readonly="isReadOnly"
+            readonly
             :class="{'input-readonly': isReadOnly}"
-            placeholder="Type to filter options..."
+            :placeholder="$t('dynamic_form_field.type_to_filter')"
             autocomplete="off"
           />
-          <div v-if="showDropdown && !isReadOnly" class="custom-select-dropdown">
+          <Teleport to="body">
             <div
-              v-if="!field.required"
-              class="custom-select-option"
-              :class="{ 'option-selected': formData[field.name] === null }"
-              @mousedown="selectOption(null)"
+              v-if="showDropdown && !isReadOnly"
+              class="custom-select-dropdown"
+              data-local-scroll
+              :style="dropdownStyle"
+              @mousedown.prevent
+              @wheel="handleLocalScrollWheel"
+              @scroll.stop
+              @touchmove.stop
             >
-              None
+              <div
+                v-if="!field.required"
+                class="custom-select-option"
+                :class="{ 'option-selected': formData[field.name] === null }"
+                @mousedown.stop="selectOption(null)"
+              >
+                None
+              </div>
+              <div
+                v-for="option in filteredOptions"
+                :key="typeof option === 'string' ? option : option.value"
+                class="custom-select-option"
+                :class="{ 'option-selected': formData[field.name] === (typeof option === 'string' ? option : option.value) }"
+                :title="typeof option === 'string' ? '' : (option.description || '')"
+                @mousedown.stop="selectOption(typeof option === 'string' ? option : option.value)"
+              >
+                {{
+                  typeof option === 'string'
+                    ? option
+                    : (option.label || option.value)
+                }}
+              </div>
+              <div v-if="filteredOptions.length === 0" class="custom-select-no-results">
+                {{ $t('dynamic_form_field.no_options_found') }}
+              </div>
             </div>
-            <div
-              v-for="option in filteredOptions"
-              :key="typeof option === 'string' ? option : option.value"
-              class="custom-select-option"
-              :class="{ 'option-selected': formData[field.name] === (typeof option === 'string' ? option : option.value) }"
-              :title="typeof option === 'string' ? '' : (option.description || '')"
-              @mousedown="selectOption(typeof option === 'string' ? option : option.value)"
-            >
-              {{
-                typeof option === 'string'
-                  ? option
-                  : (option.label || option.value)
-              }}
-            </div>
-            <div v-if="filteredOptions.length === 0" class="custom-select-no-results">
-              No options found
-            </div>
-          </div>
+          </Teleport>
           <div class="custom-select-arrow" :class="{ 'arrow-open': showDropdown }">
             ▼
           </div>
@@ -289,11 +297,11 @@
       <!-- Multi-choice fields -->
       <div v-else-if="field.enum && isList" class="form-group">
         <label>
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -326,11 +334,11 @@
       <div v-else-if="field.type === 'bool' && !isList" class="form-group">
         <div class="switch-wrapper">
           <label :for="`${modalId}-${field.name}`" class="switch-label-text">
-            {{ field.displayName || field.name }}
+            {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
             <span v-if="field.required" class="required-asterisk">*</span>
             <RichTooltip
               v-if="field.description"
-              :content="{ description: field.description }"
+              :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
               placement="top"
             >
               <span class="help-icon" tabindex="0">?</span>
@@ -352,11 +360,11 @@
       <!-- String input fields -->
       <div v-else-if="field.type === 'str' && !isList" class="form-group">
         <label :for="`${modalId}-${field.name}`">
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -390,49 +398,38 @@
       <!-- Multiline text fields -->
       <div v-else-if="field.type === 'text' && !isList" class="form-group">
         <label :for="`${modalId}-${field.name}`">
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
           </RichTooltip>
         </label>
-        <div class="suggestion-wrapper">
-          <textarea
-            :id="`${modalId}-${field.name}`"
-            :value="formData[field.name]"
-            @input="onInput($event.target.value)"
-            @focus="showSuggestionsOnFocus"
-            @blur="closeSuggestions"
-            class="form-textarea"
-            rows="4"
-            :readonly="isReadOnly"
-            :class="{'input-readonly': isReadOnly}"
-          />
-          <div v-if="showSuggestions && suggestionsList.length > 0" class="suggestions-dropdown">
-            <div
-              v-for="(suggestion, index) in suggestionsList"
-              :key="index"
-              class="suggestion-item"
-              @mousedown="insertSuggestion(suggestion, $event)"
-            >
-              {{ suggestion }}
-            </div>
-          </div>
-        </div>
+        <textarea
+          :id="`${modalId}-${field.name}`"
+          :value="formData[field.name]"
+          @input="onInput($event.target.value)"
+          @wheel="handleLocalScrollWheel"
+          @scroll.stop
+          class="form-textarea"
+          data-local-scroll
+          rows="4"
+          :readonly="isReadOnly"
+          :class="{'input-readonly': isReadOnly}"
+        />
       </div>
 
       <!-- Integer input fields -->
       <div v-else-if="field.type === 'int' && !isList" class="form-group">
         <label :for="`${modalId}-${field.name}`">
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -453,11 +450,11 @@
       <!-- Float input fields -->
       <div v-else-if="field.type === 'float' && !isList" class="form-group">
         <label :for="`${modalId}-${field.name}`">
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -478,11 +475,11 @@
       <!-- Key-value fields -->
       <div v-else-if="field.type === 'dict[str, Any]' || field.type === 'dict[str, str]'" class="form-group form-group-inline">
         <label>
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -503,7 +500,7 @@
                 />
               </svg>
             </span>
-            Add key-value
+            {{ $t('dynamic_form_field.add_key_value') }}
           </button>
           <div
             v-if="formData[field.name] && hasDictEntries(formData[field.name])"
@@ -521,7 +518,7 @@
               <button
                 class="delete-var-button"
                 @click.stop="$emit('delete-var', field.name, varKey)"
-                title="Delete variable"
+                :title="$t('dynamic_form_field.delete_variable')"
               >
                 ×
               </button>
@@ -533,11 +530,11 @@
       <!-- List of strings field -->
       <div v-else-if="isList && field.type.includes('str')" class="form-group form-group-inline">
         <label>
-          {{ field.displayName || field.name }}
+          {{ $te('schema.' + field.name) ? $t('schema.' + field.name) : (field.displayName || field.name) }}
           <span v-if="field.required" class="required-asterisk">*</span>
           <RichTooltip
             v-if="field.description"
-            :content="{ description: field.description }"
+            :content="{ description: $te('schema_desc.' + field.name) ? $t('schema_desc.' + field.name) : field.description }"
             placement="top"
           >
             <span class="help-icon" tabindex="0">?</span>
@@ -570,7 +567,7 @@
               <button
                 class="delete-item-button"
                 @click.stop="$emit('delete-list-item', field.name, index)"
-                title="Delete item"
+                :title="$t('dynamic_form_field.delete_item')"
               >
                 ×
               </button>
@@ -583,8 +580,11 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, reactive, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import RichTooltip from './RichTooltip.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   field: {
@@ -639,6 +639,8 @@ const props = defineProps({
   }
 })
 
+const isReadOnly = computed(() => props.isReadOnly)
+
 const emit = defineEmits([
   'update:form-data',
   'open-child-modal',
@@ -661,10 +663,58 @@ const internalFormData = computed(() => props.formData)
 // Custom select filtering state
 const showDropdown = ref(false)
 const filterText = ref('')
+const selectWrapper = ref(null)
+const dropdownRect = reactive({
+  top: 0,
+  left: 0,
+  width: 0
+})
 
-// Variable suggestions state
-const showSuggestions = ref(false)
-const suggestionsList = ref([])
+const updateDropdownPosition = () => {
+  if (selectWrapper.value) {
+    const rect = selectWrapper.value.getBoundingClientRect()
+    dropdownRect.top = rect.bottom
+    dropdownRect.left = rect.left
+    dropdownRect.width = rect.width
+  }
+}
+
+const dropdownStyle = computed(() => ({
+  position: 'fixed',
+  top: `${dropdownRect.top + 4}px`,
+  left: `${dropdownRect.left}px`,
+  width: `${dropdownRect.width}px`,
+  zIndex: 10000
+}))
+
+const toggleDropdown = () => {
+  if (props.isReadOnly) return
+  if (!showDropdown.value) {
+    updateDropdownPosition()
+    showDropdown.value = true
+    // Add escape listener
+    window.addEventListener('scroll', closeOnScroll, true)
+    window.addEventListener('mousedown', handleOutsideClick)
+  } else {
+    closeDropdown()
+  }
+}
+
+const closeDropdown = () => {
+  showDropdown.value = false
+  window.removeEventListener('scroll', closeOnScroll, true)
+  window.removeEventListener('mousedown', handleOutsideClick)
+}
+
+const closeOnScroll = () => {
+  if (showDropdown.value) closeDropdown()
+}
+
+const handleOutsideClick = (e) => {
+  if (selectWrapper.value && !selectWrapper.value.contains(e.target)) {
+    closeDropdown()
+  }
+}
 
 const isList = computed(() => {
   return props.field.type && props.field.type.includes('list[')
@@ -684,9 +734,9 @@ const hasChildValue = computed(() => {
 
 const childNodeButtonLabel = computed(() => {
   if (isList.value) {
-    return `Add Entry`
+    return t('dynamic_form_field.add_entry')
   }
-  return props.formData[props.field.name] ? `Edit ${props.field.childNode}` : `Configure ${props.field.childNode}`
+  return props.formData[props.field.name] ? t('dynamic_form_field.edit_child', { child: props.field.childNode }) : t('dynamic_form_field.configure_child', { child: props.field.childNode })
 })
 
 // Filtered options for custom select
@@ -776,6 +826,34 @@ const onFilterInput = (event) => {
   showDropdown.value = true
 }
 
+const handleLocalScrollWheel = (event) => {
+  const target = event.currentTarget
+  if (!target) {
+    return
+  }
+
+  const isDropdown = target.classList.contains('custom-select-dropdown')
+
+  if (target.scrollHeight <= target.clientHeight) {
+    if (isDropdown) {
+      event.stopPropagation()
+      event.preventDefault()
+    }
+    return
+  }
+
+  const isScrollingUp = event.deltaY < 0
+  const isScrollingDown = event.deltaY > 0
+  const atTop = target.scrollTop <= 0
+  const atBottom = Math.ceil(target.scrollTop + target.clientHeight) >= target.scrollHeight
+
+  event.stopPropagation()
+
+  if ((isScrollingUp && atTop) || (isScrollingDown && atBottom)) {
+    event.preventDefault()
+  }
+}
+
 const handleInputBlur = () => {
   // Delay hiding dropdown to allow option selection
   setTimeout(() => {
@@ -786,8 +864,7 @@ const handleInputBlur = () => {
 
 const selectOption = (value) => {
   props.formData[props.field.name] = value
-  showDropdown.value = false
-  filterText.value = ''
+  closeDropdown()
   emit('handle-enum-change', props.field)
 }
 
@@ -991,6 +1068,7 @@ onMounted(() => {
   box-sizing: border-box;
   min-height: 80px;
   resize: vertical;
+  overscroll-behavior: contain;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1432,10 +1510,12 @@ input:checked + .switch-slider:before {
 
 .custom-select-wrapper {
   position: relative;
+  height: 38px; /* Fixed height to prevent absolute child from stretching parent */
 }
 
 .custom-select-input {
   cursor: pointer;
+  height: 100%;
 }
 
 .custom-select-input:focus {
@@ -1445,7 +1525,202 @@ input:checked + .switch-slider:before {
 .custom-select-arrow {
   position: absolute;
   right: 12px;
-  top: 18px;
+  margin-left: 8px;
+}
+
+.delete-item-button:hover {
+  color: #ff6b6b;
+}
+
+.child-node-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.child-node-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.clear-child-button {
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  line-height: 1;
+}
+
+.clear-child-button:hover {
+  color: #ff6b6b;
+}
+
+.add-child-button,
+.add-list-button,
+.add-var-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.14);
+  color: rgba(242, 242, 242, 0.9);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.add-child-button:hover,
+.add-list-button:hover,
+.add-var-button:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.add-child-button .plus-icon,
+.add-list-button .plus-icon,
+.add-var-button .plus-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.add-child-button .plus-icon svg,
+.add-list-button .plus-icon svg,
+.add-var-button .plus-icon svg {
+  display: block;
+}
+
+.add-child-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(74, 74, 74, 0.8);
+  color: rgba(200, 200, 200, 0.7);
+}
+
+.child-node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.child-node-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background-color: rgba(90, 90, 90, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: #f2f2f2;
+  font-size: 13px;
+  gap: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.child-node-item:hover {
+  background-color: rgba(110, 110, 110, 0.95);
+  border-color: rgba(160, 196, 255, 0.7);
+}
+
+.child-node-name {
+  flex: 1;
+}
+
+.child-node-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.child-node-item-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.child-node-summary {
+  padding: 6px 12px;
+  margin-left: 0;
+  background-color: rgba(60, 60, 60, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(200, 200, 200, 0.85);
+  font-size: 12px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-line;
+}
+
+.edit-child-button,
+.delete-child-button {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.edit-child-button {
+  background-color: rgba(117, 117, 117, 0.95);
+  color: #f2f2f2;
+}
+
+.edit-child-button:hover {
+  background-color: rgba(136, 136, 136, 0.98);
+}
+
+.delete-child-button {
+  background-color: rgba(90, 90, 90, 0.9);
+  color: #f2f2f2;
+}
+
+.delete-child-button:hover {
+  background-color: rgba(110, 110, 110, 0.95);
+}
+
+.child-node-hint {
+  padding: 6px 8px;
+  color: rgba(189, 189, 189, 0.9);
+  font-size: 12px;
+}
+
+/* Custom select styles */
+
+.custom-select-wrapper {
+  position: relative;
+  height: 38px; /* Fixed height to prevent absolute child from stretching parent */
+}
+
+.custom-select-input {
+  cursor: pointer;
+  height: 100%;
+}
+
+.custom-select-input:focus {
+  cursor: text;
+}
+
+.custom-select-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
   transform: translateY(-50%);
   color: rgba(242, 242, 242, 0.7);
   font-size: 12px;
@@ -1457,37 +1732,38 @@ input:checked + .switch-slider:before {
   transform: translateY(-50%) rotate(180deg);
 }
 
-.custom-select-dropdown {
-  position: static;
+:global(.custom-select-dropdown) {
+  position: fixed;
+  z-index: 10000;
   max-height: 200px;
   overflow-y: auto;
-  background-color: rgba(25, 25, 25, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  overscroll-behavior: contain;
+  background-color: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  margin-top: 2px;
-  width: 100%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  box-sizing: border-box;
 }
 
-.custom-select-option {
-  padding: 6px 6px;
+:global(.custom-select-option) {
+  padding: 10px 14px;
   cursor: pointer;
   color: #f2f2f2;
   font-size: 13px;
   transition: background-color 0.2s ease;
 }
 
-.custom-select-option:hover {
+:global(.custom-select-option:hover) {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.custom-select-option.option-selected {
+:global(.custom-select-option.option-selected) {
   background-color: rgba(160, 196, 255, 0.2);
   color: #a0c4ff;
   font-weight: 500;
 }
 
-.custom-select-no-results {
+:global(.custom-select-no-results) {
   padding: 10px 12px;
   color: rgba(189, 189, 189, 0.7);
   font-size: 12px;

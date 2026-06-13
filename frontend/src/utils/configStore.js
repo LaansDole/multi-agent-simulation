@@ -6,6 +6,7 @@ const defaultSettings = {
     AUTO_SHOW_ADVANCED: false,
     AUTO_EXPAND_MESSAGES: false,
     ENABLE_HELP_TOOLTIPS: true,
+    LANGUAGE: 'en',
 
     // ── Contagion simulation defaults ──
     CONTAGION_INFECTION_RADIUS: 120,            // px — max distance for proximity spread

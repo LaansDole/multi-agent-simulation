@@ -28,16 +28,3 @@ data/
 temp/
 WareHouse/
 
-# Git worktrees
-.worktrees/
-
-# AI Tools
-.ralph-tui/
-.opencode
-
-# tasks/
-openspec/
-**/.agent/
-**/.agents/
-
-docs/research/
