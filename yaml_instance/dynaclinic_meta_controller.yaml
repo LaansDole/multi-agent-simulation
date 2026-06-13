@@ -1,0 +1,342 @@
+version: 0.0.0
+graph:
+  id: dynaclinic_meta_controller
+  description: |
+    DynaClinic Meta-Controller demonstration.
+    Implements Complexity-Aware Triage: the Meta-Controller classifies incoming
+    clinical queries as LOW or HIGH complexity and routes accordingly.
+    LOW -> single Primary Care Agent (fast path).
+    HIGH -> full Integrated Care Team (Imaging + Pathology + Pharmacology)
+    converging through a Consensus Builder.
+    Reference: DynaClinic Research Proposal, Phase 1 + Meta-Controller.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: CaseInput
+      type: literal
+      config:
+        content: Starting clinical case evaluation
+        role: user
+      description: Triggers the clinical case evaluation pipeline
+      context_window: 0
+      log_output: true
+    - id: MetaController
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Meta-Controller of the DynaClinic multi-agent framework.
+          Your primary directive is Complexity-Aware Triage.
+
+          Evaluate the incoming clinical query and classify it into one of two tiers:
+
+          LOW COMPLEXITY (route to single Primary Care Agent):
+          - Single, uncomplicated acute conditions (e.g., common cold, minor sprain)
+          - Pathognomonic presentations with clear diagnosis
+          - Stable chronic disease management
+
+          HIGH COMPLEXITY (route to full Integrated Care Team):
+          - Multi-organ systemic conditions
+          - Superimposed comorbidities
+          - Ambiguous presentations requiring specialist consultation
+          - Cases involving potential drug interactions or rare conditions
+
+          You MUST output your classification as the FIRST line in this exact format:
+          COMPLEXITY: LOW
+          or
+          COMPLEXITY: HIGH
+
+          Follow with a brief justification (2-3 sentences) for your triage decision.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Evaluates case complexity and routes to appropriate care pathway
+      context_window: 0
+      log_output: true
+    - id: PrimaryCareAgent
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Primary Care Agent in the DynaClinic framework.
+          You handle LOW-complexity clinical cases independently, without requiring
+          multi-agent consensus.
+
+          Given the clinical query, provide:
+          1. Preliminary Diagnosis
+          2. Recommended Diagnostic Tests (if any)
+          3. Treatment Plan
+          4. Follow-up Recommendations
+
+          Keep your response concise and evidence-based.
+          You are the sole decision-maker for this case.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Handles low-complexity cases independently (fast path)
+      context_window: 0
+      log_output: true
+    - id: ImagingAgent
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Diagnostic Imaging Specialist in the DynaClinic Integrated Care Team.
+          Your role is strictly constrained to imaging-related clinical analysis.
+
+          Analyze ONLY the imaging-related aspects of the clinical case:
+          1. Recommended Imaging Studies (X-ray, CT, MRI, Ultrasound, etc.)
+          2. Expected Imaging Findings based on the clinical presentation
+          3. Differential diagnoses supported by imaging evidence
+
+          DO NOT comment on laboratory results, medications, or pathology.
+          Stay within your subdomain. Output your findings in structured format.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Specialist - analyzes imaging-related aspects only
+      context_window: 0
+      log_output: true
+    - id: PathologyAgent
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Pathology Specialist in the DynaClinic Integrated Care Team.
+          Your role is strictly constrained to laboratory and pathology analysis.
+
+          Analyze ONLY the laboratory and pathology aspects of the clinical case:
+          1. Recommended Laboratory Tests (blood panels, urinalysis, biopsies, etc.)
+          2. Expected Lab Findings based on the clinical presentation
+          3. Pathological indicators and biomarkers to monitor
+
+          DO NOT comment on imaging studies, medications, or treatment plans.
+          Stay within your subdomain. Output your findings in structured format.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Specialist - analyzes laboratory and pathology data only
+      context_window: 0
+      log_output: true
+    - id: PharmacologyAgent
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Clinical Pharmacology Specialist in the DynaClinic Integrated Care Team.
+          Your role is strictly constrained to medication and pharmacological analysis.
+
+          Analyze ONLY the pharmacological aspects of the clinical case:
+          1. Recommended Medications and dosing
+          2. Potential Drug Interactions and contraindications
+          3. Pharmacokinetic considerations (age, organ function, etc.)
+          4. Alternative therapeutic options
+
+          DO NOT comment on imaging studies, laboratory interpretation, or diagnosis.
+          Stay within your subdomain. Output your findings in structured format.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Specialist - evaluates medication interactions and pharmacology
+      context_window: 0
+      log_output: true
+    - id: ConsensusBuilder
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Consensus Builder in the DynaClinic framework.
+          You receive findings from multiple Integrated Care Team specialists
+          (Imaging, Pathology, and Pharmacology).
+
+          Your task is to:
+          1. Integrate all specialist findings into a unified diagnostic hypothesis
+          2. Identify areas of agreement across specialties
+          3. Flag any potential conflicts between specialist recommendations
+          4. Produce a synthesized clinical assessment
+
+          CRITICAL: Do NOT add novel hypotheses or findings not present in the
+          specialist reports. You are a synthesizer, not a generator.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Synthesizes ICT specialist findings into unified diagnosis
+      context_window: -1
+      log_output: true
+    - id: FinalDiagnosis
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Final Diagnosis formatter in the DynaClinic framework.
+          You receive clinical assessments from either the Primary Care Agent
+          (low-complexity path) or the Consensus Builder (high-complexity path).
+
+          Format the output as a professional clinical report:
+
+          DYNACLINIC CLINICAL REPORT
+          ==========================
+          Triage Path: [LOW/HIGH complexity]
+          Primary Diagnosis: [diagnosis]
+          Supporting Evidence: [key findings]
+          Treatment Plan: [recommendations]
+          Follow-up: [next steps]
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Formats final clinical output from either care pathway
+      context_window: -1
+      log_output: true
+  edges:
+    - from: CaseInput
+      to: MetaController
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: MetaController
+      to: PrimaryCareAgent
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "LOW"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: MetaController
+      to: ImagingAgent
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "HIGH"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: MetaController
+      to: PathologyAgent
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "HIGH"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: MetaController
+      to: PharmacologyAgent
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "HIGH"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ImagingAgent
+      to: ConsensusBuilder
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: PathologyAgent
+      to: ConsensusBuilder
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: PharmacologyAgent
+      to: ConsensusBuilder
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: PrimaryCareAgent
+      to: FinalDiagnosis
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ConsensusBuilder
+      to: FinalDiagnosis
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+  memory: []
+  initial_instruction: >-
+    Enter a clinical case description. Examples:
+    LOW complexity: "Patient presents with sore throat and mild fever for 2 days."
+    HIGH complexity: "68-year-old diabetic patient with chest pain, renal insufficiency, and concurrent warfarin therapy."
+  start:
+    - CaseInput
+  end:
+    - FinalDiagnosis
+vars:
+  MODEL_NAME: qwen3.5-4b

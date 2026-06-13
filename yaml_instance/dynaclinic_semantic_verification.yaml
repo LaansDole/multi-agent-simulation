@@ -1,0 +1,384 @@
+version: 0.0.0
+graph:
+  id: dynaclinic_semantic_verification
+  description: |
+    DynaClinic Semantic Verification Safety Gates demonstration.
+    Implements Layer 4 of the DynaClinic architecture with three sequential
+    verification algorithms:
+    1. A_SAD (Activity-Level Semantic Anomaly Detection) - validates temporal ordering
+    2. S_NAP (Semantic Next-Activity Prediction) - cross-validates logical next steps
+    3. T_SAD (Trace-Level Semantic Anomaly Detection) - holistic trace compliance
+    Any FAIL triggers a revision loop (max 2 iterations).
+    Reference: DynaClinic Research Proposal, Layer 4 - Verification & Safety Gates.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: CaseInput
+      type: literal
+      config:
+        content: Starting clinical plan generation and verification
+        role: user
+      description: Triggers clinical plan generation
+      context_window: 0
+      log_output: true
+    - id: ClinicalPlanGenerator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are a Clinical Plan Generator in the DynaClinic framework.
+          Given a clinical case, generate an ORDERED clinical treatment plan
+          as a numbered sequence of steps.
+
+          Your plan must include (in chronological order):
+          1. Initial assessment and vital signs
+          2. Diagnostic tests (blood work, imaging, etc.)
+          3. Primary interventions or treatments
+          4. Monitoring and follow-up steps
+          5. Discharge criteria or escalation triggers
+
+          Output the plan as numbered steps (1, 2, 3, ...).
+          Each step must specify: the clinical activity, its purpose, and timing.
+          Be specific about the temporal ordering of activities.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Generates ordered clinical treatment plan
+      context_window: 0
+      log_output: true
+    - id: A_SAD_Validator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the A_SAD Validator (Activity-Level Semantic Anomaly Detector)
+          in the DynaClinic Verification & Safety Gates (Layer 4).
+
+          Your task is to verify the TEMPORAL ORDERING of consecutive clinical
+          activities in the treatment plan. For each pair of consecutive steps
+          (step_i, step_j), check whether the sequence follows correct medical
+          precedence.
+
+          VIOLATION EXAMPLES:
+          - Scheduling surgery BEFORE blood coagulation tests
+          - Administering contrast dye BEFORE checking kidney function
+          - Discharging patient BEFORE confirming stable vitals
+          - Starting chemotherapy BEFORE pathology confirmation
+
+          Evaluate EVERY consecutive pair in the plan.
+
+          You MUST output your verdict as the FIRST line in this exact format:
+          A_SAD: PASS
+          or
+          A_SAD: FAIL
+
+          If FAIL, list each temporal violation found with the specific step
+          numbers and explain why the ordering is clinically incorrect.
+          If PASS, briefly confirm the temporal ordering is sound.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Gate 1 - validates temporal ordering of clinical activities
+      context_window: -1
+      log_output: true
+    - id: S_NAP_Predictor
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the S_NAP Predictor (Semantic Next-Activity Predictor)
+          in the DynaClinic Verification & Safety Gates (Layer 4).
+
+          Your task is INDEPENDENT NEXT-STEP PREDICTION. For each step in
+          the clinical plan, independently predict what the NEXT logical
+          clinical activity should be based on established medical protocols.
+
+          Then COMPARE your predictions against the actual next steps in the plan.
+
+          Check specifically for:
+          - Dangerous OMISSIONS of standard-of-care protocols
+          - Missing safety checks before high-risk procedures
+          - Skipped mandatory assessments (e.g., allergy checks before medication)
+
+          You MUST output your verdict as the FIRST line in this exact format:
+          S_NAP: PASS
+          or
+          S_NAP: FAIL
+
+          If FAIL, list each omission or misalignment with the specific step
+          number where the predicted next activity differs from the actual plan.
+          If PASS, confirm the plan follows expected clinical protocols.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Gate 2 - cross-validates logical next steps against protocols
+      context_window: -1
+      log_output: true
+    - id: T_SAD_Reviewer
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the T_SAD Reviewer (Trace-Level Semantic Anomaly Detector)
+          in the DynaClinic Verification & Safety Gates (Layer 4).
+
+          Your task is HOLISTIC TRACE EVALUATION. Evaluate the ENTIRE clinical
+          trace as a complete pathway against standard-of-care guidelines and
+          regulatory requirements.
+
+          Check for:
+          1. Missing MANDATORY steps required by clinical guidelines
+          2. Regulatory NON-COMPLIANCE (informed consent, documentation, etc.)
+          3. Dangerous OMISSIONS (missing allergy checks, missing drug interaction screening)
+          4. Incomplete care pathways (missing follow-up, missing referrals)
+          5. Overall clinical COHERENCE of the complete treatment trajectory
+
+          You MUST output your verdict as the FIRST line in this exact format:
+          T_SAD: PASS
+          or
+          T_SAD: FAIL
+
+          If FAIL, list each holistic issue found and reference the specific
+          clinical guideline or standard being violated.
+          If PASS, confirm the complete trace is clinically sound and compliant.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Gate 3 - holistic trace evaluation against clinical guidelines
+      context_window: -1
+      log_output: true
+    - id: PlanReviser
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Plan Reviser in the DynaClinic framework.
+          You receive a clinical treatment plan that FAILED one or more
+          verification gates (A_SAD, S_NAP, or T_SAD).
+
+          The validator feedback explains what went wrong.
+
+          Your task:
+          1. Read the validator's FAIL reasons carefully
+          2. Fix EVERY identified issue
+          3. Regenerate the complete corrected treatment plan as numbered steps
+          4. Ensure the revised plan addresses all flagged violations
+
+          Output the complete revised plan. Do not omit any steps.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Revises plan based on validator feedback
+      context_window: -1
+      log_output: true
+    - id: LoopGate
+      type: loop_counter
+      config:
+        max_iterations: 2
+        reset_on_emit: true
+        message: Loop finished after maximum revision attempts
+      description: Limits revision cycles to prevent infinite loops
+      context_window: 0
+      log_output: true
+    - id: VerifiedPlanOutput
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Verified Plan Output formatter in the DynaClinic framework.
+          You receive a clinical treatment plan that has passed all three
+          verification safety gates (A_SAD, S_NAP, T_SAD) or has reached
+          the maximum revision limit.
+
+          Format the output as a professional verified clinical plan:
+
+          DYNACLINIC VERIFIED CLINICAL PLAN
+          =================================
+          Verification Status: [ALL GATES PASSED / MAX REVISIONS REACHED]
+          Gate Results:
+          - A_SAD (Temporal Ordering): [PASS/FAIL]
+          - S_NAP (Next-Activity Prediction): [PASS/FAIL]
+          - T_SAD (Trace Compliance): [PASS/FAIL]
+
+          APPROVED TREATMENT PLAN:
+          [formatted numbered plan]
+
+          Safety Notes: [any remaining concerns]
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Formats the verified and approved clinical plan
+      context_window: -1
+      log_output: true
+  edges:
+    - from: CaseInput
+      to: ClinicalPlanGenerator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ClinicalPlanGenerator
+      to: A_SAD_Validator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: A_SAD_Validator
+      to: S_NAP_Predictor
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "PASS"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: A_SAD_Validator
+      to: PlanReviser
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "FAIL"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: S_NAP_Predictor
+      to: T_SAD_Reviewer
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "PASS"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: S_NAP_Predictor
+      to: PlanReviser
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "FAIL"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: T_SAD_Reviewer
+      to: VerifiedPlanOutput
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "PASS"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: T_SAD_Reviewer
+      to: PlanReviser
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "FAIL"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: PlanReviser
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: LoopGate
+      to: ClinicalPlanGenerator
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - "Loop finished"
+      carry_data: true
+      keep_message: false
+      clear_context: true
+      clear_kept_context: true
+      processor: null
+    - from: LoopGate
+      to: VerifiedPlanOutput
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "Loop finished"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+  memory: []
+  initial_instruction: >-
+    Enter a clinical case for treatment plan generation and verification. Example:
+    "45-year-old patient with suspected appendicitis, elevated WBC, and right lower quadrant pain."
+  start:
+    - CaseInput
+  end:
+    - VerifiedPlanOutput
+vars:
+  MODEL_NAME: qwen3.5-4b

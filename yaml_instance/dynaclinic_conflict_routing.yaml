@@ -1,0 +1,296 @@
+version: 0.0.0
+graph:
+  id: dynaclinic_conflict_routing
+  description: |
+    DynaClinic Conflict-Aware Routing demonstration.
+    Implements Architecture Switching between Collaborative and Adversarial modes.
+    Two parallel diagnostic agents generate independent hypotheses.
+    A Conflict Detector monitors divergence. On CONSENSUS, output directly.
+    On CONFLICT (exceeding threshold tau), the system switches to Adversarial mode:
+    the Clinical Critic (Red-Team Agent) destructively tests both hypotheses,
+    then a Conflict Resolver synthesizes the final diagnosis.
+    Reference: DynaClinic Research Proposal, Conflict-Aware Routing.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: CaseInput
+      type: literal
+      config:
+        content: Starting parallel diagnostic evaluation
+        role: user
+      description: Triggers parallel hypothesis generation
+      context_window: 0
+      log_output: true
+    - id: DiagnosticAgent_A
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are Diagnostic Agent A -- the Conservative Diagnostician.
+          Your approach prioritizes the MOST PROBABLE single diagnosis
+          supported by the strongest available evidence.
+
+          Given the clinical case:
+          1. Identify the single most likely diagnosis
+          2. List supporting evidence (signs, symptoms, epidemiology)
+          3. Briefly note what you ruled out and why
+
+          Avoid speculation. Favor common conditions over rare ones.
+          Be concise and evidence-focused.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Conservative diagnostician - favors most probable single diagnosis
+      context_window: 0
+      log_output: true
+    - id: DiagnosticAgent_B
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are Diagnostic Agent B -- the Aggressive Differential Diagnostician.
+          Your approach generates a BROAD differential diagnosis list,
+          including rare conditions and atypical presentations.
+
+          Given the clinical case:
+          1. List 3-5 differential diagnoses ranked by likelihood
+          2. For each, note supporting and contradicting evidence
+          3. Highlight any red-flag conditions that must not be missed
+
+          Consider rare conditions, atypical presentations, and mimics.
+          Cast a wide diagnostic net.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Aggressive differential diagnostician - broad differential list
+      context_window: 0
+      log_output: true
+    - id: ConflictDetector
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Conflict Detector in the DynaClinic framework.
+          You monitor inter-agent diagnostic divergence.
+
+          You will receive outputs from TWO independent diagnostic agents:
+          - Agent A (conservative, single-diagnosis approach)
+          - Agent B (aggressive, broad differential approach)
+
+          Evaluate whether the two agents AGREE on the primary diagnosis:
+          - If Agent A's primary diagnosis appears in Agent B's differential
+            AND they agree on the core clinical reasoning: CONSENSUS
+          - If the diagnoses fundamentally diverge, contradict each other,
+            or point to incompatible treatment pathways: CONFLICT
+
+          You MUST output your verdict as the FIRST line in this exact format:
+          VERDICT: CONSENSUS
+          or
+          VERDICT: CONFLICT
+
+          Follow with a brief analysis of the agreement/divergence points.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Monitors inter-agent divergence, triggers architecture switch on conflict
+      context_window: -1
+      log_output: true
+    - id: ClinicalCritic
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Clinical Critic -- the Red-Team Agent in the DynaClinic framework.
+          You have been activated because a CONFLICT was detected between
+          two independent diagnostic agents.
+
+          YOUR SOLE DIRECTIVE IS DESTRUCTIVE ADVERSARIAL TESTING.
+
+          You do NOT generate novel clinical hypotheses or diagnostic pathways.
+          Instead, you must:
+          1. Hunt for FLAWS in both hypotheses
+          2. Identify MISSING EVIDENCE that neither agent addressed
+          3. Expose UNVERIFIED ASSUMPTIONS in the reasoning
+          4. Find LOGICAL LEAPS or gaps in clinical reasoning
+          5. Test each hypothesis against known contraindications
+
+          For each hypothesis, provide:
+          - Strengths (what evidence supports it)
+          - Weaknesses (what evidence contradicts it or is missing)
+          - Critical gaps (what tests or data would resolve the conflict)
+
+          Be thorough and ruthless. Patient safety depends on your rigor.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Red-Team adversarial agent - destructively tests conflicting hypotheses
+      context_window: -1
+      log_output: true
+    - id: ConflictResolver
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Conflict Resolver in the DynaClinic framework.
+          You receive the adversarial analysis from the Clinical Critic,
+          which has identified flaws, gaps, and weaknesses in two
+          conflicting diagnostic hypotheses.
+
+          Your task is to:
+          1. Weigh the surviving evidence after adversarial testing
+          2. Reconcile the divergent claims into a SINGLE, evidence-backed diagnosis
+          3. Acknowledge remaining uncertainties
+          4. Recommend specific next steps to resolve any ambiguity
+
+          Produce a reconciled clinical assessment that integrates the strongest
+          elements from both hypotheses while addressing the Critic's concerns.
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Synthesizes adversarial critique into reconciled diagnosis
+      context_window: -1
+      log_output: true
+    - id: DiagnosisSummary
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the Diagnosis Summary agent in the DynaClinic framework.
+          Format the final clinical output as a professional report.
+
+          DYNACLINIC DIAGNOSTIC REPORT
+          ============================
+          Resolution Path: [CONSENSUS / CONFLICT-RESOLVED]
+          Primary Diagnosis: [diagnosis]
+          Confidence Level: [High/Medium/Low]
+          Supporting Evidence: [key findings]
+          Adversarial Review: [if applicable, note the Critic's key findings]
+          Treatment Recommendations: [next steps]
+        base_url: ${BASE_URL}
+        api_key: ${API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Formats final diagnostic output
+      context_window: -1
+      log_output: true
+  edges:
+    - from: CaseInput
+      to: DiagnosticAgent_A
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: CaseInput
+      to: DiagnosticAgent_B
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: DiagnosticAgent_A
+      to: ConflictDetector
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: DiagnosticAgent_B
+      to: ConflictDetector
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ConflictDetector
+      to: DiagnosisSummary
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "CONSENSUS"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ConflictDetector
+      to: ClinicalCritic
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - "CONFLICT"
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ClinicalCritic
+      to: ConflictResolver
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+    - from: ConflictResolver
+      to: DiagnosisSummary
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      processor: null
+  memory: []
+  initial_instruction: >-
+    Enter a clinical case for parallel diagnostic evaluation. Examples:
+    Likely CONSENSUS: "Young adult with fever, sore throat, and cervical lymphadenopathy."
+    Likely CONFLICT: "55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long flight."
+  start:
+    - CaseInput
+  end:
+    - DiagnosisSummary
+vars:
+  MODEL_NAME: qwen3.5-4b
