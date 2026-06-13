@@ -3,86 +3,43 @@
     <div v-if="isVisible" class="modal-overlay" @click.self="close">
       <div class="modal-content settings-modal">
         <div class="modal-header">
-          <h3>Settings</h3>
+          <h3>{{ $t('settings.title') }}</h3>
           <button class="close-button" @click="close">×</button>
         </div>
         <div class="modal-body">
           <div class="settings-item">
             <label class="checkbox-label">
               <input type="checkbox" v-model="localConfig.AUTO_SHOW_ADVANCED">
-              Auto show advanced setting
+              {{ $t('settings.auto_show_advanced') }}
             </label>
-            <p class="setting-desc">Automatically expand "Advanced Settings" in configuration forms.</p>
+            <p class="setting-desc">{{ $t('settings.auto_show_advanced_desc') }}</p>
           </div>
           <div class="settings-item">
             <label class="checkbox-label">
               <input type="checkbox" v-model="localConfig.AUTO_EXPAND_MESSAGES">
-              Automatically expand messages
+              {{ $t('settings.auto_expand_messages') }}
             </label>
-            <p class="setting-desc">Automatically expand message content in the chat view.</p>
+            <p class="setting-desc">{{ $t('settings.auto_expand_messages_desc') }}</p>
           </div>
           <div class="settings-item">
             <label class="checkbox-label">
               <input type="checkbox" v-model="localConfig.ENABLE_HELP_TOOLTIPS">
-              Enable help tooltips
+              {{ $t('settings.enable_help_tooltips') }}
             </label>
-            <p class="setting-desc">Show contextual help tooltips throughout the workflow interface.</p>
+            <p class="setting-desc">{{ $t('settings.enable_help_tooltips_desc') }}</p>
           </div>
-
-          <!-- Contagion Simulation Settings -->
-          <div class="settings-item" @click="showContagion = !showContagion">
-            <span class="section-chevron" :class="{ open: showContagion }">▶</span>
-            Contagion Simulation
+          <div class="settings-item">
+            <label class="setting-label">{{ $t('settings.language') }}</label>
+            <select v-model="localConfig.LANGUAGE" class="language-select">
+              <option value="en">English</option>
+              <option value="zh">简体中文</option>
+            </select>
+            <p class="setting-desc">{{ $t('settings.language_desc') }}</p>
           </div>
-          <Transition name="collapse">
-          <div v-if="showContagion" class="contagion-settings">
-            <p class="section-hint">Parameters for the spatial contagion sandbox. Changes take effect on the next simulation tick.</p>
-
-            <div class="settings-group-label">Transmission</div>
-            <div class="number-setting">
-              <label>Infection Radius <span class="unit">px</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_INFECTION_RADIUS" min="0" step="10" />
-            </div>
-            <div class="number-setting">
-              <label>Infection Probability <span class="unit">/sec</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_INFECTION_PROBABILITY" min="0" max="1" step="0.05" />
-            </div>
-            <div class="number-setting">
-              <label>Floor Infection Probability <span class="unit">/sec</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_FLOOR_INFECTION_PROBABILITY" min="0" max="1" step="0.05" />
-            </div>
-
-            <div class="settings-group-label">Disease Progression</div>
-            <div class="number-setting">
-              <label>Recovery Time <span class="unit">ms</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_RECOVERY_TIME_MS" min="0" step="1000" />
-            </div>
-            <div class="number-setting">
-              <label>Fatality Probability <span class="unit">0–1</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_FATALITY_PROBABILITY" min="0" max="1" step="0.01" />
-            </div>
-            <div class="number-setting">
-              <label>Mutation Probability <span class="unit">/sec</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_MUTATION_PROBABILITY" min="0" max="1" step="0.001" />
-            </div>
-
-            <div class="settings-group-label">Environment</div>
-            <div class="number-setting">
-              <label>Contamination Decay <span class="unit">ms</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_CONTAMINATION_DECAY_MS" min="0" step="1000" />
-            </div>
-
-            <div class="settings-group-label">Post-recovery</div>
-            <div class="number-setting">
-              <label>Immunity Duration <span class="unit">ms</span></label>
-              <input type="number" v-model.number="localConfig.CONTAGION_IMMUNITY_DURATION_MS" min="0" step="1000" />
-            </div>
-          </div>
-          </Transition>
         </div>
         <div class="modal-footer">
-          <button class="cancel-button" @click="close">Cancel</button>
-          <button class="confirm-button" @click="save">Save</button>
+          <button class="cancel-button" @click="close">{{ $t('common.cancel') }}</button>
+          <button class="confirm-button" @click="save">{{ $t('common.save') }}</button>
         </div>
       </div>
     </div>
@@ -92,6 +49,9 @@
 <script setup>
 import { reactive, ref, watch } from 'vue'
 import { configStore } from '../utils/configStore.js'
+import { useI18n } from 'vue-i18n'
+
+const { locale } = useI18n()
 
 const props = defineProps({
   isVisible: {
@@ -106,6 +66,7 @@ const localConfig = reactive({
   AUTO_SHOW_ADVANCED: false,
   AUTO_EXPAND_MESSAGES: false,
   ENABLE_HELP_TOOLTIPS: true,
+  LANGUAGE: 'en',
   CONTAGION_INFECTION_RADIUS: 120,
   CONTAGION_INFECTION_PROBABILITY: 0.7,
   CONTAGION_FLOOR_INFECTION_PROBABILITY: 0.15,
@@ -133,6 +94,7 @@ const close = () => {
 const save = () => {
   // Commit local changes to global store
   Object.assign(configStore, localConfig)
+  locale.value = localConfig.LANGUAGE
   close()
 }
 </script>
@@ -206,6 +168,23 @@ const save = () => {
   border-bottom: none;
   margin-bottom: 0;
   padding-bottom: 0;
+}
+
+.setting-label {
+  display: block;
+  color: #e0e0e0;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.language-select {
+  width: 100%;
+  padding: 8px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #fff;
+  border-radius: 4px;
+  margin-bottom: 6px;
 }
 
 .checkbox-label {
@@ -403,4 +382,3 @@ const save = () => {
   border-color: #4facfe;
 }
 </style>
-

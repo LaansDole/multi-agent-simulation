@@ -28,12 +28,3 @@ data/
 temp/
 WareHouse/
 
-# Git worktrees
-.worktrees/
-
-# Ralph TUI
-.ralph-tui/
-# tasks/
-
-openspec/
-.opencode
