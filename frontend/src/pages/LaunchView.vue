@@ -2,8 +2,8 @@
   <div class="launch-view">
     <div class="launch-bg"></div>
     <div class="header">
-      <h1>Launch</h1>
-      <button class="settings-button" @click="showSettingsModal = true" title="Settings">
+      <h1>{{ $t('launch.title') }}</h1>
+      <button class="settings-button" @click="showSettingsModal = true" :title="$t('launch.settings')">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -22,7 +22,7 @@
           }"
           v-show="viewMode === 'chat' || true"
         >
-          <button v-show="viewMode !== 'chat'" class="chat-panel-toggle" @click="isChatPanelOpen = !isChatPanelOpen" :title="isChatPanelOpen ? 'Collapse chat' : 'Expand chat'">
+          <button v-show="viewMode !== 'chat'" class="chat-panel-toggle" @click="isChatPanelOpen = !isChatPanelOpen" :title="isChatPanelOpen ? $t('launch.collapse_chat') : $t('launch.expand_chat')">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="{ 'chevron-collapsed': !isChatPanelOpen }">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -107,7 +107,7 @@
                       v-if="message.loading"
                       class="artifact-status"
                     >
-                      Loading image...
+                      {{ $t('launch.loading_image') }}
                     </div>
                     <div
                       v-else-if="message.error"
@@ -142,7 +142,7 @@
                         :disabled="message.loading"
                         @click="downloadArtifact(message)"
                       >
-                        Download
+                        {{ $t('launch.download') }}
                       </button>
                     </div>
                   </div>
@@ -167,7 +167,7 @@
                       :disabled="message.loading"
                       @click="downloadArtifact(message)"
                     >
-                      {{ message.loading ? 'Preparing...' : 'Download' }}
+                      {{ message.loading ? $t('launch.preparing') : $t('launch.download') }}
                     </button>
                   </div>
 
@@ -196,7 +196,7 @@
                   v-model="taskPrompt"
                   class="task-input"
                   :disabled="!isConnectionReady || (isWorkflowRunning && status !== 'Waiting for input...')"
-                  placeholder="Please enter task prompt..."
+                  :placeholder="$t('launch.enter_prompt')"
                   ref="taskInputRef"
                   @keydown.enter="handleEnterKey"
                   @paste="handlePaste"
@@ -215,7 +215,7 @@
                           :disabled="!isConnectionReady || !sessionId || isUploadingAttachment || (isWorkflowRunning && status !== 'Waiting for input...')"
                           @click="handleAttachmentButtonClick"
                         >
-                          {{ isUploadingAttachment ? 'Uploading...' : 'Upload File' }}
+                          {{ isUploadingAttachment ? $t('launch.uploading') : $t('launch.upload_file') }}
                         </button>
                         <span
                           v-if="uploadedAttachments.length"
@@ -255,7 +255,7 @@
                             v-if="!uploadedAttachments.length"
                             class="attachment-empty"
                           >
-                            No files uploaded
+                            {{ $t('launch.no_files_uploaded') }}
                           </div>
                         </div>
                       </Transition>
@@ -263,7 +263,7 @@
                   </div>
                 </div>
                 <div v-if="isDragActive" class="drag-overlay">
-                  <div class="drag-overlay-content">Drop files to upload</div>
+                  <div class="drag-overlay-content">{{ $t('launch.drop_files') }}</div>
                 </div>
               </div>
             </div>
@@ -339,7 +339,7 @@
       <!-- Right panel -->
       <div class="right-panel" :class="{ 'right-panel-compact': viewMode === 'spatial' }">
         <div class="control-section">
-          <label class="section-label">Workflow Selection</label>
+          <label class="section-label">{{ $t('launch.workflow_selection') }}</label>
       <div
         class="select-wrapper custom-file-selector"
         ref="fileSelectorWrapperRef"
@@ -349,7 +349,7 @@
           v-model="fileSearchQuery"
           type="text"
           class="file-selector-input"
-          :placeholder="loading ? 'Loading...' : 'Select YAML file...'"
+          :placeholder="loading ? $t('launch.loading') : $t('launch.select_yaml')"
           :disabled="loading || isWorkflowRunning"
           @focus="handleFileInputFocus"
           @input="handleFileInputChange"
@@ -380,7 +380,7 @@
               v-if="!filteredWorkflowFiles.length"
               class="file-empty"
             >
-              No results
+              {{ $t('launch.no_results') }}
             </li>
           </ul>
         </Transition>
@@ -431,24 +431,24 @@
 
           <label class="section-label">{{ $t('launch.status') }}</label>
           <div class="status-display" :class="{ 'status-active': status === 'Running...' }">
-            {{ status }}
+            {{ getTranslatedStatus(status) }}
           </div>
 
-          <label class="section-label">View</label>
+          <label class="section-label">{{ $t('launch.view') }}</label>
           <div class="view-toggle">
             <button
               class="toggle-button"
               :class="{ active: viewMode === 'chat' }"
               @click="viewMode = 'chat'"
             >
-              Chat
+              {{ $t('launch.chat') }}
             </button>
             <button
               class="toggle-button"
               :class="{ active: viewMode === 'graph' }"
               @click="switchToGraph"
             >
-              Graph
+              {{ $t('launch.graph') }}
             </button>
             <button
               class="toggle-button"
@@ -474,7 +474,7 @@
               :disabled="status !== 'Running...'"
               @click="cancelWorkflow"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
 
             <button
@@ -482,7 +482,7 @@
               :disabled="status !== 'Completed' && status !== 'Cancelled'"
               @click="downloadLogs"
             >
-              Download Logs
+              {{ $t('launch.download_logs') }}
             </button>
           </div>
         </div>
@@ -515,6 +515,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWorkflowsWithDesc, fetchLogsZip, fetchWorkflowYAML, postFile, getAttachment, fetchVueGraph } from '../utils/apiFunctions.js'
 import { configStore } from '../utils/configStore.js'
 import { spriteFetcher } from '../utils/spriteFetcher.js'
@@ -553,10 +554,31 @@ import { useSpatialConfig } from '../composables/useSpatialConfig.js'
 
 const { saveConfig, loadConfig } = useSpatialConfig()
 
-const { fromObject, fitView, onPaneReady, onNodesInitialized, setNodes, setEdges, edges } = useVueFlow()
-
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
+const { fromObject, fitView, onPaneReady, onNodesInitialized, setNodes, setEdges, nodes, edges } = useVueFlow()
+
+const getTranslatedStatus = (statusText) => {
+  if (!statusText) return ''
+  const statusMap = {
+    'Waiting for workflow selection...': t('launch.status_waiting_workflow'),
+    'Connecting...': t('launch.status_connecting'),
+    'Connected': t('launch.status_connected'),
+    'Connection error': t('launch.status_connection_error'),
+    'Disconnected': t('launch.status_disconnected'),
+    'Pending launch': t('launch.status_pending_launch'),
+    'Launching...': t('launch.status_launching'),
+    'In Progress': t('launch.status_in_progress'),
+    'Completed': t('launch.status_completed'),
+    'Cancelled': t('launch.status_cancelled'),
+    'Failed': t('launch.status_failed'),
+    'Error': t('launch.status_error'),
+    'Pending workflow selection': t('launch.status_waiting_workflow'),
+    'Pending file selection': t('launch.status_waiting_file')
+  }
+  return statusMap[statusText] || statusText
+}
 
 // Task input state
 const taskPrompt = ref('')
@@ -822,12 +844,12 @@ const filteredWorkflowFiles = computed(() => {
 // Button label computed property
 const buttonLabel = computed(() => {
   if (isWorkflowRunning.value) {
-    return 'Send'
+    return t('launch.send')
   }
   if (status.value === 'Completed' || status.value === 'Cancelled') {
-    return 'Relaunch'
+    return t('launch.relaunch')
   }
-  return 'Launch'
+  return t('launch.launch_button')
 })
 
 // Current workflow's prompt history
@@ -845,7 +867,7 @@ const clearUploadedAttachments = () => {
 }
 
 // Reset the WebSocket connection and related state
-const resetConnectionState = ({ closeSocket = true } = {}) => {
+const resetConnectionState = ({ closeSocket = true, keepSession = false } = {}) => {
   if (closeSocket && ws) {
     try {
       ws.close()
@@ -855,20 +877,29 @@ const resetConnectionState = ({ closeSocket = true } = {}) => {
   }
 
   ws = null
-  sessionId = null
   isConnectionReady.value = false
-  shouldGlow.value = false
-  isWorkflowRunning.value = false
-  activeNodes.value = []
+
+  if (!keepSession) {
+    sessionId = null
+    isWorkflowRunning.value = false
+    activeNodes.value = []
+    shouldGlow.value = false
+    clearUploadedAttachments()
+    chatMessages.value = []
+    nodesLoadingMessagesMap.clear()
+    nameToSpriteMap.value.clear()
+    nodeSpriteMap.value.clear()
+  }
+
   if (attachmentHoverTimeout) {
     clearTimeout(attachmentHoverTimeout)
     attachmentHoverTimeout = null
   }
-  clearUploadedAttachments()
 }
 
 // Button state management
 const isWorkflowRunning = ref(false)
+const isReconnecting = ref(false)
 
 // Active node list
 const activeNodes = ref([])
@@ -1088,7 +1119,7 @@ const uploadFiles = async (files) => {
   }
 
   if (!sessionId) {
-    alert('Session is not ready yet. Please wait for connection.')
+    alert(t('launch.alert_session_not_ready'))
     return
   }
 
@@ -1103,11 +1134,11 @@ const uploadFiles = async (files) => {
           uploadedAttachments.value.push(result)
         } else {
           console.error('File upload failed:', result)
-          alert(result?.message || 'Failed to upload file')
+          alert(result?.message || t('launch.alert_failed_upload'))
         }
       } catch (error) {
         console.error('Failed to upload attachment:', error)
-        alert('File upload failed, please try again.')
+        alert(t('launch.alert_file_upload_failed'))
       }
     }
   } finally {
@@ -1201,7 +1232,7 @@ const startRecording = async () => {
         }
       } catch (error) {
         console.error('Failed to upload recording:', error)
-        alert('Recording upload failed, please try again.')
+        alert(t('launch.alert_recording_upload_failed'))
       } finally {
         isUploadingAttachment.value = false
         cleanupRecording()
@@ -1210,7 +1241,7 @@ const startRecording = async () => {
 
     mediaRecorder.onerror = (event) => {
       console.error('MediaRecorder error:', event.error)
-      alert('Recording error occurred')
+      alert(t('launch.alert_recording_error'))
       cleanupRecording()
     }
 
@@ -1218,7 +1249,7 @@ const startRecording = async () => {
     isRecording.value = true
   } catch (error) {
     console.error('Failed to start recording:', error)
-    alert('Failed to access microphone. Please check permissions.')
+    alert(t('launch.alert_mic_access_failed'))
     cleanupRecording()
   }
 }
@@ -1436,7 +1467,7 @@ const handleYAMLSelection = async (fileName) => {
     if (initialInstructions) {
       addChatNotification(initialInstructions)
     } else {
-      addChatNotification("No initial instructions provided")
+      addChatNotification(t('launch.no_initial_instructions'))
     }
 
     // Prefetch sprites for all nodes in the workflow
@@ -1457,7 +1488,7 @@ const handleYAMLSelection = async (fileName) => {
   } catch (error) {
     console.error('Failed to load YAML file:', error)
     workflowYaml.value = {}
-    addChatNotification("Failed to load YAML file")
+    addChatNotification(t('launch.notif_failed_load_yaml'))
     nodeSpriteMap.value.clear()
   }
 
@@ -1475,7 +1506,7 @@ const handleButtonClick = () => {
   } else if (status.value === 'Completed' || status.value === 'Cancelled') {
     // If Relaunch, restart the same workflow and re-enter Launch state
     if (!selectedFile.value) {
-      alert('Please choose a workflow file！')
+      alert(t('launch.alert_choose_workflow'))
       return
     }
 
@@ -1537,12 +1568,28 @@ const sendHumanInput = () => {
 }
 
 // Establish a WebSocket connection
-const establishWebSocketConnection = () => {
-  // Reset any previous state before creating a new socket
-  resetConnectionState()
+const establishWebSocketConnection = (options = {}) => {
+  let { sessionId: reconnectSid } = options
 
-  if (!selectedFile.value) {
-    return
+  // If no explicit sessionId, check URL for an existing session
+  if (!reconnectSid) {
+    const urlSession = route.query?.session
+    if (urlSession && typeof urlSession === 'string' && urlSession.trim()) {
+      reconnectSid = urlSession.trim()
+    }
+  }
+
+  const reconnecting = !!reconnectSid
+
+  if (reconnecting) {
+    isReconnecting.value = true
+    resetConnectionState({ closeSocket: true, keepSession: true })
+    status.value = 'Connecting...'
+  } else {
+    resetConnectionState()
+    if (!selectedFile.value) {
+      return
+    }
   }
 
   const apiBase = import.meta.env.VITE_API_BASE_URL || ''
@@ -1562,7 +1609,9 @@ const establishWebSocketConnection = () => {
     }
   }
 
-  const wsUrl = `${scheme}//${host}/ws`
+  const wsUrl = reconnecting
+    ? `${scheme}//${host}/ws?session_id=${encodeURIComponent(reconnectSid)}`
+    : `${scheme}//${host}/ws`
   const socket = new WebSocket(wsUrl)
   ws = socket
 
@@ -1584,18 +1633,21 @@ const establishWebSocketConnection = () => {
 
       if (!sessionId) {
         status.value = 'Connection error'
-        alert('Missing session information from server.')
+        alert(t('launch.alert_missing_session'))
         resetConnectionState()
         return
       }
 
       isConnectionReady.value = true
-      shouldGlow.value = true
-      status.value = 'Waiting for launch...'
 
-      nextTick(() => {
-        taskInputRef.value?.focus()
-      })
+      // For new connections, set initial state; reconnections are handled by session_resumed
+      if (!isReconnecting.value) {
+        shouldGlow.value = true
+        status.value = 'Waiting for launch...'
+        nextTick(() => {
+          taskInputRef.value?.focus()
+        })
+      }
     } else {
       processMessage(msg)
     }
@@ -1607,7 +1659,7 @@ const establishWebSocketConnection = () => {
 
     console.error('WebSocket error:', error)
     status.value = 'Connection error'
-    alert('WebSocket connection error!')
+    alert(t('launch.alert_ws_error'))
     resetConnectionState({ closeSocket: false })
   }
 
@@ -1627,6 +1679,11 @@ const establishWebSocketConnection = () => {
 
 // Watch for file selection changes
 watch(selectedFile, (newFile) => {
+  // When reconnecting, selectedFile is set by session_resumed; skip the normal flow
+  if (isReconnecting.value) {
+    return
+  }
+
   taskPrompt.value = ''
   fileSearchQuery.value = newFile || ''
   isFileSearchDirty.value = false
@@ -1660,7 +1717,7 @@ watch(
   }
 )
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleKeydown)
   await loadWorkflows()
@@ -1712,7 +1769,6 @@ onUnmounted(() => {
   }
 })
 
-// useVueFlow() is called at top-level setup scope (above)
 
 // Fit the view after the pane is ready or nodes are initialized
 onPaneReady(() => {
@@ -1977,7 +2033,7 @@ const copyPromptToInput = (prompt) => {
 
 const launchWorkflow = async () => {
   if (!selectedFile.value) {
-    alert('Please choose a workflow file！')
+    alert(t('launch.alert_choose_workflow'))
     return
   }
 
@@ -1988,7 +2044,7 @@ const launchWorkflow = async () => {
   )
 
   if (!trimmedPrompt && attachmentIds.length === 0) {
-    alert('Please enter task prompt or upload files.')
+    alert(t('launch.alert_enter_prompt'))
     return
   }
 
@@ -1997,7 +2053,7 @@ const launchWorkflow = async () => {
     !isConnectionReady.value ||
     !sessionId
   ) {
-    alert('WebSocket connection is not ready yet.')
+    alert(t('launch.alert_ws_not_ready'))
     return
   }
 
@@ -2043,11 +2099,20 @@ const launchWorkflow = async () => {
 
       status.value = 'Running...'
       isWorkflowRunning.value = true
+
+      // Persist session id in URL for reconnection after refresh
+      router.push({
+        query: {
+          ...route.query,
+          workflow: selectedFile.value,
+          session: sessionId
+        }
+      })
     } else {
       const error = await response.json().catch(() => ({}))
       console.error('Failed to launch workflow:', error)
       status.value = 'Failed'
-      alert(`Failed to launch workflow: ${error.detail || 'Unknown error'}`)
+      alert(`${t('launch.alert_failed_launch')}: ${error.detail || t('launch.unknown_error')}`)
       shouldGlow.value = true
       if (isConnectionReady.value) {
         status.value = 'Waiting for launch...'
@@ -2056,7 +2121,7 @@ const launchWorkflow = async () => {
   } catch (error) {
     console.error('Error calling execute API:', error)
     status.value = 'Error'
-    alert(`Failed to call execute API: ${error.message}`)
+    alert(`${t('launch.alert_failed_execute')}: ${error.message}`)
     shouldGlow.value = true
     if (isConnectionReady.value) {
       status.value = 'Waiting for launch...'
@@ -2097,7 +2162,7 @@ const downloadArtifact = async (message) => {
     document.body.removeChild(link)
   } catch (error) {
     console.error('Failed to download artifact:', error)
-    alert('Failed to download file, please try again.')
+    alert(t('launch.alert_download_failed'))
   } finally {
     if (message.loading) {
       message.loading = false
@@ -2245,6 +2310,68 @@ const animateSpriteAlongEdge = (edge) => {
 
 const processMessage = async (msg) => {
   console.log('Message: ', msg)
+
+  // Session resumed after reconnection — sync final UI state
+  if (msg.type === 'session_resumed') {
+    const data = msg.data
+    sessionId = data.session_id
+
+    // Restore workflow selection without clearing chat (messages were already replayed)
+    // Set selectedFile BEFORE clearing isReconnecting so the watch skips
+    if (data.yaml_file) {
+      selectedFile.value = data.yaml_file
+      fileSearchQuery.value = data.yaml_file
+      // Load YAML data and sprites (but don't clear chat)
+      try {
+        const yamlContentString = await fetchWorkflowYAML(data.yaml_file)
+        const parsedYaml = yaml.load(yamlContentString)
+        workflowYaml.value = parsedYaml || {}
+
+        const yamlNodes = Array.isArray(parsedYaml?.graph?.nodes) ? parsedYaml.graph.nodes : []
+        for (const node of yamlNodes) {
+          if (node.id && !nodeSpriteMap.value.has(node.id)) {
+            const spritePath = spriteFetcher.fetchSprite(node.id, 'D', 1)
+            nodeSpriteMap.value.set(node.id, spritePath)
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load YAML on reconnect:', e)
+      }
+    }
+
+    isReconnecting.value = false
+
+    // Restore workflow status
+    const statusMap = {
+      'idle': 'Connected',
+      'running': 'Running...',
+      'waiting_for_input': 'Waiting for input...',
+      'completed': 'Completed',
+      'error': 'Error',
+      'cancelled': 'Cancelled',
+    }
+    status.value = statusMap[data.status] || 'Connected'
+
+    if (data.status === 'running' || data.status === 'waiting_for_input') {
+      isWorkflowRunning.value = true
+    }
+
+    if (data.status === 'waiting_for_input') {
+      shouldGlow.value = true
+    }
+
+    if (data.status === 'completed' || data.status === 'error' || data.status === 'cancelled') {
+      sessionIdToDownload = sessionId
+    }
+
+    if (data.current_node_id && !activeNodes.value.includes(data.current_node_id)) {
+      activeNodes.value.push(data.current_node_id)
+    }
+
+    isConnectionReady.value = true
+    addChatNotification(t('launch.reconnected'))
+    return
+  }
 
   // Prompt for human input
   if (msg.type === 'human_input_required') {
@@ -2421,6 +2548,14 @@ const processMessage = async (msg) => {
     sessionIdToDownload = sessionId
   }
 
+  // Workflow cancelled (e.g., from server-side cancellation)
+  if (msg.type === 'workflow_cancelled') {
+    addChatNotification(msg.data?.message || t('launch.workflow_cancelled'))
+    status.value = 'Cancelled'
+    isWorkflowRunning.value = false
+    sessionIdToDownload = sessionId
+  }
+
   // Handle direct error messages (e.g., workflow execution errors)
   if (msg.type === 'error') {
     const errorMessage = msg.data?.message || 'Unknown error occurred'
@@ -2451,7 +2586,7 @@ const cancelWorkflow = () => {
     console.warn('Failed to send cancel message:', sendError)
   }
 
-  addChatNotification('Workflow cancelled')
+  addChatNotification(t('launch.workflow_cancelled'))
   status.value = 'Cancelled'
   isWorkflowRunning.value = false
   sessionIdToDownload = sessionId
@@ -2466,12 +2601,6 @@ const cancelWorkflow = () => {
       nodesLoadingMessagesMap.delete(nodeId)
     }
   }
-
-  try {
-    ws.close()
-  } catch (closeError) {
-    console.warn('Failed to close WebSocket:', closeError)
-  }
 }
 
 // Download logs
@@ -2483,7 +2612,7 @@ const downloadLogs = async () => {
     await fetchLogsZip(sessionIdToDownload)
   } catch (error) {
     console.error('Download failed:', error)
-    alert('Download failed, please try again later')
+    alert(t('launch.alert_download_logs_failed'))
   }
 }
 
@@ -2639,6 +2768,7 @@ watch(
   gap: 20px;
   min-width: 0; /* Prevents overflow */
   position: relative;
+  position: relative;
 }
 
 /* Persistent Chat Panel */
@@ -2734,6 +2864,53 @@ watch(
   left: auto;
 }
 
+/* Chat Box */
+.chat-box {
+  flex: 1;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  padding: 0;
+}
+
+.chat-panel-toggle {
+  position: absolute;
+  top: 12px;
+  right: -32px;
+  width: 28px;
+  height: 28px;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: none;
+  background: rgba(26, 26, 26, 0.92);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+  padding: 0;
+  z-index: 11;
+}
+
+.chat-panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f2f2f2;
+}
+
+.chat-panel-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+.chat-panel-toggle .chevron-collapsed {
+  transform: rotate(180deg);
+}
+
+.chat-panel-collapsed .chat-panel-toggle {
+  right: -32px;
+  left: auto;
+}
 
 /* Chat Box */
 .chat-box {
@@ -2795,6 +2972,8 @@ watch(
   font-size: 13px;
   font-weight: 500;
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
