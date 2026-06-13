@@ -429,7 +429,7 @@
             </button>
           </div>
 
-          <label class="section-label">Status</label>
+          <label class="section-label">{{ $t('launch.status') }}</label>
           <div class="status-display" :class="{ 'status-active': status === 'Running...' }">
             {{ status }}
           </div>
@@ -1663,7 +1663,15 @@ watch(
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleKeydown)
-  loadWorkflows()
+  await loadWorkflows()
+  // If URL contains a session id, the watch on selectedFile (triggered by
+  // applyWorkflowFromRoute inside loadWorkflows) will call establishWebSocketConnection,
+  // which auto-detects the session param and reconnects.
+  // Fallback: if session is present but no workflow was in URL, connect directly.
+  const sessionParam = route.query?.session
+  if (sessionParam && typeof sessionParam === 'string' && sessionParam.trim() && !selectedFile.value) {
+    establishWebSocketConnection({ sessionId: sessionParam.trim() })
+  }
 
   // Load prompt histories from localStorage
   promptHistories.value = loadPromptHistories()

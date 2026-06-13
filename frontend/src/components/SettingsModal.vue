@@ -26,16 +26,59 @@
               <input type="checkbox" v-model="localConfig.ENABLE_HELP_TOOLTIPS">
               {{ $t('settings.enable_help_tooltips') }}
             </label>
-            <p class="setting-desc">{{ $t('settings.enable_help_tooltips_desc') }}</p>
+            <p class="setting-desc">Show contextual help tooltips throughout the workflow interface.</p>
           </div>
-          <div class="settings-item">
-            <label class="setting-label">{{ $t('settings.language') }}</label>
-            <select v-model="localConfig.LANGUAGE" class="language-select">
-              <option value="en">English</option>
-              <option value="zh">简体中文</option>
-            </select>
-            <p class="setting-desc">{{ $t('settings.language_desc') }}</p>
+
+          <!-- Contagion Simulation Settings -->
+          <div class="settings-item" @click="showContagion = !showContagion">
+            <span class="section-chevron" :class="{ open: showContagion }">▶</span>
+            Contagion Simulation
           </div>
+          <Transition name="collapse">
+          <div v-if="showContagion" class="contagion-settings">
+            <p class="section-hint">Parameters for the spatial contagion sandbox. Changes take effect on the next simulation tick.</p>
+
+            <div class="settings-group-label">Transmission</div>
+            <div class="number-setting">
+              <label>Infection Radius <span class="unit">px</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_INFECTION_RADIUS" min="0" step="10" />
+            </div>
+            <div class="number-setting">
+              <label>Infection Probability <span class="unit">/sec</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_INFECTION_PROBABILITY" min="0" max="1" step="0.05" />
+            </div>
+            <div class="number-setting">
+              <label>Floor Infection Probability <span class="unit">/sec</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_FLOOR_INFECTION_PROBABILITY" min="0" max="1" step="0.05" />
+            </div>
+
+            <div class="settings-group-label">Disease Progression</div>
+            <div class="number-setting">
+              <label>Recovery Time <span class="unit">ms</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_RECOVERY_TIME_MS" min="0" step="1000" />
+            </div>
+            <div class="number-setting">
+              <label>Fatality Probability <span class="unit">0–1</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_FATALITY_PROBABILITY" min="0" max="1" step="0.01" />
+            </div>
+            <div class="number-setting">
+              <label>Mutation Probability <span class="unit">/sec</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_MUTATION_PROBABILITY" min="0" max="1" step="0.001" />
+            </div>
+
+            <div class="settings-group-label">Environment</div>
+            <div class="number-setting">
+              <label>Contamination Decay <span class="unit">ms</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_CONTAMINATION_DECAY_MS" min="0" step="1000" />
+            </div>
+
+            <div class="settings-group-label">Post-recovery</div>
+            <div class="number-setting">
+              <label>Immunity Duration <span class="unit">ms</span></label>
+              <input type="number" v-model.number="localConfig.CONTAGION_IMMUNITY_DURATION_MS" min="0" step="1000" />
+            </div>
+          </div>
+          </Transition>
         </div>
         <div class="modal-footer">
           <button class="cancel-button" @click="close">{{ $t('common.cancel') }}</button>

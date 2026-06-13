@@ -23,11 +23,9 @@ client: ## Start the frontend development server
 .PHONY: stop
 stop: ## Stop backend and frontend servers cross-platform
 	@echo "Stopping backend server (port 6400)..."
-	@if npx kill-port 6400 >/dev/null 2>&1; then echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
-	@if npx kill-port 6400 >/dev/null 2>&1; then echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
+	@pids=$$(lsof -ti :6400 2>/dev/null); if [ -n "$$pids" ]; then echo "$$pids" | xargs kill -9 && echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
 	@echo "Stopping frontend server (port 5173)..."
-	@if npx kill-port 5173 >/dev/null 2>&1; then echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
-	@if npx kill-port 5173 >/dev/null 2>&1; then echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
+	@pids=$$(lsof -ti :5173 2>/dev/null); if [ -n "$$pids" ]; then echo "$$pids" | xargs kill -9 && echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
 
 # ==============================================================================
 # Tools & Maintenance
