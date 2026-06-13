@@ -147,7 +147,7 @@ make dev
     # Run from the project root
     uv run python server_main.py --port 6400 --reload
     ```
-    > Remove `--reload` if output files (e.g., GameDev) trigger restarts, which interrupts tasks and loses progress.
+    > `--reload` watches the server's Python source folders only; agent-generated files under `WareHouse/` no longer trigger restarts. Pass `--reload-dir` or `--reload-exclude` (repeatable) to customise.
 
 2.  **Start Frontend**:
     ```bash
@@ -341,6 +341,15 @@ By contributing to DevAll, you'll be recognized in our **Contributors** list bel
     <td align="center"><a href="https://github.com/Br1an67"><img src="https://github.com/Br1an67.png?size=100" width="64px;"/><br /><sub><b>Br1an67</b></sub></a></td>
     <td align="center"><a href="https://github.com/NINE-J"><img src="https://github.com/NINE-J.png?size=100" width="64px;"/><br /><sub><b>NINE-J</b></sub></a></td>
     <td align="center"><a href="https://github.com/Yanghuabei-design"><img src="https://github.com/Yanghuabei-design.png?size=100" width="64px;"/><br /><sub><b>Yanghuabei</b></sub></a></td>
+    <td align="center"><a href="https://github.com/nregret"><img src="https://github.com/nregret.png?size=100" width="64px;"/><br /><sub><b>nregret</b></sub></a></td>
+    <td align="center"><a href="https://github.com/kartik-mem0"><img src="https://github.com/kartik-mem0.png?size=100" width="64px;"/><br /><sub><b>kartik-mem0</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Yanghuabei-design"><img src="https://github.com/Yanghuabei-design.png?size=100" width="64px;"/><br /><sub><b>Yanghuabei-design</b></sub></a></td>
+    <td align="center"><a href="https://github.com/benjamin7007"><img src="https://github.com/benjamin7007.png?size=100" width="64px;"/><br /><sub><b>benjamin7007</b></sub></a></td>
+    <td align="center"><a href="https://github.com/gouziman"><img src="https://github.com/gouziman.png?size=100" width="64px;"/><br /><sub><b>gouziman</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/hobostay"><img src="https://github.com/hobostay.png?size=100" width="64px;"/><br /><sub><b>hobostay</b></sub></a></td>
+    <td align="center"><a href="https://github.com/token2everything"><img src="https://github.com/token2everything.png?size=100" width="64px;"/><br /><sub><b>token2everything</b></sub></a></td>
   </tr>
 </table>
 

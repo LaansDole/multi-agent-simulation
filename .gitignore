@@ -28,5 +28,3 @@ data/
 temp/
 WareHouse/
 
-# Git worktrees
-.worktrees/
