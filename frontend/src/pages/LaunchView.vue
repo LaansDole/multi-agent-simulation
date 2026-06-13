@@ -553,6 +553,8 @@ import { useSpatialConfig } from '../composables/useSpatialConfig.js'
 
 const { saveConfig, loadConfig } = useSpatialConfig()
 
+const { fromObject, fitView, onPaneReady, onNodesInitialized, setNodes, setEdges, edges } = useVueFlow()
+
 const router = useRouter()
 const route = useRoute()
 
@@ -1702,7 +1704,7 @@ onUnmounted(() => {
   }
 })
 
-const { fromObject, fitView, onPaneReady, onNodesInitialized, setNodes, setEdges, edges } = useVueFlow()
+// useVueFlow() is called at top-level setup scope (above)
 
 // Fit the view after the pane is ready or nodes are initialized
 onPaneReady(() => {
@@ -2433,6 +2435,14 @@ const cancelWorkflow = () => {
   if (!isWorkflowRunning.value || !ws) {
     return
   }
+
+  // Send cancel request through WebSocket so the server stops the workflow
+  try {
+    ws.send(JSON.stringify({ type: 'cancel' }))
+  } catch (sendError) {
+    console.warn('Failed to send cancel message:', sendError)
+  }
+
   addChatNotification('Workflow cancelled')
   status.value = 'Cancelled'
   isWorkflowRunning.value = false
@@ -2621,7 +2631,6 @@ watch(
   gap: 20px;
   min-width: 0; /* Prevents overflow */
   position: relative;
-  position: relative;
 }
 
 /* Persistent Chat Panel */
@@ -2717,53 +2726,6 @@ watch(
   left: auto;
 }
 
-/* Chat Box */
-.chat-box {
-  flex: 1;
-  backdrop-filter: blur(12px);
-  overflow: hidden;
-  padding: 0;
-}
-
-.chat-panel-toggle {
-  position: absolute;
-  top: 12px;
-  right: -32px;
-  width: 28px;
-  height: 28px;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-left: none;
-  background: rgba(26, 26, 26, 0.92);
-  backdrop-filter: blur(8px);
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-  transition: all 0.2s ease;
-  padding: 0;
-  z-index: 11;
-}
-
-.chat-panel-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f2f2f2;
-}
-
-.chat-panel-toggle svg {
-  transition: transform 0.3s ease;
-}
-
-.chat-panel-toggle .chevron-collapsed {
-  transform: rotate(180deg);
-}
-
-.chat-panel-collapsed .chat-panel-toggle {
-  right: -32px;
-  left: auto;
-}
 
 /* Chat Box */
 .chat-box {
@@ -2825,8 +2787,6 @@ watch(
   font-size: 13px;
   font-weight: 500;
   text-align: center;
-  word-break: break-word;
-  overflow-wrap: anywhere;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
