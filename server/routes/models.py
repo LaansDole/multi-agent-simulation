@@ -31,6 +31,7 @@ async def get_models():
                 name="",
                 base_url=os.getenv("BASE_URL"),
                 api_key=os.getenv("API_KEY"),
+                path="",
             )
             provider = provider_cls(config)
             models.extend(provider.list_models())
