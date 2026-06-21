@@ -327,6 +327,15 @@ export const useCoreStore = create<CoreState>()(
           const task = s.tasks.find(t => t.id === taskId);
           if (task) useUiStore.getState().setAgentStatus(task.assignedAgentId, 'idle');
           
+          const history = task ? (s.agentHistories[task.assignedAgentId] || []) : [];
+          const updatedHistory = task ? [
+            ...history,
+            {
+              role: 'user' as 'user',
+              content: 'Approved.',
+            }
+          ] : history;
+
           return {
             tasks: s.tasks.map((t) =>
               t.id === taskId ? { 
@@ -340,6 +349,10 @@ export const useCoreStore = create<CoreState>()(
                 updatedAt: Date.now() 
               } : t
             ),
+            agentHistories: task ? {
+              ...s.agentHistories,
+              [task.assignedAgentId]: updatedHistory
+            } : s.agentHistories
           };
         });
       },

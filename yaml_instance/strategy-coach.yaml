@@ -1,0 +1,27 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: strategy-coach
+  description: "A high-level strategic advisor for project direction and roadmap."
+  is_majority_voting: false
+  start:
+    - visionary-advisor
+  nodes:
+  - id: visionary-advisor
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Handles project direction, roadmap, and ecosystem growth strategy."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_visionary-advisor
+    type: human
+    config:
+      description: Please review and approve the output from Visionary Advisor.
+  edges:
+  - from: visionary-advisor
+    to: review_visionary-advisor

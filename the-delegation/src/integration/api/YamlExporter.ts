@@ -49,9 +49,12 @@ function formatYamlString(text: string, indent: string = '      '): string {
 export function exportSystemToYaml(system: AgenticSystem): string {
   const nodesYaml: string[] = [];
   const edgesYaml: string[] = [];
+  const allNodeIds: string[] = [];
+  const nodesWithOutgoing = new Set<string>();
 
   const traverse = (agent: AgentNode) => {
     const currentId = agent.id;
+    allNodeIds.push(currentId);
     const modelName = agent.model || 'gemini-3-flash-preview';
     const provider = agent.provider ?? (
       modelName.toLowerCase().startsWith('gemini') ? 'gemini' : 'openai'
@@ -82,6 +85,7 @@ ${configLines.join('\n')}`);
     // 2. Handle Human-in-the-loop review node
     if (agent.humanInTheLoop) {
       const reviewId = `review_${currentId}`;
+      allNodeIds.push(reviewId);
       nodesYaml.push(`  - id: ${reviewId}
     type: human
     config:
@@ -89,6 +93,7 @@ ${configLines.join('\n')}`);
 
       edgesYaml.push(`  - from: ${currentId}
     to: ${reviewId}`);
+      nodesWithOutgoing.add(currentId);
 
       outgoingSourceId = reviewId;
     }
@@ -99,6 +104,7 @@ ${configLines.join('\n')}`);
         // Edge connects current output (either agent directly or human review) to subagent
         edgesYaml.push(`  - from: ${outgoingSourceId}
     to: ${sub.id}`);
+        nodesWithOutgoing.add(outgoingSourceId);
         traverse(sub);
       }
     }
@@ -106,6 +112,9 @@ ${configLines.join('\n')}`);
 
   // Start traversal from lead agent
   traverse(system.leadAgent);
+
+  // Find all sinks (nodes with no outgoing edges)
+  const sinks = allNodeIds.filter(id => !nodesWithOutgoing.has(id));
 
   // Construct final YAML string
   const yamlLines = [
@@ -117,6 +126,8 @@ ${configLines.join('\n')}`);
     `  is_majority_voting: false`,
     `  start:`,
     `    - ${system.leadAgent.id}`,
+    `  end:`,
+    sinks.map(s => `    - ${s}`).join('\n'),
     `  nodes:`,
     nodesYaml.join('\n'),
     `  edges:`,

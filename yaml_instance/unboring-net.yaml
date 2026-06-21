@@ -1,0 +1,70 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: unboring-net
+  description: "A full-service creative agency covering branding, design, development and go-to-market strategy."
+  is_majority_voting: false
+  start:
+    - agency-orchestrator
+  end:
+    - agency-developer
+    - agency-designer
+    - review_agency-copywriter
+  nodes:
+  - id: agency-orchestrator
+    type: agent
+    config:
+      provider: openai
+      name: custom-local
+      base_url: "http://localhost:1234/v1"
+      api_key: "lm-studio"
+      role: "Orchestrates branding, design, and development to deliver integrated creative solutions."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_agency-orchestrator
+    type: human
+    config:
+      description: Please review and approve the output from Creative Director.
+  - id: agency-developer
+    type: agent
+    config:
+      provider: gemini
+      name: gemini-3-flash-preview
+      role: Architects and develops robust digital platforms and interactive experiences.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: agency-designer
+    type: agent
+    config:
+      provider: gemini
+      name: gemini-3-flash-preview
+      role: "Crafts visual identities, user interfaces, and premium brand aesthetics."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: agency-copywriter
+    type: agent
+    config:
+      provider: gemini
+      name: gemini-3-flash-preview
+      role: Crafts compelling narratives and strategic messaging for brands.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_agency-copywriter
+    type: human
+    config:
+      description: Please review and approve the output from Copywriter.
+  edges:
+  - from: agency-orchestrator
+    to: review_agency-orchestrator
+  - from: review_agency-orchestrator
+    to: agency-developer
+  - from: review_agency-orchestrator
+    to: agency-designer
+  - from: review_agency-orchestrator
+    to: agency-copywriter
+  - from: agency-copywriter
+    to: review_agency-copywriter

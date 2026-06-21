@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AgenticSystem, DEFAULT_AGENTIC_SET_ID, getAllAgents } from '../../data/agents';
 import { DEFAULT_MODELS, AVAILABLE_MODELS, ModelType } from '../../core/llm/constants';
 import { USER_COLOR } from '../../theme/brand';
+import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { useSceneManager } from '../../simulation/SceneContext';
 import { getBrightness, getDarkenedColor } from './colorUtils';
@@ -37,6 +38,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
   onModeChange,
 }) => {
   const { setActiveTeam, updateSystem, deleteCustomSystem, selectedAgentSetId } = useTeamStore();
+  const { availableModels } = useCoreStore();
   const scene = useSceneManager();
   const colorInputRef = useRef<HTMLInputElement>(null);
 
@@ -345,7 +347,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                       onChange={(e) => setLocalEditData(prev => ({ ...prev, leadAgentModel: e.target.value }))}
                       className="w-full bg-white border border-zinc-100 text-[11px] font-bold rounded-xl px-2.5 py-1.5 outline-none cursor-pointer lowercase"
                     >
-                      {(AVAILABLE_MODELS.text as readonly string[]).filter(m => m.startsWith('gemini') || m === 'custom-local').map(model => (
+                      {availableModels.filter(m => m.startsWith('gemini') || m === 'custom-local').map(model => (
                         <option key={model} value={model}>{model}</option>
                       ))}
                     </select>

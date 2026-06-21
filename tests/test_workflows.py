@@ -14,9 +14,9 @@ def _mock_check_config(monkeypatch):
 
 
 class TestListWorkflows:
-
     def test_empty_when_dir_missing(self, client, tmp_yaml_dir, monkeypatch):
         import shutil
+
         shutil.rmtree(tmp_yaml_dir)
         response = client.get("/api/workflows")
         assert response.status_code == 200
@@ -32,7 +32,6 @@ class TestListWorkflows:
 
 
 class TestUploadWorkflowContent:
-
     def test_upload_success(self, client, tmp_yaml_dir):
         response = client.post(
             "/api/workflows/upload/content",
@@ -53,10 +52,9 @@ class TestUploadWorkflowContent:
 
 
 class TestGetWorkflowContent:
-
     def test_get_existing(self, client, tmp_yaml_dir):
         (tmp_yaml_dir / "exist.yaml").write_text(VALID_YAML)
-        response = client.get("/api/workflows/exist.yaml")
+        response = client.get("/api/workflows/exist.yaml/get")
         assert response.status_code == 200
         assert response.json()["content"] == VALID_YAML
 
@@ -66,12 +64,11 @@ class TestGetWorkflowContent:
 
 
 class TestUpdateWorkflowContent:
-
     def test_update_existing(self, client, tmp_yaml_dir):
         (tmp_yaml_dir / "upd.yaml").write_text(VALID_YAML)
         new_content = "graph:\n  id: updated\n  nodes: []\n"
         response = client.put(
-            "/api/workflows/upd.yaml",
+            "/api/workflows/upd.yaml/update",
             json={"content": new_content},
         )
         assert response.status_code == 200
@@ -79,27 +76,25 @@ class TestUpdateWorkflowContent:
 
     def test_update_missing_returns_404(self, client, tmp_yaml_dir):
         response = client.put(
-            "/api/workflows/ghost.yaml",
+            "/api/workflows/ghost.yaml/update",
             json={"content": VALID_YAML},
         )
         assert response.status_code == 404
 
 
 class TestDeleteWorkflow:
-
     def test_delete_existing(self, client, tmp_yaml_dir):
         (tmp_yaml_dir / "del.yaml").write_text(VALID_YAML)
-        response = client.delete("/api/workflows/del.yaml")
+        response = client.delete("/api/workflows/del.yaml/delete")
         assert response.status_code == 200
         assert not (tmp_yaml_dir / "del.yaml").exists()
 
     def test_delete_missing_returns_error(self, client, tmp_yaml_dir):
-        response = client.delete("/api/workflows/nope.yaml")
+        response = client.delete("/api/workflows/nope.yaml/delete")
         assert response.status_code in (404, 500)
 
 
 class TestRenameWorkflow:
-
     def test_rename_success(self, client, tmp_yaml_dir):
         (tmp_yaml_dir / "orig.yaml").write_text(VALID_YAML)
         response = client.post(
@@ -128,7 +123,6 @@ class TestRenameWorkflow:
 
 
 class TestCopyWorkflow:
-
     def test_copy_success(self, client, tmp_yaml_dir):
         (tmp_yaml_dir / "src.yaml").write_text(VALID_YAML)
         response = client.post(
