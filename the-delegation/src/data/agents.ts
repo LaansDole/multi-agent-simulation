@@ -37,6 +37,7 @@ export interface AgenticSystem {
     position?: { x: number; y: number };
   };
   leadAgent: AgentNode;
+  sourceYamlFile?: string;
 }
 
 export const AGENTIC_SETS: AgenticSystem[] = [
