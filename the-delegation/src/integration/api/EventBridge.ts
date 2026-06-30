@@ -72,14 +72,17 @@ export class EventBridge {
     this.nodeAgentMap = new Map(Object.entries(map));
   }
 
-  /** Resolve a backend node_id to a frontend agent index (defaults to 1 = lead). */
+  /**
+   * Resolve a backend node_id to a frontend agent index.
+   * The frontend nodeAgentMap is authoritative when present; the backend's
+   * explicitIndex is only a fallback. Unmapped/non-agent nodes resolve to -1
+   * (log + Kanban only, no 3D character).
+   */
   private resolveAgentIndex(nodeId?: string, explicitIndex?: number): number {
-    if (explicitIndex !== undefined) return explicitIndex;
-    if (!nodeId) return 1;
-    // Strip "review_" prefix if present to map review nodes to their corresponding agents
+    if (!nodeId) return explicitIndex ?? -1;
     const cleanNodeId = nodeId.startsWith('review_') ? nodeId.substring(7) : nodeId;
     if (this.nodeAgentMap.has(cleanNodeId)) return this.nodeAgentMap.get(cleanNodeId)!;
-    return 1; // Default to lead agent
+    return -1;
   }
 
   // ── Event Router ────────────────────────────────────────────────
@@ -169,7 +172,6 @@ export class EventBridge {
     const core = useCoreStore.getState();
     const agentIndex = this.resolveAgentIndex(data.node_id, data.agent_index);
 
-    // Create a task in the Kanban
     const task = core.addTask({
       title: data.node_name || data.node_id,
       description: `Executing node: ${data.node_id}`,
@@ -178,11 +180,12 @@ export class EventBridge {
       requiresUserApproval: false,
     });
 
-    // Track mapping from node_id to task_id for later completion
     this._nodeTaskMap.set(data.node_id, task.id);
 
-    // Update agent visual status
-    useUiStore.getState().setAgentStatus(agentIndex, 'working');
+    // Only update 3D character status for mapped agent nodes (index >= 1).
+    if (agentIndex >= 1) {
+      useUiStore.getState().setAgentStatus(agentIndex, 'working');
+    }
 
     core.addLogEntry({
       agentIndex,
@@ -219,17 +222,14 @@ export class EventBridge {
       core.updateTaskStatus(taskId, 'done');
     }
 
-    useUiStore.getState().setAgentStatus(agentIndex, 'idle');
-
-    // Append output to the agent's chat history as an assistant response
-    if (data.output) {
-      core.setAgentHistory(agentIndex, [
-        ...(core.agentHistories[agentIndex] ?? []),
-        {
-          role: 'assistant',
-          content: data.output
-        }
-      ]);
+    if (agentIndex >= 1) {
+      useUiStore.getState().setAgentStatus(agentIndex, 'idle');
+      if (data.output) {
+        core.setAgentHistory(agentIndex, [
+          ...(core.agentHistories[agentIndex] ?? []),
+          { role: 'assistant', content: data.output },
+        ]);
+      }
     }
 
     core.addLogEntry({
@@ -248,18 +248,17 @@ export class EventBridge {
 
     if (taskId) {
       core.submitTaskForReview(taskId, data.prompt);
-      // Append the review prompt to the agent's chat history with reviewTaskId metadata
-      core.setAgentHistory(agentIndex, [
-        ...(core.agentHistories[agentIndex] ?? []),
-        {
-          role: 'assistant',
-          content: data.prompt,
-          metadata: { reviewTaskId: taskId }
-        }
-      ]);
+      if (agentIndex >= 1) {
+        core.setAgentHistory(agentIndex, [
+          ...(core.agentHistories[agentIndex] ?? []),
+          { role: 'assistant', content: data.prompt, metadata: { reviewTaskId: taskId } },
+        ]);
+      }
     }
 
-    useUiStore.getState().setAgentStatus(agentIndex, 'on_hold');
+    if (agentIndex >= 1) {
+      useUiStore.getState().setAgentStatus(agentIndex, 'on_hold');
+    }
 
     core.addLogEntry({
       agentIndex,
