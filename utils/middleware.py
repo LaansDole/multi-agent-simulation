@@ -4,6 +4,7 @@ import uuid
 from typing import Callable
 from fastapi import Request, HTTPException, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import time
 import re
 import os
@@ -70,7 +71,7 @@ async def security_middleware(request: Request, call_next: Callable):
                 f"Suspicious path detected: {path}",
                 correlation_id=getattr(request.state, 'correlation_id', str(uuid.uuid4()))
             )
-            raise HTTPException(status_code=400, detail="Invalid path")
+            return JSONResponse(status_code=400, content={"detail": "Invalid path"})
     
     response = await call_next(request)
     return response

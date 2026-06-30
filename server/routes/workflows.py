@@ -15,6 +15,8 @@ from server.services.workflow_storage import (
     validate_workflow_filename,
 )
 from server.settings import YAML_DIR
+from check.check import DesignError, load_config
+from server.services.workflow_graph_serializer import serialize_design
 from utils.exceptions import (
     ResourceConflictError,
     ResourceNotFoundError,
@@ -151,6 +153,34 @@ async def get_workflow_args(filename: str):
             status_code=500,
             detail={"message": f"Failed to retrieve workflow args: {exc}"},
         )
+
+
+@router.get("/api/workflows/{filename}/graph")
+async def get_workflow_graph(filename: str) -> dict[str, Any]:
+    try:
+        safe_filename = validate_workflow_filename(filename, require_yaml_extension=True)
+        file_path = YAML_DIR / safe_filename
+        if not file_path.exists() or not file_path.is_file():
+            raise ResourceNotFoundError(
+                "Workflow file not found",
+                resource_type="workflow",
+                resource_id=safe_filename,
+            )
+        design = load_config(file_path)
+        graph = serialize_design(design, filename=safe_filename)
+        logger = get_server_logger()
+        logger.info("Workflow graph retrieved", log_type=LogType.WORKFLOW, filename=safe_filename)
+        return graph
+    except ValidationError:
+        raise
+    except ResourceNotFoundError:
+        raise
+    except DesignError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger = get_server_logger()
+        logger.log_exception(exc, f"Unexpected error retrieving workflow graph: {filename}")
+        raise WorkflowExecutionError(f"Failed to retrieve workflow graph: {exc}")
 
 
 @router.get("/api/workflows/{filename}/desc")
