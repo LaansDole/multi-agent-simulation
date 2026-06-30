@@ -157,3 +157,54 @@ export interface BackendState {
   sessionId: string | null;
   lastError: string | null;
 }
+
+// ── Normalized Workflow Graph (from GET /api/workflows/{filename}/graph) ──
+
+export interface AgentConfigSummary {
+  provider: string;
+  model: string;
+  role: string;
+  has_tooling: boolean;
+  has_memory: boolean;
+  has_thinking: boolean;
+}
+
+export interface NormalizedNode {
+  id: string;
+  type: string;
+  label: string;
+  description: string | null;
+  is_agent: boolean;
+  config_summary: AgentConfigSummary | null;
+}
+
+export interface NormalizedEdge {
+  from: string;
+  to: string;
+  trigger: boolean;
+  carry_data: boolean;
+  condition_type: string | null;
+  processor_type: string | null;
+  is_dynamic: boolean;
+}
+
+export interface AgentNodeSlot {
+  node_id: string;
+  label: string;
+  proposed_slot: number | null; // 1-5, or null for overflow agents
+}
+
+export interface NormalizedGraph {
+  filename: string;
+  version: string;
+  graph_id: string | null;
+  description: string | null;
+  is_majority_voting: boolean;
+  vars: Record<string, any>;
+  start: string[];
+  end: string[] | null;
+  node_types: Record<string, string>;
+  nodes: NormalizedNode[];
+  edges: NormalizedEdge[];
+  agent_nodes: AgentNodeSlot[];
+}

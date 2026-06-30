@@ -14,6 +14,7 @@ import type {
   BackendEvent,
   ClientMessage,
   ModelInfo,
+  NormalizedGraph,
   WorkflowExecuteRequest,
   WorkflowListItem,
 } from './types';
@@ -242,6 +243,19 @@ export class BackendClient {
     } catch {
       return [];
     }
+  }
+
+  /** Fetch the normalized graph for a workflow file. */
+  public async fetchWorkflowGraph(filename: string): Promise<NormalizedGraph> {
+    const response = await fetch(
+      `${this.apiUrl}/api/workflows/${encodeURIComponent(filename)}/graph`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Failed to fetch workflow graph (${response.status}): ${text}`);
+    }
+    return response.json();
   }
 
   // ── Event System ────────────────────────────────────────────────
