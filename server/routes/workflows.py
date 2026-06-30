@@ -175,6 +175,8 @@ async def get_workflow_graph(filename: str) -> dict[str, Any]:
         raise
     except ResourceNotFoundError:
         raise
+    except SecurityError:
+        raise
     except DesignError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
