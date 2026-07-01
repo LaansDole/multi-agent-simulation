@@ -103,20 +103,29 @@ export class BackendAgentSimulation {
     }
 
     try {
-      const yamlFile = `${this.system.id}.yaml`;
+      if (this.system.sourceYamlFile) {
+        // Imported workflow: run the ORIGINAL file directly (no export/upload).
+        console.log(`[BackendAgentSimulation] Running imported workflow ${this.system.sourceYamlFile}`);
+        await this.client.executeWorkflow({
+          session_id: sessionId,
+          yaml_file: this.system.sourceYamlFile,
+          task_prompt: brief,
+        });
+      } else {
+        // Native the-delegation team: export + upload + run.
+        const yamlFile = `${this.system.id}.yaml`;
+        const { exportSystemToYaml } = await import('../../integration/api/YamlExporter');
+        const yamlContent = exportSystemToYaml(this.system);
 
-      // Export current visual team config to YAML and upload it to the backend
-      const { exportSystemToYaml } = await import('../../integration/api/YamlExporter');
-      const yamlContent = exportSystemToYaml(this.system);
-      
-      console.log(`[BackendAgentSimulation] Exporting and uploading YAML for ${yamlFile}...`);
-      await this.client.uploadWorkflow(yamlFile, yamlContent);
+        console.log(`[BackendAgentSimulation] Exporting and uploading YAML for ${yamlFile}...`);
+        await this.client.uploadWorkflow(yamlFile, yamlContent);
 
-      await this.client.executeWorkflow({
-        session_id: sessionId,
-        yaml_file: yamlFile,
-        task_prompt: brief,
-      });
+        await this.client.executeWorkflow({
+          session_id: sessionId,
+          yaml_file: yamlFile,
+          task_prompt: brief,
+        });
+      }
     } catch (error) {
       console.error('[BackendAgentSimulation] Failed to start workflow:', error);
       useCoreStore.getState().addLogEntry({
