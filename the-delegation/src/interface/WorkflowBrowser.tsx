@@ -23,7 +23,7 @@ const WorkflowBrowser: React.FC<WorkflowBrowserProps> = ({ isOpen, onClose }) =>
     setError(null);
     client
       .listWorkflows()
-      .then((items) => setFiles(items.map((item) => item.name)))
+      .then((names) => setFiles(names))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, [isOpen]);

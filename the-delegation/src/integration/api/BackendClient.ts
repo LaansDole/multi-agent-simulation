@@ -16,7 +16,6 @@ import type {
   ModelInfo,
   NormalizedGraph,
   WorkflowExecuteRequest,
-  WorkflowListItem,
 } from './types';
 
 type EventCallback = (event: BackendEvent) => void;
@@ -177,7 +176,7 @@ export class BackendClient {
   }
 
   /** List available YAML workflows. */
-  public async listWorkflows(): Promise<WorkflowListItem[]> {
+  public async listWorkflows(): Promise<string[]> {
     const response = await fetch(`${this.apiUrl}/api/workflows`);
 
     if (!response.ok) {
