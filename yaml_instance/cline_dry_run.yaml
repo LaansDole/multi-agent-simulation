@@ -1,0 +1,49 @@
+version: 0.0.0
+graph:
+  id: cline_dry_run
+  description: Minimal 2-agent dry-run workflow using the Cline API (clinepass).
+  is_majority_voting: false
+  nodes:
+    - id: writer
+      type: agent
+      config:
+        provider: openai
+        name: cline-pass/qwen3.7-max
+        role: |
+          You are a concise writer. Respond with a single original sentence
+          about the ocean. Output ONLY the sentence, nothing else.
+        base_url: ${CLINE_BASE_URL}
+        api_key: ${CLINE_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+      description: Generates a single sentence about the ocean
+      context_window: 0
+      log_output: true
+    - id: reviewer
+      type: agent
+      config:
+        provider: openai
+        name: cline-pass/qwen3.7-max
+        role: |
+          You are a reviewer. The previous message contains a sentence about
+          the ocean. Respond with EXACTLY: REVIEW_DONE followed by the sentence.
+        base_url: ${CLINE_BASE_URL}
+        api_key: ${CLINE_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+      description: Reviews the writer's output
+      context_window: 0
+      log_output: true
+  edges:
+    - from: writer
+      to: reviewer
+      trigger: true
+      carry_data: true
+  start:
+    - writer
+  end:
+    - reviewer
