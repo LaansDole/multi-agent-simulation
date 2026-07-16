@@ -62,6 +62,9 @@ filterwarnings = [
     "ignore:builtin type Swig.*:DeprecationWarning",
     "ignore:builtin type swigvarlink.*:DeprecationWarning",
 ]
+markers = [
+    "cline: marks tests that call the real Cline API (requires CLINE_API_KEY in .env)",
+]
 
 
 [tool.uv]
