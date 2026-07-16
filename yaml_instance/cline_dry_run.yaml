@@ -14,7 +14,9 @@ graph:
           about the ocean. Output ONLY the sentence, nothing else.
         base_url: ${CLINE_BASE_URL}
         api_key: ${CLINE_API_KEY}
-        params: {}
+        params:
+          protocol: chat
+          unwrap_data_wrapper: true
         tooling: null
         thinking: null
         memories: []
@@ -31,7 +33,9 @@ graph:
           the ocean. Respond with EXACTLY: REVIEW_DONE followed by the sentence.
         base_url: ${CLINE_BASE_URL}
         api_key: ${CLINE_API_KEY}
-        params: {}
+        params:
+          protocol: chat
+          unwrap_data_wrapper: true
         tooling: null
         thinking: null
         memories: []

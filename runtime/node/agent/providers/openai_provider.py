@@ -2,6 +2,7 @@
 
 import base64
 import hashlib
+import json
 import re
 
 import binascii
@@ -9,8 +10,10 @@ import os
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import unquote_to_bytes
 
+import httpx
 import openai
 from openai import OpenAI
+
 
 from entity.messages import (
     AttachmentRef,
@@ -28,12 +31,52 @@ from runtime.node.agent.providers.base import ModelInfo
 from utils.token_tracker import TokenUsage
 
 
+class _DataUnwrapTransport(httpx.BaseTransport):
+    """HTTP transport that unwraps ``{"data": {...}, "success": ...}`` API responses.
+
+    Some OpenAI-compatible providers (e.g. Cline) wrap the standard OpenAI
+    response body under a ``data`` key. The OpenAI Python SDK does not unwrap
+    this wrapper, causing ``response.choices`` to be ``None``. This transport
+    intercepts the raw HTTP response and replaces the body with the unwrapped
+    ``data`` payload so the SDK parses it normally.
+    """
+
+    def __init__(self) -> None:
+        self._inner = httpx.HTTPTransport()
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        response = self._inner.handle_request(request)
+        if response.status_code == 200:
+            response.read()
+            content = response.content
+            if content:
+                try:
+                    body = json.loads(content)
+                except (json.JSONDecodeError, ValueError):
+                    return response
+                if (
+                    isinstance(body, dict)
+                    and "data" in body
+                    and "success" in body
+                ):
+                    unwrapped = body["data"]
+                    new_content = json.dumps(unwrapped).encode()
+                    response._content = new_content
+                    response.headers["content-length"] = str(len(new_content))
+        return response
+
+    def close(self) -> None:
+        self._inner.close()
+
 class OpenAIProvider(ModelProvider):
     """OpenAI provider implementation."""
 
     CSV_INLINE_CHAR_LIMIT = 200_000  # safeguard large attachments
     TEXT_INLINE_CHAR_LIMIT = 200_000  # safeguard large text/* attachments
     MAX_INLINE_FILE_BYTES = 50 * 1024 * 1024  # OpenAI function output limit (~50 MB)
+
+    # Provider-internal param keys that must NOT be forwarded to the OpenAI API.
+    _RESERVED_PARAMS = frozenset({"protocol", "unwrap_data_wrapper"})
 
     def create_client(self):
         """
@@ -46,11 +89,24 @@ class OpenAIProvider(ModelProvider):
             return OpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
+                http_client=self._build_http_client(),
             )
         else:
             return OpenAI(
                 api_key=self.api_key,
+                http_client=self._build_http_client(),
             )
+
+    def _build_http_client(self) -> httpx.Client:
+        """Build the ``httpx.Client`` to pass to the OpenAI SDK.
+
+        When ``params.unwrap_data_wrapper`` is true, wraps the transport in
+        ``_DataUnwrapTransport`` to handle providers that nest the real
+        response body under a ``data`` key (e.g. the Cline API).
+        """
+        if self.params.get("unwrap_data_wrapper"):
+            return httpx.Client(transport=_DataUnwrapTransport())
+        return httpx.Client()
 
     def call_model(
         self,
@@ -236,7 +292,9 @@ class OpenAIProvider(ModelProvider):
         elif tool_specs:
             payload.setdefault("tool_choice", "auto")
 
-        # Pass any remaining kwargs directly
+        # Pass any remaining kwargs directly (strip provider-internal keys)
+        for key in self._RESERVED_PARAMS:
+            params.pop(key, None)
         payload.update(params)
         return payload
 
@@ -300,6 +358,8 @@ class OpenAIProvider(ModelProvider):
         elif tool_specs:
             payload.setdefault("tool_choice", "auto")
 
+        for key in self._RESERVED_PARAMS:
+            params.pop(key, None)
         payload.update(params)
         return payload
 
@@ -436,7 +496,10 @@ class OpenAIProvider(ModelProvider):
 
     def _append_chat_response_output(self, timeline: List[Any], response: Any) -> None:
         """Add chat response to timeline, preserving tool_calls (Chat API compatible)."""
-        msg = response.choices[0].message
+        choices = self._get_attr(response, "choices") or []
+        if not choices:
+            return
+        msg = choices[0].message
         content = self._strip_thinking_tokens(msg.content or "")
         assistant_msg = {"role": "assistant", "content": content}
 
