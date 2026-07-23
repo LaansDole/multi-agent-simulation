@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import packageJson from '../../package.json';
 import { useCoreStore } from '../integration/store/coreStore';
 import InfoModal from './InfoModal';
+import WorkflowBrowser from './WorkflowBrowser';
 
 const version = packageJson.version;
 
 const Header: React.FC = () => {
   const { backendStatus, setViewMode } = useCoreStore();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -75,6 +77,14 @@ const Header: React.FC = () => {
           <span className="text-[10px] font-black uppercase tracking-wider ml-1 hidden sm:inline">Manage Teams</span>
         </button>
 
+        <button
+          onClick={() => setIsBrowserOpen(true)}
+          className="flex items-center gap-2 px-3 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg transition-all active:scale-95 cursor-pointer h-9 shrink-0"
+          title="Browse and import YAML workflows"
+        >
+          <span className="text-[10px] font-black uppercase tracking-wider">Browse Workflows</span>
+        </button>
+
         <div className="w-px h-4 bg-zinc-200" />
 
         <div className="flex items-center gap-3">
@@ -133,6 +143,8 @@ const Header: React.FC = () => {
       {isInfoOpen && (
         <InfoModal key="info-modal" onClose={() => setIsInfoOpen(false)} />
       )}
+
+      <WorkflowBrowser isOpen={isBrowserOpen} onClose={() => setIsBrowserOpen(false)} />
     </header>
   );
 };

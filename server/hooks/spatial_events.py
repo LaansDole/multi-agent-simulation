@@ -78,21 +78,18 @@ class SpatialWebSocketExecutor(WebSocketGraphExecutor):
     def _resolve_agent_index(node: Node) -> int:
         """Extract agent index from node config or ID.
 
-        Convention: node IDs follow ``<role>_<index>`` pattern
-        (e.g. ``lead_1``, ``researcher_2``), or the YAML node config
-        may contain an explicit ``agent_index`` field.
+        Returns 0 (unmapped) when no explicit index is available; the 3D
+        frontend's nodeAgentMap is the authoritative router.
         """
-        # Check explicit config first
         if hasattr(node, "config") and isinstance(node.config, dict):
             if "agent_index" in node.config:
                 return int(node.config["agent_index"])
 
-        # Fallback: parse trailing digit from node ID
         parts = node.id.rsplit("_", 1)
         if len(parts) == 2 and parts[1].isdigit():
             return int(parts[1])
 
-        return 1  # Default to lead agent
+        return 0
 
     @staticmethod
     def _resolve_node_name(node: Node) -> str:

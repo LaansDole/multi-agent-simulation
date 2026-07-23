@@ -13,6 +13,9 @@ import { KanbanPanel } from './interface/KanbanPanel';
 import { OutputReviewModal } from './interface/OutputReviewModal';
 import SimulationView from './interface/SimulationView';
 import { VisualConfigurator } from './interface/VisualConfigurator/VisualConfigurator';
+import ReadOnlyWorkflowGraph from './interface/ReadOnlyWorkflowGraph';
+import CharacterSlotMapping from './interface/CharacterSlotMapping';
+import { useWorkflowStore } from './integration/store/workflowStore';
 import { SceneContext } from './simulation/SceneContext';
 import { SceneManager } from './simulation/SceneManager';
 
@@ -23,6 +26,7 @@ const App: React.FC = () => {
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null);
   const { isLogOpen, isKanbanOpen, setIsResizing, viewMode, setViewMode } = useCoreStore();
   const fetchModelsFromBackend = useCoreStore(s => s.fetchModelsFromBackend);
+  const workflowGraph = useWorkflowStore((s) => s.workflowGraph);
   useEffect(() => {
     fetchModelsFromBackend();
   }, []);
@@ -122,7 +126,18 @@ const App: React.FC = () => {
               className="w-full h-full bg-white rounded-2xl shadow-2xl border border-zinc-200/50 overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <VisualConfigurator />
+              {workflowGraph ? (
+                <>
+                  <div className="flex-1 relative overflow-hidden">
+                    <ReadOnlyWorkflowGraph />
+                  </div>
+                  <div className="w-80 shrink-0 overflow-y-auto p-4 border-l border-zinc-100">
+                    <CharacterSlotMapping />
+                  </div>
+                </>
+              ) : (
+                <VisualConfigurator />
+              )}
             </div>
           </div>
         )}
