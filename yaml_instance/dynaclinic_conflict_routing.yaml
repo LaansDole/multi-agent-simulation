@@ -1,3 +1,11 @@
+# Legacy prompt-level prototype; see yaml_instance/dynaclinic_mvp.yaml (dc_* node types, first-line
+# anchored routing, numeric divergence vs tau, atomic-claim Critic). Kept unchanged as a demo. Known defects:
+# - The literal CaseInput start node ignores its input, so the task prompt (the case) never reaches a model.
+# - Edges carry only the previous node's output: each agent sees only its predecessor's text, not the case.
+# - Routing is a case-sensitive substring `keyword` match over the whole output:
+#   "VERDICT: CONSENSUS ... no CONFLICT" still runs ClinicalCritic and ConflictResolver.
+# - Edges set `processor: null`, but the edge key is `process`; an unknown `processor:` is silently ignored.
+# - The "tau" step is an LLM judgement; there is no numeric divergence.
 version: 0.0.0
 graph:
   id: dynaclinic_conflict_routing

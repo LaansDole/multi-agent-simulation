@@ -1,3 +1,11 @@
+# Legacy prompt-level prototype; see yaml_instance/dynaclinic_mvp.yaml (dc_* node types, first-line
+# anchored routing, shared Blackboard, safety gates). Kept unchanged as a demo. Known defects:
+# - The literal CaseInput start node ignores its input, so the task prompt (the case) never reaches a model.
+# - Edges carry only the previous node's output: the specialists see the triage verdict, not the case.
+# - Routing is a case-sensitive substring `keyword` match over the whole output:
+#   "COMPLEXITY: HIGH ... not LOW" fires both the PrimaryCareAgent and the specialist branches.
+# - Edges set `processor: null`, but the edge key is `process`; an unknown `processor:` is silently ignored.
+# - Two tiers (LOW/HIGH) instead of three, and the team passes messages instead of sharing a Blackboard.
 version: 0.0.0
 graph:
   id: dynaclinic_meta_controller

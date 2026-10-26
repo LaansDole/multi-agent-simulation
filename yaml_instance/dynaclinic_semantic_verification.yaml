@@ -1,3 +1,12 @@
+# Legacy prompt-level prototype; see yaml_instance/dynaclinic_mvp.yaml (dc_safety_gate: rule-based
+# A_SAD/T_SAD with bounded regeneration). Kept unchanged as a demo. Known defects:
+# - The literal CaseInput start node ignores its input, so the task prompt (the case) never reaches a model.
+# - Edges carry only the previous node's output: S_NAP_Predictor, T_SAD_Reviewer and VerifiedPlanOutput
+#   see only the previous verdict, never the plan; PlanReviser sees only the FAIL text.
+# - Routing is a case-sensitive substring `keyword` match over the whole output (PASS/FAIL anywhere fires).
+# - Dead revision loop: LoopGate (loop_counter, standard mode) emits nothing before its 2nd hit and is the
+#   only way back to the generator, so the first FAIL ends the run with no final output.
+# - Edges set `processor: null`, but the edge key is `process`; an unknown `processor:` is silently ignored.
 version: 0.0.0
 graph:
   id: dynaclinic_semantic_verification
