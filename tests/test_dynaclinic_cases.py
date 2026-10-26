@@ -48,6 +48,12 @@ def test_answers_and_unsafe_letters_are_valid(cases: list[Case]) -> None:
     assert sum(bool(c.unsafe_options) for c in cases) >= 8
 
 
+def test_gold_letters_are_balanced_so_position_bias_cannot_score(cases: list[Case]) -> None:
+    counts = Counter(c.answer for c in cases)
+    assert set(counts) == {"A", "B", "C", "D", "E"}
+    assert max(counts.values()) <= 5
+
+
 def test_every_case_has_structured_fields(cases: list[Case]) -> None:
     for case in cases:
         assert set(case.structured) == STRUCTURED_KEYS, case.id
