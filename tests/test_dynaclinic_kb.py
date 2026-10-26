@@ -30,10 +30,15 @@ def test_allergy_class_membership_and_cross_reactivity() -> None:
     assert _pairs(allergy_conflicts("IV piperacillin-tazobactam", allergies)) == {
         ("piperacillin", "Penicillin (anaphylaxis)", "contraindicated")
     }
-    assert _pairs(allergy_conflicts("IV ceftriaxone", allergies)) == {
-        ("ceftriaxone", "Penicillin (anaphylaxis)", "caution")
-    }
     assert allergy_conflicts("Oral azithromycin", allergies) == []
+
+
+@pytest.mark.parametrize(
+    ("allergy", "severity"),
+    [("Penicillin (anaphylaxis)", "contraindicated"), ("penicillin (rash)", "caution")],
+)
+def test_cephalosporin_cross_reactivity_severity_depends_on_reaction(allergy: str, severity: str) -> None:
+    assert _pairs(allergy_conflicts("Oral cephalexin", [allergy])) == {("cephalexin", allergy, severity)}
 
 
 def test_allergy_listed_by_drug_name_covers_its_class() -> None:

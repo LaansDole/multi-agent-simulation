@@ -134,7 +134,7 @@ _ALLERGY_CLASS_RE = {
     }.items()
 }
 _CROSS_REACTIVITY = {
-    "penicillin": ("cephalosporin", "penicillin-cephalosporin cross-reactivity is low (~1-2%); review the reaction history"),
+    "penicillin": ("cephalosporin", "penicillin-cephalosporin cross-reactivity (~1-2%); avoid after anaphylaxis"),
 }
 
 
@@ -148,10 +148,11 @@ def allergy_conflicts(text: str, allergies: Iterable[str]) -> list[KBConflict]:
         blocked = _members(*classes) | drugs_in(allergy)
         for drug in asserted & blocked:
             found.add(KBConflict("allergy", drug, allergy, "drug is in the patient's allergy class"))
+        severity: Severity = "contraindicated" if re.search(r"anaphyla", allergy, re.IGNORECASE) else "caution"
         for allergy_class in classes & _CROSS_REACTIVITY.keys():
             cross_class, note = _CROSS_REACTIVITY[allergy_class]
             for drug in (asserted & DRUG_CLASSES[cross_class]) - blocked:
-                found.add(KBConflict("allergy", drug, allergy, note, "caution"))
+                found.add(KBConflict("allergy", drug, allergy, note, severity))
     return sorted(found, key=lambda c: (c.subject, c.other))
 
 
