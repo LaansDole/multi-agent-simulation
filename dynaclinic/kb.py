@@ -96,7 +96,7 @@ def _phrase_regex(phrases: Iterable[str]) -> re.Pattern[str]:
 _DRUG_RE = _phrase_regex([*_ALL_DRUGS, *_ALIASES])
 # ponytail: surface negation heuristic (cue within two words, same clause); a parsed plan would replace it.
 _NEGATION_RE = re.compile(
-    r"\b(?:avoid(?:ing)?|no|not|without|discontinue[ds]?|stop(?:ping|ped)?|hold(?:ing)?|withhold(?:ing)?|"
+    r"\b(?:avoid(?:s|ed|ing)?|no|not|without|discontinue[ds]?|stop(?:s|ping|ped)?|hold(?:s|ing)?|withhold(?:s|ing)?|"
     r"instead\s+of|contraindicated|allergic\s+to|allergy\s+to)\b(?:\s+[^\s.;:!?]+){0,2}\s*$",
     re.IGNORECASE,
 )

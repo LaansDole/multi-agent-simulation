@@ -84,6 +84,20 @@ def test_regression_allergy_history_mention_is_not_an_assertion(text: str) -> No
     assert allergy_conflicts(text, ["penicillin (anaphylaxis)", "sulfonamide (rash)"]) == []
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Azithromycin avoids penicillin exposure.",
+        "The team avoided amoxicillin given the allergy.",
+        "She stops amoxicillin today.",
+        "The plan holds penicillin; azithromycin instead.",
+        "Pharmacology withholds amoxicillin.",
+    ],
+)
+def test_regression_inflected_negation_cue_is_not_an_assertion(text: str) -> None:
+    assert allergy_conflicts(text, ["penicillin (anaphylaxis)"]) == []
+
+
 def test_drug_followed_by_unrelated_noun_is_still_asserted() -> None:
     assert [c.subject for c in allergy_conflicts("Penicillin therapy for 10 days", ["penicillin"])] == ["penicillin"]
 
