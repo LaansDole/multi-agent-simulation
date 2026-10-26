@@ -113,8 +113,8 @@ def case_block(case: Case, sections: dict[str, str]) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
-def specialist_block(role: str, case: Case, sections: dict[str, str]) -> str:
-    """Modality-restricted input for one specialist: its structured slice, question and options.
+def modality_data(role: str, case: Case, sections: dict[str, str]) -> str:
+    """One specialist's own data slice, ``""`` when the case has none for that modality.
 
     Imaging also gets the vignette sentences that mention an imaging study; Pathology/Lab and
     Pharmacology never see the vignette, so no specialist sees another modality's data.
@@ -125,5 +125,10 @@ def specialist_block(role: str, case: Case, sections: dict[str, str]) -> str:
     if role == IMAGING:
         mentions = [s for s in _SENTENCE.split(case.vignette) if _IMAGING_TERMS.search(s)]
         parts.append("Imaging mentioned in the case:\n" + "\n".join(mentions) if mentions else "")
-    data = "\n\n".join(part for part in parts if part) or f"(no {role} data available)"
+    return "\n\n".join(part for part in parts if part)
+
+
+def specialist_block(role: str, case: Case, sections: dict[str, str]) -> str:
+    """Modality-restricted input for one specialist: its ``modality_data`` slice, question and options."""
+    data = modality_data(role, case, sections) or f"(no {role} data available)"
     return f"{data}\n\n{_question(case)}"

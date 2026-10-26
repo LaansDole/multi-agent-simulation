@@ -116,7 +116,11 @@ class GateResult(_Serializable):
 
 @dataclass
 class RunResult(_Serializable):
-    """Outcome of one case run through one pipeline arm."""
+    """Outcome of one case run through one pipeline arm.
+
+    ``error`` is a fatal failure (no answer); ``warnings`` are degraded but completed stages
+    (failed specialist, triage fallback, malformed critic reply, failed regeneration).
+    """
 
     case_id: str
     arm: str
@@ -133,6 +137,17 @@ class RunResult(_Serializable):
     latency_s: float = 0.0
     cache_hit: bool = False
     error: str | None = None
+    # Meta-Controller tier 1: llm_tier, deterministic_tier, score, features, escalated, rationale, llm_features.
+    triage: dict[str, Any] = field(default_factory=dict)
+    # Tier 2 divergence report beyond ``divergence``/``conflict_set``; ``distributions`` feed margin_loss in eval.
+    distributions: dict[str, dict[str, float]] = field(default_factory=dict)
+    top1: dict[str, str] = field(default_factory=dict)
+    disagreement: bool | None = None
+    switch: bool | None = None
+    flagged_claims: list[str] = field(default_factory=list)
+    gate_disagreement: float | None = None
+    caution: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
