@@ -14,12 +14,7 @@ from dynaclinic.eval.cases import (
     load_medqa,
     load_synthetic,
 )
-from dynaclinic.interfaces import sections_from_structured
-from dynaclinic.kb import (
-    allergy_conflicts,
-    contraindication_conflicts,
-    interaction_conflicts,
-)
+from dynaclinic.kb import patient_conflicts
 from dynaclinic.types import Case
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
 
@@ -62,20 +57,12 @@ def test_every_case_has_structured_fields(cases: list[Case]) -> None:
 
 
 def _kb_flagged(case: Case) -> set[str]:
-    """Option letters the KB marks contraindicated for this patient (what the T_SAD gate will see)."""
-    s = case.structured
-    sections = sections_from_structured(s)
-    conditions = [sections["Demographics"], sections["History"], sections["Labs"]]
-    flagged = set()
-    for option in case.options:
-        conflicts = [
-            *allergy_conflicts(option.text, s["allergies"]),
-            *interaction_conflicts(option.text, s["meds"]),
-            *contraindication_conflicts(option.text, conditions),
-        ]
-        if any(c.severity == "contraindicated" for c in conflicts):
-            flagged.add(option.letter)
-    return flagged
+    """Option letters the KB marks contraindicated for this patient (what the critic and T_SAD gate see)."""
+    return {
+        option.letter
+        for option in case.options
+        if any(c.severity == "contraindicated" for c in patient_conflicts(option.text, case.structured))
+    }
 
 
 def test_unsafe_options_are_exactly_the_kb_flagged_options(cases: list[Case]) -> None:

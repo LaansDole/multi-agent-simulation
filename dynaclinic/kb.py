@@ -11,7 +11,9 @@ Severity: ``contraindicated`` means "avoid" (a gate violation); ``caution`` is a
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
+
+from dynaclinic.interfaces import sections_from_structured
 
 Severity = Literal["contraindicated", "caution"]
 
@@ -240,6 +242,21 @@ def contraindication_conflicts(text: str, conditions: Iterable[str]) -> list[KBC
         if label:
             found |= {KBConflict("contraindication", drug, label, reason) for drug in asserted & drugs}
     return sorted(found, key=lambda c: (c.subject, c.other))
+
+
+def patient_conflicts(text: str, structured: dict[str, Any]) -> list[KBConflict]:
+    """Allergy, interaction and contraindication conflicts of ``text`` for one patient (all severities).
+
+    Allergies and meds come from ``structured``; conditions from its Demographics, History and Labs
+    sections. Single source for the Clinical Critic's rule score and the safety gates, so they flag
+    exactly what the dataset's ``unsafe_options`` were checked against.
+    """
+    sections = sections_from_structured(structured)
+    return [
+        *allergy_conflicts(text, structured.get("allergies") or []),
+        *interaction_conflicts(text, structured.get("meds") or []),
+        *contraindication_conflicts(text, [sections["Demographics"], sections["History"], sections["Labs"]]),
+    ]
 
 
 # --- precedence (A_SAD) --------------------------------------------------------------------------
