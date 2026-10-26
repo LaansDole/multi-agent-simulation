@@ -98,6 +98,35 @@ def test_regression_inflected_negation_cue_is_not_an_assertion(text: str) -> Non
     assert allergy_conflicts(text, ["penicillin (anaphylaxis)"]) == []
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Amoxicillin is contraindicated given the allergy.",
+        "Amoxicillin should be avoided.",
+        "Amoxicillin (option A) would be unsafe here.",
+        "Amoxicillin is not recommended; azithromycin is.",
+        "Amoxicillin should not be used.",
+        "The allergy rules out amoxicillin.",
+        "The interaction warnings concern ampicillin and amoxicillin, not azithromycin.",
+    ],
+)
+def test_regression_post_position_negation_is_not_an_assertion(text: str) -> None:
+    assert allergy_conflicts(text, ["penicillin (anaphylaxis)"]) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Give amoxicillin since azithromycin is contraindicated.",
+        "Give amoxicillin, as azithromycin is unsafe.",
+        "Give amoxicillin. Azithromycin is contraindicated.",
+        "Amoxicillin for ten days is first-line therapy and is not unsafe.",
+    ],
+)
+def test_post_position_cue_does_not_cross_clauses_or_reach_far(text: str) -> None:
+    assert [c.subject for c in allergy_conflicts(text, ["penicillin (anaphylaxis)"])] == ["amoxicillin"]
+
+
 def test_drug_followed_by_unrelated_noun_is_still_asserted() -> None:
     assert [c.subject for c in allergy_conflicts("Penicillin therapy for 10 days", ["penicillin"])] == ["penicillin"]
 

@@ -94,10 +94,20 @@ def _phrase_regex(phrases: Iterable[str]) -> re.Pattern[str]:
 
 
 _DRUG_RE = _phrase_regex([*_ALL_DRUGS, *_ALIASES])
-# ponytail: surface negation heuristic (cue within two words, same clause); a parsed plan would replace it.
+# ponytail: surface negation heuristic (cue within two words before or four words after, same clause); a parsed
+# plan would replace it.
 _NEGATION_RE = re.compile(
     r"\b(?:avoid(?:s|ed|ing)?|no|not|without|discontinue[ds]?|stop(?:s|ping|ped)?|hold(?:s|ing)?|withhold(?:s|ing)?|"
-    r"instead\s+of|contraindicated|allergic\s+to|allergy\s+to)\b(?:\s+[^\s.;:!?]+){0,2}\s*$",
+    r"instead\s+of|contraindicated|allergic\s+to|allergy\s+to|rul(?:e|es|ed|ing)\s+out|concerns?)\b"
+    r"(?:\s+[^\s.;:!?]+){0,2}\s*$",
+    re.IGNORECASE,
+)
+# "X is contraindicated", "X should be avoided", "X (option B) would be unsafe". The words in between may not
+# contain a comma or a subordinating word, so "give X since Y is contraindicated" negates Y only.
+_NEGATION_AFTER_RE = re.compile(
+    r"(?:\s+(?!(?:as|because|but|since|so|that|though|although|whereas|which|while)\b)[^\s,.;:!?]+){0,4}?\s+"
+    r"(?:contraindicated|avoided|unsafe|inappropriate|ruled\s+out|"
+    r"not\s+(?:recommended|advised|appropriate|indicated|safe|be\s+(?:used|given)))\b",
     re.IGNORECASE,
 )
 # "penicillin allergy", "amoxicillin rash", "penicillin-class hypersensitivity": the drug names a past reaction.
@@ -117,11 +127,12 @@ def drugs_in(text: str) -> set[str]:
 
 
 def _asserted_drugs(text: str) -> set[str]:
-    """Drugs mentioned in ``text`` that are not negated ("avoid X", "allergic to X") or a past reaction ("X allergy")."""
+    """Drugs mentioned in ``text`` that are not negated ("avoid X", "X is contraindicated") or a past reaction ("X allergy")."""
     return {
         drug
         for match in _DRUG_RE.finditer(text)
         if not _NEGATION_RE.search(text[max(0, match.start() - 60) : match.start()])
+        and not _NEGATION_AFTER_RE.match(text, match.end())
         and not _REACTION_AFTER_RE.match(text, match.end())
         for drug in _canonical(match.group())
     }
