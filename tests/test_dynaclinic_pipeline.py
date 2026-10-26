@@ -229,6 +229,16 @@ def test_failing_specialist_is_recorded_and_the_rest_are_used(broken: str) -> No
     assert any(warning.startswith(IMAGING) for warning in result.warnings)
 
 
+@pytest.mark.parametrize("pipeline_cls", [DynaClinicPipeline, StaticTeamPipeline])
+def test_regression_all_specialists_failing_is_an_error_not_agreement(pipeline_cls: type) -> None:
+    broken = {role: "I cannot help with that." for role in (IMAGING, PATHOLOGY, PHARMACOLOGY)}
+    result = pipeline_cls(_client(triage=_triage("HIGH"), **broken)).run(CASE)
+    assert result.error == "all specialists failed"
+    assert result.final_answer is None and result.divergence is None
+    assert "care_team:failed" in result.route
+    assert SYNTHESIZER not in _roles(result) and CRITIC not in _roles(result)
+
+
 def test_triage_failure_falls_back_to_deterministic_tier() -> None:
     result = DynaClinicPipeline(_failing(TRIAGE)).run(CASE)
     assert result.tier == result.triage["deterministic_tier"] == "LOW"

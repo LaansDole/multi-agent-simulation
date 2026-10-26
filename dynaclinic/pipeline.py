@@ -2,12 +2,14 @@
 
 Every arm's ``run(case)`` resets the client ledger, fills ``RunResult.calls`` from it, measures
 latency and never raises on model errors: a failed answering call (primary care, synthesizer,
-single agent) sets ``error`` and leaves ``final_answer`` None; degraded stages (failed or malformed
-specialist, triage fallback, critic or regeneration failure) go to ``warnings`` and the run continues.
+single agent) or a care team in which every specialist failed sets ``error`` and leaves
+``final_answer`` None; degraded stages (some specialists failed or malformed, triage fallback, critic
+or regeneration failure) go to ``warnings`` and the run continues.
 
 Route entries are stable identifiers: ``ingest``, ``cache_lookup:off|miss|rejected``, ``cache_hit``,
-``triage:<TIER>``, ``primary_care``, ``care_team:<roles>``, ``divergence:<d>:switch|stay``, ``critic``,
-``synthesizer``, ``regenerate``, ``safety_gate:pass|blocked``, ``single_agent``. In the dynamic arm every
+``triage:<TIER>``, ``primary_care``, ``care_team:<roles>``, ``care_team:failed``,
+``divergence:<d>:switch|stay``, ``critic``, ``synthesizer``, ``regenerate``, ``safety_gate:pass|blocked``,
+``single_agent``. In the dynamic arm every
 stage is chosen by the planner and followed by ``planner:<action>:<reward>``; the run ends with
 ``planner:terminal``.
 
@@ -92,7 +94,11 @@ class _CaseRun:
         return ((r.tier is None) + (r.final_answer is None) + (not verified)) / 3, self.conf, r.final_answer
 
     def care_team(self, roles: Sequence[str]) -> None:
-        """Run ``roles`` concurrently; entries are posted in role order once all have answered."""
+        """Run ``roles`` concurrently; entries are posted in role order once all have answered.
+
+        Raises ``LLMError("all specialists failed")`` (route ``care_team:failed``) when no specialist
+        posts an entry: an empty Blackboard would otherwise read as agreement (divergence 0).
+        """
         self.result.route.append(f"care_team:{','.join(roles)}")
         with ThreadPoolExecutor(max_workers=len(roles)) as pool:
             replies = list(pool.map(self._consult, roles))
@@ -103,8 +109,11 @@ class _CaseRun:
                 self.board.write(reply)
                 self.result.distributions[role] = reply.distribution
         dists = list(self.result.distributions.values())
+        if not dists:
+            self.result.route.append("care_team:failed")
+            raise LLMError("all specialists failed")
         letters = self.case.letters()
-        self.conf = max(sum(d[letter] for d in dists) / len(dists) for letter in letters) if dists else 0.0
+        self.conf = max(sum(d[letter] for d in dists) / len(dists) for letter in letters)
 
     def _consult(self, role: str) -> BlackboardEntry | str:
         """One specialist call (worker thread): its entry, or a warning when the call or reply fails."""
