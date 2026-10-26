@@ -4,6 +4,7 @@ import pytest
 
 from dynaclinic.kb import (
     allergy_conflicts,
+    asserted_drugs,
     contraindication_conflicts,
     drugs_in,
     interaction_conflicts,
@@ -141,6 +142,36 @@ def test_post_position_cue_does_not_cross_clauses_or_reach_far(text: str) -> Non
 
 def test_drug_followed_by_unrelated_noun_is_still_asserted() -> None:
     assert [c.subject for c in allergy_conflicts("Penicillin therapy for 10 days", ["penicillin"])] == ["penicillin"]
+
+
+@pytest.mark.parametrize(
+    ("text", "asserted"),
+    [
+        ("Avoid aspirin, give warfarin.", {"warfarin"}),
+        ("Rather than aspirin, give warfarin.", {"warfarin"}),
+        ("Avoid aspirin, and then start warfarin.", {"warfarin"}),
+        ("Stop lisinopril and start losartan.", {"losartan"}),
+        ("Hold metformin; continue dulaglutide.", {"dulaglutide"}),
+        ("Hold metformin, continue dulaglutide.", {"dulaglutide"}),
+        ("Continue warfarin and start heparin not recommended.", {"warfarin"}),
+    ],
+)
+def test_regression_negation_does_not_cross_new_recommendation(text: str, asserted: set[str]) -> None:
+    assert asserted_drugs(text) == asserted
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Avoid aspirin, ibuprofen, and naproxen.",
+        "Aspirin, ibuprofen, and naproxen are contraindicated.",
+        "Stop lisinopril and losartan.",
+        "Avoid aspirin or ibuprofen.",
+    ],
+)
+def test_coordinated_drug_list_shares_one_negation_cue(text: str) -> None:
+    assert asserted_drugs(text) == set()
+
 
 @pytest.mark.parametrize(
     ("text", "meds", "expected"),

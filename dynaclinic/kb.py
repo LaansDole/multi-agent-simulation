@@ -95,7 +95,15 @@ def _phrase_regex(phrases: Iterable[str]) -> re.Pattern[str]:
 
 _DRUG_RE = _phrase_regex([*_ALL_DRUGS, *_ALIASES])
 # ponytail: surface negation heuristic (cue within two words before or four words after, same clause); a parsed
-# plan would replace it.
+# plan would replace it. A comma or "and/but/then/while/whereas" before a new recommendation verb starts a new clause,
+# so "Avoid aspirin, give warfarin" negates aspirin only; a coordinated list ("aspirin, ibuprofen, and naproxen")
+# shares the cue before its first or after its last drug.
+_CLAUSE_BREAK_RE = re.compile(
+    r"(?:,|\b(?:and|but|then|while|whereas)\b)(?:\s+(?:and|but|then))*\s+"
+    r"(?=(?:give|start|begin|prescribe|administer|add|use|continue|switch\s+to|initiate|recommend)\b)",
+    re.IGNORECASE,
+)
+_LIST_GAP_RE = re.compile(r"[\s,/-]*(?:(?:and|or)\s+)?", re.IGNORECASE)
 _NEGATION_RE = re.compile(
     r"\b(?:avoid(?:s|ed|ing)?|no|not|without|discontinu(?:e|es|ed|ing)|stop(?:s|ping|ped)?|hold(?:s|ing)?|"
     r"withhold(?:s|ing)?|remov(?:e|es|ed|ing)|instead\s+of|rather\s+than|contraindicated|allergic\s+to|allergy\s+to|"
@@ -131,14 +139,27 @@ def drugs_in(text: str) -> set[str]:
 
 def asserted_drugs(text: str) -> set[str]:
     """Drugs mentioned in ``text`` that are not negated ("avoid X", "X is contraindicated") or a past reaction ("X allergy")."""
-    return {
-        drug
-        for match in _DRUG_RE.finditer(text)
-        if not _NEGATION_RE.search(text[max(0, match.start() - 60) : match.start()])
-        and not _NEGATION_AFTER_RE.match(text, match.end())
-        and not _REACTION_AFTER_RE.match(text, match.end())
-        for drug in _canonical(match.group())
-    }
+    lists: list[list[re.Match[str]]] = []
+    for match in _DRUG_RE.finditer(text):
+        if lists and _LIST_GAP_RE.fullmatch(text, lists[-1][-1].end(), match.start()):
+            lists[-1].append(match)
+        else:
+            lists.append([match])
+    asserted: set[str] = set()
+    for drugs in lists:
+        start, end = drugs[0].start(), drugs[-1].end()
+        before = _CLAUSE_BREAK_RE.split(text[max(0, start - 60) : start])[-1]
+        next_break = _CLAUSE_BREAK_RE.search(text, end)
+        clause_end = next_break.start() if next_break else len(text)
+        if _NEGATION_RE.search(before) or _NEGATION_AFTER_RE.match(text, end, clause_end):
+            continue
+        asserted.update(
+            drug
+            for match in drugs
+            if not _REACTION_AFTER_RE.match(text, match.end())
+            for drug in _canonical(match.group())
+        )
+    return asserted
 
 
 # --- allergies -----------------------------------------------------------------------------------
