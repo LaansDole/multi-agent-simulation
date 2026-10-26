@@ -111,6 +111,7 @@ class GateResult(_Serializable):
     name: GateName
     passed: bool
     violations: list[str] = field(default_factory=list)
+    note: str = ""
 
 
 @dataclass
