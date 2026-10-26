@@ -92,6 +92,10 @@ def test_regression_allergy_history_mention_is_not_an_assertion(text: str) -> No
         "She stops amoxicillin today.",
         "The plan holds penicillin; azithromycin instead.",
         "Pharmacology withholds amoxicillin.",
+        "Option A removes amoxicillin.",
+        "Discontinuing amoxicillin is the priority.",
+        "Give azithromycin rather than continuing amoxicillin.",
+        "Levofloxacin is a fluoroquinolone-not a penicillin-so it is acceptable.",
     ],
 )
 def test_regression_inflected_negation_cue_is_not_an_assertion(text: str) -> None:
@@ -108,6 +112,11 @@ def test_regression_inflected_negation_cue_is_not_an_assertion(text: str) -> Non
         "Amoxicillin should not be used.",
         "The allergy rules out amoxicillin.",
         "The interaction warnings concern ampicillin and amoxicillin, not azithromycin.",
+        "Amoxicillin should be discontinued.",
+        "Amoxicillin should be stopped today.",
+        "Amoxicillin should be held.",
+        "Amoxicillin should be withheld.",
+        "A, B, and E contain penicillin-class drugs and are inappropriate with prior anaphylaxis.",
     ],
 )
 def test_regression_post_position_negation_is_not_an_assertion(text: str) -> None:
@@ -121,6 +130,9 @@ def test_regression_post_position_negation_is_not_an_assertion(text: str) -> Non
         "Give amoxicillin, as azithromycin is unsafe.",
         "Give amoxicillin. Azithromycin is contraindicated.",
         "Amoxicillin for ten days is first-line therapy and is not unsafe.",
+        "Give amoxicillin. Azithromycin should be discontinued.",
+        "Give amoxicillin once azithromycin is stopped.",
+        "Restart amoxicillin after azithromycin is held.",
     ],
 )
 def test_post_position_cue_does_not_cross_clauses_or_reach_far(text: str) -> None:

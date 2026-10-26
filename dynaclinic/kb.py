@@ -97,16 +97,19 @@ _DRUG_RE = _phrase_regex([*_ALL_DRUGS, *_ALIASES])
 # ponytail: surface negation heuristic (cue within two words before or four words after, same clause); a parsed
 # plan would replace it.
 _NEGATION_RE = re.compile(
-    r"\b(?:avoid(?:s|ed|ing)?|no|not|without|discontinue[ds]?|stop(?:s|ping|ped)?|hold(?:s|ing)?|withhold(?:s|ing)?|"
-    r"instead\s+of|contraindicated|allergic\s+to|allergy\s+to|rul(?:e|es|ed|ing)\s+out|concerns?)\b"
+    r"\b(?:avoid(?:s|ed|ing)?|no|not|without|discontinu(?:e|es|ed|ing)|stop(?:s|ping|ped)?|hold(?:s|ing)?|"
+    r"withhold(?:s|ing)?|remov(?:e|es|ed|ing)|instead\s+of|rather\s+than|contraindicated|allergic\s+to|allergy\s+to|"
+    r"rul(?:e|es|ed|ing)\s+out|concerns?)\b"
     r"(?:\s+[^\s.;:!?]+){0,2}\s*$",
     re.IGNORECASE,
 )
-# "X is contraindicated", "X should be avoided", "X (option B) would be unsafe". The words in between may not
-# contain a comma or a subordinating word, so "give X since Y is contraindicated" negates Y only.
+# "X is contraindicated", "X should be discontinued", "X-class drugs ... are inappropriate". The words in between may
+# not contain a comma or a subordinating word, so "give X since Y is contraindicated" and "give X once Y is stopped"
+# negate Y only.
 _NEGATION_AFTER_RE = re.compile(
-    r"(?:\s+(?!(?:as|because|but|since|so|that|though|although|whereas|which|while)\b)[^\s,.;:!?]+){0,4}?\s+"
-    r"(?:contraindicated|avoided|unsafe|inappropriate|ruled\s+out|"
+    r"(?:-class)?(?:\s+(?!(?:after|although|as|because|before|but|if|once|since|so|that|though|unless|until|when|"
+    r"whereas|which|while)\b)[^\s,.;:!?]+){0,4}?\s+"
+    r"(?:contraindicated|avoided|unsafe|inappropriate|ruled\s+out|discontinued|stopped|held|withheld|"
     r"not\s+(?:recommended|advised|appropriate|indicated|safe|be\s+(?:used|given)))\b",
     re.IGNORECASE,
 )
@@ -126,7 +129,7 @@ def drugs_in(text: str) -> set[str]:
     return {drug for match in _DRUG_RE.finditer(text) for drug in _canonical(match.group())}
 
 
-def _asserted_drugs(text: str) -> set[str]:
+def asserted_drugs(text: str) -> set[str]:
     """Drugs mentioned in ``text`` that are not negated ("avoid X", "X is contraindicated") or a past reaction ("X allergy")."""
     return {
         drug
@@ -158,7 +161,7 @@ _CROSS_REACTIVITY = {
 
 def allergy_conflicts(text: str, allergies: Iterable[str]) -> list[KBConflict]:
     """Drugs asserted in ``text`` that belong to an allergy class (or cross-react) for this patient."""
-    asserted = _asserted_drugs(text)
+    asserted = asserted_drugs(text)
     found: set[KBConflict] = set()
     for allergy in allergies:
         classes = {c for c, regex in _ALLERGY_CLASS_RE.items() if regex.search(allergy)}
@@ -198,7 +201,7 @@ _INTERACTIONS: list[tuple[frozenset[str], frozenset[str], str, Severity]] = [
 
 def interaction_conflicts(text: str, meds: Iterable[str]) -> list[KBConflict]:
     """Drugs asserted in ``text`` that interact with the patient's current ``meds``."""
-    asserted = _asserted_drugs(text)
+    asserted = asserted_drugs(text)
     current = drugs_in(" ; ".join(meds))
     found = {
         KBConflict("interaction", drug, med, reason, severity)
@@ -242,7 +245,7 @@ _CONTRAINDICATIONS: list[tuple[frozenset[str], str | None, str]] = [
 def contraindication_conflicts(text: str, conditions: Iterable[str]) -> list[KBConflict]:
     """Drugs asserted in ``text`` that are contraindicated by the patient's ``conditions`` (history, labs, status)."""
     context = " ; ".join(conditions).lower()
-    asserted = _asserted_drugs(text)
+    asserted = asserted_drugs(text)
     found: set[KBConflict] = set()
     for drugs, pattern, reason in _CONTRAINDICATIONS:
         if pattern is None:
