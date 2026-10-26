@@ -43,3 +43,22 @@ The final answer is `FINAL ANSWER: D` (IV ketorolac), and the SafetyGate passed:
 2. **The Critic flags true pharmacology as unsupported.** For example, "Phenelzine is a monoamine oxidase inhibitor" was labelled `[fabrication]` in one run, and "Meperidine is inappropriate with phenelzine" `[unsupported]`. The judge only checks claims against the case text, and the rule score doesn't credit claims that the KB confirms (here, the meperidine/tramadol-MAOI interaction is in kb.py). KB-confirmed warnings should raise the rule score.
 3. **One Launch click ran the workflow twice.** The backend log shows two `POST /api/workflow/execute` requests 12 ms apart for session d36c5201, so every node and every LLM call ran twice. `LaunchView.vue` `launchWorkflow()` has no in-flight guard. This is a pre-existing DevAll frontend issue, not specific to DynaClinic, and it doubles cost.
 4. The final answer stayed correct and safe despite 1 and 2. They inflate cost (an unneeded critic round) and add noise to the trace.
+
+## Three.js view (the-delegation)
+
+Captured on 2026-10-27 at `http://localhost:3100/the-delegation/` (`npx vite --port=3100`, because :3000 is taken by another project). The browser was a sandbox headless Chrome driven over raw CDP; the agent's default Camofox browser renders the WebGL canvas blank. Case: `syn-high-06`, submitted through the Lead Agent chat.
+
+![3D office, default team](3d-01-office-default-team.png)
+![dynaclinic imported](3d-02-dynaclinic-imported.png)
+![design view](3d-03-design-view-placeholder.png)
+![lead agent chat](3d-04-lead-agent-chat.png)
+![run: kanban shows DynaClinic stages](3d-05-run-kanban-stages.png)
+![final output modal](3d-06-final-output-modal.png)
+
+What works:
+- Browse Workflows -> `dynaclinic_mvp.yaml` imports. Lead Agent -> "Chat about the brief" -> pasting the Case JSON starts a real backend run of the original YAML. There was exactly one `POST /api/workflow/execute`, so the double-launch bug from the Vue UI does not occur here.
+- The kanban board tracks the DynaClinic stages live. They move to In Progress and then Done: CaseInput, Triage, CareTeam, DivergenceGate, Critic, Synthesizer, SafetyGate, Report (8 done). The backend log shows the HIGH -> care team -> adversarial critic path, final answer B (correct, gold B).
+
+What does not work yet (findings):
+5. **There are no 3D characters for the DynaClinic agents.** `server/services/workflow_graph_serializer.py` sets `is_agent = node.type == "agent"`, and every DynaClinic node is a custom `dc_*` type, so the importer maps nothing to a character. The office shows one placeholder "Workflow" lead agent, and the design view shows `User -> Workflow` instead of the Triage / CareTeam / Critic graph. Fix: mark LLM-backed `dc_*` node types as agent-like (e.g. a registry capability flag the serializer reads), and map the three ICT specialists to three separate characters.
+6. **The final output modal shows the graph summary instead of the report.** "FINAL TEXT DELIVERABLE" reads "Workflow finished with 9 node outputs (1 terminal nodes)." rather than the Report node's text (`DynaClinic report (GATE: PASS) ... FINAL ANSWER: B`). The delegation client shows the run-summary message; it should show the terminal node's output.
