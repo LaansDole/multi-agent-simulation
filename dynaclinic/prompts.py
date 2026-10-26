@@ -95,7 +95,9 @@ _SLICES = {IMAGING: ("Imaging",), PATHOLOGY: ("Labs",), PHARMACOLOGY: ("Meds", "
 
 
 def options_block(case: Case) -> str:
-    """Render options as ``A. text`` lines."""
+    """Render options as ``A. text`` lines; a free-text case has none and needs no FINAL ANSWER."""
+    if not case.options:
+        return "(none: free-text case; answer in prose, no FINAL ANSWER letter needed)"
     return "\n".join(f"{option.letter}. {option.text}" for option in case.options)
 
 

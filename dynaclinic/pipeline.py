@@ -69,14 +69,20 @@ def _strings(value: object) -> list[str]:
 
 
 def _set_answer(result: RunResult, text: str, letters: list[str], role: str) -> None:
+    """Record ``text`` and its FINAL ANSWER; a free-text case (no options) needs none."""
     result.final_text = text
     result.final_answer = extract_final_answer(text, letters)
-    if result.final_answer is None:
+    if result.final_answer is None and letters:
         result.warnings.append(f"{role}: no valid FINAL ANSWER in reply")
 
 
-class _CaseRun:
-    """One case's state and the stages shared by the team arms; each stage appends its route id."""
+class CaseRun:
+    """One case's state and every stage, shared by the pipelines and the DevAll nodes (``devall_nodes``).
+
+    Each stage appends its route id. Stages call ``client``, which DevAll nodes swap per node config.
+    A free-text case (no options) is supported: specialists need no distribution, divergence is not
+    measurable (adversarial review, safety-biased) and no FINAL ANSWER is required.
+    """
 
     def __init__(self, client: LLMClient, case: Case, result: RunResult, sections: dict[str, str]) -> None:
         self.client = client
@@ -93,6 +99,43 @@ class _CaseRun:
         verified = self.safety is not None and not self.safety.blocked
         return ((r.tier is None) + (r.final_answer is None) + (not verified)) / 3, self.conf, r.final_answer
 
+    def triage(self, escalate_threshold: int = MODERATE_SCORE) -> None:
+        """Meta-Controller tier 1; a failed call falls back to the deterministic tier (warning)."""
+        try:
+            triage = triage_case(self.client, self.case, escalate_threshold)
+        except LLMError as err:
+            score, features = feature_score(self.case)
+            tier = score_tier(score)
+            triage = TriageResult(tier, None, tier, score, features, False,
+                                  error=f"call failed ({err}); used deterministic tier")
+        r = self.result
+        r.tier = triage.tier
+        r.triage = {name: getattr(triage, name) for name in _TRIAGE_FIELDS}
+        if triage.error:
+            r.warnings.append(f"triage: {triage.error}")
+        r.route.append(f"triage:{triage.tier}")
+
+    def primary_care(self, samples: int = 1) -> None:
+        """Informative-model answer; ``samples > 1`` majority-votes (ties: earliest sample)."""
+        r = self.result
+        r.mode = "single"
+        r.route.append("primary_care")
+        user = case_block(self.case, self.sections)
+        texts = [self.client.complete(PRIMARY_CARE, SYSTEM_PROMPTS[PRIMARY_CARE], user)[0] for _ in range(samples)]
+        answers = [extract_final_answer(text, self.case.letters()) for text in texts]
+        votes = Counter(answer for answer in answers if answer)
+        text = texts[answers.index(votes.most_common(1)[0][0])] if votes else texts[0]
+        self.conf = max(votes.values(), default=0) / len(texts)
+        _set_answer(r, text, self.case.letters(), PRIMARY_CARE)
+        self.board.write(BlackboardEntry(PRIMARY_CARE, "verdict", text, step=1))  # read by a regeneration
+
+    def team_roles(self) -> list[str]:
+        """MODERATE: the first two of ``_MODERATE_ORDER`` with data for the case; otherwise every specialist."""
+        if self.result.tier != "MODERATE":
+            return list(SPECIALISTS)
+        chosen = sorted(_MODERATE_ORDER, key=lambda role: not modality_data(role, self.case, self.sections))[:2]
+        return [role for role in SPECIALISTS if role in chosen]
+
     def care_team(self, roles: Sequence[str]) -> None:
         """Run ``roles`` concurrently; entries are posted in role order once all have answered.
 
@@ -107,13 +150,13 @@ class _CaseRun:
                 self.result.warnings.append(reply)
             else:
                 self.board.write(reply)
-                self.result.distributions[role] = reply.distribution
-        dists = list(self.result.distributions.values())
-        if not dists:
+                if reply.distribution is not None:
+                    self.result.distributions[role] = reply.distribution
+        if all(isinstance(reply, str) for reply in replies):
             self.result.route.append("care_team:failed")
             raise LLMError("all specialists failed")
-        letters = self.case.letters()
-        self.conf = max(sum(d[letter] for d in dists) / len(dists) for letter in letters)
+        dists, letters = list(self.result.distributions.values()), self.case.letters()
+        self.conf = max(sum(d[letter] for d in dists) / len(dists) for letter in letters) if dists and letters else 0.0
 
     def _consult(self, role: str) -> BlackboardEntry | str:
         """One specialist call (worker thread): its entry, or a warning when the call or reply fails."""
@@ -122,17 +165,25 @@ class _CaseRun:
             text, _ = self.client.complete(role, SYSTEM_PROMPTS[role], user, json_mode=True)
         except LLMError as err:
             return f"{role}: call failed ({err}); excluded from the team"
-        data = extract_json(text) or {}
-        distribution = data.get("distribution")
-        if not isinstance(distribution, dict) or not distribution:
+        data = extract_json(text)
+        letters = self.case.letters()
+        distribution = (data or {}).get("distribution")
+        if letters and (not isinstance(distribution, dict) or not distribution):
             return f"{role}: reply has no distribution; excluded from the team"
+        if data is None:
+            return f"{role}: reply is not JSON; excluded from the team"
         findings = "; ".join(_strings(data.get("findings"))) or "(no findings)"
-        dist = normalize(distribution, self.case.letters())
+        dist = normalize(distribution, letters) if letters else None
         return BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=1)
 
     def divergence(self, tau: float) -> None:
-        report = assess(self.result.distributions, self.case.letters(), tau)
+        """Tier 2 switch; without options divergence is not measurable and the team goes adversarial."""
         r = self.result
+        if not self.case.letters():
+            r.switch, r.mode = True, "adversarial"
+            r.route.append("divergence:n/a:switch")
+            return
+        report = assess(r.distributions, self.case.letters(), tau)
         r.divergence, r.top1, r.disagreement = report.divergence, report.top1, report.disagreement
         r.conflict_set, r.switch = report.conflict_set, report.switch
         r.mode = "adversarial" if report.switch else "collaborative"
@@ -182,6 +233,16 @@ class _CaseRun:
     def gate(self) -> None:
         self.record_safety(run_gates(self.case, self.result.final_text, self.result.final_answer))
         self.result.route.append(f"safety_gate:{'blocked' if self.result.blocked else 'pass'}")
+
+    def safety_gate(self, max_rollbacks: int) -> None:
+        """Gate; while blocked, up to ``max_rollbacks`` synthesizer regenerations, each re-gated; then ``finish``."""
+        self.gate()
+        for _ in range(max_rollbacks):
+            if not self.result.blocked:
+                break
+            self.synthesize()
+            self.gate()
+        self.finish()
 
     def finish(self) -> None:
         """Label an answer that is still blocked; it is kept for grading."""
@@ -247,14 +308,14 @@ class DynaClinicPipeline(_Pipeline):
         self.ingestor = FHIRLiteIngestor()
 
     def _run(self, case: Case, result: RunResult) -> None:
-        run = _CaseRun(self.client, case, result, self.ingestor.ingest(case))
+        run = CaseRun(self.client, case, result, self.ingestor.ingest(case))
         result.route.append("ingest")
         key = case_block(case, run.sections)
         stages: dict[str, Callable[[], None]] = {
             "cache_lookup": lambda: self._cache_lookup(run, key),
-            "triage": lambda: self._triage(run),
-            "primary_care": lambda: self._primary_care(run),
-            "care_team": lambda: run.care_team(SPECIALISTS if result.tier == "HIGH" else self._moderate_roles(run)),
+            "triage": lambda: run.triage(self.escalate_threshold),
+            "primary_care": lambda: run.primary_care(self.pca_samples),
+            "care_team": lambda: run.care_team(run.team_roles()),
             "divergence": lambda: run.divergence(self.tau),
             "critic": run.critic,
             "synthesizer": run.synthesize,
@@ -282,7 +343,7 @@ class DynaClinicPipeline(_Pipeline):
             payload = {k: getattr(result, k) for k in ("final_answer", "final_text", "tier", "mode")}
             self.cache.store(key, payload, verified=result.final_answer is not None and not result.blocked)
 
-    def _cache_lookup(self, run: _CaseRun, key: str) -> None:
+    def _cache_lookup(self, run: CaseRun, key: str) -> None:
         r = run.result
         cached = self.cache.lookup(key) if self.cache is not None else None
         if cached is None:
@@ -298,39 +359,6 @@ class DynaClinicPipeline(_Pipeline):
         r.final_answer, r.final_text, r.tier, r.mode = (cached[k] for k in ("final_answer", "final_text", "tier", "mode"))
         run.record_safety(report)
 
-    def _triage(self, run: _CaseRun) -> None:
-        try:
-            triage = triage_case(self.client, run.case, self.escalate_threshold)
-        except LLMError as err:
-            score, features = feature_score(run.case)
-            tier = score_tier(score)
-            triage = TriageResult(tier, None, tier, score, features, False,
-                                  error=f"call failed ({err}); used deterministic tier")
-        r = run.result
-        r.tier = triage.tier
-        r.triage = {name: getattr(triage, name) for name in _TRIAGE_FIELDS}
-        if triage.error:
-            r.warnings.append(f"triage: {triage.error}")
-        r.route.append(f"triage:{triage.tier}")
-
-    def _primary_care(self, run: _CaseRun) -> None:
-        """Informative-model answer; ``pca_samples > 1`` majority-votes (ties: earliest sample)."""
-        r = run.result
-        r.mode = "single"
-        r.route.append("primary_care")
-        user = case_block(run.case, run.sections)
-        texts = [self.client.complete(PRIMARY_CARE, SYSTEM_PROMPTS[PRIMARY_CARE], user)[0] for _ in range(self.pca_samples)]
-        answers = [extract_final_answer(text, run.case.letters()) for text in texts]
-        votes = Counter(answer for answer in answers if answer)
-        text = texts[answers.index(votes.most_common(1)[0][0])] if votes else texts[0]
-        run.conf = max(votes.values(), default=0) / len(texts)
-        _set_answer(r, text, run.case.letters(), PRIMARY_CARE)
-        run.board.write(BlackboardEntry(PRIMARY_CARE, "verdict", text, step=1))  # read by a regeneration
-
-    def _moderate_roles(self, run: _CaseRun) -> list[str]:
-        chosen = sorted(_MODERATE_ORDER, key=lambda role: not modality_data(role, run.case, run.sections))[:2]
-        return [role for role in SPECIALISTS if role in chosen]
-
 
 class StaticTeamPipeline(_Pipeline):
     """Exhaustive-consensus baseline: all specialists + Critic + Synthesizer + safety gate on every case.
@@ -342,18 +370,14 @@ class StaticTeamPipeline(_Pipeline):
     arm = "static"
 
     def _run(self, case: Case, result: RunResult) -> None:
-        run = _CaseRun(self.client, case, result, sections_from_structured(case.structured))
+        run = CaseRun(self.client, case, result, sections_from_structured(case.structured))
         result.route.append("ingest")
         run.care_team(SPECIALISTS)
         run.divergence(TAU)
         result.mode = "adversarial"
         run.critic()
         run.synthesize()
-        run.gate()
-        if result.blocked:
-            run.synthesize()
-            run.gate()
-        run.finish()
+        run.safety_gate(max_rollbacks=1)
 
 
 class SingleAgentPipeline(_Pipeline):

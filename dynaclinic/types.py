@@ -48,7 +48,7 @@ class Case(_Serializable):
     """
 
     id: str
-    source: Literal["synthetic", "medqa"]
+    source: Literal["synthetic", "medqa", "devall"]  # devall: task prompt of a DevAll run (see devall_nodes)
     vignette: str
     question: str
     options: list[Option]
