@@ -17,6 +17,7 @@ from utils.exceptions import (
     ValidationError,
     WorkflowExecutionError,
     WorkflowCancelledError,
+    SecurityError,
 )
 from utils.structured_logger import get_server_logger
 from utils.human_prompt import (
@@ -501,6 +502,8 @@ class GraphExecutor:
                 from_node,
                 self.log_manager,
             )
+        except SecurityError:
+            raise
         except Exception as exc:  # pragma: no cover - defensive logging
             error_msg = f"Edge manager failed for {from_node.id} -> {edge_link.target.id}: {exc}"
             self.log_manager.error(

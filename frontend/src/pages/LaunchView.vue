@@ -839,7 +839,7 @@ function onSpatialConfigChanged(config) {
   const workflowName = selectedFile.value?.replace('.yaml', '') || 'default'
   saveConfig(workflowName)
 }
-const isRightPanelOpen = ref(false)
+const isRightPanelOpen = ref(true)
 
 // WebSocket reference
 let ws = null
