@@ -12,7 +12,7 @@ Status key: **implemented** means the behaviour is in code. **prompt-level** mea
 |---|---|---|---|
 | Meta-Controller tier 1: complexity triage | `dynaclinic/triage.py` | implemented | LLM tier plus a deterministic feature score. An LLM LOW is bumped to MODERATE when the score is high, and never lowered. |
 | Primary Care Agent, Emanuel & Emanuel Informative model | `prompts.py` (`_PRIMARY_CARE`), `pipeline.CaseRun.primary_care` | prompt-level | Paternalistic and interpretive language is forbidden by the prompt only. No checker enforces it. |
-| Integrated Care Team (Imaging, Pathology/Lab, Pharmacology) | `prompts.modality_data`, `pipeline.CaseRun.care_team` | implemented | Code restricts each specialist to its modality slice. Specialists run concurrently. MODERATE uses 2 specialists, HIGH uses 3. |
+| Integrated Care Team (Imaging, Pathology/Lab, Pharmacology) | `prompts.specialist_block`, `pipeline.CaseRun.care_team` | implemented | Each specialist gets its modality slice, plus the shared case summary under the default `shared_core` context policy (see [Context policy](#context-policy)). Specialists run concurrently. MODERATE uses 2 specialists, HIGH uses 3. |
 | L3 shared Blackboard | `dynaclinic/blackboard.py` | implemented | In-memory, append-only, one per case. Specialists never see each other's entries. |
 | Meta-Controller tier 2: conflict-aware routing (divergence, Conflict Set, tau) | `dynaclinic/divergence.py` | implemented | Mean pairwise Jensen-Shannon distance. Switches if `>= tau` or the top-1 answers disagree. |
 | Multi-label margin loss | `divergence.margin_loss`, `eval/grade.py` | implemented (eval only) | Calibration metric on the team's mean distribution. It needs the gold answer, so it is never used for live routing. |
@@ -106,12 +106,13 @@ Harness flags:
 - `--seed S`: shuffle the cases before `--limit`.
 - `--cache`: enable the semantic cache.
 - `--out DIR`: output directory. Default: `docs/dynaclinic/results/<UTC timestamp>-<model>`.
+- `--context-policy strict|shared_core`: what the care team and Synthesizer see (dynamic and static arms). Default: `shared_core`.
 - `--dataset synthetic,medqa`: add the MedQA sample. If `data/dynaclinic/medqa_sample.jsonl` is absent, the harness prints `no MedQA sample at <path>; skipping`.
 
 Outputs:
 
-- `results.jsonl`: one row per (case, arm), holding `RunResult` plus grades. No prompts; API key values are redacted.
-- `summary.json`
+- `results.jsonl`: one row per (case, arm), holding `RunResult` plus grades and the run's `context_policy`. No prompts; API key values are redacted.
+- `summary.json`: run settings (including `context_policy`, also in the `summary.md` header) and the metrics below.
 - `summary.md`: a per-arm table (accuracy with 95% Wilson CI, triage accuracy, routes, adversarial-switch rate, divergence, team margin loss, safety violations, blocked, errors, calls, tokens, latency, models and fallback calls, cost), accuracy per gold tier, and a case x arm answer matrix.
 
 Behaviour:
@@ -119,6 +120,15 @@ Behaviour:
 - **Resume:** rerun with the same `--out`. Pairs already present are skipped, including errored ones (errors are measured outcomes).
 - **Concurrency:** each worker thread owns its own client, because `run()` resets the client's call ledger.
 - **Cost:** reported only when `DYNACLINIC_PRICE_<MODEL>_IN` and `DYNACLINIC_PRICE_<MODEL>_OUT` (USD per 1M tokens) are set for every model used. For example, `DYNACLINIC_PRICE_GPT_6_LUNA_IN` (non-alphanumerics become `_`). Otherwise cost is `n/a`.
+
+## Context policy
+
+`context_policy` sets how much of the case the Integrated Care Team and the Synthesizer see. It is a `DynaClinicPipeline` / `StaticTeamPipeline` argument, the harness flag `--context-policy`, and an optional `context_policy` field on the `dc_care_team` and `dc_synthesizer` nodes (the `dc_synthesizer` value also applies to `dc_safety_gate` regenerations).
+
+- `strict`: each specialist sees only its modality slice (Imaging: imaging studies and the vignette sentences that mention imaging; Pathology/Lab: labs; Pharmacology: meds and allergies), plus the question and options. The Synthesizer sees the question, options and Blackboard. This mirrors the proposal's bounded-context personas.
+- `shared_core` (default): each specialist first gets a "Shared case summary" (vignette, demographics, question, options), then its slice under "Your modality data (focus here)". The persona still has to reason from its modality and not prescribe outside its role. The Synthesizer gets the full case block (vignette, every structured section, question, options) before the Blackboard.
+
+`shared_core` is the default because the strict baseline eval (`results/2026-10-27-full-gpt-6-luna/`) lost information. Under `strict`, case facts that sit only in the vignette, such as presenting symptoms, reached no specialist, and the Synthesizer (question, options and Blackboard only) could not recover them. The Critic does not depend on the policy: decomposition reads the Blackboard, and the judge and rule score always use the full case.
 
 ## Key thresholds
 

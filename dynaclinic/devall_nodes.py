@@ -26,6 +26,7 @@ from dynaclinic.divergence import TAU
 from dynaclinic.interfaces import FHIRLiteIngestor
 from dynaclinic.llm import LLMClient, LLMError, get_client
 from dynaclinic.pipeline import CaseRun
+from dynaclinic.prompts import CONTEXT_POLICIES, DEFAULT_CONTEXT_POLICY
 from dynaclinic.triage import MODERATE_SCORE
 from dynaclinic.types import Case, RunResult
 from entity.configs import Node
@@ -197,6 +198,38 @@ class DCSafetyGateConfig(DCNodeConfig):
 
 
 @dataclass
+class DCContextConfig(DCNodeConfig):
+    """dc_care_team / dc_synthesizer: how much of the case the stage's agents see."""
+
+    context_policy: str = DEFAULT_CONTEXT_POLICY
+
+    @classmethod
+    def _parse(cls, mapping: Mapping[str, Any], path: str) -> dict[str, Any]:
+        return {**super()._parse(mapping, path), "context_policy": mapping.get("context_policy", DEFAULT_CONTEXT_POLICY)}
+
+    def validate(self) -> None:
+        super().validate()
+        _require(self.context_policy in CONTEXT_POLICIES, f"context_policy must be one of {', '.join(CONTEXT_POLICIES)}",
+                 self.path, "context_policy")
+
+    FIELD_SPECS: ClassVar[dict[str, ConfigFieldSpec]] = {
+        **DCNodeConfig.FIELD_SPECS,
+        "context_policy": ConfigFieldSpec(
+            name="context_policy",
+            display_name="Context Policy",
+            type_hint="str",
+            required=False,
+            default=DEFAULT_CONTEXT_POLICY,
+            enum=list(CONTEXT_POLICIES),
+            description="strict: each specialist sees only its modality slice, the Synthesizer only the question, "
+            "options and Blackboard; shared_core: specialists also get the case summary (vignette, demographics, "
+            "question, options), the Synthesizer the full case.",
+            advance=True,
+        ),
+    }
+
+
+@dataclass
 class DCDivergenceGateConfig(BaseConfig):
     """dc_divergence_gate: tier-2 switch. Makes no LLM call, so it has no model."""
 
@@ -309,7 +342,10 @@ class PrimaryCareExecutor(_StageExecutor):
 class CareTeamExecutor(_StageExecutor):
     """dc_care_team: specialists for the triaged tier write to the Blackboard."""
 
-    def stage(self, run: CaseRun, config: DCNodeConfig) -> str:
+    config_cls = DCContextConfig
+
+    def stage(self, run: CaseRun, config: DCContextConfig) -> str:
+        run.context_policy = config.context_policy
         run.care_team(run.team_roles())
         return f"STAGE: care_team\n{run.board.snapshot()}"
 
@@ -341,9 +377,15 @@ class CriticExecutor(_StageExecutor):
 
 
 class SynthesizerExecutor(_StageExecutor):
-    """dc_synthesizer: final answer from the Blackboard (and flagged claims in adversarial mode)."""
+    """dc_synthesizer: final answer from the Blackboard (and flagged claims in adversarial mode).
 
-    def stage(self, run: CaseRun, config: DCNodeConfig) -> str:
+    Its ``context_policy`` also applies to dc_safety_gate regenerations, which re-run this stage.
+    """
+
+    config_cls = DCContextConfig
+
+    def stage(self, run: CaseRun, config: DCContextConfig) -> str:
+        run.context_policy = config.context_policy
         run.synthesize()
         return f"STAGE: synthesizer\n{run.result.final_text}"
 

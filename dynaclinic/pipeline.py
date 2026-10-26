@@ -34,18 +34,22 @@ from dynaclinic.interfaces import (
 from dynaclinic.llm import LLMClient, LLMError
 from dynaclinic.parsing import extract_final_answer, extract_json
 from dynaclinic.prompts import (
+    DEFAULT_CONTEXT_POLICY,
     IMAGING,
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
     SINGLE_AGENT,
     SPECIALISTS,
+    STRICT,
     SYNTHESIZER,
     SYSTEM_PROMPTS,
     case_block,
+    check_context_policy,
     modality_data,
     options_block,
     specialist_block,
+    specialist_system,
 )
 from dynaclinic.safety import SafetyReport, run_gates
 from dynaclinic.triage import (
@@ -81,14 +85,19 @@ class CaseRun:
 
     Each stage appends its route id. Stages call ``client``, which DevAll nodes swap per node config.
     A free-text case (no options) is supported: specialists need no distribution, divergence is not
-    measurable (adversarial review, safety-biased) and no FINAL ANSWER is required.
+    measurable (adversarial review, safety-biased) and no FINAL ANSWER is required. ``context_policy``
+    (``prompts``: strict | shared_core) decides how much of the case the specialists and Synthesizer see.
     """
 
-    def __init__(self, client: LLMClient, case: Case, result: RunResult, sections: dict[str, str]) -> None:
+    def __init__(
+        self, client: LLMClient, case: Case, result: RunResult, sections: dict[str, str],
+        context_policy: str = DEFAULT_CONTEXT_POLICY,
+    ) -> None:
         self.client = client
         self.case = case
         self.result = result
         self.sections = sections
+        self.context_policy = context_policy
         self.board = Blackboard()
         self.safety: SafetyReport | None = None
         self.conf = 0.0  # confidence in the leading answer (planner reward input)
@@ -160,9 +169,9 @@ class CaseRun:
 
     def _consult(self, role: str) -> BlackboardEntry | str:
         """One specialist call (worker thread): its entry, or a warning when the call or reply fails."""
-        user = specialist_block(role, self.case, self.sections)
+        user = specialist_block(role, self.case, self.sections, self.context_policy)
         try:
-            text, _ = self.client.complete(role, SYSTEM_PROMPTS[role], user, json_mode=True)
+            text, _ = self.client.complete(role, specialist_system(role, self.context_policy), user, json_mode=True)
         except LLMError as err:
             return f"{role}: call failed ({err}); excluded from the team"
         data = extract_json(text)
@@ -206,8 +215,9 @@ class CaseRun:
         r = self.result
         regenerate = self.safety is not None and self.safety.blocked
         r.route.append("regenerate" if regenerate else "synthesizer")
-        parts = [f"Question: {self.case.question}\nOptions:\n{options_block(self.case)}",
-                 f"Blackboard:\n{self.board.snapshot()}"]
+        case = (f"Question: {self.case.question}\nOptions:\n{options_block(self.case)}"
+                if self.context_policy == STRICT else case_block(self.case, self.sections))
+        parts = [case, f"Blackboard:\n{self.board.snapshot()}"]
         if r.mode == "adversarial":
             parts.append(f"Conflict set: {', '.join(r.conflict_set) or 'none'}")
             if r.flagged_claims:
@@ -251,12 +261,16 @@ class CaseRun:
 
 
 class _Pipeline:
-    """Shared ``run``: ledger reset, latency and call accounting; model errors are recorded, not raised."""
+    """Shared ``run``: ledger reset, latency and call accounting; model errors are recorded, not raised.
+
+    ``context_policy`` is used by the team arms only; the single agent always reads the full case.
+    """
 
     arm = ""
 
-    def __init__(self, client: LLMClient) -> None:
+    def __init__(self, client: LLMClient, *, context_policy: str = DEFAULT_CONTEXT_POLICY) -> None:
         self.client = client
+        self.context_policy = check_context_policy(context_policy)
 
     def run(self, case: Case) -> RunResult:
         """Run one case and return its result (never raises ``LLMError``)."""
@@ -296,10 +310,11 @@ class DynaClinicPipeline(_Pipeline):
         cache: SemanticCache | None = None,
         pca_samples: int = 1,
         max_rollbacks: int = 1,
+        context_policy: str = DEFAULT_CONTEXT_POLICY,
     ) -> None:
         if pca_samples < 1 or max_rollbacks < 0:
             raise ValueError(f"need pca_samples >= 1 and max_rollbacks >= 0, got {pca_samples}, {max_rollbacks}")
-        super().__init__(client)
+        super().__init__(client, context_policy=context_policy)
         self.tau = tau
         self.escalate_threshold = escalate_threshold
         self.cache = cache
@@ -308,7 +323,7 @@ class DynaClinicPipeline(_Pipeline):
         self.ingestor = FHIRLiteIngestor()
 
     def _run(self, case: Case, result: RunResult) -> None:
-        run = CaseRun(self.client, case, result, self.ingestor.ingest(case))
+        run = CaseRun(self.client, case, result, self.ingestor.ingest(case), self.context_policy)
         result.route.append("ingest")
         key = case_block(case, run.sections)
         stages: dict[str, Callable[[], None]] = {
@@ -370,7 +385,7 @@ class StaticTeamPipeline(_Pipeline):
     arm = "static"
 
     def _run(self, case: Case, result: RunResult) -> None:
-        run = CaseRun(self.client, case, result, sections_from_structured(case.structured))
+        run = CaseRun(self.client, case, result, sections_from_structured(case.structured), self.context_policy)
         result.route.append("ingest")
         run.care_team(SPECIALISTS)
         run.divergence(TAU)

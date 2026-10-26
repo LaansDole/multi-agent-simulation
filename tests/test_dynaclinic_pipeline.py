@@ -1,10 +1,12 @@
 """DynaClinic pipelines with scripted FakeLLM: routing, switching, gate regeneration, cache, baselines."""
 
+import hashlib
 import json
 from collections import Counter
 
 import pytest
 
+from dynaclinic.eval.harness import dry_run_client
 from dynaclinic.interfaces import InMemorySemanticCache
 from dynaclinic.llm import FakeLLM, LLMError
 from dynaclinic.pipeline import (
@@ -20,12 +22,15 @@ from dynaclinic.prompts import (
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
+    SHARED_CORE,
     SINGLE_AGENT,
+    STRICT,
     SYNTHESIZER,
     TRIAGE,
 )
 from dynaclinic.types import Case, Option, RunResult
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
+from tests.test_dynaclinic_prompts import CASE as PROMPTS_CASE
 
 CASE = Case(
     id="strep",
@@ -264,3 +269,38 @@ def test_single_agent_is_one_call_and_ledger_resets_per_case() -> None:
         result = pipeline.run(CASE)
         assert [call.role for call in result.calls] == [SINGLE_AGENT]
         assert (result.route, result.mode, result.final_answer) == (["single_agent"], "single", "B")
+
+
+# sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE, captured
+# at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte.
+STRICT_TRANSCRIPTS = {
+    StaticTeamPipeline: "b86e0bc0c7991668f698b283533c3a27072486d54fece18e69613747ca4e458b",
+    DynaClinicPipeline: "8f443582d89005f75911f4a92cff3c6ed986b57f8c0dede0428f25b2a6280583",
+}
+
+
+@pytest.mark.parametrize("pipeline_cls", list(STRICT_TRANSCRIPTS))
+def test_strict_policy_prompts_are_byte_identical_to_the_pre_policy_pipeline(pipeline_cls: type) -> None:
+    client = dry_run_client()
+    pipeline_cls(client, context_policy=STRICT).run(PROMPTS_CASE)
+    assert hashlib.sha256(json.dumps(sorted(client.prompts)).encode()).hexdigest() == STRICT_TRANSCRIPTS[pipeline_cls]
+
+
+@pytest.mark.parametrize("pipeline_cls", [StaticTeamPipeline, DynaClinicPipeline])
+@pytest.mark.parametrize(("policy", "sees_case"), [(None, True), (SHARED_CORE, True), (STRICT, False)])
+def test_context_policy_decides_whether_team_and_synthesizer_see_the_vignette(
+    pipeline_cls: type, policy: str | None, sees_case: bool
+) -> None:
+    client = _client(triage=_triage("HIGH"))
+    pipeline_cls(client, **({} if policy is None else {"context_policy": policy})).run(CASE)
+    seen = {role: "Tonsillar exudates" in user for role, _, user in client.prompts if role != TRIAGE}
+    expected = dict.fromkeys((IMAGING, PATHOLOGY, PHARMACOLOGY, SYNTHESIZER), sees_case)
+    if pipeline_cls is StaticTeamPipeline:  # decomposition reads the Blackboard; the judge always has the full case
+        expected |= {CRITIC: False, CRITIC_JUDGE: True}
+    assert seen == expected
+    assert all("Blackboard:" in user for role, _, user in client.prompts if role == SYNTHESIZER)
+
+
+def test_unknown_context_policy_is_rejected_at_construction() -> None:
+    with pytest.raises(ValueError, match="loose"):
+        StaticTeamPipeline(_client(), context_policy="loose")

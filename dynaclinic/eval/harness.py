@@ -39,7 +39,15 @@ from dynaclinic.pipeline import (
     SingleAgentPipeline,
     StaticTeamPipeline,
 )
-from dynaclinic.prompts import CRITIC, CRITIC_JUDGE, IMAGING, SPECIALISTS, TRIAGE
+from dynaclinic.prompts import (
+    CONTEXT_POLICIES,
+    CRITIC,
+    CRITIC_JUDGE,
+    DEFAULT_CONTEXT_POLICY,
+    IMAGING,
+    SPECIALISTS,
+    TRIAGE,
+)
 from dynaclinic.types import TIERS, Case, RunResult
 
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "docs" / "dynaclinic" / "results"
@@ -136,6 +144,7 @@ def run_eval(
     concurrency: int = 4,
     cache: bool = False,
     secrets: Sequence[str] = (),
+    context_policy: str = DEFAULT_CONTEXT_POLICY,
 ) -> list[Row]:
     """Run and grade every (case, arm) pair not yet in ``out_dir/results.jsonl``; return all selected rows."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -152,9 +161,9 @@ def run_eval(
         if not hasattr(local, "pipelines"):
             client = client_factory()
             local.pipelines = {
-                "dynamic": DynaClinicPipeline(client, cache=shared_cache),
+                "dynamic": DynaClinicPipeline(client, cache=shared_cache, context_policy=context_policy),
                 "single": SingleAgentPipeline(client),
-                "static": StaticTeamPipeline(client),
+                "static": StaticTeamPipeline(client, context_policy=context_policy),
             }
         try:
             return local.pipelines[arm].run(case)
@@ -165,7 +174,8 @@ def run_eval(
         futures = {pool.submit(run_pair, case, arm): case for case, arm in todo}
         for index, future in enumerate(as_completed(futures), 1):
             case, result = futures[future], future.result()
-            row = {**result.to_dict(), **grade(result, case).to_dict(), "gold": case.answer, "gold_tier": case.gold_tier}
+            row = {**result.to_dict(), **grade(result, case).to_dict(), "gold": case.answer, "gold_tier": case.gold_tier,
+                   "context_policy": context_policy}
             line = _redact(json.dumps(row), secrets)
             sink.write(line + "\n")
             sink.flush()
@@ -309,7 +319,8 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"- Generated: {summary['generated_at']}; mode: {mode}",
         (f"- Dataset: {summary['dataset']} ({summary['n_cases']} cases, limit {summary['limit'] or 'all'}, "
          f"seed {'none' if summary['seed'] is None else summary['seed']}); arms: {', '.join(arms)}; "
-         f"cache: {'on' if summary['cache'] else 'off'}; concurrency: {summary['concurrency']}"),
+         f"cache: {'on' if summary['cache'] else 'off'}; concurrency: {summary['concurrency']}; "
+         f"context policy: {summary['context_policy']}"),
         "- Accuracy: errors count as wrong; 95% Wilson interval. Triage: Meta-Controller tier vs gold tier (dynamic only).",
         ("- Adv. switch: share of all cases where the divergence rule fired (static records what the rule would have"
          " done; it always runs the critic). Team margin loss: BCE + hinge on the specialists' mean distribution"
@@ -364,6 +375,8 @@ def main(argv: Sequence[str] | None = None, data_dir: Path = DATA_DIR) -> int:
     parser.add_argument("--concurrency", type=int, default=4, help="worker threads, one client each")
     parser.add_argument("--dry-run", action="store_true", help="offline FakeLLM with valid scripted replies")
     parser.add_argument("--seed", type=int, help="shuffle the cases with this seed before --limit")
+    parser.add_argument("--context-policy", choices=CONTEXT_POLICIES, default=DEFAULT_CONTEXT_POLICY,
+                        help="what the care team and Synthesizer see (dynamic and static arms)")
     args = parser.parse_args(argv)
 
     arms = [arm.strip() for arm in args.arms.split(",") if arm.strip()]
@@ -398,7 +411,8 @@ def main(argv: Sequence[str] | None = None, data_dir: Path = DATA_DIR) -> int:
     secrets = _secrets(env)
     print(f"{out.name}: {len(cases)} cases x {','.join(arms)} -> {out}", file=sys.stderr)
 
-    rows = run_eval(cases, arms, out, factory, concurrency=args.concurrency, cache=args.cache, secrets=secrets)
+    rows = run_eval(cases, arms, out, factory, concurrency=args.concurrency, cache=args.cache, secrets=secrets,
+                    context_policy=args.context_policy)
     summary = {
         "run_id": out.name,
         "generated_at": now.isoformat(timespec="seconds"),
@@ -409,6 +423,7 @@ def main(argv: Sequence[str] | None = None, data_dir: Path = DATA_DIR) -> int:
         "seed": args.seed,
         "cache": args.cache,
         "concurrency": args.concurrency,
+        "context_policy": args.context_policy,
         "dry_run": args.dry_run,
         "primary_model": model,
         **summarize(rows, arms, env),

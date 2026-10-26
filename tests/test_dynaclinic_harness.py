@@ -12,7 +12,7 @@ import pytest
 from dynaclinic.eval import harness
 from dynaclinic.eval.cases import SYNTHETIC_PATH, load_synthetic
 from dynaclinic.llm import FakeLLM, LLMError, set_client_factory
-from dynaclinic.prompts import SINGLE_AGENT, TRIAGE
+from dynaclinic.prompts import PATHOLOGY, SINGLE_AGENT, TRIAGE
 from dynaclinic.types import CallRecord, RunResult
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
 
@@ -116,6 +116,25 @@ def test_secret_never_reaches_outputs_or_progress(tmp_path: Path, monkeypatch: p
 
     assert _main(tmp_path / "dry", "--dry-run", "--limit", "2") == 0
     assert all(SENTINEL not in path.read_text() for path in (tmp_path / "dry").iterdir())
+
+
+@pytest.mark.parametrize(("args", "policy"), [((), "shared_core"), (("--context-policy", "strict"), "strict")])
+def test_context_policy_reaches_the_team_and_is_recorded(tmp_path: Path, args: tuple[str, ...], policy: str) -> None:
+    clients: list[FakeLLM] = []
+
+    def factory(models: list[str] | None) -> FakeLLM:
+        clients.append(FakeLLM(harness.dry_run_reply))
+        return clients[-1]
+
+    set_client_factory(factory)
+    out = tmp_path / "run"
+    assert _main(out, "--limit", "1", "--arms", "dynamic,static", *args) == 0
+    assert [row["context_policy"] for row in _rows(out)] == [policy, policy]
+    assert json.loads((out / "summary.json").read_text())["context_policy"] == policy
+    assert f"context policy: {policy}" in (out / "summary.md").read_text()
+    vignette = load_synthetic()[0].vignette
+    pathology = [user for client in clients for role, _, user in client.prompts if role == PATHOLOGY]
+    assert pathology and all((vignette in user) == (policy == "shared_core") for user in pathology)
 
 
 def test_missing_medqa_sample_is_skipped_with_a_message(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

@@ -11,13 +11,16 @@ from dynaclinic.prompts import (
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
+    SHARED_CORE,
     SINGLE_AGENT,
     SPECIALISTS,
+    STRICT,
     SYNTHESIZER,
     SYSTEM_PROMPTS,
     TRIAGE,
     case_block,
     specialist_block,
+    specialist_system,
 )
 from dynaclinic.types import Case, Option
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
@@ -76,6 +79,13 @@ def test_json_prompts_name_the_keys_their_parsers_read(role: str, required: list
     assert missing == []
 
 
+@pytest.mark.parametrize("role", SPECIALISTS)
+def test_shared_core_specialist_prompts_keep_the_json_contract(role: str) -> None:
+    prompt = specialist_system(role, SHARED_CORE)
+    assert role in prompt.lower() and "JSON" in prompt
+    assert [key for key in ('"findings"', '"distribution"', '"claims"') if key not in prompt] == []
+
+
 def test_primary_care_prompt_enforces_the_informative_model() -> None:
     prompt = SYSTEM_PROMPTS[PRIMARY_CARE].lower()
     assert "informative" in prompt
@@ -111,13 +121,39 @@ def test_case_block_omits_empty_sections() -> None:
         (PHARMACOLOGY, ["warfarin 5 mg daily", "penicillin (anaphylaxis)"], ["INR", "consolidation", "productive cough"]),
     ],
 )
-def test_specialist_input_is_restricted_to_its_modality(role: str, present: list[str], absent: list[str]) -> None:
-    text = specialist_block(role, CASE, SECTIONS)
+def test_strict_specialist_input_is_restricted_to_its_modality(role: str, present: list[str], absent: list[str]) -> None:
+    text = specialist_block(role, CASE, SECTIONS, STRICT)
+    assert specialist_system(role, STRICT) == SYSTEM_PROMPTS[role]
     assert CASE.question in text and "A. Oral amoxicillin" in text
     assert [p for p in present if p not in text] == []
     assert [a for a in absent if a in text] == []
 
 
+@pytest.mark.parametrize(
+    ("role", "slice_text", "absent"),
+    [
+        (IMAGING, "Chest x-ray: right lower lobe consolidation", ["warfarin", "penicillin", "INR"]),
+        (PATHOLOGY, "INR: 2.6", ["warfarin", "penicillin", "Chest x-ray:"]),
+        (PHARMACOLOGY, "warfarin 5 mg daily", ["INR", "Chest x-ray:"]),
+    ],
+)
+def test_shared_core_specialist_input_is_the_case_summary_then_its_own_slice(
+    role: str, slice_text: str, absent: list[str]
+) -> None:
+    text = specialist_block(role, CASE, SECTIONS, SHARED_CORE)
+    summary, _, own = text.partition("Your modality data (focus here):")
+    assert summary.startswith("Shared case summary:")
+    for part in (CASE.vignette, "age: 70; sex: male", CASE.question, "B. Oral doxycycline"):
+        assert part in summary, part
+    assert slice_text in own and slice_text not in summary
+    assert [a for a in absent if a in text] == []  # other modalities' structured data stays out
+
+
 def test_specialist_block_rejects_unknown_role() -> None:
     with pytest.raises(ValueError, match="radiology"):
         specialist_block("radiology", CASE, SECTIONS)
+
+
+def test_specialist_block_rejects_unknown_policy() -> None:
+    with pytest.raises(ValueError, match="loose"):
+        specialist_block(PATHOLOGY, CASE, SECTIONS, "loose")

@@ -92,6 +92,9 @@ def test_registry_and_schema_export_include_the_seven_node_types() -> None:
     assert set(NODE_TYPES) <= set(type_field["enum"])
     triage_fields = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": "dc_triage"}])
     assert {"model", "fallback_models", "escalate_threshold"} <= {f["name"] for f in triage_fields["fields"]}
+    for node_type in ("dc_care_team", "dc_synthesizer"):
+        fields = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": node_type}])["fields"]
+        assert "context_policy" in {f["name"] for f in fields}, node_type
 
 
 def test_configs_default_to_the_env_model_chain() -> None:
@@ -110,6 +113,8 @@ def test_configs_default_to_the_env_model_chain() -> None:
         ("dc_triage", {"escalate_threshold": "high"}),
         ("dc_care_team", {"fallback_models": ["gpt-5.6-luna"]}),
         ("dc_critic", {"fallback_models": "gpt-5.6-luna", "model": "gpt-6-luna"}),
+        ("dc_care_team", {"context_policy": "loose"}),
+        ("dc_synthesizer", {"context_policy": 1}),
     ],
 )
 def test_invalid_config_is_a_config_error(node_type: str, config: dict) -> None:
@@ -159,6 +164,20 @@ def test_high_agreeing_team_is_collaborative(harness: Build) -> None:
     h.run("dc_care_team")
     assert first_line_marker(h.run("dc_divergence_gate", tau=0.5), "MODE") == "COLLABORATIVE"
     assert CRITIC not in [call.role for call in h.run_state.result.calls]
+
+
+@pytest.mark.parametrize(
+    ("config", "sees_case"),
+    [({}, True), ({"context_policy": "shared_core"}, True), ({"context_policy": "strict"}, False)],
+)
+def test_care_team_and_synthesizer_follow_their_context_policy(harness: Build, config: dict, sees_case: bool) -> None:
+    h = harness(triage=_triage("HIGH"))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team", **config)
+    h.run("dc_divergence_gate")
+    h.run("dc_synthesizer", **config)
+    seen = {role: "Tonsillar exudates" in user for role, _, user in h.client.prompts if role != TRIAGE}
+    assert seen == dict.fromkeys((IMAGING, PATHOLOGY, PHARMACOLOGY, SYNTHESIZER), sees_case)
 
 
 @pytest.mark.parametrize(("max_rollbacks", "synthesizer_calls"), [(1, 1), (0, 0)])

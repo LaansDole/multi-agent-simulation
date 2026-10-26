@@ -2,6 +2,11 @@
 
 Role names double as ``LLMClient.complete(role=...)`` keys (ledger accounting, FakeLLM scripts).
 JSON prompts spell out the exact keys that ``triage``, ``divergence`` and ``critic`` parse.
+
+Context policies (care team and Synthesizer): ``strict`` gives each specialist only its modality slice and
+the Synthesizer only the question, options and Blackboard (bounded-context personas); ``shared_core`` (default)
+adds the shared case summary (vignette, demographics, question, options) before each specialist's slice and
+the full case block before the Synthesizer's Blackboard.
 """
 
 import re
@@ -18,6 +23,10 @@ CRITIC_JUDGE = "critic_judge"
 SYNTHESIZER = "synthesizer"
 SINGLE_AGENT = "single_agent"
 SPECIALISTS: tuple[str, ...] = (IMAGING, PATHOLOGY, PHARMACOLOGY)
+STRICT = "strict"
+SHARED_CORE = "shared_core"
+CONTEXT_POLICIES: tuple[str, ...] = (STRICT, SHARED_CORE)
+DEFAULT_CONTEXT_POLICY = SHARED_CORE
 
 _FINAL = "End your reply with exactly one line: FINAL ANSWER: <letter>"
 
@@ -39,13 +48,21 @@ _PRIMARY_CARE = f"""You are the Primary Care Agent, restricted to the Emanuel & 
 After the informative summary, state which option the evidence supports.
 {_FINAL}"""
 
-_SPECIALIST = """You are the {title} specialist of an Integrated Care Team writing to a shared Blackboard.
-You see ONLY the {modality} for this patient, plus the question and options. Reason only from that data;
-do not assume findings from other modalities. If your data cannot discriminate, spread probability evenly.
-Respond with JSON only:
+_SPECIALIST_HEAD = "You are the {title} specialist of an Integrated Care Team writing to a shared Blackboard.\n"
+_SPECIALIST_JSON = """Respond with JSON only:
 {{"findings": ["<finding from your {modality}>"], "distribution": {{"<letter>": <probability>}},
 "claims": ["<one atomic, checkable statement>"]}}
 "distribution" must cover every option letter and sum to 1."""
+_SPECIALIST = _SPECIALIST_HEAD + """\
+You see ONLY the {modality} for this patient, plus the question and options. Reason only from that data;
+do not assume findings from other modalities. If your data cannot discriminate, spread probability evenly.
+""" + _SPECIALIST_JSON
+_SPECIALIST_SHARED_CORE = _SPECIALIST_HEAD + """\
+You see a shared case summary (vignette, demographics, question and options) and your own {modality}.
+Use the summary for clinical context; reason from your {modality} and do not prescribe outside your role.
+Do not assume findings from other modalities that the case does not state. If your data cannot discriminate,
+spread probability evenly.
+""" + _SPECIALIST_JSON
 
 _CRITIC = """You are the Clinical Critic in adversarial mode. The care team disagrees.
 Decompose the team's Blackboard reasoning into atomic claims: one checkable clinical statement each
@@ -72,17 +89,21 @@ Never pick an option that conflicts with the patient's allergies, current medica
 _SINGLE_AGENT = f"""You are an experienced clinician. Read the case and answer the multiple-choice question.
 {_FINAL}"""
 
+_PERSONAS = {
+    IMAGING: {"title": "Diagnostic Imaging", "modality": "imaging studies"},
+    PATHOLOGY: {"title": "Pathology/Lab", "modality": "laboratory results"},
+    PHARMACOLOGY: {"title": "Pharmacology", "modality": "medication list and allergies"},
+}
 SYSTEM_PROMPTS: dict[str, str] = {
     TRIAGE: _TRIAGE,
     PRIMARY_CARE: _PRIMARY_CARE,
-    IMAGING: _SPECIALIST.format(title="Diagnostic Imaging", modality="imaging studies"),
-    PATHOLOGY: _SPECIALIST.format(title="Pathology/Lab", modality="laboratory results"),
-    PHARMACOLOGY: _SPECIALIST.format(title="Pharmacology", modality="medication list and allergies"),
+    **{role: _SPECIALIST.format(**persona) for role, persona in _PERSONAS.items()},
     CRITIC: _CRITIC,
     CRITIC_JUDGE: _CRITIC_JUDGE,
     SYNTHESIZER: _SYNTHESIZER,
     SINGLE_AGENT: _SINGLE_AGENT,
 }
+_SHARED_CORE_SPECIALISTS = {role: _SPECIALIST_SHARED_CORE.format(**persona) for role, persona in _PERSONAS.items()}
 
 _IMAGING_TERMS = re.compile(
     r"x-ray|radiograph|\bct\b|computed tomography|\bmri\b|ultraso|echocardiogra|\becg\b|\bekg\b|"
@@ -115,11 +136,18 @@ def case_block(case: Case, sections: dict[str, str]) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
+def check_context_policy(policy: str) -> str:
+    """Return ``policy``; raise ``ValueError`` unless it is one of ``CONTEXT_POLICIES``."""
+    if policy not in CONTEXT_POLICIES:
+        raise ValueError(f"unknown context policy {policy!r}; expected one of {CONTEXT_POLICIES}")
+    return policy
+
+
 def modality_data(role: str, case: Case, sections: dict[str, str]) -> str:
     """One specialist's own data slice, ``""`` when the case has none for that modality.
 
     Imaging also gets the vignette sentences that mention an imaging study; Pathology/Lab and
-    Pharmacology never see the vignette, so no specialist sees another modality's data.
+    Pharmacology slices never include the vignette, so no slice carries another modality's data.
     """
     if role not in _SLICES:
         raise ValueError(f"unknown specialist role {role!r}; expected one of {SPECIALISTS}")
@@ -130,7 +158,17 @@ def modality_data(role: str, case: Case, sections: dict[str, str]) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
-def specialist_block(role: str, case: Case, sections: dict[str, str]) -> str:
-    """Modality-restricted input for one specialist: its ``modality_data`` slice, question and options."""
+def specialist_system(role: str, policy: str) -> str:
+    """One specialist's system prompt under ``policy``; ``strict`` is ``SYSTEM_PROMPTS[role]``."""
+    return SYSTEM_PROMPTS[role] if check_context_policy(policy) == STRICT else _SHARED_CORE_SPECIALISTS[role]
+
+
+def specialist_block(role: str, case: Case, sections: dict[str, str], policy: str = DEFAULT_CONTEXT_POLICY) -> str:
+    """One specialist's input: ``strict`` is its ``modality_data`` slice, question and options;
+    ``shared_core`` is the shared case summary (vignette, demographics, question, options), then the slice."""
+    check_context_policy(policy)
     data = modality_data(role, case, sections) or f"(no {role} data available)"
-    return f"{data}\n\n{_question(case)}"
+    if policy == STRICT:
+        return f"{data}\n\n{_question(case)}"
+    core = case_block(case, {"Demographics": sections.get("Demographics", "")})
+    return f"Shared case summary:\n{core}\n\nYour modality data (focus here):\n{data}"

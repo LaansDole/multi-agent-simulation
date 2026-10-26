@@ -40,9 +40,11 @@ graph:
       type: dc_care_team
       description: >-
         MODERATE/HIGH path. Integrated Care Team (Imaging, Pathology/Lab, Pharmacology; two of them
-        for MODERATE) reads modality-restricted inputs and writes findings, an answer distribution
-        and claims to the shared Blackboard.
-      config: {}
+        for MODERATE) writes findings, an answer distribution and claims to the shared Blackboard.
+        context_policy shared_core: each specialist reads the case summary, then its own modality
+        slice; strict: its modality slice only.
+      config:
+        context_policy: shared_core
     - id: DivergenceGate
       type: dc_divergence_gate
       description: >-
@@ -61,8 +63,10 @@ graph:
       type: dc_synthesizer
       description: >-
         Writes the team answer from the Blackboard (plus the Critic's flagged claims in adversarial
-        mode), ending in FINAL ANSWER: <letter>.
-      config: {}
+        mode), ending in FINAL ANSWER: <letter>. context_policy shared_core adds the full case block;
+        strict: question, options and Blackboard only.
+      config:
+        context_policy: shared_core
     - id: SafetyGate
       type: dc_safety_gate
       description: >-

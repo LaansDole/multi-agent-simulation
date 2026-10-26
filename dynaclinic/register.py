@@ -3,6 +3,7 @@
 from dynaclinic.devall_nodes import (
     CareTeamExecutor,
     CriticExecutor,
+    DCContextConfig,
     DCDivergenceGateConfig,
     DCNodeConfig,
     DCPrimaryCareConfig,
@@ -20,12 +21,12 @@ NODE_TYPES = {
     "dc_triage": (DCTriageConfig, TriageExecutor, "DynaClinic Meta-Controller triage; emits ROUTE: LOW|MODERATE|HIGH."),
     "dc_primary_care": (DCPrimaryCareConfig, PrimaryCareExecutor,
                         "DynaClinic Primary Care Agent (Informative model) for LOW-complexity cases."),
-    "dc_care_team": (DCNodeConfig, CareTeamExecutor,
+    "dc_care_team": (DCContextConfig, CareTeamExecutor,
                      "DynaClinic Integrated Care Team: specialists write to the shared Blackboard."),
     "dc_divergence_gate": (DCDivergenceGateConfig, DivergenceGateExecutor,
                            "DynaClinic conflict-aware switch; emits MODE: COLLABORATIVE|ADVERSARIAL."),
     "dc_critic": (DCNodeConfig, CriticExecutor, "DynaClinic Clinical Critic: atomic claims, hybrid rule/judge score."),
-    "dc_synthesizer": (DCNodeConfig, SynthesizerExecutor, "DynaClinic Synthesizer: final answer from the Blackboard."),
+    "dc_synthesizer": (DCContextConfig, SynthesizerExecutor, "DynaClinic Synthesizer: final answer from the Blackboard."),
     "dc_safety_gate": (DCSafetyGateConfig, SafetyGateExecutor,
                        "DynaClinic Layer-4 safety gates (A_SAD, T_SAD, S_NAP stub); emits GATE: PASS|BLOCKED."),
 }
