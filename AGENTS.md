@@ -56,7 +56,7 @@ echo "Your task" | uv run python run.py --path yaml_instance/demo_loop_counter.y
 ```bash
 uv run python -c "import sys; from pathlib import Path; from check.check import load_config; load_config(Path(sys.argv[1]))" yaml_instance/your_workflow.yaml
 ```
-Prints `Workflow OK.` or raises `DesignError` (exit 1). `uv run python -m check.check --path ...` and `make validate-yamls` (which shells out to it from `tools/validate_all_yamls.py`) are silent no-ops that always exit 0: `check/check.py` has no `__main__`. Schema-only CLI: `uv run python -m check.check_yaml <path>`.
+Prints `Workflow OK.` or raises `DesignError` (exit 1). The same check as a CLI: `uv run python -m check.check --path <yaml>` (exit 1 on an invalid or missing file). `make validate-yamls` (`tools/validate_all_yamls.py`) runs it over every YAML and currently reports 9 pre-existing failures: GameDev_with_manager, deep_research_executor_sub, general_problem_solving_team, demo_mem0_memory, film-studio, music-studio, photo-studio, subgraphs/react_agent, subgraphs/reflexion_loop (the two subgraphs are not standalone workflows). Schema-only CLI: `uv run python -m check.check_yaml <path>`.
 
 **Run Tests:**
 ```bash
@@ -325,6 +325,8 @@ class YourCustomError(RuntimeError):
 ## DynaClinic (research goal)
 
 DynaClinic is the research target of this fork: a dynamic architecture-switching multi-agent framework for clinical decision support. A Meta-Controller triages case complexity: low-complexity cases go to a single Primary Care Agent restricted to the Emanuel & Emanuel Informative model; moderate/high cases go to an Integrated Care Team (Diagnostic Imaging, Pathology/Lab, Pharmacology agents) writing to a shared Blackboard. When inter-agent divergence exceeds a threshold tau, the system switches to an Adversarial mode in which a Clinical Critic decomposes the consensus into atomic claims and scores them with an adaptive hybrid rule/LLM-judge estimator. The architecture has 5 layers: L1 FHIR ingestion into Neo4j, L2 MCTS control plane, L3 Blackboard workspace, L4 safety gates (A_SAD, S_NAP, T_SAD), L5 working memory + BioBERT/Qdrant experience memory + verified semantic cache. The proposal lives outside the repo (reference only, do not copy it in): `/Users/laansdole/.hermes/cache/dynaclinic-dispatches/proposal.txt`.
+
+MVP (`dynaclinic/` package, `yaml_instance/dynaclinic_mvp.yaml`, eval harness `python -m dynaclinic.eval.harness`): see `docs/dynaclinic/README.md` for the current component -> module mapping with status, how to run, thresholds and limitations. The table below predates the MVP and describes the legacy `dynaclinic_*.yaml` prototypes.
 
 ### Proposal component -> repo today
 
