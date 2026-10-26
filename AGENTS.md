@@ -23,11 +23,12 @@ This guide is designed for agentic coding assistants working on the ChatDev 2.0 
 
 ## Project Overview
 
-**DevAll** is a zero-code multi-agent orchestration platform for building customized multi-agent workflows. Built with Python 3.12+ backend (FastAPI) and Vue 3 frontend (Vite), it enables users to create complex agent systems through YAML configuration files.
+**DevAll** is a zero-code multi-agent orchestration platform for building customized multi-agent workflows. Built with a Python 3.12 backend (FastAPI) and Vue 3 frontend (Vite), it enables users to create complex agent systems through YAML configuration files. The research goal of this fork is DynaClinic (see "DynaClinic (research goal)" below).
 
 **Tech Stack:**
-- Backend: Python 3.12+, FastAPI, uvicorn, WebSockets
-- Frontend: Vue 3, Vite, Vue Flow
+- Backend: Python 3.12 (`requires-python = ">=3.12,<3.13"`), FastAPI, uvicorn, WebSockets
+- Frontend: Vue 3, Vite, Vue Flow (`frontend/`)
+- 3D frontend: React 19 + Three.js playground (`the-delegation/`, own `package.json`, `npm run dev` on port 3000)
 - Package Management: `uv` for Python, `npm` for frontend
 - Configuration: YAML-based workflow definitions
 - Testing: pytest
@@ -46,15 +47,16 @@ uv sync                              # Install all dependencies
 uv run python server_main.py --port 6400 --reload
 ```
 
-**Run CLI Workflow:**
+**Run CLI Workflow** (reads the task prompt from stdin via `input()`; prints only a run summary, the end-node text lands in `WareHouse/<name>_<timestamp>/node_outputs.yaml`):
 ```bash
-uv run python run.py --path yaml_instance/demo.yaml --name test_project
+echo "Your task" | uv run python run.py --path yaml_instance/demo_loop_counter.yaml --name test_project
 ```
 
 **Check/Validate Workflow:**
 ```bash
-uv run python -m check.check --path yaml_instance/your_workflow.yaml
+uv run python -c "import sys; from pathlib import Path; from check.check import load_config; load_config(Path(sys.argv[1]))" yaml_instance/your_workflow.yaml
 ```
+Prints `Workflow OK.` or raises `DesignError` (exit 1). `uv run python -m check.check --path ...` and `make validate-yamls` (which shells out to it from `tools/validate_all_yamls.py`) are silent no-ops that always exit 0: `check/check.py` has no `__main__`. Schema-only CLI: `uv run python -m check.check_yaml <path>`.
 
 **Run Tests:**
 ```bash
@@ -63,6 +65,7 @@ uv run pytest tests/test_file.py     # Run specific test file
 uv run pytest tests/test_file.py::test_function  # Run single test
 uv run pytest -v                     # Verbose output
 uv run pytest -k "pattern"           # Run tests matching pattern
+uv run pytest -m "not cline"         # Skip tests that call the real Cline API
 ```
 
 ### Frontend (Vue 3)
@@ -219,16 +222,22 @@ class ExecutionContext:
 ```
 /
 ├── entity/              # Configuration dataclasses and schemas
-├── runtime/             # Agent abstraction and tool execution
-├── workflow/            # Multi-agent orchestration logic
+├── runtime/             # Node executors, agent providers, memory, edge conditions/processors, sdk.py
+├── workflow/            # Graph execution (DAG / cycle / majority-vote strategies)
+├── schema_registry/     # Registries backing config validation (node/edge/memory/provider schemas)
 ├── server/              # FastAPI backend
 ├── frontend/            # Vue 3 web console
-├── functions/           # Custom Python tools
+├── the-delegation/      # React + Three.js 3D playground (separate npm project)
+├── functions/           # Python functions: function_calling/ (agent tools), edge/ (conditions), edge_processor/
 ├── utils/               # Shared utilities
-├── check/               # Validation scripts
+├── check/               # Validation (load_config, check_yaml, check_workflow)
+├── tests/               # pytest suite (flat test_*.py + conftest.py)
+├── tools/               # Dev scripts (validate_all_yamls.py, ...)
 ├── yaml_instance/       # Workflow configuration examples
 ├── yaml_template/       # Workflow templates
-├── WareHouse/           # Output directory for workflow runs
+├── docs/                # User guide (docs/user_guide/en), architecture notes
+├── openspec/            # OpenSpec changes/ and specs/ (openspec/AGENTS.md is not present)
+├── WareHouse/           # Output directory for workflow runs (gitignored)
 ├── run.py               # CLI entry point
 └── server_main.py       # Server entry point
 ```
@@ -238,7 +247,7 @@ class ExecutionContext:
 1. **Before Making Changes:**
    - Read relevant code to understand context
    - Check for similar patterns in the codebase
-   - Validate workflow files using `check.check` module
+   - Validate workflow files with `check.check.load_config` (command above)
 
 2. **Making Changes:**
    - Follow existing code style and patterns
@@ -247,14 +256,14 @@ class ExecutionContext:
    - Handle errors appropriately with custom exceptions
 
 3. **Testing Changes:**
-   - Run validation: `uv run python -m check.check --path your_workflow.yaml`
+   - Run validation: the `load_config` one-liner under "Check/Validate Workflow"
    - Test backend: Start server and verify endpoints
    - Test frontend: Check UI in browser at http://localhost:5173
 
 4. **Configuration Files:**
    - Workflows are defined in YAML files
    - Use `${VAR}` for environment variable placeholders
-   - Validate with check module before running
+   - Validate with `load_config` before running
    - Store reusable workflows in `yaml_instance/`
 
 ## Important Constraints
@@ -298,10 +307,12 @@ design = load_config(Path("yaml_instance/workflow.yaml"))
 from runtime.sdk import run_workflow
 
 result = run_workflow(
-    yaml_file="yaml_instance/demo.yaml",
+    "yaml_instance/demo_loop_counter.yaml",
     task_prompt="Your task here",
-    variables={"API_KEY": "sk-xxx"}
+    variables={"API_KEY": "sk-xxx"},  # merged into root `vars`, which win over env
 )
+print(result.final_message.text_content() if result.final_message else "")
+print(result.meta_info.output_dir)  # WareHouse/<session>_<timestamp>/
 ```
 
 **Creating Custom Exceptions:**
@@ -311,12 +322,67 @@ class YourCustomError(RuntimeError):
     pass
 ```
 
+## DynaClinic (research goal)
+
+DynaClinic is the research target of this fork: a dynamic architecture-switching multi-agent framework for clinical decision support. A Meta-Controller triages case complexity: low-complexity cases go to a single Primary Care Agent restricted to the Emanuel & Emanuel Informative model; moderate/high cases go to an Integrated Care Team (Diagnostic Imaging, Pathology/Lab, Pharmacology agents) writing to a shared Blackboard. When inter-agent divergence exceeds a threshold tau, the system switches to an Adversarial mode in which a Clinical Critic decomposes the consensus into atomic claims and scores them with an adaptive hybrid rule/LLM-judge estimator. The architecture has 5 layers: L1 FHIR ingestion into Neo4j, L2 MCTS control plane, L3 Blackboard workspace, L4 safety gates (A_SAD, S_NAP, T_SAD), L5 working memory + BioBERT/Qdrant experience memory + verified semantic cache. The proposal lives outside the repo (reference only, do not copy it in): `/Users/laansdole/.hermes/cache/dynaclinic-dispatches/proposal.txt`.
+
+### Proposal component -> repo today
+
+| Proposal component | Where it lives today |
+|---|---|
+| Meta-Controller complexity triage | `yaml_instance/dynaclinic_meta_controller.yaml` (`MetaController` agent + `keyword` edges; LOW/HIGH only, no moderate tier) |
+| Primary Care Agent (Informative model) | same YAML, `PrimaryCareAgent` (Informative-model constraint not encoded) |
+| Integrated Care Team (Imaging, Pathology/Lab, Pharmacology) | same YAML, `ImagingAgent`, `PathologyAgent`, `PharmacologyAgent` -> `ConsensusBuilder` (edge message passing, not a blackboard) |
+| L3 shared Blackboard | not implemented for DynaClinic; generic store `runtime/node/agent/memory/blackboard_memory.py` (example: `yaml_instance/subgraphs/reflexion_loop.yaml`) |
+| Conflict-aware routing (tau, Conflict Set) | `yaml_instance/dynaclinic_conflict_routing.yaml` (LLM `ConflictDetector` emits `VERDICT: CONSENSUS/CONFLICT`; no numeric divergence or tau) |
+| Clinical Critic / Adversarial mode | same YAML, `ClinicalCritic` -> `ConflictResolver` (prompt only) |
+| Atomic-claim decomposition + hybrid rule/LLM-judge estimator | not implemented |
+| L1 FHIR ingestion -> Neo4j graph | not implemented (no FHIR or neo4j dependency) |
+| L2 MCTS control plane (PUCT, reward, backtracking) | not implemented |
+| L4 A_SAD / S_NAP / T_SAD gates | `yaml_instance/dynaclinic_semantic_verification.yaml` (sequential LLM judges + `PlanReviser`/`LoopGate`); trust-region constraint not implemented |
+| L5 working memory | not implemented; closest primitive is per-run `ExecutionContext.global_state` (`runtime/node/executor/base.py`) |
+| L5 BioBERT/Qdrant experience memory | not implemented; `simple`/`file` stores use FAISS + `EmbeddingConfig` (`provider: openai` or `local`, see `runtime/node/agent/memory/embedding.py`; `local` needs `sentence_transformers`, not installed) |
+| L5 verified semantic cache | not implemented |
+| CSEDB safety metrics / evaluation harness | not implemented |
+
+Known defects in the three YAMLs (reproduced with a fake provider, no model calls):
+- Each starts with a `literal` `CaseInput` node. `runtime/node/executor/literal_executor.py` ignores its inputs, so the user's case text never reaches any agent. Start at the first agent, or use a `passthrough` node.
+- Edges carry only the source node's output. Even with the start node fixed, the ICT specialists see only the triage text, and `S_NAP_Predictor`/`T_SAD_Reviewer`/`VerifiedPlanOutput` see only the previous verdict, never the plan. To fan the case or plan out, add `trigger: false, carry_data: true` data edges from the source (this queues input without triggering; verified for the specialists).
+- `keyword` conditions are case-sensitive substring matches over the whole output (`runtime/edge/conditions/keyword_manager.py`). `COMPLEXITY: HIGH ... not LOW` fires both branches; `VERDICT: CONSENSUS ... no CONFLICT` runs the adversarial path. Anchor with `regex: ['^COMPLEXITY:\s*HIGH']` (no MULTILINE, so `^` means start of output) or use a function condition.
+- `dynaclinic_semantic_verification.yaml`: `LoopGate` (`loop_counter`, standard mode) emits nothing before its 2nd hit, and the only loop-back edge passes through it. The first FAIL therefore ends the run with no final output. Loop back from `PlanReviser` directly (pattern: `yaml_instance/demo_loop_counter.yaml`) or set `passthrough: true`.
+- Edges use `processor: null`, but the key is `process` (`entity/configs/edge/edge.py`). An unknown `processor:` is silently ignored, even when non-null.
+
+### Adding a DynaClinic piece the DevAll way
+
+1. **Workflow**: put a YAML at `yaml_instance/dynaclinic_<name>.yaml`. Agents use `provider: openai`, `name: ${MODEL_NAME}`, `base_url: ${BASE_URL}`, `api_key: ${API_KEY}`, with `MODEL_NAME` set in root `vars:`. Root `vars` win over environment variables (`utils/vars_resolver.py`), and `.env` is loaded from the CWD during `load_config` (`entity/config_loader.py`). Registered providers are `openai` and `gemini` (`runtime/node/agent/providers/builtin_providers.py`). For local OpenAI-compatible servers, set `params: {protocol: chat}`. Otherwise every call tries the Responses API first and silently falls back (`runtime/node/agent/providers/openai_provider.py`).
+2. **Deterministic routing**: for edge conditions, write `def name(data: str) -> bool` in `functions/edge/*.py` and use `condition: {type: function, config: {name: name}}`. A missing function name evaluates to `true` with only a warning (`runtime/edge/conditions/function_manager.py`). For edge processors, write `def name(data: str, global_state: dict) -> str | dict | None` in `functions/edge_processor/*.py` and use `process: {type: function, config: {name: name}}`. Returning `None` or `{"drop": True}` drops the message (`runtime/edge/processors/function_processor.py`). All function directories form a flat namespace, loaded by `utils/function_manager.py`.
+3. **Agent tools**: put type-hinted functions (optionally `Annotated[..., ParamMeta(...)]`) in `functions/function_calling/*.py` and attach them with `tooling: [{type: function, config: {tools: [{name: ...}]}}]` (example: `yaml_instance/demo_function_call.yaml`; docs: `docs/user_guide/en/modules/tooling/function.md`).
+4. **New node type** (e.g. MCTS controller, claim scorer): subclass `NodeExecutor` (`runtime/node/executor/base.py`) and implement `execute(node, inputs) -> List[Message]`; returning `[]` suppresses all outgoing edges. Add a config dataclass under `entity/configs/node/`. Register it with `register_node_type(name, config_cls=..., executor_cls=...)` in `runtime/node/builtin_nodes.py`, or in a module listed in `runtime/bootstrap/schema.py`. Registration feeds both the executor factory (`runtime/node/executor/factory.py`) and validation (`schema_registry/`). The built-in `python` node only runs code extracted from its input message, gated by `MAC_ALLOW_UNSAFE_CODE_EXECUTION=1`. It is not a hook for repo functions.
+5. **Memory**: declare stores in graph-level `memory:` (`simple`, `file`, `blackboard`, `mem0`; `runtime/node/agent/memory/builtin_stores.py`). Attach them per agent with `memories: [{name, read, write, retrieve_stage, top_k}]` (`entity/configs/node/memory.py`). Register new stores with `register_memory_store` (`runtime/node/agent/memory/registry.py`). Docs: `docs/user_guide/en/modules/memory.md`.
+6. **Validate** (offline; prints `Workflow OK.`):
+   ```bash
+   env -u PYTHONPATH -u VIRTUAL_ENV uv run python -c "import sys; from pathlib import Path; from check.check import load_config; load_config(Path(sys.argv[1]))" yaml_instance/dynaclinic_meta_controller.yaml
+   ```
+7. **Run headless** (calls the model at `BASE_URL`; `.env` also holds `API_KEY` and `OPENAI_API_KEY`, never print it):
+   ```bash
+   echo "68-year-old diabetic with chest pain on warfarin" | env -u PYTHONPATH -u VIRTUAL_ENV uv run python run.py --path yaml_instance/dynaclinic_meta_controller.yaml --name dc_meta
+   ```
+   Programmatic: `runtime.sdk.run_workflow(path, task_prompt=..., session_name=..., variables={...})` returns `WorkflowRunResult` with `.final_message` (end-node `Message` or `None`) and `.meta_info` (`output_dir`, `outputs`, `token_usage`). The run directory `WareHouse/<session>_<YYYYmmddHHMMSS>/` holds `node_outputs.yaml`, `workflow_summary.yaml`, `execution_logs.json`, and `token_usage_<session>.json`. Workflow log events also stream to stdout.
+
+### Testing conventions
+
+- Config in `pyproject.toml` `[tool.pytest.ini_options]`: `testpaths = ["tests"]`, `pythonpath = ["."]`, `addopts = "-v --tb=short"`. Tests are flat `tests/test_*.py` files.
+- Shared fixtures in `tests/conftest.py`: `tmp_yaml_dir`, `tmp_warehouse_dir`, `tmp_spatial_dir`, `tmp_vuegraph_db`, `client` (FastAPI `TestClient`). They redirect storage via `monkeypatch`. `runtime.sdk` writes to `OUTPUT_ROOT = Path("WareHouse")` relative to the CWD, so SDK-driven tests should `monkeypatch.chdir(tmp_path)` or patch `runtime.sdk.OUTPUT_ROOT`.
+- No network: patch `ProviderRegistry.get_provider` to return a `Mock` whose `call_model` returns `ModelResponse(message=...)` (`tests/test_attachment_boundary_security.py`). The mem0 client is patched with `MagicMock` (`tests/test_mem0_memory.py`). Pass dummy `BASE_URL`/`API_KEY` through `variables=` so `.env` is not needed.
+- The only real-API test is marked `@pytest.mark.cline` and skips without `CLINE_API_KEY` (`tests/test_cline_dry_run.py`). Deselect it with `-m "not cline"`.
+
 ## Resources
 
 - User Guide: `docs/user_guide/en/index.md`
 - Workflow Authoring: `docs/user_guide/en/workflow_authoring.md`
 - Memory Module: `docs/user_guide/en/modules/memory.md`
-- Tooling Guide: `docs/user_guide/en/modules/tooling/index.md`
+- Tooling Guide: `docs/user_guide/en/modules/tooling/README.md`
+- Execution semantics (DAG, cycles, triggers): `docs/user_guide/en/execution_logic.md`
 
 ## Git Workflow
 
