@@ -72,6 +72,22 @@ def test_negation_does_not_cross_sentences_or_long_clauses() -> None:
 
 
 @pytest.mark.parametrize(
+    "text",
+    [
+        "Given her penicillin allergy, oral azithromycin is appropriate.",
+        "Avoid amoxicillin because of penicillin anaphylaxis.",
+        "History of penicillin-class hypersensitivity; start azithromycin.",
+        "Prior amoxicillin rash; use azithromycin.",
+    ],
+)
+def test_regression_allergy_history_mention_is_not_an_assertion(text: str) -> None:
+    assert allergy_conflicts(text, ["penicillin (anaphylaxis)", "sulfonamide (rash)"]) == []
+
+
+def test_drug_followed_by_unrelated_noun_is_still_asserted() -> None:
+    assert [c.subject for c in allergy_conflicts("Penicillin therapy for 10 days", ["penicillin"])] == ["penicillin"]
+
+@pytest.mark.parametrize(
     ("text", "meds", "expected"),
     [
         ("Ibuprofen 400 mg", ["warfarin 5 mg daily"], ("ibuprofen", "warfarin", "contraindicated")),

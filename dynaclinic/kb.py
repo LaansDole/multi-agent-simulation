@@ -98,6 +98,10 @@ _NEGATION_RE = re.compile(
     r"instead\s+of|contraindicated|allergic\s+to|allergy\s+to)\b(?:\s+[^\s.;:!?]+){0,2}\s*$",
     re.IGNORECASE,
 )
+# "penicillin allergy", "amoxicillin rash", "penicillin-class hypersensitivity": the drug names a past reaction.
+_REACTION_AFTER_RE = re.compile(
+    r"(?:[\s-]+class)?[\s-]+(?:allerg|anaphyla|hypersensitiv|intoleran|reaction|rash)", re.IGNORECASE
+)
 
 
 def _canonical(match: str) -> tuple[str, ...]:
@@ -111,11 +115,12 @@ def drugs_in(text: str) -> set[str]:
 
 
 def _asserted_drugs(text: str) -> set[str]:
-    """Drugs mentioned in ``text`` that are not negated ("avoid X", "do not give X", "allergic to X")."""
+    """Drugs mentioned in ``text`` that are not negated ("avoid X", "allergic to X") or a past reaction ("X allergy")."""
     return {
         drug
         for match in _DRUG_RE.finditer(text)
         if not _NEGATION_RE.search(text[max(0, match.start() - 60) : match.start()])
+        and not _REACTION_AFTER_RE.match(text, match.end())
         for drug in _canonical(match.group())
     }
 
