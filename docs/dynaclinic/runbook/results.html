@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DynaClinic: benchmark results</title>
+<link rel="canonical" href="https://laansdole.github.io/multi-agent-simulation/results.html">
+<style>
+  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  header { padding:28px 36px 8px; }
+  nav { padding:0 36px; font-size:14px; }
+  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 10px; }
+  .sub { color:var(--muted); }
+  main { padding:20px 36px 40px; display:grid; gap:24px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; }
+  td.nw { white-space:nowrap; } td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; max-width:100%; }
+  pre code { white-space:pre; background:none; padding:0; }
+  .nwi { white-space:nowrap; }
+  code { white-space:nowrap; background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
+  a { color:#8ab4ff; }
+  ol, ul { margin:6px 0 0; padding-left:22px; } li { margin:5px 0; }
+  .ok { color:#8fd6a5; } .x { color:#ffa49b; }
+  .note { color:var(--muted); font-size:13px; }
+  .verdict { border-left:3px solid var(--accent); padding:4px 0 4px 14px; font-size:16px; }
+  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
+  @media (max-width: 1100px) { .grid2 { grid-template-columns:1fr; } }
+  @media (max-width: 600px) { header, nav, main, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>DynaClinic: benchmark results</h1>
+  <div class="sub">Does dynamic multi-agent switching beat one agent? Three arms on the same cases and model: <b>single</b> (one Primary Care Agent), <b>dynamic</b> (Meta-Controller triage, care team only when needed, Clinical Critic only when divergence exceeds tau 0.25) and <b>static</b> (the full care team plus Critic on every case). All runs are real, on OpenAI gpt-6-luna, <span class="nwi">2026-10-27</span>.</div>
+</header>
+<nav><a href="index.html">Back to the 3D runbook demo</a></nav>
+
+<main>
+  <div class="panel">
+    <h2>Bottom line</h2>
+    <p class="verdict">gpt-6-luna is close to its ceiling on both benchmarks, so neither one separates single-agent from multi-agent yet. On the synthetic set, dynamic switching matches the full team with about 36% fewer model calls. On MedQA, no arm is meaningfully more accurate.</p>
+  </div>
+
+  <div class="panel">
+    <h2>MedQA-USMLE sample: 50 questions</h2>
+    <p>50 questions drawn at random (seed 2026) from the 1,273-question test split of MedQA-USMLE, 4-option version (Jin et al. 2021; Hugging Face <code>GBaker/MedQA-USMLE-4-options</code>, CC-BY-4.0): 26 Step 1 and 24 Step 2&amp;3. Saved as <code>data/dynaclinic/medqa_sample.jsonl</code> (commit a00ab8a); the repo's existing MedQA loader read it unchanged. Run on code 3203fa4, context policy shared_core, concurrency 4, cache off, no fallback calls, no errors.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Arm</th><th>Accuracy</th><th>95% CI</th><th>Calls per question</th><th>Latency mean / p50</th><th>Routes taken</th></tr>
+      <tr><td class="nw"><b>single</b></td><td class="num">94% (47/50)</td><td class="num">83.8 to 97.9</td><td class="num">1.00</td><td class="num">5.3 s / 2.9 s</td><td>single agent on all 50</td></tr>
+      <tr><td class="nw"><b>dynamic</b></td><td class="num">92% (46/50)</td><td class="num">81.2 to 96.8</td><td class="num">3.68</td><td class="num">19.9 s / 13.2 s</td><td>17 single agent, 33 collaborative, 0 adversarial</td></tr>
+      <tr><td class="nw"><b>static</b></td><td class="num">90% (45/50)</td><td class="num">78.6 to 95.7</td><td class="num">6.00</td><td class="num">29.9 s / 22.5 s</td><td>full team plus Critic on all 50</td></tr>
+    </table></div>
+    <p class="note">Intervals are Wilson 95%. Raw output: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/results/2026-10-27-medqa50-gpt-6-luna-shared-core">results/2026-10-27-medqa50-gpt-6-luna-shared-core</a> (results.jsonl, summary.json, summary.md).</p>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>What MedQA shows</h2>
+      <ol>
+        <li><b>No accuracy benefit from the multi-agent arms.</b> The intervals overlap almost completely, and the single agent is one question ahead.</li>
+        <li><b>Shared misses point at the model, not the orchestration.</b> Three questions were missed by all three arms with the same wrong answer.</li>
+        <li><b>The team once talked itself out of the right answer.</b> On 0243, both team arms answered C where the single agent was right (A).</li>
+        <li><b>The adversarial path never ran.</b> Specialists almost always agreed (mean divergence 0.010), so the switch to the Clinical Critic, the core of the proposal, was not tested.</li>
+        <li><b>The safety numbers mean little here.</b> MedQA questions have no structured patient data and no marked unsafe options, so the safety gates had almost nothing to check.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h2>Every MedQA miss</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Question</th><th>Gold</th><th>single</th><th>dynamic</th><th>static</th></tr>
+        <tr><td><code>medqa-test-0005</code></td><td>D</td><td class="x">A</td><td class="x">A</td><td class="x">A</td></tr>
+        <tr><td><code>medqa-test-0755</code></td><td>C</td><td class="x">B</td><td class="x">B</td><td class="x">B</td></tr>
+        <tr><td><code>medqa-test-0944</code></td><td>D</td><td class="x">B</td><td class="x">B</td><td class="x">B</td></tr>
+        <tr><td><code>medqa-test-0243</code></td><td>A</td><td class="ok">A</td><td class="x">C</td><td class="x">C</td></tr>
+        <tr><td><code>medqa-test-1230</code></td><td>D</td><td class="ok">D</td><td class="ok">D</td><td class="x">A</td></tr>
+      </table></div>
+      <p class="note">Red = wrong, green = right. The first three are shared misses; 0243 is a team-only miss; 1230 is static only. Per-question answers for all 50 are in summary.md.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Synthetic set: 24 hand-written cases, for comparison</h2>
+    <p>8 low, 8 moderate and 8 high complexity vignettes, 15 of them with a safety trap (an option that would harm the patient). Latest run after the divergence and Critic fixes (code 9ef6d86).</p>
+    <div class="table-wrap"><table>
+      <tr><th>Arm</th><th>Accuracy</th><th>Calls per case</th><th>Latency mean</th><th>Unsafe answers</th></tr>
+      <tr><td class="nw"><b>single</b></td><td class="num">100% (24/24)</td><td class="num">1.00</td><td class="num">2.2 s</td><td class="num">0</td></tr>
+      <tr><td class="nw"><b>dynamic</b></td><td class="num">100% (24/24)</td><td class="num">3.92</td><td class="num">13.4 s</td><td class="num">0</td></tr>
+      <tr><td class="nw"><b>static</b></td><td class="num">100% (24/24)</td><td class="num">6.08</td><td class="num">21.4 s</td><td class="num">0</td></tr>
+    </table></div>
+    <p class="note">Every arm is perfect, so this set is too easy to show an accuracy effect. It does show the cost side: dynamic matches the always-full team with about 36% fewer calls and 37% lower latency. Triage agreed with the gold complexity tier on 17 of 24 cases. Full history of runs: <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/README.md#results">docs/dynaclinic/README.md, Results</a>.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Next step options</h2>
+    <ul>
+      <li><b>A larger or harder sample</b>: more MedQA questions, or only the harder Step 2&amp;3 questions, to narrow the intervals.</li>
+      <li><b>A weaker base model</b>, so there is headroom for the team to help.</li>
+      <li><b>Safety-focused cases</b> with structured patient data and marked unsafe options, so the safety gates and the adversarial path actually get exercised.</li>
+    </ul>
+    <p class="note">Reproduce from the repo root (needs <code>OPENAI_API_KEY</code>):</p>
+    <pre><code>env -u PYTHONPATH -u VIRTUAL_ENV uv run python -m dynaclinic.eval.harness \
+  --arms dynamic,single,static --dataset medqa --concurrency 4 \
+  --context-policy shared_core --out docs/dynaclinic/results/&lt;run-id&gt;</code></pre>
+  </div>
+</main>
+
+<footer>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic">docs/dynaclinic</a> on branch threejs-devall. Demo: <a href="index.html">3D runbook demo</a>.</footer>
+</body>
+</html>

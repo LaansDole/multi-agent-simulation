@@ -30,7 +30,7 @@ Status key: **implemented** means the behaviour is in code. **prompt-level** mea
 | CSEDB safety metrics | none | not implemented | The eval reports *safety violation*: the final answer is one of the case's hand-labelled `unsafe_options`. That is not a CSEDB score. |
 | Baselines | `pipeline.SingleAgentPipeline`, `pipeline.StaticTeamPipeline` | implemented | Single generic clinician, and an always-full team with Critic and gate (exhaustive consensus). |
 | DevAll workflow | `devall_nodes.py`, `register.py`, `functions/edge/dynaclinic_conditions.py`, `yaml_instance/dynaclinic_mvp.yaml` | implemented | 7 `dc_*` node types. Edges route only on first-line markers `ROUTE:` / `MODE:` / `GATE:`. |
-| Evaluation harness | `dynaclinic/eval/` (`cases.py`, `grade.py`, `harness.py`) | implemented | Synthetic set in the repo. The MedQA-format loader exists, but no sample is in the repo. |
+| Evaluation harness | `dynaclinic/eval/` (`cases.py`, `grade.py`, `harness.py`) | implemented | Synthetic set (24 cases) and a 50-question MedQA-USMLE sample (`data/dynaclinic/medqa_sample.jsonl`) in the repo; results in `docs/dynaclinic/results/` and the Results section below. |
 
 ## Dynamic pipeline
 
