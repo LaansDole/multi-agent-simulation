@@ -1,5 +1,7 @@
 """Tests for dynaclinic.prompts (persona prompts and modality-restricted inputs)."""
 
+from dataclasses import replace
+
 import pytest
 
 from dynaclinic.interfaces import sections_from_structured
@@ -18,7 +20,10 @@ from dynaclinic.prompts import (
     SYNTHESIZER,
     SYSTEM_PROMPTS,
     TRIAGE,
+    WRITE_UP_SECTIONS,
+    answer_system,
     case_block,
+    question_block,
     specialist_block,
     specialist_system,
 )
@@ -45,6 +50,7 @@ CASE = Case(
     },
 )
 SECTIONS = sections_from_structured(CASE.structured)
+OPEN_CASE = replace(CASE, question="", options=[], answer="")
 
 
 def test_every_role_has_a_system_prompt() -> None:
@@ -59,6 +65,22 @@ def test_answering_prompts_demand_a_final_answer_line_the_parser_reads(role: str
     prompt = SYSTEM_PROMPTS[role]
     assert "FINAL ANSWER: <letter>" in prompt
     assert extract_final_answer(prompt.replace("<letter>", "B"), ["A", "B"]) == "B"
+
+
+@pytest.mark.parametrize("role", [PRIMARY_CARE, SYNTHESIZER, SINGLE_AGENT])
+def test_open_ended_cases_get_a_sectioned_write_up_prompt_without_a_letter(role: str) -> None:
+    prompt = answer_system(role, OPEN_CASE)
+    assert "FINAL ANSWER" not in prompt and "letter>" not in prompt
+    assert [section for section in WRITE_UP_SECTIONS if f"\n{section}:" not in prompt] == []
+    assert prompt.endswith("End your reply with exactly one line: RECOMMENDATION: <one sentence>")
+    assert answer_system(role, CASE) == SYSTEM_PROMPTS[role]
+
+
+def test_open_ended_case_block_has_no_options_and_keeps_an_open_question() -> None:
+    text = case_block(OPEN_CASE, SECTIONS)
+    assert "Options:" not in text and "Question:" not in text and "no answer options" in text
+    asked = question_block(replace(OPEN_CASE, question="Can he travel tomorrow?"))
+    assert asked.startswith("Question: Can he travel tomorrow?\n") and "Options:" not in asked
 
 
 @pytest.mark.parametrize(

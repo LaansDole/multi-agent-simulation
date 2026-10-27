@@ -62,7 +62,7 @@ const MockScenariosSection: React.FC<{ onInsert: (text: string) => void; hasSent
           </div>
           {isDynaClinic && (
             <p className="text-[10px] text-zinc-400 leading-relaxed">
-              Or paste a case as plain text: a vignette, optional Age/Sex/History/Medications/Allergies/Labs/Imaging lines, Question:, then options A.-E.
+              Or paste any clinical scenario as plain text, with optional Age/Sex/History/Medications/Allergies/Labs/Imaging lines. Add Question: and options A.-E. for a multiple-choice case.
             </p>
           )}
           {loading && <p className="text-[11px] text-zinc-500">Loading mock scenarios...</p>}

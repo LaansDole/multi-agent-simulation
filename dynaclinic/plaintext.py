@@ -11,12 +11,14 @@
     Allergies: none
     Labs: D-dimer 1.9 ug/mL FEU; urinalysis: no pyuria    "name value unit" or "name: value"
     Imaging: Chest radiograph: normal
-    Question: <text>                    required
-    A. <text>                           at least two options: A. / A) / (A)
+    Question: <text>                    optional
+    A. <text>                           options: A. / A) / (A)
 
 Header names are case-insensitive and recognised only before ``Question:``; options only after it. A line
-after ``Question:`` that is not an option continues the question, or the last option. The text carries no
-gold answer, tier or unsafe options, so the case is not graded.
+after ``Question:`` that is not an option continues the question, or the last option. A question with at
+least two options is a multiple-choice case. Anything else, down to a bare narrative, is an open-ended
+clinical scenario: no options, and the question text (empty without ``Question:``) is the question plus any
+option lines. The text carries no gold answer, tier or unsafe options, so the case is not graded.
 """
 
 import re
@@ -45,8 +47,8 @@ def _lab(item: str) -> dict[str, str]:
     return {"name": match[1], "value": match[2], "unit": match[3].strip()} if match else {"name": item, "value": "", "unit": ""}
 
 
-def parse_plain_case(text: str) -> Case | None:
-    """Case from the plain-text format above, or ``None`` without a question and at least two options."""
+def parse_plain_case(text: str) -> Case:
+    """Case from the plain-text format above: multiple choice, or an open-ended scenario (no options)."""
     vignette: list[str] = []
     structured: dict[str, Any] = {}
     demographics: dict[str, Any] = {}
@@ -77,9 +79,11 @@ def parse_plain_case(text: str) -> Case | None:
             structured["labs"] = [_lab(item) for item in _items(value)]
         elif key in _LISTS:
             structured[_LISTS[key]] = _items(value)
-    if not question or len(options) < 2:
-        return None
     if demographics:
         structured["demographics"] = demographics
+    question = question or []
+    if not question or len(options) < 2:  # open-ended: option-like lines stay part of the question
+        question += [f"{option.letter}. {option.text}" for option in options]
+        options = []
     return Case("devall", "devall", "\n".join(vignette).strip(), " ".join(question), options, answer="",
                 structured=structured)

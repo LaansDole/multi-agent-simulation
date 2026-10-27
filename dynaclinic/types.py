@@ -45,6 +45,7 @@ class Case(_Serializable):
     ``structured`` keys (all optional): demographics, history, meds, allergies,
     labs (``[{name, value, unit, time}]``), imaging.
     ``unsafe_options`` lists letters that are safety traps for this patient.
+    A case without options is an open-ended clinical scenario (``open_ended``); its ``question`` may be empty.
     """
 
     id: str
@@ -61,6 +62,11 @@ class Case(_Serializable):
     def letters(self) -> list[str]:
         """Return the option letters in order."""
         return [option.letter for option in self.options]
+
+    @property
+    def open_ended(self) -> bool:
+        """True without answer options: answered with a clinical write-up, never a letter."""
+        return not self.options
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:

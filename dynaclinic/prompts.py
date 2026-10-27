@@ -29,6 +29,21 @@ CONTEXT_POLICIES: tuple[str, ...] = (STRICT, SHARED_CORE)
 DEFAULT_CONTEXT_POLICY = SHARED_CORE
 
 _FINAL = "End your reply with exactly one line: FINAL ANSWER: <letter>"
+# Headed sections of the clinical write-up that answers an open-ended scenario, in order.
+WRITE_UP_SECTIONS: tuple[str, ...] = (
+    "ASSESSMENT", "DIFFERENTIAL", "PLAN", "RED FLAGS / ESCALATE IF", "MISSING INFORMATION",
+)
+_WRITE_UP = """This is an open-ended clinical scenario, not a quiz: there are no answer options, so never answer with a letter.
+Write a structured clinical write-up with these headed sections, in this order:
+ASSESSMENT: what is going on; say so when a detail of the scenario is clinically irrelevant (for example the weather).
+DIFFERENTIAL: the main alternatives worth considering, or "not relevant".
+PLAN: investigations, management and disposition.
+RED FLAGS / ESCALATE IF: findings that need urgent escalation.
+MISSING INFORMATION: what a clinician would ask or check next.
+End your reply with exactly one line: RECOMMENDATION: <one sentence>"""
+_INFORMATIVE_RULES = """- No paternalistic language: never write "I recommend", "you should", "the best thing for you" or similar.
+- No interpretive model: do not infer or articulate the patient's values for them.
+- No deliberative model: do not persuade or argue about which values are worth holding."""
 
 _TRIAGE = """You are the Meta-Controller of a clinical decision-support system. Do not answer the question.
 Classify the case's complexity so it can be routed:
@@ -39,14 +54,19 @@ Respond with JSON only:
 {"tier": "LOW|MODERATE|HIGH", "rationale": "<one sentence>", "features": {"organ_systems": <int>,
 "comorbidities": <int>, "medications": <int>, "abnormal_labs": <int>, "red_flags": ["<term>"]}}"""
 
-_PRIMARY_CARE = f"""You are the Primary Care Agent, restricted to the Emanuel & Emanuel Informative model.
+_PRIMARY_CARE_HEAD = "You are the Primary Care Agent, restricted to the Emanuel & Emanuel Informative model."
+_PRIMARY_CARE = f"""{_PRIMARY_CARE_HEAD}
 - Present the relevant facts, each option, and its risks and benefits objectively.
-- No paternalistic language: never write "I recommend", "you should", "the best thing for you" or similar.
-- No interpretive model: do not infer or articulate the patient's values for them.
-- No deliberative model: do not persuade or argue about which values are worth holding.
+{_INFORMATIVE_RULES}
 - Never pick an option that conflicts with the patient's allergies, current medications or conditions.
 After the informative summary, state which option the evidence supports.
 {_FINAL}"""
+_PRIMARY_CARE_OPEN = f"""{_PRIMARY_CARE_HEAD}
+- Present the relevant facts, the reasonable courses of action, and their risks and benefits objectively.
+{_INFORMATIVE_RULES}
+- Never propose anything that conflicts with the patient's allergies, current medications or conditions.
+The RECOMMENDATION states the course of action the evidence supports.
+{_WRITE_UP}"""
 
 _SPECIALIST_HEAD = "You are the {title} specialist of an Integrated Care Team writing to a shared Blackboard.\n"
 _SPECIALIST_JSON = """Respond with JSON only:
@@ -85,9 +105,16 @@ Weigh every specialist's findings and probability distribution. If flagged claim
 address each conflict explicitly and do not rely on flagged claims.
 Never pick an option that conflicts with the patient's allergies, current medications or conditions.
 {_FINAL}"""
+_SYNTHESIZER_OPEN = f"""You are the Synthesizer of an Integrated Care Team. Read the whole Blackboard.
+Weigh every specialist's findings and primary assertion. In an adversarial review, test each assertion against
+the case evidence, resolve the disagreement explicitly and do not rely on flagged claims.
+Never propose anything that conflicts with the patient's allergies, current medications or conditions.
+{_WRITE_UP}"""
 
 _SINGLE_AGENT = f"""You are an experienced clinician. Read the case and answer the multiple-choice question.
 {_FINAL}"""
+_SINGLE_AGENT_OPEN = f"""You are an experienced clinician. Read the clinical scenario.
+{_WRITE_UP}"""
 
 _PERSONAS = {
     IMAGING: {"title": "Diagnostic Imaging", "modality": "imaging studies"},
@@ -104,6 +131,13 @@ SYSTEM_PROMPTS: dict[str, str] = {
     SINGLE_AGENT: _SINGLE_AGENT,
 }
 _SHARED_CORE_SPECIALISTS = {role: _SPECIALIST_SHARED_CORE.format(**persona) for role, persona in _PERSONAS.items()}
+# Answering roles' system prompts for an open-ended case: the clinical write-up instead of a FINAL ANSWER letter.
+OPEN_ENDED_PROMPTS: dict[str, str] = {
+    PRIMARY_CARE: _PRIMARY_CARE_OPEN,
+    SYNTHESIZER: _SYNTHESIZER_OPEN,
+    SINGLE_AGENT: _SINGLE_AGENT_OPEN,
+}
+OPEN_ENDED_NOTE = "Open-ended clinical scenario: no answer options."
 
 _IMAGING_TERMS = re.compile(
     r"x-ray|radiograph|\bct\b|computed tomography|\bmri\b|ultraso|echocardiogra|\becg\b|\bekg\b|"
@@ -115,15 +149,17 @@ _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 _SLICES = {IMAGING: ("Imaging",), PATHOLOGY: ("Labs",), PHARMACOLOGY: ("Meds", "Allergies")}
 
 
-def options_block(case: Case) -> str:
-    """Render options as ``A. text`` lines; a free-text case has none and needs no FINAL ANSWER."""
-    if not case.options:
-        return "(none: free-text case; answer in prose, no FINAL ANSWER letter needed)"
-    return "\n".join(f"{option.letter}. {option.text}" for option in case.options)
+def answer_system(role: str, case: Case) -> str:
+    """System prompt of an answering role (primary care, synthesizer, single agent) for ``case``."""
+    return OPEN_ENDED_PROMPTS[role] if case.open_ended else SYSTEM_PROMPTS[role]
 
 
-def _question(case: Case) -> str:
-    return f"Question: {case.question}\nOptions:\n{options_block(case)}"
+def question_block(case: Case) -> str:
+    """``Question:`` and ``A. text`` option lines; an open-ended case gets its question, if any, and a note."""
+    if case.open_ended:
+        return f"Question: {case.question}\n{OPEN_ENDED_NOTE}" if case.question else OPEN_ENDED_NOTE
+    options = "\n".join(f"{option.letter}. {option.text}" for option in case.options)
+    return f"Question: {case.question}\nOptions:\n{options}"
 
 
 def _sections(sections: dict[str, str], names: tuple[str, ...]) -> str:
@@ -132,7 +168,7 @@ def _sections(sections: dict[str, str], names: tuple[str, ...]) -> str:
 
 def case_block(case: Case, sections: dict[str, str]) -> str:
     """Full case for single-agent roles: vignette, non-empty structured sections, question, options."""
-    parts = [f"Case:\n{case.vignette}", _sections(sections, tuple(sections)), _question(case)]
+    parts = [f"Case:\n{case.vignette}", _sections(sections, tuple(sections)), question_block(case)]
     return "\n\n".join(part for part in parts if part)
 
 
@@ -169,6 +205,6 @@ def specialist_block(role: str, case: Case, sections: dict[str, str], policy: st
     check_context_policy(policy)
     data = modality_data(role, case, sections) or f"(no {role} data available)"
     if policy == STRICT:
-        return f"{data}\n\n{_question(case)}"
+        return f"{data}\n\n{question_block(case)}"
     core = case_block(case, {"Demographics": sections.get("Demographics", "")})
     return f"Shared case summary:\n{core}\n\nYour modality data (focus here):\n{data}"

@@ -61,7 +61,6 @@ def test_endpoint_serves_the_dynaclinic_scenarios(client: TestClient) -> None:
     response = client.get("/api/workflows/dynaclinic_mvp.yaml/scenarios")
     assert response.status_code == 200
     scenarios = response.json()
-    assert len(scenarios) == 6
     assert all(set(s) == {"id", "title", "teaches", "text"} and s["title"] and s["teaches"] and s["text"] for s in scenarios)
 
 

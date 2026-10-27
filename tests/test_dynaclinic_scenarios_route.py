@@ -1,5 +1,7 @@
-"""graph.demo_scenarios of dynaclinic_mvp.yaml: mock plain-text demo cases, each a faithful copy of a dataset case."""
+"""graph.demo_scenarios of dynaclinic_mvp.yaml: mock plain-text demo cases, multiple-choice copies of dataset cases
+and open-ended scenarios."""
 
+import re
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -17,6 +19,10 @@ COPIED_FROM = {
     "contested-pregnancy-chest-pain": "demo-contested-02",
     "contested-abdominal-pain": "demo-contested-03",
 }
+OPEN_ENDED = ("open-covid-hypertension", "open-chest-pain-warfarin")
+_ROUTE_WORDS = re.compile(
+    r"\b(low|moderate|high|triage|care team|specialists?|critic|collaborative|adversarial)\b", re.IGNORECASE
+)
 
 
 def _without_lab_times(structured: dict[str, Any]) -> dict[str, Any]:
@@ -26,12 +32,17 @@ def _without_lab_times(structured: dict[str, Any]) -> dict[str, Any]:
 
 def test_scenarios_are_mock_plain_text_copies_of_dataset_cases(client: TestClient) -> None:
     scenarios = client.get("/api/workflows/dynaclinic_mvp.yaml/scenarios").json()
-    assert [s["id"] for s in scenarios] == list(COPIED_FROM)
+    assert [s["id"] for s in scenarios] == [*COPIED_FROM, *OPEN_ENDED]
     for scenario in scenarios:
         lines = scenario["text"].splitlines()
         assert lines[0] == scenario["title"] and scenario["title"].startswith("Mock case: ")
         assert scenario["teaches"] and not any(line.startswith("#") for line in lines)
-        case, source = parse_plain_case(scenario["text"]), SOURCES[COPIED_FROM[scenario["id"]]]
-        assert case is not None and case.answer == "" and case.question and len(case.options) >= 2
+        case = parse_plain_case(scenario["text"])
+        if scenario["id"] in OPEN_ENDED:
+            assert (case.open_ended, case.question, case.answer) == (True, "", "")
+            assert case.structured["meds"] and not _ROUTE_WORDS.search(scenario["teaches"])
+            continue
+        source = SOURCES[COPIED_FROM[scenario["id"]]]
+        assert case.answer == "" and case.question and len(case.options) >= 2
         assert (case.vignette, case.question, case.options) == (source.vignette, source.question, source.options)
         assert _without_lab_times(case.structured) == _without_lab_times(source.structured)

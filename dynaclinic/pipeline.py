@@ -43,11 +43,11 @@ from dynaclinic.prompts import (
     SPECIALISTS,
     STRICT,
     SYNTHESIZER,
-    SYSTEM_PROMPTS,
+    answer_system,
     case_block,
     check_context_policy,
     modality_data,
-    options_block,
+    question_block,
     specialist_block,
     specialist_system,
 )
@@ -73,7 +73,7 @@ def _strings(value: object) -> list[str]:
 
 
 def _set_answer(result: RunResult, text: str, letters: list[str], role: str) -> None:
-    """Record ``text`` and its FINAL ANSWER; a free-text case (no options) needs none."""
+    """Record ``text`` and its FINAL ANSWER; an open-ended case (no options) has none."""
     result.final_text = text
     result.final_answer = extract_final_answer(text, letters)
     if result.final_answer is None and letters:
@@ -84,9 +84,10 @@ class CaseRun:
     """One case's state and every stage, shared by the pipelines and the DevAll nodes (``devall_nodes``).
 
     Each stage appends its route id. Stages call ``client``, which DevAll nodes swap per node config.
-    A free-text case (no options) is supported: specialists need no distribution, divergence is not
-    measurable (adversarial review, safety-biased) and no FINAL ANSWER is required. ``context_policy``
-    (``prompts``: strict | shared_core) decides how much of the case the specialists and Synthesizer see.
+    An open-ended case (no options) is supported: the answering roles write a clinical write-up ending in
+    ``RECOMMENDATION:`` instead of a FINAL ANSWER letter, specialists need no distribution and divergence is
+    not measurable (adversarial review, safety-biased). ``context_policy`` (``prompts``: strict |
+    shared_core) decides how much of the case the specialists and Synthesizer see.
     """
 
     def __init__(
@@ -131,7 +132,8 @@ class CaseRun:
         r.mode = "single"
         r.route.append("primary_care")
         user = case_block(self.case, self.sections)
-        texts = [self.client.complete(PRIMARY_CARE, SYSTEM_PROMPTS[PRIMARY_CARE], user)[0] for _ in range(samples)]
+        system = answer_system(PRIMARY_CARE, self.case)
+        texts = [self.client.complete(PRIMARY_CARE, system, user)[0] for _ in range(samples)]
         answers = [extract_final_answer(text, self.case.letters()) for text in texts]
         votes = Counter(answer for answer in answers if answer)
         text = texts[answers.index(votes.most_common(1)[0][0])] if votes else texts[0]
@@ -216,19 +218,21 @@ class CaseRun:
         r = self.result
         regenerate = self.safety is not None and self.safety.blocked
         r.route.append("regenerate" if regenerate else "synthesizer")
-        case = (f"Question: {self.case.question}\nOptions:\n{options_block(self.case)}"
-                if self.context_policy == STRICT else case_block(self.case, self.sections))
+        case = question_block(self.case) if self.context_policy == STRICT else case_block(self.case, self.sections)
         parts = [case, f"Blackboard:\n{self.board.snapshot()}"]
         if r.mode == "adversarial":
-            parts.append(f"Conflict set: {', '.join(r.conflict_set) or 'none'}")
+            parts.append("Adversarial review: test each specialist's assertion against the case evidence."
+                         if self.case.open_ended else f"Conflict set: {', '.join(r.conflict_set) or 'none'}")
             if r.flagged_claims:
                 parts.append("Flagged claims (do not rely on these):\n" + "\n".join(f"- {c}" for c in r.flagged_claims))
         if regenerate:
             violations = "\n".join(f"- {g.name}: {v}" for g in self.safety.gates for v in g.violations)
-            parts.append(f"Your previous answer ({r.final_answer or 'none'}) failed the safety gate:\n{violations}\n"
+            parts.append(f"Your previous write-up failed the safety gate:\n{violations}\nRevise it without these violations."
+                         if self.case.open_ended else
+                         f"Your previous answer ({r.final_answer or 'none'}) failed the safety gate:\n{violations}\n"
                          "Choose an option without these violations.")
         try:
-            text, _ = self.client.complete(SYNTHESIZER, SYSTEM_PROMPTS[SYNTHESIZER], "\n\n".join(parts))
+            text, _ = self.client.complete(SYNTHESIZER, answer_system(SYNTHESIZER, self.case), "\n\n".join(parts))
         except LLMError as err:
             if not regenerate:
                 raise
@@ -405,5 +409,5 @@ class SingleAgentPipeline(_Pipeline):
         result.mode = "single"
         result.route.append("single_agent")
         user = case_block(case, sections_from_structured(case.structured))
-        text, _ = self.client.complete(SINGLE_AGENT, SYSTEM_PROMPTS[SINGLE_AGENT], user)
+        text, _ = self.client.complete(SINGLE_AGENT, answer_system(SINGLE_AGENT, case), user)
         _set_answer(result, text, case.letters(), SINGLE_AGENT)

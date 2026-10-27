@@ -45,16 +45,16 @@ from runtime.node.executor.base import NodeExecutor
 
 STATE_KEY = "dynaclinic"
 ARM = "devall"
-FREE_TEXT_QUESTION = "What is the most appropriate assessment and management?"
 
 
 def case_from_text(text: str) -> Case:
     """Case for a task prompt: JSON with ``vignette``, ``question`` and ``options`` (other ``Case`` fields
-    optional), else the plain-text format of ``dynaclinic.plaintext``, else a free-text case with no options."""
+    optional), else the plain-text format of ``dynaclinic.plaintext``: multiple choice, or any clinical
+    scenario as an open-ended case (no options)."""
     try:
         return Case.from_dict({"id": ARM, "source": ARM, "answer": "", **json.loads(text)})
     except (ValueError, TypeError, KeyError, AttributeError):
-        return parse_plain_case(text) or Case(ARM, ARM, text.strip(), FREE_TEXT_QUESTION, options=[], answer="")
+        return parse_plain_case(text)
 
 
 def _number(mapping: Mapping[str, Any], key: str, default: float, path: str, kind: type) -> Any:
@@ -407,7 +407,10 @@ class SynthesizerExecutor(_StageExecutor):
 
 
 class SafetyGateExecutor(_StageExecutor):
-    """dc_safety_gate: A_SAD/T_SAD/S_NAP with regenerations; emits ``GATE: PASS|BLOCKED``."""
+    """dc_safety_gate: A_SAD/T_SAD/S_NAP with regenerations; emits ``GATE: PASS|BLOCKED``.
+
+    An open-ended case's write-up is headed ``Assessment and plan:`` (the Report template keys on it).
+    """
 
     config_cls = DCSafetyGateConfig
 
@@ -420,4 +423,5 @@ class SafetyGateExecutor(_StageExecutor):
             + (f" ({g.note})" if g.note else "")
             for g in r.gates
         )
-        return f"GATE: {'BLOCKED' if r.blocked else 'PASS'}\n{r.final_text}\n\nSafety gates:\n{gates}"
+        body = f"Assessment and plan:\n{r.final_text}" if run.case.open_ended else r.final_text
+        return f"GATE: {'BLOCKED' if r.blocked else 'PASS'}\n{body}\n\nSafety gates:\n{gates}"

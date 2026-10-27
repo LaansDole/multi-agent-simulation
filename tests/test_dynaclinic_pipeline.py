@@ -271,6 +271,28 @@ def test_single_agent_is_one_call_and_ledger_resets_per_case() -> None:
         assert (result.route, result.mode, result.final_answer) == (["single_agent"], "single", "B")
 
 
+OPEN_CASE = Case("covid", "devall", "A patient has COVID-19 on a sunny day.", "", [], "",
+                 structured={"meds": ["amlodipine 10 mg daily", "simvastatin 40 mg daily"]})
+WRITE_UP = ("ASSESSMENT: Probable mild COVID-19; the sunny weather is clinically irrelevant.\n"
+            "DIFFERENTIAL: Influenza.\nPLAN: Isolate, fluids, paracetamol.\n"
+            "RED FLAGS / ESCALATE IF: SpO2 below 94%.\nMISSING INFORMATION: Vaccination status.\n"
+            "RECOMMENDATION: Manage at home with isolation and symptom relief.")
+OPEN_FINDINGS = json.dumps({"findings": ["no relevant data"], "claims": []})
+
+
+@pytest.mark.parametrize(
+    ("pipeline_cls", "tier"),
+    [(DynaClinicPipeline, "LOW"), (DynaClinicPipeline, "HIGH"), (StaticTeamPipeline, None), (SingleAgentPipeline, None)],
+)
+def test_open_ended_case_is_answered_with_a_write_up_and_no_letter_anywhere(pipeline_cls: type, tier: str | None) -> None:
+    client = _client(triage=_triage(tier or "LOW"), primary_care=WRITE_UP, synthesizer=WRITE_UP, single_agent=WRITE_UP,
+                     imaging=OPEN_FINDINGS, pathology=OPEN_FINDINGS, pharmacology=OPEN_FINDINGS)
+    result = pipeline_cls(client).run(OPEN_CASE)
+    assert (result.final_text, result.final_answer, result.error, result.blocked) == (WRITE_UP, None, None, False)
+    assert [w for w in result.warnings if "FINAL ANSWER" in w] == []
+    assert [role for role, system, user in client.prompts if "FINAL ANSWER" in system + user] == []
+
+
 # sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE, captured
 # at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte.
 STRICT_TRANSCRIPTS = {

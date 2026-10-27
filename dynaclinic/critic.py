@@ -42,7 +42,7 @@ from dynaclinic.prompts import (
     CRITIC_JUDGE,
     SYSTEM_PROMPTS,
     case_block,
-    options_block,
+    question_block,
 )
 from dynaclinic.types import CallRecord, Case, Claim, ClaimLabel
 
@@ -181,7 +181,7 @@ class ClinicalCritic:
         errors: list[str] = []
         conflicts = ", ".join(conflict_set) or "none"
         user = (
-            f"Question: {case.question}\nOptions:\n{options_block(case)}\n\n"
+            f"{question_block(case)}\n\n"
             f"Conflict set: {conflicts}\n\nBlackboard:\n{blackboard.snapshot()}"
         )
         text, record = self.client.complete(CRITIC, SYSTEM_PROMPTS[CRITIC], user, json_mode=True)

@@ -3,15 +3,18 @@ graph:
   id: dynaclinic_mvp
   description: |
     DynaClinic MVP: dynamic architecture switching for clinical decision support.
-    The task prompt is the case: free text, or Case JSON (vignette, question, options, optional
-    structured meds/allergies/labs/imaging, unsafe_options). Triage sends LOW cases to a single
-    Primary Care Agent and MODERATE/HIGH cases to the Integrated Care Team, whose specialists write
-    to a shared Blackboard. If their answer distributions diverge beyond tau the Clinical Critic
-    reviews the claims before the Synthesizer answers (adversarial mode). Every answer passes the
-    Layer-4 safety gates before the report. Routing reads only the first-line markers
-    ROUTE:, MODE: and GATE: (functions/edge/dynaclinic_conditions.py). Nodes use DYNACLINIC_MODEL
-    and DYNACLINIC_FALLBACK_MODELS unless a node sets model. Research prototype on synthetic cases;
-    not clinical advice.
+    The task prompt is the case: any clinical scenario as free text (optionally with Age/Sex/History/
+    Medications/Allergies/Labs/Imaging lines), a multiple-choice case (Question: plus options A.-E.),
+    or Case JSON (vignette, question, options, optional structured meds/allergies/labs/imaging,
+    unsafe_options). A case without options is open-ended: it is answered with a clinical write-up
+    ending in RECOMMENDATION:, not a letter. Triage sends LOW cases to a single Primary Care Agent and
+    MODERATE/HIGH cases to the Integrated Care Team, whose specialists write to a shared Blackboard. If
+    their answers diverge beyond tau the Clinical Critic reviews the claims before the Synthesizer
+    answers (adversarial mode). Every answer passes the Layer-4 safety gates before the report.
+    Routing reads only the first-line markers ROUTE:, MODE: and GATE:
+    (functions/edge/dynaclinic_conditions.py). Nodes use DYNACLINIC_MODEL and
+    DYNACLINIC_FALLBACK_MODELS unless a node sets model. Research prototype on synthetic cases; not
+    clinical advice.
   log_level: INFO
   is_majority_voting: false
   start:
@@ -34,7 +37,9 @@ graph:
       type: dc_primary_care
       description: >-
         LOW path. Single Primary Care Agent restricted to the Emanuel & Emanuel Informative model:
-        facts and risks of each option, ending in FINAL ANSWER: <letter>.
+        facts and risks of each option, ending in FINAL ANSWER: <letter>; for an open-ended case a
+        write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION) ending
+        in RECOMMENDATION:.
       config: {}
     - id: CareTeam
       type: dc_care_team
@@ -63,8 +68,9 @@ graph:
       type: dc_synthesizer
       description: >-
         Writes the team answer from the Blackboard (plus the Critic's flagged claims in adversarial
-        mode), ending in FINAL ANSWER: <letter>. context_policy shared_core adds the full case block;
-        strict: question, options and Blackboard only.
+        mode), ending in FINAL ANSWER: <letter>, or for an open-ended case the sectioned write-up
+        ending in RECOMMENDATION:. context_policy shared_core adds the full case block; strict:
+        question, options and Blackboard only.
       config:
         context_policy: shared_core
     - id: SafetyGate
@@ -78,7 +84,9 @@ graph:
         max_rollbacks: 1
     - id: Report
       type: template
-      description: Final report - gate verdict and per-gate results first, the answer (FINAL ANSWER line) last.
+      description: >-
+        Final report - gate verdict and per-gate results first, then the answer (FINAL ANSWER line) or,
+        for an open-ended case, the assessment and plan (RECOMMENDATION line).
       config:
         template: |-
           {%- set marker, _, body = input.partition('\n') -%}
@@ -88,8 +96,8 @@ graph:
           Safety gates:
           {{ gates }}
 
-          Answer:
-          {{ answer }}
+          {% if answer.startswith('Assessment and plan:\n') %}{{ answer }}{% else %}Answer:
+          {{ answer }}{% endif %}
   edges:
     - from: CaseInput
       to: Triage
@@ -260,3 +268,30 @@ graph:
         C. Abdominal ultrasound and serial lactate in 6 hours
         D. Start oral ibuprofen and observe
         E. Colonoscopy within 24 hours
+    - id: open-covid-hypertension
+      title: "Mock case: 58-year-old man with COVID-19 and high blood pressure on a sunny day"
+      teaches: "Open-ended scenario (no question, no options): the reply is a structured write-up (assessment, differential, plan, red flags, missing information) ending in RECOMMENDATION, not a letter. The sunny weather is a deliberately irrelevant detail."
+      text: |
+        Mock case: 58-year-old man with COVID-19 and high blood pressure on a sunny day
+
+        A 58-year-old man tested positive for COVID-19 on a home antigen test yesterday. He has had fever, dry cough, and muscle aches for 3 days and gets mildly short of breath on stairs. It is a warm, sunny day and he has spent the morning resting in the garden. Temperature 38.1 C, heart rate 96/min, blood pressure 148/90 mm Hg, SpO2 95% on room air. He has not had a COVID-19 vaccine this season.
+
+        Age: 58
+        Sex: male
+        History: hypertension; hyperlipidemia
+        Medications: amlodipine 10 mg daily; lisinopril 20 mg daily; simvastatin 40 mg daily
+        Allergies: none
+    - id: open-chest-pain-warfarin
+      title: "Mock case: 79-year-old woman on warfarin with chest pressure"
+      teaches: "Open-ended scenario with an anticoagulant and kidney disease: the safety gates check the free-text plan against her medication list."
+      text: |
+        Mock case: 79-year-old woman on warfarin with chest pressure
+
+        A 79-year-old woman phones the clinic about 40 minutes of central chest pressure spreading to her left arm, with sweating and nausea. She takes warfarin for atrial fibrillation; her INR two weeks ago was 2.6. She asks whether she can take aspirin from her neighbour and wait to see if the pain settles.
+
+        Age: 79
+        Sex: female
+        History: atrial fibrillation; type 2 diabetes; chronic kidney disease stage 3
+        Medications: warfarin 5 mg daily; metformin 500 mg twice daily; bisoprolol 2.5 mg daily
+        Allergies: none
+        Labs: INR 2.6; eGFR 41 mL/min/1.73m2
