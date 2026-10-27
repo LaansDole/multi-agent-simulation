@@ -27,6 +27,7 @@ from dynaclinic.divergence import TAU
 from dynaclinic.interfaces import FHIRLiteIngestor
 from dynaclinic.llm import LLMClient, LLMError, get_client
 from dynaclinic.pipeline import CaseRun
+from dynaclinic.plaintext import parse_plain_case
 from dynaclinic.prompts import CONTEXT_POLICIES, DEFAULT_CONTEXT_POLICY
 from dynaclinic.triage import MODERATE_SCORE
 from dynaclinic.types import Case, RunResult
@@ -49,11 +50,11 @@ FREE_TEXT_QUESTION = "What is the most appropriate assessment and management?"
 
 def case_from_text(text: str) -> Case:
     """Case for a task prompt: JSON with ``vignette``, ``question`` and ``options`` (other ``Case`` fields
-    optional), otherwise a free-text case with no options."""
+    optional), else the plain-text format of ``dynaclinic.plaintext``, else a free-text case with no options."""
     try:
         return Case.from_dict({"id": ARM, "source": ARM, "answer": "", **json.loads(text)})
     except (ValueError, TypeError, KeyError, AttributeError):
-        return Case(ARM, ARM, text.strip(), FREE_TEXT_QUESTION, options=[], answer="")
+        return parse_plain_case(text) or Case(ARM, ARM, text.strip(), FREE_TEXT_QUESTION, options=[], answer="")
 
 
 def _number(mapping: Mapping[str, Any], key: str, default: float, path: str, kind: type) -> Any:
