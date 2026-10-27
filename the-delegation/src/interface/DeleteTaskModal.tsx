@@ -1,5 +1,6 @@
 import { Trash2, X } from 'lucide-react';
 import React from 'react';
+import { useEscapeToClose } from './components/useEscapeToClose';
 
 interface DeleteTaskModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface DeleteTaskModalProps {
 }
 
 const DeleteTaskModal: React.FC<DeleteTaskModalProps> = ({ isOpen, onClose, onConfirm, taskTitle }) => {
+  useEscapeToClose(onClose, isOpen);
   if (!isOpen) return null;
 
   return (
@@ -27,6 +29,7 @@ const DeleteTaskModal: React.FC<DeleteTaskModalProps> = ({ isOpen, onClose, onCo
             </div>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="p-1.5 hover:bg-zinc-100 rounded-full text-zinc-400 transition-colors"
             >
               <X size={18} />

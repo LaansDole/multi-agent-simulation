@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { BackendClient } from '../integration/api/BackendClient';
 import { importWorkflow } from '../integration/api/YamlImporter';
 import { useWorkflowStore } from '../integration/store/workflowStore';
+import { useEscapeToClose } from './components/useEscapeToClose';
 
 interface WorkflowBrowserProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ const WorkflowBrowser: React.FC<WorkflowBrowserProps> = ({ isOpen, onClose }) =>
     }
   };
 
+  useEscapeToClose(onClose, isOpen);
+
   if (!isOpen) return null;
 
   return (
@@ -53,7 +56,7 @@ const WorkflowBrowser: React.FC<WorkflowBrowserProps> = ({ isOpen, onClose }) =>
         <div className="px-8 pt-8 pb-10">
           <div className="flex items-start justify-between mb-6">
             <h3 className="text-2xl font-black text-darkDelegation leading-tight">Import Workflow</h3>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full text-zinc-400 transition-colors">
+            <button onClick={onClose} aria-label="Close" className="p-2 hover:bg-zinc-100 rounded-full text-zinc-400 transition-colors">
               <X size={20} />
             </button>
           </div>

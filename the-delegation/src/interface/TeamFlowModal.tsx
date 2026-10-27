@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AgenticSystem, getAllAgents, getAllCharacters } from '../data/agents';
 import { DirectionalEdge } from './VisualConfigurator/edges/DirectionalEdge';
 import { VisualFlowNode } from './VisualConfigurator/nodes/VisualFlowNode';
+import { useEscapeToClose } from './components/useEscapeToClose';
 import { systemToFlow, VisualAgentNode } from './VisualConfigurator/flowUtils';
 import { useFlowFocus } from './VisualConfigurator/hooks/useFlowFocus';
 import { TeamBadge } from './components/TeamBadge';
@@ -67,6 +68,7 @@ const FlowViewport: React.FC<{ system: AgenticSystem }> = ({ system }) => {
 };
 
 const TeamFlowModal: React.FC<TeamFlowModalProps> = ({ isOpen, onClose, system }) => {
+  useEscapeToClose(onClose, isOpen);
   if (!isOpen) return null;
 
   return (
@@ -89,6 +91,7 @@ const TeamFlowModal: React.FC<TeamFlowModalProps> = ({ isOpen, onClose, system }
 
           <button
             onClick={onClose}
+            aria-label="Close"
             className="p-2 hover:bg-zinc-100 rounded-xl transition-colors group"
           >
             <X className="w-6 h-6 text-zinc-400 group-hover:text-darkDelegation" />

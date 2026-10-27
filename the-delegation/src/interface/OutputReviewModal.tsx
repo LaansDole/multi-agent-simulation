@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useCoreStore } from '../integration/store/coreStore'
 import { useActiveTeam } from '../integration/store/teamStore'
+import { useEscapeToClose } from './components/useEscapeToClose'
 import {
   Sparkles,
   Settings2,
@@ -42,6 +43,9 @@ export function OutputReviewModal() {
       setIsConfirmingReset(false)
     }
   }, [isReviewingOutput, pendingOutputPrompt, pendingOutputParams])
+
+  // Same as the backdrop: Escape asks to cancel and reset; Escape again dismisses that confirmation.
+  useEscapeToClose(() => setIsConfirmingReset((confirming) => !confirming), isReviewingOutput)
 
   if (!isReviewingOutput) return null
 
@@ -200,6 +204,7 @@ export function OutputReviewModal() {
           </div>
           <button
             onClick={handleCancelAndReset}
+            aria-label="Close"
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-all active:scale-90"
           >
             <X size={18} />

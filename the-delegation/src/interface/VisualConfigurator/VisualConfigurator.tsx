@@ -43,6 +43,7 @@ const InternalHeader = ({ onClose, system }: { onClose: () => void, system: any 
     <div className="flex items-center gap-3">
       <button
         onClick={onClose}
+        aria-label="Close"
         className="p-2 hover:bg-zinc-100 rounded-xl transition-colors group border border-transparent hover:border-zinc-200"
       >
         <X className="w-5 h-5 text-zinc-400 group-hover:text-darkDelegation" />
@@ -70,6 +71,11 @@ const VisualConfiguratorContent: React.FC = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>(selectedAgentSetId);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const initialSystemRef = useRef<any>(null);
+
+  // Escape or a backdrop click unmounts this view without handleClose: drop unsaved agent edits too.
+  useEffect(() => () => {
+    if (initialSystemRef.current) useTeamStore.getState().updateActiveSystem(initialSystemRef.current);
+  }, []);
 
   // Sync selectedTeamId when the active one changes
   useEffect(() => {

@@ -2,12 +2,14 @@ import { ExternalLink, X, Sparkles } from 'lucide-react';
 import React from 'react';
 import { GEMINI_PRICING } from '../core/llm/pricing';
 import { DEFAULT_MODELS } from '../core/llm/constants';
+import { useEscapeToClose } from './components/useEscapeToClose';
 
 interface PricingModalProps {
   onClose: () => void;
 }
 
 const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
+  useEscapeToClose(onClose);
   const reasoningModels = Object.entries(GEMINI_PRICING)
     .filter(([_, p]) => p.inputPer1M !== undefined)
     .sort(([a], [b]) => (a === DEFAULT_MODELS.text ? -1 : (b === DEFAULT_MODELS.text ? 1 : 0)));
@@ -25,6 +27,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
         {/* Close button */}
         <button
           onClick={onClose}
+          aria-label="Close"
           className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
         >
           <X size={20} />

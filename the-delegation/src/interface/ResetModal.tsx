@@ -1,5 +1,6 @@
 import { AlertTriangle, RefreshCcw, X } from 'lucide-react';
 import React from 'react';
+import { useEscapeToClose } from './components/useEscapeToClose';
 
 interface ResetModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface ResetModalProps {
 }
 
 const ResetModal: React.FC<ResetModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  useEscapeToClose(onClose, isOpen);
   if (!isOpen) return null;
 
   return (
@@ -31,6 +33,7 @@ const ResetModal: React.FC<ResetModalProps> = ({ isOpen, onClose, onConfirm }) =
             </div>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="p-2 hover:bg-zinc-100 rounded-full text-zinc-400 transition-colors"
             >
               <X size={20} />

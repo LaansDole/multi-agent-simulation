@@ -4,6 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { useCoreStore } from './integration/store/coreStore';
 import { ActionLogPanel } from './interface/ActionLogPanel';
 import { FinalOutputModal } from './interface/FinalOutputModal';
@@ -15,6 +16,7 @@ import SimulationView from './interface/SimulationView';
 import { VisualConfigurator } from './interface/VisualConfigurator/VisualConfigurator';
 import ReadOnlyWorkflowGraph from './interface/ReadOnlyWorkflowGraph';
 import CharacterSlotMapping from './interface/CharacterSlotMapping';
+import { useEscapeToClose } from './interface/components/useEscapeToClose';
 import { useWorkflowStore } from './integration/store/workflowStore';
 import { SceneContext } from './simulation/SceneContext';
 import { SceneManager } from './simulation/SceneManager';
@@ -30,6 +32,9 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchModelsFromBackend();
   }, []);
+
+  const closeDesign = () => setViewMode('simulation');
+  useEscapeToClose(closeDesign, viewMode === 'design');
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [kanbanHeight, setKanbanHeight] = useState(220);
@@ -121,13 +126,22 @@ const App: React.FC = () => {
         {viewMode === 'design' && (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center p-3 md:p-6 bg-white/40 backdrop-blur-xl"
+            onClick={closeDesign}
           >
             <div
-              className="w-full h-full bg-white rounded-2xl shadow-2xl border border-zinc-200/50 overflow-hidden flex flex-col"
+              className="relative w-full h-full bg-white rounded-2xl shadow-2xl border border-zinc-200/50 overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {workflowGraph ? (
                 <>
+                  <button
+                    onClick={closeDesign}
+                    aria-label="Close"
+                    title="Close (Esc)"
+                    className="absolute top-3 right-3 z-10 p-2 bg-white/90 hover:bg-zinc-100 rounded-xl border border-zinc-200 text-zinc-500 hover:text-darkDelegation transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
                   <div className="flex-1 relative overflow-hidden">
                     <ReadOnlyWorkflowGraph />
                   </div>

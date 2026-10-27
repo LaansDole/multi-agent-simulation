@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useUiStore } from '../integration/store/uiStore';
+import { useEscapeToClose } from './components/useEscapeToClose';
 import { getAllAgents } from '../data/agents';
 import { useActiveTeam } from '../integration/store/teamStore';
 import { Avatar } from './components/Avatar';
@@ -21,6 +22,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
   const { tasks, approveTask, rejectTask } = useCoreStore();
   const { setSelectedNpc, setChatting } = useUiStore();
   const activeTeam = useActiveTeam();
+  useEscapeToClose(onClose, isOpen);
   const agents = getAllAgents(activeTeam);
   const [feedback, setFeedback] = useState('');
   const [selectedRevisionIndex, setSelectedRevisionIndex] = useState<number | null>(null);
@@ -96,6 +98,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
 
           <button
             onClick={onClose}
+            aria-label="Close"
             className="p-3 hover:bg-zinc-100 rounded-2xl transition-all group"
           >
             <X size={24} className="text-zinc-300 group-hover:text-darkDelegation transition-colors" />

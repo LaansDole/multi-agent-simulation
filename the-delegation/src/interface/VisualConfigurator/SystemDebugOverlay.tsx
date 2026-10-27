@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { X, Code, Copy, Check } from 'lucide-react';
+import { useEscapeToClose } from '../components/useEscapeToClose';
 
 interface SystemDebugOverlayProps {
   system: any;
@@ -10,6 +11,7 @@ interface SystemDebugOverlayProps {
 export const SystemDebugOverlay: React.FC<SystemDebugOverlayProps> = ({ system, onClose }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  useEscapeToClose(() => setIsOpen(false), isOpen);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(JSON.stringify(system, null, 2));
@@ -27,6 +29,7 @@ export const SystemDebugOverlay: React.FC<SystemDebugOverlayProps> = ({ system, 
         Debug System
       </button>
 
+      {isOpen && <div className="fixed inset-0 z-[999]" onClick={() => setIsOpen(false)} />}
       {isOpen && (
         <div className="fixed inset-4 bg-white border border-zinc-200 shadow-2xl rounded-2xl z-[1000] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
@@ -47,6 +50,7 @@ export const SystemDebugOverlay: React.FC<SystemDebugOverlayProps> = ({ system, 
               </button>
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close"
                 className="p-1 px-2 hover:bg-zinc-200 rounded-lg text-zinc-400 hover:text-darkDelegation transition-colors"
                 title="Close overlay"
               >

@@ -5,6 +5,7 @@ import { useCoreStore } from '../integration/store/coreStore'
 import { useActiveTeam } from '../integration/store/teamStore'
 import { Loader2, Download } from 'lucide-react'
 import { TeamOutputBadge } from './components/TeamOutputBadge'
+import { useEscapeToClose } from './components/useEscapeToClose'
 
 export function FinalOutputModal() {
   const {
@@ -19,6 +20,7 @@ export function FinalOutputModal() {
   const activeTeam = useActiveTeam()
   const [copied, setCopied] = useState(false)
 
+  useEscapeToClose(() => setFinalOutputOpen(false), isFinalOutputOpen)
   if (!isFinalOutputOpen) return null
 
   const handleCopy = async () => {
@@ -169,6 +171,7 @@ export function FinalOutputModal() {
           </div>
           <button
             onClick={() => setFinalOutputOpen(false)}
+            aria-label="Close"
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors text-lg leading-none transition-all"
           >
             ✕

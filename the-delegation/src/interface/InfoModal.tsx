@@ -1,11 +1,13 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { useEscapeToClose } from './components/useEscapeToClose';
 
 interface InfoModalProps {
   onClose: () => void;
 }
 
 const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
+  useEscapeToClose(onClose);
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
       <div
@@ -18,6 +20,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
         {/* Close Button X */}
         <button
           onClick={onClose}
+          aria-label="Close"
           className="absolute top-6 right-6 p-2 text-zinc-300 hover:text-zinc-500 hover:bg-zinc-100 rounded-full transition-all active:scale-95 cursor-pointer"
         >
           <X size={20} strokeWidth={2.5} />
