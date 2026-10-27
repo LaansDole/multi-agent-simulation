@@ -12,11 +12,14 @@ Status key: **implemented** means the behaviour is in code. **prompt-level** mea
 
 | Proposal component | Module | Status | Notes |
 |---|---|---|---|
-| Meta-Controller tier 1: complexity triage | `dynaclinic/triage.py` | implemented | LLM tier plus a deterministic feature score. An LLM LOW is bumped to MODERATE when the score is high, and never lowered. |
+| Meta-Controller: Complexity Score C | `dynaclinic/triage.py` (`complexity`) | implemented | LLM tier plus a deterministic feature score; an LLM LOW is bumped to MODERATE when the score is high, and never lowered. C = max(tier level, feature density) in [0, 1]; see [Meta-Controller](#meta-controller-complexity-uncertainty-mode-rule). |
+| Meta-Controller: Uncertainty Score U (generalist sweep) | `dynaclinic/uncertainty.py`, `prompts.sweep_system`, `pipeline.CaseRun.uncertainty`; DevAll `dc_uncertainty` (`GeneralistSweep`) | implemented | One generalist call returns a probability-weighted differential; U is its normalised Shannon entropy. The probabilities are the model's self-report, not calibrated. |
+| Meta-Controller mode rule (hierarchical / collaborative / adversarial) | `uncertainty.select_mode` | implemented | The reviewed proposal's piecewise rule on C and U. tau_u is assumed, not validated. |
+| Hierarchical mode: Primary Care hub, specialist spokes | `prompts.hub_system` / `spoke_system`, `pipeline.CaseRun.primary_care`, `parsing.consult_requests` | implemented | The hub may ask up to 2 specialists one question each (`CONSULT:` lines); spokes answer from their own slice only, concurrently, never seeing each other. |
 | Primary Care Agent, Emanuel & Emanuel Informative model | `prompts.py` (`_PRIMARY_CARE`), `pipeline.CaseRun.primary_care` | prompt-level | Paternalistic and interpretive language is forbidden by the prompt only. No checker enforces it. |
-| Integrated Care Team (Imaging, Pathology/Lab, Pharmacology) | `prompts.specialist_block`, `pipeline.CaseRun.care_team` | implemented | Each specialist gets its modality slice, plus the shared case summary under the default `shared_core` context policy (see [Context policy](#context-policy)). Specialists run concurrently. MODERATE uses 2 specialists, HIGH uses 3. |
+| Integrated Care Team (Imaging, Pathology/Lab, Pharmacology) | `prompts.specialist_block`, `pipeline.CaseRun.care_team` | implemented | Each specialist gets its modality slice, plus the shared case summary under the default `shared_core` context policy (see [Context policy](#context-policy)). Specialists run concurrently. LOW (only reached in adversarial mode by uncertainty) and MODERATE use 2 specialists, HIGH uses 3. |
 | L3 shared Blackboard | `dynaclinic/blackboard.py` | implemented | In-memory, append-only, one per case. Specialists never see each other's entries. |
-| Meta-Controller tier 2: conflict-aware routing (divergence, Conflict Set, tau) | `dynaclinic/divergence.py` | implemented | Multiple choice: mean pairwise Jensen-Shannon distance; switches if `>= tau` or the top-1 answers disagree. Open-ended cases: mean pairwise cosine distance between the specialists' `LEADING DIAGNOSIS` phrases (the proposal's D(H1, H2) over the primary diagnostic assertions); their `DOMAIN RECOMMENDATION` lines go to the Blackboard, never into the distance. Switches if `>= tau_semantic` or fewer than two specialists name a diagnosis. |
+| Meta-Controller tier 2: conflict-aware routing (divergence, Conflict Set, tau) | `dynaclinic/divergence.py` | implemented | Multiple choice: mean pairwise Jensen-Shannon distance; switches if `>= tau` or the top-1 answers disagree. Open-ended cases: mean pairwise cosine distance between the specialists' `LEADING DIAGNOSIS` phrases (the proposal's D(H1, H2) over the primary diagnostic assertions); their `DOMAIN RECOMMENDATION` lines go to the Blackboard, never into the distance. Switches if `>= tau_semantic` or fewer than two specialists name a diagnosis. In adversarial mode entered by uncertainty it only reports: the mode stays adversarial. |
 | Multi-label margin loss | `divergence.margin_loss`, `eval/grade.py` | implemented (eval only) | Calibration metric on the team's mean distribution. It needs the gold answer, so it is never used for live routing. |
 | Clinical Critic: atomic-claim decomposition | `dynaclinic/critic.py`, `prompts.py` | prompt-level | One LLM call splits the Blackboard into claims. A malformed reply falls back to the specialists' own claims. |
 | Adaptive hybrid rule / LLM-judge estimator | `dynaclinic/critic.py` | implemented | Rule score = token grounding plus a KB veto. The judge's logits are temperature-scaled, and `lambda = sigmoid(k (var(r) - v0))`. The judge itself is an LLM call. |
@@ -31,7 +34,7 @@ Status key: **implemented** means the behaviour is in code. **prompt-level** mea
 | L5 verified semantic cache | `interfaces.InMemorySemanticCache` | stub | In-memory, stores gate-verified answers only, hit at cosine >= 0.97, re-gated on hit. Off in eval unless `--cache` is passed. |
 | CSEDB safety metrics | none | not implemented | The eval reports *safety violation*: the final answer is one of the case's hand-labelled `unsafe_options`. That is not a CSEDB score. |
 | Baselines | `pipeline.SingleAgentPipeline`, `pipeline.StaticTeamPipeline` | implemented | Single generic clinician, and an always-full team with Critic and gate (exhaustive consensus). |
-| DevAll workflow | `devall_nodes.py`, `register.py`, `functions/edge/dynaclinic_conditions.py`, `yaml_instance/dynaclinic_mvp.yaml` | implemented | 7 `dc_*` node types. Edges route only on first-line markers `ROUTE:` / `MODE:` / `GATE:`. |
+| DevAll workflow | `devall_nodes.py`, `register.py`, `functions/edge/dynaclinic_conditions.py`, `yaml_instance/dynaclinic_mvp.yaml` | implemented | 8 `dc_*` node types. Edges route only on first-line markers `ROUTE:` / `MODE:` / `GATE:`. |
 | Evaluation harness | `dynaclinic/eval/` (`cases.py`, `grade.py`, `harness.py`) | implemented | Synthetic set (24 cases) and a 50-question MedQA-USMLE sample (`data/dynaclinic/medqa_sample.jsonl`) in the repo; results in `docs/dynaclinic/results/` and the Results section below. |
 
 ## Dynamic pipeline
@@ -41,11 +44,15 @@ flowchart TD
     IN[Case: vignette, question, options, FHIR-lite fields] --> ING[Ingest - FHIRLiteIngestor stub]
     ING --> CACHE{Semantic cache stub<br/>off in eval by default}
     CACHE -- hit, re-gated for this patient --> OUT[Final answer]
-    CACHE -- miss / off --> TRI[Meta-Controller triage<br/>LLM tier + feature score, escalate only]
-    TRI -- LOW --> PCA[Primary Care Agent<br/>Informative model]
-    TRI -- "MODERATE (2 specialists) / HIGH (3)" --> TEAM[Integrated Care Team<br/>Imaging / Pathology-Lab / Pharmacology]
+    CACHE -- miss / off --> TRI[Meta-Controller triage<br/>LLM tier + feature score, escalate only<br/>Complexity C]
+    TRI --> SWEEP[Generalist sweep<br/>differential -> Uncertainty U]
+    SWEEP --> RULE{"Mode rule<br/>U > tau_u 0.8: adversarial<br/>else C <= tau_c 0.5: hierarchical<br/>else collaborative"}
+    RULE -- hierarchical --> PCA[Primary Care hub<br/>Informative model]
+    PCA -. "CONSULT (max 2)" .-> SPOKE[Specialist spokes<br/>own slice, one question each]
+    SPOKE -. answers .-> PCA
+    RULE -- "collaborative / adversarial (LOW or MODERATE: 2 specialists, HIGH: 3)" --> TEAM[Integrated Care Team<br/>Imaging / Pathology-Lab / Pharmacology]
     TEAM --> BB[(Blackboard)]
-    BB --> DIV{"Divergence >= tau 0.25 or top-1 disagreement?<br/>open-ended: semantic divergence >= tau_semantic?"}
+    BB --> DIV{"Divergence >= tau 0.25 or top-1 disagreement?<br/>open-ended: semantic divergence >= tau_semantic?<br/>adversarial by uncertainty: report only"}
     DIV -- no: COLLABORATIVE --> SYN[Synthesizer<br/>Consensus Builder / Conflict Resolver]
     DIV -- yes: ADVERSARIAL --> CRIT[Clinical Critic<br/>atomic claims, hybrid rule/judge, KB veto]
     CRIT -- flagged claims --> SYN
@@ -57,7 +64,21 @@ flowchart TD
     GATE -- still BLOCKED --> MANUAL[Final text prefixed<br/>BLOCKED FOR MANUAL REVIEW]
 ```
 
-In the pure pipeline, the `GreedyPlanner` stub picks each stage and logs its reward as `planner:<action>:<reward>` in `RunResult.route`. In DevAll, the graph itself is the policy, and the planner and cache are not used.
+In the pure pipeline, the `GreedyPlanner` stub picks each stage (triage, then the uncertainty sweep, then primary care or the team by the chosen mode) and logs its reward as `planner:<action>:<reward>` in `RunResult.route`. In DevAll, the graph itself is the policy, and the planner and cache are not used.
+
+## Meta-Controller: complexity, uncertainty, mode rule
+
+The reviewed proposal's Meta-Controller picks one of three modes from two scores.
+
+**Complexity Score C** (`triage.complexity`, after tier triage). `C = max(level(LLM tier), density)` with `level` LOW 0, MODERATE 0.75, HIGH 1 (0 when the LLM tier is missing or malformed) and `density = min((score + 0.5) / (2 * threshold), 1)`, where `score` is the deterministic feature score and `threshold` the escalation threshold (`escalate_threshold`, default `MODERATE_SCORE` 6; threshold 0 gives density 1). `tau_c = 0.5` is chosen so that `C > tau_c` exactly when the effective tier is MODERATE or HIGH: an LLM MODERATE/HIGH gives level >= 0.75, a score at or above the threshold (the escalation case) gives density > 0.5, and a LOW tier below the threshold gives at most `(threshold - 0.5) / (2 * threshold) < 0.5`. When the LLM tier is missing, the pure pipeline's deterministic tier uses `MODERATE_SCORE`, and so does C. A test checks this equivalence over scores 0-30, every LLM tier and several thresholds.
+
+**Uncertainty Score U** (`CaseRun.uncertainty`, `dc_uncertainty`). One generalist call (role `generalist`, JSON mode, the full case block) returns `{"differential": [{"hypothesis", "probability"}]}`. For a multiple-choice case the hypotheses are option letters (k = the number of options; other hypotheses are ignored); for an open-ended case they are the top-k diagnostic differentials (default k = 5). Duplicate hypotheses are summed, the list is cut to the k most probable and renormalised. `U = H(p) / ln k` with `H(p) = -sum p_i ln p_i`, clamped to [0, 1]: 0 for one certain hypothesis, 1 for a uniform spread over k. A failed call or a malformed reply (no differential list, a negative, non-numeric or NaN probability, no positive mass) leaves U unmeasured (`n/a`, warning `generalist: ...; U not measured, routed on C only`), and the rule reads it as 0, so a missing sweep never makes a case adversarial.
+
+**Mode rule** (`uncertainty.select_mode`): `U > tau_u` -> adversarial; else `C <= tau_c` -> hierarchical; else collaborative. `RunResult` records `complexity`, `uncertainty`, `tau_c`, `tau_u`, `top_k`, `differential`, `mode_reason` (e.g. `C 0.12 <= tau_c 0.5 and U 0.00 <= tau_u 0.8: hierarchical`) and the route gets `uncertainty:<U|n/a>` and `mode:<mode>[:uncertainty]`. Adversarial mode entered by uncertainty runs the team (2 specialists for a LOW or MODERATE tier), then the Clinical Critic even when the team agrees: the Conflict Detector still computes and reports the divergence, but cannot switch back to collaborative. Collaborative mode can still switch to adversarial on divergence, as before.
+
+**Hierarchical mode (hub and spoke).** The Primary Care Agent is the hub. Its Informative-model prompt adds a protocol: when it needs a specialist's reading of this patient's data, it replies with at most two lines `CONSULT: <imaging|pathology|pharmacology>: <question>` instead of an answer. Each named specialist (role `<role>_consult`) gets only its own modality slice (under the run's context policy) and the hub's question, answers in at most three sentences, and never sees another spoke's question or answer; spokes run concurrently. A second hub call gets the case plus the answers and gives the final reply. Unknown roles and CONSULT lines beyond two are ignored with a warning; a failed spoke call is answered `(no answer: the call failed)` with a warning; no CONSULT lines means one hub call, as before. `RunResult.consults` lists `{role, question, answer}`. The DevAll `PrimaryCare` node prints the consults above the answer.
+
+**DevAll.** `GeneralistSweep` (`dc_uncertainty`, config `tau_u`, `k`) runs after `Triage` and emits `MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL`, then `Complexity C=.. (tau_c 0.5), Uncertainty U=.. (tau_u 0.8, k ..)`, the rule and the differential. `dc_mode_hierarchical` routes to `PrimaryCare`, `dc_mode_team` to `CareTeam`. It calls the LLM but is not a 3D character (the seven character slots are taken); its events show as System in the 3D log. The harness reports mean C, mean U and the number of cases with U unmeasured for the dynamic arm (`summary.json`, and a Meta-Controller table in `summary.md`).
 
 **Open-ended cases.** A case without answer options (any clinical text, e.g. "a patient has COVID-19 on a sunny day") gets a sectioned write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION) ending in `RECOMMENDATION:`, never a letter; the report heads it `Assessment and plan:`. Each specialist ends its reply with two lines: `LEADING DIAGNOSIS: <what is wrong with the patient, a short noun phrase>` (or `ABSTAIN`) and `DOMAIN RECOMMENDATION: <its action from its own lens>`. A reply with only the older `PRIMARY ASSERTION:` line has that line read as the diagnosis (warning). The divergence is the mean pairwise cosine distance `1 - cos` (clipped to [0, 1]) between the non-abstaining leading diagnoses, embedded with the client's `text-embedding-3-small` or, when the client has no embedder or the call fails (warning), the `HashingEmbeddingMemory` stub. Recommendations are not embedded: three lenses on one diagnosis (a real PE run: CT angiography, D-dimer interpretation, anticoagulation timing) read as divergence 0.35-0.37 and went adversarial when the specialists' actions were compared. They stay on the Blackboard, so the Synthesizer, the Critic and the care-team stage output see them. The gate prints the divergence, `tau_semantic`, the embedder and every leading diagnosis. With fewer than two diagnoses it is not measurable and the team goes adversarial (safety-biased). The synthesizer stage is labelled Consensus Builder (collaborative) or Conflict Resolver (adversarial).
 
@@ -141,6 +162,10 @@ Behaviour:
 
 | Parameter | Default | Where |
 |---|---|---|
+| tau_c (Complexity Score: hierarchical vs collaborative) | 0.5, by construction (C > 0.5 exactly when the effective tier is MODERATE or HIGH) | `triage.TAU_C`; recorded as `RunResult.tau_c` |
+| tau_u (Uncertainty Score: adversarial regardless of C) | 0.8, assumed, not validated | `uncertainty.TAU_U`; `DynaClinicPipeline(tau_u=)`; `dc_uncertainty` config `tau_u` |
+| Generalist sweep k (open-ended differentials; multiple choice: the option count) | 5 | `uncertainty.DEFAULT_K`; `DynaClinicPipeline(top_k=)`; `dc_uncertainty` config `k` |
+| Hub consults per case | at most 2 | `parsing.MAX_CONSULTS` |
 | tau (adversarial switch on divergence) | 0.25 | `divergence.TAU`; `DynaClinicPipeline(tau=)`; `dc_divergence_gate` config `tau` |
 | tau_semantic (open-ended switch on the semantic divergence of the leading diagnoses) | hashing 0.595 (calibrated: 19/20 on a 10 same + 10 different diagnosis pair fixture of sentences that lead with the diagnosis, some with a treatment clause; not re-calibrated for the shorter diagnosis phrases); text-embedding-3-small 0.35 (prior, not validated) | `divergence.TAU_SEMANTIC`; `DynaClinicPipeline(tau_semantic=)`; `dc_divergence_gate` config `tau_semantic` (overrides both) |
 | Conflict Set spread | 0.3 | `divergence.SPREAD_THRESHOLD` |
@@ -158,7 +183,8 @@ Behaviour:
 
 ## Known limitations
 
-- **Thresholds are not validated.** The triage cut-offs (`MODERATE_SCORE` / `HIGH_SCORE`) were chosen by inspecting the same 24 synthetic vignettes the eval uses, so triage accuracy on that set is in-sample. tau and the critic constants are the proposal's or hand-picked values and have not been tuned or validated on held-out data.
+- **Thresholds are not validated.** The triage cut-offs (`MODERATE_SCORE` / `HIGH_SCORE`) were chosen by inspecting the same 24 synthetic vignettes the eval uses, so triage accuracy on that set is in-sample. tau and the critic constants are the proposal's or hand-picked values and have not been tuned or validated on held-out data. tau_u 0.8 is assumed and was not tuned on any case.
+- **U rests on self-reported probabilities.** The generalist's probabilities are not calibrated, and one sample is taken; a model that is over-confident by habit will rarely exceed tau_u. No eval run has measured U yet.
 - **Small datasets.** The synthetic set is 24 hand-authored textbook vignettes (8 per tier), and the MedQA sample is 50 questions (see Results), so confidence intervals are wide.
 - **The KB is illustrative.** `kb.py` is a small, hand-written list of drug classes, interactions, contraindications and precedence rules. T_SAD and A_SAD catch only what it lists.
 - **Negation handling is heuristic.** Regex patterns ("no", "not", "avoid", "instead of") decide whether a drug is asserted. Unusual phrasing can produce false gate blocks or misses.
