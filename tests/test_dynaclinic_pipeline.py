@@ -3,12 +3,14 @@
 import hashlib
 import json
 from collections import Counter
+from collections.abc import Callable
 
 import pytest
 
 from dynaclinic.eval.harness import dry_run_client
 from dynaclinic.interfaces import InMemorySemanticCache
 from dynaclinic.llm import FakeLLM, LLMError
+from dynaclinic.parsing import ABSTAIN
 from dynaclinic.pipeline import (
     BLOCKED_PREFIX,
     DynaClinicPipeline,
@@ -293,8 +295,62 @@ def test_open_ended_case_is_answered_with_a_write_up_and_no_letter_anywhere(pipe
     assert [role for role, system, user in client.prompts if "FINAL ANSWER" in system + user] == []
 
 
-def _asserting(assertion: str) -> str:
-    return json.dumps({"findings": ["scripted finding"], "claims": []}) + f"\nPRIMARY ASSERTION: {assertion}"
+def _asserting(diagnosis: str, recommendation: str = "Act within this domain.") -> str:
+    return (json.dumps({"findings": ["scripted finding"], "claims": []})
+            + f"\nLEADING DIAGNOSIS: {diagnosis}\nDOMAIN RECOMMENDATION: {recommendation}")
+
+
+def _one_hot(embedded: list[str]) -> Callable[[list[str]], list[list[float]]]:
+    """Fake embedder recording its inputs in ``embedded``: every distinct text is its own axis, so any wording
+    difference between two texts is the maximal distance 1."""
+
+    def embed(texts: list[str]) -> list[list[float]]:
+        embedded.extend(texts)
+        axes = sorted(set(texts))
+        return [[float(text == axis) for axis in axes] for text in texts]
+
+    return embed
+
+
+# One action per lens, as the real specialists answered the PE scenario: wording that differs by design.
+RECOMMENDATIONS = {IMAGING: "Obtain CT pulmonary angiography.",
+                   PATHOLOGY: "Interpret the elevated D-dimer with the pretest probability.",
+                   PHARMACOLOGY: "Hold anticoagulation decisions until imaging confirms the diagnosis."}
+
+
+@pytest.mark.parametrize(
+    ("pharmacology", "stages"),
+    [
+        ("Pulmonary embolism", ["divergence:0.00:stay", "synthesizer"]),
+        ("Acute coronary syndrome", ["divergence:0.67:switch", "critic", "synthesizer"]),
+    ],
+)
+def test_open_ended_divergence_embeds_the_leading_diagnoses_never_the_recommendations(
+    pharmacology: str, stages: list[str]
+) -> None:
+    embedded: list[str] = []
+    diagnoses = {IMAGING: "Pulmonary embolism", PATHOLOGY: "Pulmonary embolism", PHARMACOLOGY: pharmacology}
+    script = {**SCRIPT, TRIAGE: _triage("HIGH"), SYNTHESIZER: WRITE_UP,
+              **{role: _asserting(diagnoses[role], RECOMMENDATIONS[role]) for role in diagnoses}}
+    client = FakeLLM(script, _one_hot(embedded))
+    result = DynaClinicPipeline(client, tau_semantic=0.5).run(OPEN_CASE)
+    assert embedded == list(diagnoses.values())
+    assert (_stages(result)[4:], result.assertions, result.warnings) == ([*stages, "safety_gate:pass"], diagnoses, [])
+    blackboard = _prompts(client, SYNTHESIZER)[0]
+    assert [f"domain recommendation: {text}" in blackboard for text in RECOMMENDATIONS.values()] == [True] * 3
+
+
+def test_open_ended_specialist_without_a_leading_diagnosis_falls_back_to_its_primary_assertion_line() -> None:
+    embedded: list[str] = []
+    legacy = json.dumps({"findings": ["scripted finding"], "claims": []}) + "\nPRIMARY ASSERTION: Pulmonary embolism"
+    script = {**SCRIPT, TRIAGE: _triage("HIGH"), SYNTHESIZER: WRITE_UP, IMAGING: legacy,
+              # a LEADING DIAGNOSIS line wins over a stray PRIMARY ASSERTION line, wherever it stands
+              PATHOLOGY: _asserting("Pulmonary embolism") + "\nPRIMARY ASSERTION: Obtain serial troponins.",
+              PHARMACOLOGY: _asserting("ABSTAIN - no drug data", "None.")}
+    result = DynaClinicPipeline(FakeLLM(script, _one_hot(embedded)), tau_semantic=0.5).run(OPEN_CASE)
+    assert result.assertions == {IMAGING: "Pulmonary embolism", PATHOLOGY: "Pulmonary embolism", PHARMACOLOGY: ABSTAIN}
+    assert result.warnings == ["imaging: no LEADING DIAGNOSIS line; read its PRIMARY ASSERTION line as the diagnosis"]
+    assert (embedded, _stages(result)[4]) == (["Pulmonary embolism"] * 2, "divergence:0.00:stay")
 
 
 @pytest.mark.parametrize(

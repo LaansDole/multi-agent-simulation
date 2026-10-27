@@ -110,12 +110,20 @@ def test_shared_core_specialist_prompts_keep_the_json_contract(role: str) -> Non
 
 @pytest.mark.parametrize("policy", [STRICT, SHARED_CORE])
 @pytest.mark.parametrize("role", SPECIALISTS)
-def test_open_ended_specialist_prompts_ask_for_a_primary_assertion_not_a_distribution(role: str, policy: str) -> None:
+def test_open_ended_specialist_prompts_ask_for_a_leading_diagnosis_and_a_recommendation_not_a_distribution(
+    role: str, policy: str
+) -> None:
     prompt = specialist_system(role, policy, open_ended=True)
+    lines = prompt.splitlines()
     assert role in prompt.lower() and '"findings"' in prompt and '"claims"' in prompt
-    assert "distribution" not in prompt and "FINAL ANSWER" not in prompt
-    assert prompt.splitlines()[-1].startswith("Write PRIMARY ASSERTION: ABSTAIN")
-    assert any(line.startswith("PRIMARY ASSERTION: <") for line in prompt.splitlines())
+    assert "distribution" not in prompt and "FINAL ANSWER" not in prompt and "PRIMARY ASSERTION" not in prompt
+    assert lines[-1].startswith("Write LEADING DIAGNOSIS: ABSTAIN")
+    # the two final lines, in this order; the diagnosis is what is wrong with the patient, never an action
+    diagnosis = lines.index(next(line for line in lines if line.startswith("LEADING DIAGNOSIS: <")))
+    assert "diagnosis or clinical problem, a short noun phrase" in lines[diagnosis]
+    assert lines[diagnosis + 1].startswith("DOMAIN RECOMMENDATION: <your domain's action")
+    assert ("The LEADING DIAGNOSIS says what is wrong with the patient: never a test, a treatment or another action"
+            in " ".join(lines))
 
 
 def test_primary_care_prompt_enforces_the_informative_model() -> None:
@@ -211,7 +219,7 @@ def test_open_ended_shared_core_specialists_abstain_only_when_the_whole_scenario
 ) -> None:
     shared = specialist_system(role, SHARED_CORE, open_ended=True)
     assert "whole scenario" in shared and "holds no relevant data" not in shared
-    assert shared.splitlines()[-1].startswith("Write PRIMARY ASSERTION: ABSTAIN only when the whole scenario")
+    assert shared.splitlines()[-1].startswith("Write LEADING DIAGNOSIS: ABSTAIN only when the whole scenario")
     # strict means the slice only: abstain whenever the modality slice is empty
     assert specialist_system(role, STRICT, open_ended=True).splitlines()[-1].endswith("holds no relevant data.")
 

@@ -214,8 +214,9 @@ def test_free_text_case_has_optional_final_answer_and_text_only_gates(harness: B
     assert result.final_answer is None and result.warnings == []
 
 
-def _asserting(assertion: str) -> str:
-    return json.dumps({"findings": ["scripted finding"], "claims": ["scripted claim"]}) + f"\nPRIMARY ASSERTION: {assertion}"
+def _asserting(diagnosis: str, recommendation: str = "Act within this domain.") -> str:
+    return (json.dumps({"findings": ["scripted finding"], "claims": ["scripted claim"]})
+            + f"\nLEADING DIAGNOSIS: {diagnosis}\nDOMAIN RECOMMENDATION: {recommendation}")
 
 
 def _by_keyword(texts: list[str]) -> list[list[float]]:
@@ -223,22 +224,26 @@ def _by_keyword(texts: list[str]) -> list[list[float]]:
     return [[float("embol" in text.lower()), float("coronary" in text.lower())] for text in texts]
 
 
-PE = "Pulmonary embolism is the leading diagnosis."
-ACS = "Acute coronary syndrome is the leading diagnosis."
+PE = "Pulmonary embolism"
+ACS = "Acute coronary syndrome"
+# One action per lens (imaging, pathology, pharmacology): the f12 real-run wording, which must not read as conflict.
+ACTIONS = ("Obtain CT pulmonary angiography to evaluate for pulmonary embolism.",
+           "Further evaluate for pulmonary embolism; the elevated D-dimer alone is not diagnostic.",
+           "Avoid NSAIDs and evaluate urgently before deciding on anticoagulation.")
 
 
 def test_open_ended_team_with_fewer_than_two_assertions_goes_adversarial_and_says_why(harness: Build) -> None:
     findings = json.dumps({"findings": ["hypotension with fever"], "claims": ["Septic shock is likely"]})
     h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=_asserting("ABSTAIN (no imaging)"),
-                pathology=findings, pharmacology=_asserting("Septic shock; start fluids and antibiotics."),
+                pathology=findings, pharmacology=_asserting("Septic shock", "Start fluids and antibiotics."),
                 synthesizer="Draw blood cultures, then start IV ceftriaxone and fluids.")
     h.run("dc_triage", SEPSIS_TEXT)
     team = h.run("dc_care_team")
-    assert len(h.run_state.board) == 3 and "pathology: no PRIMARY ASSERTION line; counted as abstaining" in team
+    assert len(h.run_state.board) == 3 and "pathology: no LEADING DIAGNOSIS line; counted as abstaining" in team
     gate = h.run("dc_divergence_gate")
     assert gate == ("MODE: ADVERSARIAL\nSemantic divergence not measurable: fewer than two specialists asserted a "
-                    "diagnosis; adversarial review (safety-biased); assertions: imaging ABSTAIN, pathology ABSTAIN, "
-                    'pharmacology "Septic shock; start fluids and antibiotics.".')
+                    "diagnosis; adversarial review (safety-biased); leading diagnoses: imaging ABSTAIN, pathology "
+                    'ABSTAIN, pharmacology "Septic shock".')
     h.run("dc_critic")
     h.run("dc_synthesizer")
     assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
@@ -251,16 +256,18 @@ def test_open_ended_team_with_fewer_than_two_assertions_goes_adversarial_and_say
     ("pharmacology", "mode", "divergence", "synthesizer"),
     [(PE, "COLLABORATIVE", 0.0, "Consensus Builder"), (ACS, "ADVERSARIAL", 2 / 3, "Conflict Resolver")],
 )
-def test_open_ended_team_switches_on_the_semantic_divergence_of_its_assertions(
+def test_open_ended_team_switches_on_the_semantic_divergence_of_its_leading_diagnoses(
     harness: Build, pharmacology: str, mode: str, divergence: float, synthesizer: str
 ) -> None:
-    h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=_asserting(PE), pathology=_asserting(PE),
-                pharmacology=_asserting(pharmacology))
+    imaging, pathology, drugs = (_asserting(diagnosis, action) for diagnosis, action in zip((PE, PE, pharmacology),
+                                                                                             ACTIONS, strict=True))
+    h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=imaging, pathology=pathology, pharmacology=drugs)
     h.run("dc_triage", "A 61-year-old has sudden dyspnea and pleuritic chest pain.")
-    assert "primary assertion: " + PE in h.run("dc_care_team")
+    team = h.run("dc_care_team")
+    assert "leading diagnosis: " + PE in team and all(f"domain recommendation: {action}" in team for action in ACTIONS)
     gate = h.run("dc_divergence_gate", tau_semantic=0.5)
     assert gate == (f"MODE: {mode}\nSemantic divergence {divergence:.2f} (tau_semantic 0.5, embedder fake); "
-                    f'assertions: imaging "{PE}", pathology "{PE}", pharmacology "{pharmacology}".')
+                    f'leading diagnoses: imaging "{PE}", pathology "{PE}", pharmacology "{pharmacology}".')
     result = h.run_state.result
     assert result.divergence == pytest.approx(divergence) and result.mode == mode.lower()
     assert result.assertions == {IMAGING: PE, PATHOLOGY: PE, PHARMACOLOGY: pharmacology}

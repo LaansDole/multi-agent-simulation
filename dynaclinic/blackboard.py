@@ -51,5 +51,7 @@ class Blackboard:
                 lines.append("  claims:")
                 lines.extend(f"  - {claim}" for claim in entry.claims)
             if entry.assertion:
-                lines.append(f"  primary assertion: {entry.assertion}")
+                lines.append(f"  leading diagnosis: {entry.assertion}")
+            if entry.recommendation:
+                lines.append(f"  domain recommendation: {entry.recommendation}")
         return "\n".join(lines) or "(blackboard is empty)"

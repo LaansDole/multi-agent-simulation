@@ -88,21 +88,24 @@ spread probability evenly.
 _SPECIALIST_ASSERT = """This is an open-ended clinical scenario with no answer options.
 Respond with one JSON object:
 {{"findings": ["<finding from your {modality}>"], "claims": ["<one atomic, checkable statement>"]}}
-then, after the JSON, exactly one final line:
-PRIMARY ASSERTION: <the single leading diagnosis or recommendation, one short sentence>
+then, after the JSON, exactly two final lines:
+LEADING DIAGNOSIS: <the single most likely diagnosis or clinical problem, a short noun phrase, e.g. "pulmonary embolism">
+DOMAIN RECOMMENDATION: <your domain's action from your own lens, one sentence>
+The LEADING DIAGNOSIS says what is wrong with the patient: never a test, a treatment or another action, which belong
+in the DOMAIN RECOMMENDATION.
 """
 _SPECIALIST_OPEN = _SPECIALIST_HEAD + """\
 You see ONLY the {modality} for this patient. Reason only from that data; do not assume findings from other
 modalities.
-""" + _SPECIALIST_ASSERT + "Write PRIMARY ASSERTION: ABSTAIN instead when your {modality} holds no relevant data."
+""" + _SPECIALIST_ASSERT + "Write LEADING DIAGNOSIS: ABSTAIN instead when your {modality} holds no relevant data."
 # Open-ended shared_core: the narrative is every specialist's data, so an empty structured slice never means ABSTAIN.
 _SPECIALIST_SHARED_CORE_OPEN = _SPECIALIST_HEAD + """\
 You see a shared case summary (vignette, demographics and any question) and your own {modality}.
-Read the whole scenario, not just your {modality}: the narrative states facts from your domain too. From it, give
-your domain's leading hypothesis or recommendation: {lens}. Do not prescribe outside your role or assume findings
-the case does not state.
+Read the whole scenario, not just your {modality}: the narrative states facts from your domain too. From it, name
+the patient's leading diagnosis, then give your domain's recommendation: {lens}. Do not prescribe outside your role
+or assume findings the case does not state.
 """ + _SPECIALIST_ASSERT + (
-    "Write PRIMARY ASSERTION: ABSTAIN only when the whole scenario holds nothing for your domain ({nothing}); "
+    "Write LEADING DIAGNOSIS: ABSTAIN only when the whole scenario holds nothing for your domain ({nothing}); "
     "an empty modality data section alone is never a reason to abstain."
 )
 # (context policy, open-ended case) -> specialist system prompt template.
@@ -135,8 +138,8 @@ address each conflict explicitly and do not rely on flagged claims.
 Never pick an option that conflicts with the patient's allergies, current medications or conditions.
 {_FINAL}"""
 _SYNTHESIZER_OPEN = f"""You are the Synthesizer of an Integrated Care Team. Read the whole Blackboard.
-Weigh every specialist's findings and primary assertion. In an adversarial review, test each assertion against
-the case evidence, resolve the disagreement explicitly and do not rely on flagged claims.
+Weigh every specialist's findings, leading diagnosis and domain recommendation. In an adversarial review, test each
+leading diagnosis against the case evidence, resolve the disagreement explicitly and do not rely on flagged claims.
 Never propose anything that conflicts with the patient's allergies, current medications or conditions.
 {_WRITE_UP}"""
 
@@ -145,7 +148,7 @@ _SINGLE_AGENT = f"""You are an experienced clinician. Read the case and answer t
 _SINGLE_AGENT_OPEN = f"""You are an experienced clinician. Read the clinical scenario.
 {_WRITE_UP}"""
 
-# lens/nothing are read only by the open-ended shared_core prompt.
+# lens/nothing are read only by the open-ended shared_core prompt (lens: the DOMAIN RECOMMENDATION).
 _PERSONAS = {
     IMAGING: {"title": "Diagnostic Imaging", "modality": "imaging studies",
               "lens": "what the stated tests and imaging findings imply, or which test or imaging study the "
@@ -250,9 +253,10 @@ def modality_data(role: str, case: Case, sections: dict[str, str], policy: str =
 def specialist_system(role: str, policy: str, open_ended: bool = False) -> str:
     """One specialist's system prompt under ``policy``; strict multiple choice is ``SYSTEM_PROMPTS[role]``.
 
-    An open-ended case drops the option distribution and asks for a final ``PRIMARY ASSERTION:`` line. Under
-    ``shared_core`` the specialist reasons from the whole narrative and abstains only when it holds nothing for its
-    domain; under ``strict`` it sees its slice only and abstains when that slice is empty."""
+    An open-ended case drops the option distribution and asks for two final lines, ``LEADING DIAGNOSIS:`` and
+    ``DOMAIN RECOMMENDATION:``. Under ``shared_core`` the specialist reasons from the whole narrative and abstains
+    only when it holds nothing for its domain; under ``strict`` it sees its slice only and abstains when that slice
+    is empty."""
     return _SPECIALIST_TEMPLATES[check_context_policy(policy), open_ended].format(**_PERSONAS[role])
 
 

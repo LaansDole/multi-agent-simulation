@@ -42,9 +42,13 @@ from dynaclinic.interfaces import (
 from dynaclinic.llm import LLMClient, LLMError
 from dynaclinic.parsing import (
     ABSTAIN,
+    DOMAIN_RECOMMENDATION,
+    LEADING_DIAGNOSIS,
+    PRIMARY_ASSERTION,
+    extract_diagnosis,
     extract_final_answer,
     extract_json,
-    extract_primary_assertion,
+    extract_line,
 )
 from dynaclinic.prompts import (
     DEFAULT_CONTEXT_POLICY,
@@ -85,6 +89,18 @@ def _strings(value: object) -> list[str]:
     return [str(item) for item in value] if isinstance(value, list) else []
 
 
+def _leading_diagnosis(role: str, text: str) -> tuple[str, str | None]:
+    """``(diagnosis or ABSTAIN, warning)`` of an open-ended specialist reply: its ``LEADING DIAGNOSIS`` line, else
+    a pre-F13 ``PRIMARY ASSERTION`` line (warned), else ``ABSTAIN`` (warned)."""
+    diagnosis = extract_diagnosis(text)
+    if diagnosis is not None:
+        return diagnosis, None
+    legacy = extract_diagnosis(text, PRIMARY_ASSERTION)
+    if legacy is not None:
+        return legacy, f"{role}: no {LEADING_DIAGNOSIS} line; read its {PRIMARY_ASSERTION} line as the diagnosis"
+    return ABSTAIN, f"{role}: no {LEADING_DIAGNOSIS} line; counted as abstaining"
+
+
 def _set_answer(result: RunResult, text: str, letters: list[str], role: str) -> None:
     """Record ``text`` and its FINAL ANSWER; an open-ended case (no options) has none."""
     result.final_text = text
@@ -98,9 +114,9 @@ class CaseRun:
 
     Each stage appends its route id. Stages call ``client``, which DevAll nodes swap per node config.
     An open-ended case (no options) is supported: the answering roles write a clinical write-up ending in
-    ``RECOMMENDATION:`` instead of a FINAL ANSWER letter, and specialists post a ``PRIMARY ASSERTION``
-    instead of a distribution, so divergence is the semantic distance between those assertions (embedded
-    by the client, or the hashing stub when it cannot). ``context_policy`` (``prompts``: strict |
+    ``RECOMMENDATION:`` instead of a FINAL ANSWER letter, and specialists post a ``LEADING DIAGNOSIS`` and a
+    ``DOMAIN RECOMMENDATION`` instead of a distribution, so divergence is the semantic distance between the
+    diagnoses (embedded by the client, or the hashing stub when it cannot). ``context_policy`` (``prompts``: strict |
     shared_core) decides how much of the case the specialists and Synthesizer see.
     """
 
@@ -174,52 +190,54 @@ class CaseRun:
         self.result.route.append(f"care_team:{','.join(roles)}")
         with ThreadPoolExecutor(max_workers=len(roles)) as pool:
             replies = list(pool.map(self._consult, roles))
-        for role, reply in zip(roles, replies, strict=True):
-            if isinstance(reply, str):
-                self.result.warnings.append(reply)
+        for role, (entry, warning) in zip(roles, replies, strict=True):
+            if warning:
+                self.result.warnings.append(warning)
+            if entry is None:
                 continue
             if self.case.open_ended:
-                if reply.assertion is None:
-                    self.result.warnings.append(f"{role}: no PRIMARY ASSERTION line; counted as abstaining")
-                    reply.assertion = ABSTAIN
-                self.result.assertions[role] = reply.assertion
-            self.board.write(reply)
-            if reply.distribution is not None:
-                self.result.distributions[role] = reply.distribution
-        if all(isinstance(reply, str) for reply in replies):
+                self.result.assertions[role] = entry.assertion
+            self.board.write(entry)
+            if entry.distribution is not None:
+                self.result.distributions[role] = entry.distribution
+        if all(entry is None for entry, _ in replies):
             self.result.route.append("care_team:failed")
             raise LLMError("all specialists failed")
         dists, letters = list(self.result.distributions.values()), self.case.letters()
         self.conf = max(sum(d[letter] for d in dists) / len(dists) for letter in letters) if dists and letters else 0.0
 
-    def _consult(self, role: str) -> BlackboardEntry | str:
-        """One specialist call (worker thread): its entry, or a warning when the call or reply fails.
+    def _consult(self, role: str) -> tuple[BlackboardEntry | None, str | None]:
+        """One specialist call (worker thread): ``(entry, warning)``; no entry when the call or reply fails.
 
-        An open-ended case asks for findings, claims and a final ``PRIMARY ASSERTION:`` line instead of a
-        distribution, so the reply is not forced into JSON mode."""
+        An open-ended case asks for findings, claims and two final lines, ``LEADING DIAGNOSIS:`` (what is wrong
+        with the patient, or ABSTAIN) and ``DOMAIN RECOMMENDATION:``, instead of a distribution, so the reply is
+        not forced into JSON mode. Only the diagnosis feeds the divergence; the recommendation goes on the board."""
         user = specialist_block(role, self.case, self.sections, self.context_policy)
         open_ended = self.case.open_ended
         system = specialist_system(role, self.context_policy, open_ended)
         try:
             text, _ = self.client.complete(role, system, user, json_mode=not open_ended)
         except LLMError as err:
-            return f"{role}: call failed ({err}); excluded from the team"
+            return None, f"{role}: call failed ({err}); excluded from the team"
         data = extract_json(text)
         letters = self.case.letters()
         distribution = (data or {}).get("distribution")
         if letters and (not isinstance(distribution, dict) or not distribution):
-            return f"{role}: reply has no distribution; excluded from the team"
+            return None, f"{role}: reply has no distribution; excluded from the team"
         if data is None:
-            return f"{role}: reply is not JSON; excluded from the team"
+            return None, f"{role}: reply is not JSON; excluded from the team"
         findings = "; ".join(_strings(data.get("findings"))) or "(no findings)"
         dist = normalize(distribution, letters) if letters else None
-        assertion = extract_primary_assertion(text) if open_ended else None
-        return BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=1,
-                               assertion=assertion)
+        entry = BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=1)
+        if not open_ended:
+            return entry, None
+        entry.assertion, warning = _leading_diagnosis(role, text)
+        entry.recommendation = extract_line(text, DOMAIN_RECOMMENDATION)
+        return entry, warning
 
     def divergence(self, tau: float, tau_semantic: float | None = None) -> None:
         """Tier 2 switch: JS divergence of the option distributions, or for an open-ended case the semantic
-        divergence of the primary assertions (``tau_semantic`` None: the embedder's ``TAU_SEMANTIC``)."""
+        divergence of the leading diagnoses (``tau_semantic`` None: the embedder's ``TAU_SEMANTIC``)."""
         r = self.result
         if self.case.open_ended:
             self._semantic_divergence(tau_semantic)
@@ -231,8 +249,8 @@ class CaseRun:
         r.route.append(f"divergence:{report.divergence:.2f}:{'switch' if report.switch else 'stay'}")
 
     def _semantic_divergence(self, tau: float | None) -> None:
-        """Switch iff the mean pairwise cosine distance of the non-abstaining assertions is ``>= tau``; with
-        fewer than two assertions it is not measurable and the team goes adversarial (safety-biased)."""
+        """Switch iff the mean pairwise cosine distance of the non-abstaining leading diagnoses is ``>= tau``; with
+        fewer than two diagnoses it is not measurable and the team goes adversarial (safety-biased)."""
         r = self.result
         asserted = [assertion for assertion in r.assertions.values() if assertion != ABSTAIN]
         if len(asserted) < 2:
@@ -277,7 +295,7 @@ class CaseRun:
         case = question_block(self.case) if self.context_policy == STRICT else case_block(self.case, self.sections)
         parts = [case, f"Blackboard:\n{self.board.snapshot()}"]
         if r.mode == "adversarial":
-            parts.append("Adversarial review: test each specialist's assertion against the case evidence."
+            parts.append("Adversarial review: test each specialist's leading diagnosis against the case evidence."
                          if self.case.open_ended else f"Conflict set: {', '.join(r.conflict_set) or 'none'}")
             if r.flagged_claims:
                 parts.append("Flagged claims (do not rely on these):\n" + "\n".join(f"- {c}" for c in r.flagged_claims))

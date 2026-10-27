@@ -248,7 +248,7 @@ class DCContextConfig(DCNodeConfig):
 @dataclass
 class DCDivergenceGateConfig(BaseConfig):
     """dc_divergence_gate: tier-2 switch. Makes no LLM call, so it has no model (an open-ended case's
-    assertions are embedded with the care team's client)."""
+    leading diagnoses are embedded with the care team's client)."""
 
     tau: float = TAU
     tau_semantic: float | None = None
@@ -279,7 +279,7 @@ class DCDivergenceGateConfig(BaseConfig):
             display_name="Tau (open-ended)",
             type_hint="float",
             required=False,
-            description="Open-ended cases: mean pairwise cosine distance of the specialists' primary assertions "
+            description="Open-ended cases: mean pairwise cosine distance of the specialists' leading diagnoses "
             "at which the team switches to adversarial mode. Unset: the embedder's default "
             f"({', '.join(f'{name} {tau}' for name, tau in TAU_SEMANTIC.items())}).",
             advance=True,
@@ -384,7 +384,7 @@ class CareTeamExecutor(_StageExecutor):
 
 class DivergenceGateExecutor(_StageExecutor):
     """dc_divergence_gate: emits ``MODE: COLLABORATIVE|ADVERSARIAL``, then the divergence (JS over option
-    distributions, or for an open-ended case the semantic divergence of the primary assertions)."""
+    distributions, or for an open-ended case the semantic divergence of the leading diagnoses)."""
 
     config_cls = DCDivergenceGateConfig
 
@@ -392,14 +392,14 @@ class DivergenceGateExecutor(_StageExecutor):
         run.divergence(config.tau, config.tau_semantic)
         r = run.result
         if run.case.open_ended:
-            assertions = ", ".join(f"{agent} {text}" if text == ABSTAIN else f'{agent} "{text}"'
-                                   for agent, text in r.assertions.items()) or "none"
+            diagnoses = ", ".join(f"{agent} {text}" if text == ABSTAIN else f'{agent} "{text}"'
+                                  for agent, text in r.assertions.items()) or "none"
             if r.divergence is None:
                 detail = ("Semantic divergence not measurable: fewer than two specialists asserted a diagnosis; "
-                          f"adversarial review (safety-biased); assertions: {assertions}.")
+                          f"adversarial review (safety-biased); leading diagnoses: {diagnoses}.")
             else:
                 detail = (f"Semantic divergence {r.divergence:.2f} (tau_semantic {run.tau_semantic:g}, "
-                          f"embedder {r.embedder}); assertions: {assertions}.")
+                          f"embedder {r.embedder}); leading diagnoses: {diagnoses}.")
         else:
             top1 = ", ".join(f"{agent} {letter}{' (abstains)' if agent in run.abstainers else ''}"
                              for agent, letter in r.top1.items())

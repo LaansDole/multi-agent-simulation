@@ -19,12 +19,13 @@ count as 0; an empty distribution becomes uniform), so every log below is finite
 Open-ended cases (no options) use semantic divergence instead (proposal: D(H1, H2), the normalized semantic
 distance between the primary diagnostic assertions):
 
-- Each non-abstaining specialist's ``PRIMARY ASSERTION`` sentence is embedded; abstainers are left out.
+- Each non-abstaining specialist's ``LEADING DIAGNOSIS`` phrase is embedded; abstainers are left out. Its
+  ``DOMAIN RECOMMENDATION`` (an action from its own lens) is not: three lenses on one diagnosis would read as conflict.
 - Distance ``d(u, v) = min(max(1 - cos(u, v), 0), 1)`` (clipped, not ``(1 - cos) / 2``: hashing vectors are
   non-negative and embedding-model cosines of clinical sentences are rarely negative, so halving would only
   squeeze the useful range into [0, 0.5]); 1 for a zero vector.
 - Semantic divergence: mean ``d`` over all unordered pairs. Switch iff it is ``>= tau_semantic``; with fewer
-  than two assertions it is not measurable and the caller goes adversarial (safety bias).
+  than two diagnoses it is not measurable and the caller goes adversarial (safety bias).
 - ``tau_semantic`` depends on the embedder's scale: ``TAU_SEMANTIC[embedder]`` (hashing: calibrated on the
   paraphrase fixture in ``tests/test_dynaclinic_semantic.py``; OpenAI: intended, not validated).
 

@@ -90,7 +90,8 @@ class CallRecord(_Serializable):
 class BlackboardEntry(_Serializable):
     """One agent contribution to the shared Blackboard.
 
-    ``assertion`` is a specialist's ``PRIMARY ASSERTION`` on an open-ended case (``ABSTAIN`` or one sentence).
+    ``assertion`` is a specialist's ``LEADING DIAGNOSIS`` on an open-ended case (``ABSTAIN`` or a short phrase; the
+    proposal's primary diagnostic assertion) and ``recommendation`` its ``DOMAIN RECOMMENDATION`` (one sentence).
     """
 
     agent: str
@@ -100,6 +101,7 @@ class BlackboardEntry(_Serializable):
     claims: list[str] = field(default_factory=list)
     step: int = 0
     assertion: str | None = None
+    recommendation: str | None = None
 
 
 @dataclass
@@ -154,7 +156,7 @@ class RunResult(_Serializable):
     top1: dict[str, str] = field(default_factory=dict)
     disagreement: bool | None = None
     switch: bool | None = None
-    # Open-ended cases: specialist -> PRIMARY ASSERTION (or ABSTAIN) and the embedder of the semantic divergence.
+    # Open-ended cases: specialist -> LEADING DIAGNOSIS (or ABSTAIN) and the embedder of the semantic divergence.
     assertions: dict[str, str] = field(default_factory=dict)
     embedder: str | None = None
     flagged_claims: list[str] = field(default_factory=list)

@@ -4,9 +4,13 @@ import pytest
 
 from dynaclinic.parsing import (
     ABSTAIN,
+    DOMAIN_RECOMMENDATION,
+    LEADING_DIAGNOSIS,
+    PRIMARY_ASSERTION,
+    extract_diagnosis,
     extract_final_answer,
     extract_json,
-    extract_primary_assertion,
+    extract_line,
     first_line_marker,
 )
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
@@ -106,18 +110,36 @@ def test_first_line_marker_only_first_non_empty_line(text: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("text", "expected"),
+    ("text", "key", "expected"),
     [
-        ('{"findings": []}\nPRIMARY ASSERTION: Pulmonary embolism is most likely.', "Pulmonary embolism is most likely."),
-        ("**Primary assertion:** `Community-acquired pneumonia`", "Community-acquired pneumonia"),
-        ("- PRIMARY ASSERTION : Sepsis\nnotes\nPRIMARY ASSERTION: Septic shock", "Septic shock"),  # last line wins
-        ("PRIMARY ASSERTION: ABSTAIN", ABSTAIN),
-        ("PRIMARY ASSERTION: abstain - no imaging in this case.", ABSTAIN),
-        ("PRIMARY ASSERTION: Abstinence syndrome from alcohol", "Abstinence syndrome from alcohol"),
-        ('{"findings": ["x"], "claims": []}', None),
-        ("PRIMARY ASSERTION:   ", None),
-        ("The primary assertion: is inline, not a line of its own", None),
+        ('{"findings": []}\nLEADING DIAGNOSIS: Pulmonary embolism\nDOMAIN RECOMMENDATION: Obtain CT angiography.',
+         LEADING_DIAGNOSIS, "Pulmonary embolism"),
+        ("**Leading diagnosis:** `Community-acquired pneumonia`", LEADING_DIAGNOSIS, "Community-acquired pneumonia"),
+        ("- LEADING DIAGNOSIS : Sepsis\nnotes\nLEADING DIAGNOSIS: Septic shock", LEADING_DIAGNOSIS, "Septic shock"),
+        ("LEADING DIAGNOSIS: ABSTAIN", LEADING_DIAGNOSIS, ABSTAIN),
+        ("LEADING DIAGNOSIS: abstain - no imaging in this case.", LEADING_DIAGNOSIS, ABSTAIN),
+        ("LEADING DIAGNOSIS: Abstinence syndrome from alcohol", LEADING_DIAGNOSIS, "Abstinence syndrome from alcohol"),
+        ('{"findings": ["x"], "claims": []}', LEADING_DIAGNOSIS, None),
+        ("LEADING DIAGNOSIS:   ", LEADING_DIAGNOSIS, None),
+        ("The leading diagnosis: is inline, not a line of its own", LEADING_DIAGNOSIS, None),
+        ("PRIMARY ASSERTION: Pulmonary embolism", LEADING_DIAGNOSIS, None),
+        # the pre-F13 single line, read as the diagnosis by the pipeline's fallback
+        ("**Primary  assertion:** Pulmonary embolism is most likely.", PRIMARY_ASSERTION,
+         "Pulmonary embolism is most likely."),
+        ("PRIMARY ASSERTION: abstain - no imaging in this case.", PRIMARY_ASSERTION, ABSTAIN),
     ],
 )
-def test_extract_primary_assertion(text: str, expected: str | None) -> None:
-    assert extract_primary_assertion(text) == expected
+def test_extract_diagnosis(text: str, key: str, expected: str | None) -> None:
+    assert extract_diagnosis(text, key) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # a recommendation is read verbatim, never as ABSTAIN
+        ("LEADING DIAGNOSIS: Pulmonary embolism\n**Domain recommendation:** Abstain from NSAIDs.", "Abstain from NSAIDs."),
+        ("LEADING DIAGNOSIS: Pulmonary embolism\nRECOMMENDATION: Admit.", None),
+    ],
+)
+def test_extract_line_reads_the_domain_recommendation(text: str, expected: str | None) -> None:
+    assert extract_line(text, DOMAIN_RECOMMENDATION) == expected

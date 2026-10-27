@@ -11,7 +11,10 @@ _FINAL_ANSWER = re.compile(
     r"(?i:final\s*answer)[\s*_`:\-]*(?:(?i:option)\s+)?[(\[*_`\s]*([A-Z])(?![A-Za-z])"
 )
 ABSTAIN = "ABSTAIN"
-_ASSERTION = re.compile(r"^[\s*_`#>-]*primary\s+assertion[\s*_`]*:(.*)$", re.IGNORECASE | re.MULTILINE)
+# Final lines of an open-ended specialist reply; PRIMARY ASSERTION is the pre-F13 single line, read as the diagnosis.
+LEADING_DIAGNOSIS = "LEADING DIAGNOSIS"
+DOMAIN_RECOMMENDATION = "DOMAIN RECOMMENDATION"
+PRIMARY_ASSERTION = "PRIMARY ASSERTION"
 
 
 def _balanced_objects(text: str) -> Iterator[str]:
@@ -71,14 +74,20 @@ def extract_final_answer(text: str, letters: Iterable[str]) -> str | None:
     return letter if letter in {item.upper() for item in letters} else None
 
 
-def extract_primary_assertion(text: str) -> str | None:
-    """Return the value of the last ``PRIMARY ASSERTION:`` line: ``ABSTAIN`` when it starts with that word
-    (a reason may follow), ``None`` when the line is missing or empty. Tolerates markdown around key and value."""
-    values = [value.strip(" \t*_`\"'") for value in _ASSERTION.findall(text)]
+def extract_line(text: str, key: str) -> str | None:
+    """Return the value of the last ``KEY:`` line (``key`` words may be split by any whitespace), ``None`` when
+    the line is missing or empty. Tolerates markdown around key and value."""
+    words = r"\s+".join(map(re.escape, key.split()))
+    pattern = re.compile(rf"^[\s*_`#>-]*{words}[\s*_`]*:(.*)$", re.IGNORECASE | re.MULTILINE)
+    values = [value.strip(" \t*_`\"'") for value in pattern.findall(text)]
     values = [value for value in values if value]
-    if not values:
-        return None
-    return ABSTAIN if re.match(rf"{ABSTAIN}\b", values[-1], re.IGNORECASE) else values[-1]
+    return values[-1] if values else None
+
+
+def extract_diagnosis(text: str, key: str = LEADING_DIAGNOSIS) -> str | None:
+    """``extract_line`` for a diagnosis line: ``ABSTAIN`` when the value starts with that word (a reason may follow)."""
+    value = extract_line(text, key)
+    return ABSTAIN if value and re.match(rf"{ABSTAIN}\b", value, re.IGNORECASE) else value
 
 
 def first_line_marker(text: str, key: str) -> str | None:
