@@ -137,6 +137,8 @@ Behaviour:
 | tau (adversarial switch on divergence) | 0.25 | `divergence.TAU`; `DynaClinicPipeline(tau=)`; `dc_divergence_gate` config `tau` |
 | Conflict Set spread | 0.3 | `divergence.SPREAD_THRESHOLD` |
 | Margin (margin loss) | 0.2 | `divergence.MARGIN` |
+| Abstention (near-uniform specialist, no vote) | normalized entropy >= 0.95 | `divergence.ABSTAIN_ENTROPY` |
+| Rule score for a KB-confirmed safety warning | 0.95 | `critic.KB_CONFIRMED_SCORE` |
 | Feature-score tier cut-offs / escalation | MODERATE >= 6, HIGH >= 12; escalate LLM LOW at >= 6 | `triage.MODERATE_SCORE`, `triage.HIGH_SCORE`; `DynaClinicPipeline(escalate_threshold=)`; `dc_triage` config |
 | Judge temperature T | 1.5 | `critic.JUDGE_TEMPERATURE` |
 | Hybrid weight `lambda = sigmoid(k (var(r) - v0))` | k = 10, v0 = 0.05 | `critic.LAMBDA_K`, `critic.LAMBDA_V0` |
@@ -168,15 +170,17 @@ All runs: 24 synthetic cases (8 LOW / 8 MODERATE / 8 HIGH, 15 with safety traps)
 | 2026-10-27-full-gpt-6-luna | strict | 1b01dc2 | 91.7% (22/24) | 100% | 87.5% (21/24) | 5.08 | 6.12 | 0 / 2 | 0 |
 | 2026-10-27-full-gpt-6-luna-shared-core | shared_core | 429fdf3 | 95.8% (23/24) | 100% | 100% | 4.75 | 6.17 | 2 / 3 (all correct answers, false blocks) | 0 |
 | 2026-10-27-final-gpt-6-luna-shared-core | shared_core | 4c68201 (T_SAD precision + negation scope fixes) | 100% (24/24) | 100% | 100% | 4.67 | 6.08 | 0 / 1 | 0 |
+| 2026-10-27-fixes-gpt-6-luna-shared-core | shared_core | 9ef6d86 (abstention in divergence, KB-credited critic) | 100% (24/24) | 100% | 100% | 3.92 | 6.08 | 1 / 1 (correct answers, false blocks) | 0 |
 
-Final run, dynamic arm: triage agreement with gold tier 19/24 (79.2%); routes single 6 / collaborative 9 / adversarial 9; mean latency 21.4 s (p50 14.9 s) vs static 30.7 s (p50 24.8 s) and single 2.1 s.
+Latest run (fixes), dynamic arm: triage agreement with gold tier 17/24 (70.8%); routes single 6 / collaborative 18 / adversarial 0; adversarial switch 0.0% (was 37.5%); mean divergence 0.050 (was 0.326); mean latency 13.4 s (p50 12.9 s) vs static 21.4 s (p50 20.8 s) and single 2.2 s. The static arm's would-switch rate fell from 79.2% to 4.2%.
 
 What the numbers support:
-- Dynamic switching matches the always-full-team arm on accuracy while using ~23% fewer LLM calls per case (4.67 vs 6.08) and ~30% lower mean latency; LOW cases are answered by one Primary Care call plus triage.
+- Dynamic switching matches the always-full-team arm on accuracy while using ~36% fewer LLM calls per case (3.92 vs 6.08) and ~37% lower mean latency; LOW cases are answered by one Primary Care call plus triage.
+- Most adversarial switches in the earlier runs were artifacts: a specialist with no opinion (uniform distribution) was counted as a top-1 vote. With abstentions excluded, no case on this set reaches tau, so the adversarial path is no longer exercised by this dataset. It is still covered by unit tests, and a harder benchmark with real disagreement is needed to evaluate it.
 - Strict modality slicing (the proposal's bounded-context personas) lost information: both strict-arm dynamic misses (syn-high-07, syn-mod-06) came from specialists that never saw the presenting symptoms. shared_core fixed them and is the default.
 - No arm ever chose an unsafe option on these cases; T_SAD blocks in earlier runs were false positives on correct answers, removed by the kb/safety fixes.
 
 What they do NOT support:
 - The single-agent baseline scores 100% at 1 call/case on this set: the synthetic vignettes are textbook-level and too easy to show any accuracy benefit from multi-agent collaboration (ceiling effect). A harder benchmark (e.g. MedQA/CSEDB-style cases) is needed before any accuracy claim. The MedQA sample loader exists, but no MedQA sample was fetched in this run.
-- One run per configuration and n = 24: differences of 1-2 cases are within the Wilson 95% intervals in each summary.md and within run-to-run model variance (triage agreement moved 62.5% -> 79.2% between the first and final runs).
+- One run per configuration and n = 24: differences of 1-2 cases are within the Wilson 95% intervals in each summary.md and within run-to-run model variance (triage agreement moved 62.5% -> 79.2% -> 70.8% across runs; triage code and prompts did not change between the last two).
 - Costs are reported as token counts only (no prices configured).
