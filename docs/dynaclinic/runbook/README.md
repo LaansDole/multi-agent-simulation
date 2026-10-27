@@ -1,13 +1,13 @@
 # DynaClinic in 3D: runbook
 
-How to start the servers, open the three.js office (the-delegation), and replay the three DynaClinic routes from the research proposal: single Primary Care Agent, collaborative Integrated Care Team, and the adversarial switch to the Clinical Critic. Every screenshot here is from a real run on 2026-10-27 (code 231dd81, model gpt-6-luna), not a mock-up.
+How to start the servers, open the three.js office (the-delegation), and replay the three DynaClinic routes from the research proposal: single Primary Care Agent, collaborative Integrated Care Team, and the adversarial switch to the Clinical Critic. Every screenshot here is from a real run on 2026-10-27, not a mock-up. Model gpt-6-luna through the OpenAI API (any OpenAI-compatible endpoint works). Scenarios A and B and the UI shots were captured at 0d3ed91. Scenario C's adversarial run was captured earlier at 231dd81. Between the two commits the DynaClinic routing and scoring code did not change; 0d3ed91 only adds a report of the model name.
 
 Time: about 5 minutes to start, about 30 seconds per case.
 
 ## 1. Prerequisites (once)
 
 - `uv sync` in the repo root, and `npm install` in `the-delegation/`.
-- `.env` in the repo root with `OPENAI_API_KEY` (and optionally `DYNACLINIC_MODEL=gpt-6-luna`). Do not commit it.
+- `.env` in the repo root with `OPENAI_API_KEY`, and optionally `OPENAI_BASE_URL` for an OpenAI-compatible server and `DYNACLINIC_MODEL` (here `gpt-6-luna`). Do not commit it. The 3D app defaults to provider OpenAI and shows the model the backend actually uses (`GET /api/models` returns `default: {provider: "openai", model}`). Gemini stays selectable for text, and is the only option for image, music and video teams.
 - Ports 6400 (backend) and 3100 (3D view) free. Port 3000 often belongs to another local project, which is why the 3D view runs on 3100.
 
 ## 2. Start the servers (two terminals)
@@ -29,10 +29,12 @@ Check: `curl -s localhost:6400/health` returns 200, and http://localhost:3100/th
 1. Open http://localhost:3100/the-delegation/.
 2. Click BROWSE WORKFLOWS, then `dynaclinic_mvp.yaml`.
 3. Reload the page. The scene rebuilds its characters only on load.
-4. The team badge reads `7 dynaclinic_mvp`. Click it to see the hierarchy: Triage (Meta-Controller, lead) over Primary Care and the Integrated Care Team, plus Critic and Synthesizer.
+4. The team badge reads `7 dynaclinic_mvp`, and next to it `GENERATION MODEL · OPENAI gpt-6-luna`. The LOGS panel on the left shows a Getting Started card.
+5. Optional: click the team badge to open the design view (workflow graph and character slots). Close it with the X at the top right, Escape, or a click outside.
 
+![office with the DynaClinic team and the Getting Started card](01-office-team.png)
+![design view with its close button](00b-design-view-close-button.png)
 ![team hierarchy](00-team-hierarchy.png)
-![office with the DynaClinic team](01-office-team.png)
 
 | Character | Node (`yaml_instance/dynaclinic_mvp.yaml`) | Proposal role |
 |---|---|---|
@@ -45,12 +47,14 @@ Check: `curl -s localhost:6400/health` returns 200, and http://localhost:3100/th
 
 ## 4. Run a case
 
-1. Click the lead agent (Triage, blue with headset). Characters wander, so find it first; the right panel shows "Triage, LEAD AGENT".
-2. Click CHAT ABOUT THE BRIEF.
-3. Paste one Case JSON line (below) into the message box and press Enter.
+1. In the Getting Started card on the left, click START: CHAT WITH TRIAGE. It selects the lead agent (Triage, the Meta-Controller) and opens its chat on the right. You can also click the Triage character and then CHAT ABOUT THE BRIEF, but the characters wander.
+2. Paste one Case JSON line (below) into the message box.
+3. Press Enter.
+
+![Getting Started opens the Triage chat](02a-getting-started-chat-open.png)
 4. Watch the office and the kanban: each node becomes a task in IN PROGRESS and then DONE, and the agent characters walk to a desk while they work.
 5. When PROJECT READY appears, click VIEW FINAL OUTPUT for the DynaClinic report (gate verdicts + FINAL ANSWER).
-6. To run another case: reload the page (or use the reset in the project panel), then repeat from step 1.
+6. Close the output with its X or Escape. To run another case, reload the page and repeat from step 1.
 
 The ACTIVITY tab in the left LOGS panel lists every node entry/exit and edge taken. It is the quickest way to see which route the Meta-Controller chose.
 
@@ -70,7 +74,7 @@ What to look for:
 - Triage replies in the chat: `ROUTE: LOW ... deterministic tier LOW (feature score 3)`.
 - Only Primarycare goes to IN PROGRESS. The care team, Critic and Synthesizer stay idle: the Meta-Controller kept the cheap single-agent architecture.
 - Report: `GATE: PASS` (A_SAD pass, T_SAD pass, S_NAP stub), FINAL ANSWER A. The sulfonamide option B is named as conflicting with the allergy.
-- Live run: 19 s, one backend run.
+- Live run: 19 s, one backend run (exactly one POST /api/workflow/execute).
 
 ### Scenario B: high complexity, specialists agree -> collaborative Blackboard
 
@@ -83,9 +87,9 @@ Case: `demo-contested-01` (anticoagulated 74-year-old with an acute subdural hem
 What to look for:
 - Triage: `ROUTE: HIGH ... deterministic tier HIGH (feature score 12)`.
 - Careteam appears three times in IN PROGRESS (Diagnostic Imaging, Pathology/Lab, Pharmacology) and the three characters work in parallel. They post hypotheses, a probability over the options, and atomic claims to the shared Blackboard.
-- DivergenceGate (live output): `MODE: COLLABORATIVE, Divergence 0.14 (tau 0.25); top-1: imaging B, pathology A (abstains), pharmacology B`. Pathology had no basis to choose, so it abstained and did not vote. The gate goes straight to Synthesizer; the Critic stays idle.
+- DivergenceGate (live output): `MODE: COLLABORATIVE, Divergence 0.07 (tau 0.25); top-1: imaging B, pathology B, pharmacology B`. The gate goes straight to Synthesizer; the Critic stays idle. In an earlier run of the same case, Pathology abstained (an even split, so it does not vote) and divergence was 0.14; the route was the same.
 - Report: FINAL ANSWER B, GATE: PASS. Continuing apixaban (A) and thrombolysis (D) are the unsafe options.
-- Live run: 24 s.
+- Live run: 28 s.
 
 ### Scenario C: specialists diverge -> adversarial switch to the Clinical Critic
 
@@ -101,7 +105,17 @@ What to look for:
 - DivergenceGate (live output): `MODE: ADVERSARIAL, Divergence 0.35 (tau 0.25); top-1: pathology C, pharmacology C; conflict set: C`. Both picked C, but with very different confidence (0.55 vs 0.90). The divergence between their distributions passes tau, so the gate switches architecture, as the proposal's conflict-aware routing specifies.
 - Critic goes to IN PROGRESS, and the ACTIVITY log shows `Edge condition met for DivergenceGate -> Critic`. The Critic splits the Blackboard into atomic claims and scores each with the hybrid rule / LLM-judge estimator. It flagged three claims in this run (see Findings).
 - Synthesizer then reconciles, and Layer 4 passes: FINAL ANSWER C.
-- Live run: 37 s. In a separate headless run of the same case, Imaging chose B (V/Q scan) and Pharmacology chose C, with divergence 0.52. The switch fired in both runs, but the exact numbers vary between runs.
+- Live run: 37 s.
+
+How often this case switches (5 real runs, same routing code):
+
+| Run | Triage | Specialists consulted | Divergence | Mode |
+|---|---|---|---|---|
+| headless (SDK) | HIGH | imaging B, pathology abstains, pharmacology C | 0.52 | ADVERSARIAL |
+| 3D, shown above | MODERATE | pathology C (0.55), pharmacology C (0.90) | 0.35 | ADVERSARIAL |
+| 3D x3, after the UI changes | MODERATE | pathology abstains, pharmacology abstains | 0.00 | COLLABORATIVE |
+
+All five gave FINAL ANSWER C. The switch depends on which specialists triage consults. MODERATE picks the first two with data for the case (Pharmacology, then Pathology/Lab). Neither can choose a diagnostic step for this case from its own modality, so when both abstain there is no informed vote and the gate stays collaborative (see Findings). Treat Scenario C as "can switch", not "always switches".
 
 ## 6. Proposal coverage you can and cannot see
 
@@ -130,16 +144,18 @@ Ctrl-C both terminals. Check nothing is left: `lsof -iTCP:6400 -iTCP:3100 -sTCP:
 | No CHAT ABOUT THE BRIEF button | You selected a non-lead character; select Triage |
 | Top bar not CONNECTED | Backend not running on 6400, or started from the wrong directory |
 | Run fails immediately | `.env` missing `OPENAI_API_KEY`, or the model is unreachable (the pipeline falls back to `DYNACLINIC_FALLBACK_MODELS` if set) |
+| Badge shows `gpt-5-mini` instead of your model | The backend is running older code, or the team was imported before the change. Restart the backend, then re-import the workflow |
+| A full-screen view will not close | Press Escape, or click the X at the top right. Every overlay supports both |
 | `--strictPort` error | Port 3100 in use; pick another port. Do not stop the process on 3000 |
 | Automated screenshots show a blank canvas | Some automation browsers do not render WebGL/WebGPU. Use real Chrome (headless works: `--headless=new --remote-debugging-port=<port>`) |
 
-Headless capture tip: under Vite dev, page scripts can import the app's own stores, which avoids clicking moving characters. For example, `const m = await import("/the-delegation/src/integration/store/uiStore.ts"); m.useUiStore.getState().setSelectedNpc(1)` selects the lead agent, and `coreStore.ts` `useCoreStore.getState().resetProject()` resets between cases.
+Headless capture tip: click the Getting Started button (text "START: CHAT WITH") instead of the moving character. Under Vite dev, page scripts can also import the app's own stores; for example, `coreStore.ts` `useCoreStore.getState().resetProject()` resets between cases.
 
 ## 9. Findings from this capture (not fixed)
 
 - Deterministic nodes (CaseInput, DivergenceGate, SafetyGate, Report) stay in IN PROGRESS / WORKING on the kanban after the run completes. These are the nodes without an agent character; the cause was not investigated.
 - With a MODERATE route the kanban still shows all three specialist cards as working, although only the two consulted specialists post to the Blackboard.
-- The header's "GENERATION MODEL gemini-3-flash-preview" is the 3D app's own default label. DynaClinic calls run on the backend model (gpt-6-luna here).
+- When every consulted specialist abstains (an even split), DivergenceGate reports divergence 0.00 and stays collaborative, so the Synthesizer answers with no informed specialist vote. A safer rule would consult the remaining specialist, or escalate to the Critic, when all votes abstain. MODERATE also picks specialists by which data the case contains, not by which specialty the question needs.
 - In Scenario C the Critic labelled "Low-molecular-weight heparin is preferred over warfarin for anticoagulation during pregnancy" as `[contradiction]`. That claim is correct; the KB has no pregnancy rule to credit it, and the judge sees only the case text. The final answer was unaffected.
 - Node text (Blackboard, divergence, flagged claims) is not shown inside the 3D view; only the route is.
 - From the f6 report, minor 3D behaviour: arrivals without a seat snap stop 0.16 to 0.25 m short; a boardroom standing spot can overlap spawn 5; `setNpcWorking` does not fall back when another agent holds the desk; an agent left seated at a desk never wanders again.
