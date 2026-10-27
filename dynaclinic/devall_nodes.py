@@ -418,7 +418,8 @@ class CriticExecutor(_StageExecutor):
 
 
 class SynthesizerExecutor(_StageExecutor):
-    """dc_synthesizer: final answer from the Blackboard (and flagged claims in adversarial mode).
+    """dc_synthesizer: final answer from the Blackboard, as the Consensus Builder in collaborative mode or
+    the Conflict Resolver (Mediator) weighing the critic's flagged claims in adversarial mode.
 
     Its ``context_policy`` also applies to dc_safety_gate regenerations, which re-run this stage.
     """
@@ -428,7 +429,8 @@ class SynthesizerExecutor(_StageExecutor):
     def stage(self, run: CaseRun, config: DCContextConfig) -> str:
         run.context_policy = config.context_policy
         run.synthesize()
-        return f"STAGE: synthesizer\n{run.result.final_text}"
+        role = "Conflict Resolver" if run.result.mode == "adversarial" else "Consensus Builder"
+        return f"STAGE: synthesizer ({role})\n{run.result.final_text}"
 
 
 class SafetyGateExecutor(_StageExecutor):

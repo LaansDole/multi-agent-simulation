@@ -153,7 +153,7 @@ def test_high_disagreeing_team_goes_adversarial_through_critic(harness: Build) -
     assert first_line_marker(h.run("dc_divergence_gate"), "MODE") == "ADVERSARIAL"
     critic = h.run("dc_critic")
     assert critic.splitlines()[0] == "STAGE: critic" and UNSAFE_CLAIM in critic
-    assert h.run("dc_synthesizer").splitlines()[0] == "STAGE: synthesizer"
+    assert h.run("dc_synthesizer").splitlines()[0] == "STAGE: synthesizer (Conflict Resolver)"
     assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
     route = h.run_state.result.route
     assert route[2] == "care_team:imaging,pathology,pharmacology"
@@ -247,9 +247,12 @@ def test_open_ended_team_with_fewer_than_two_assertions_goes_adversarial_and_say
     assert result.route[3:] == ["divergence:n/a:switch", "critic", "synthesizer", "safety_gate:pass"]
 
 
-@pytest.mark.parametrize(("pharmacology", "mode", "divergence"), [(PE, "COLLABORATIVE", 0.0), (ACS, "ADVERSARIAL", 2 / 3)])
+@pytest.mark.parametrize(
+    ("pharmacology", "mode", "divergence", "synthesizer"),
+    [(PE, "COLLABORATIVE", 0.0, "Consensus Builder"), (ACS, "ADVERSARIAL", 2 / 3, "Conflict Resolver")],
+)
 def test_open_ended_team_switches_on_the_semantic_divergence_of_its_assertions(
-    harness: Build, pharmacology: str, mode: str, divergence: float
+    harness: Build, pharmacology: str, mode: str, divergence: float, synthesizer: str
 ) -> None:
     h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=_asserting(PE), pathology=_asserting(PE),
                 pharmacology=_asserting(pharmacology))
@@ -261,6 +264,7 @@ def test_open_ended_team_switches_on_the_semantic_divergence_of_its_assertions(
     result = h.run_state.result
     assert result.divergence == pytest.approx(divergence) and result.mode == mode.lower()
     assert result.assertions == {IMAGING: PE, PATHOLOGY: PE, PHARMACOLOGY: pharmacology}
+    assert h.run("dc_synthesizer").splitlines()[0] == f"STAGE: synthesizer ({synthesizer})"
 
 
 def test_failing_embedder_falls_back_to_hashing_and_the_gate_names_it(harness: Build) -> None:

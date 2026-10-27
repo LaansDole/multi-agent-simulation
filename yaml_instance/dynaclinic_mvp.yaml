@@ -70,10 +70,11 @@ graph:
     - id: Synthesizer
       type: dc_synthesizer
       description: >-
-        Writes the team answer from the Blackboard (plus the Critic's flagged claims in adversarial
-        mode), ending in FINAL ANSWER: <letter>, or for an open-ended case the sectioned write-up
-        ending in RECOMMENDATION:. context_policy shared_core adds the full case block; strict:
-        question, options and Blackboard only.
+        Consensus Builder in collaborative mode, Conflict Resolver (Mediator) in adversarial mode, where
+        it also weighs the Critic's flagged claims. Writes the team answer from the Blackboard, ending
+        in FINAL ANSWER: <letter>, or for an open-ended case the sectioned write-up ending in
+        RECOMMENDATION:. context_policy shared_core adds the full case block; strict: question,
+        options and Blackboard only.
       config:
         context_policy: shared_core
     - id: SafetyGate
