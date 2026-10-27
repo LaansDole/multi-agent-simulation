@@ -113,7 +113,7 @@ How often this case switches (all real runs of this case; the routing code is th
 | Run | Triage | Specialists consulted | Divergence | Mode |
 |---|---|---|---|---|
 | headless (SDK) | HIGH | imaging B, pathology abstains, pharmacology C | 0.52 | ADVERSARIAL |
-| 3D, shown above | MODERATE | pathology C (0.55), pharmacology C (0.90) | 0.35 | ADVERSARIAL |
+| 3D, earlier capture (231dd81) | MODERATE | pathology C (0.55), pharmacology C (0.90) | 0.35 | ADVERSARIAL |
 | 3D x3, after the UI changes | MODERATE | pathology abstains, pharmacology abstains | 0.00 | COLLABORATIVE |
 | video recording 1 (shipped) | HIGH | imaging B, pathology abstains, pharmacology C | 0.59 | ADVERSARIAL |
 | video recording 2 (not used) | MODERATE | pathology abstains, pharmacology C | 0.00 | COLLABORATIVE |
