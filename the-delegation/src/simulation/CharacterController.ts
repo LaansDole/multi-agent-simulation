@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import { getActiveAgentSet } from '../integration/store/teamStore';
 import { AgentBehavior, AnimationName, CharacterStateKey, ExpressionKey, ICharacterDriver } from '../types';
 
+import { AREA_SPOT_RINGS, AREA_SPOT_SPACING } from './constants';
 import { AgentStateBuffer } from './behavior/AgentStateBuffer';
 import { CharacterStateMachine } from './behavior/CharacterStateMachine';
 import { CharacterManager } from './entities/CharacterManager';
@@ -29,6 +30,8 @@ export class CharacterController implements ICharacterDriver {
   private pathAgents: PathAgent[] = [];
   /** Per-agent callback fired when the agent reaches its path destination. */
   private arrivalCallbacks: ((index: number) => void)[] = [];
+  /** Standing spot each agent holds at a shared area POI; released when the agent moves on. */
+  private areaSpots = new Map<number, THREE.Vector3>();
 
   constructor(
     public readonly characterManager: CharacterManager,
@@ -102,6 +105,7 @@ export class CharacterController implements ICharacterDriver {
       // Emergency Teleport: If the target is valid on the navmesh but we can't find a path
       // (likely because the character is stuck outside the navmesh bounds), teleport directly.
       if (index === getActiveAgentSet().user.index) {
+        this._releaseReservations(index);
         this.characterManager.setPosition(index, target);
         if (targetOrientation) {
           this.characterManager.setOrientation(index, targetOrientation);
@@ -118,6 +122,7 @@ export class CharacterController implements ICharacterDriver {
     // not at the nearest navmesh polygon boundary.
     path[path.length - 1] = target.clone();
 
+    this._releaseReservations(index);
     this.pathAgents[index].setPath(path, from);
     this.arrivalCallbacks[index] = (i) => {
       if (targetOrientation) {
@@ -133,9 +138,17 @@ export class CharacterController implements ICharacterDriver {
     return true;
   }
 
+  /** The agent is leaving: free its seat/POI reservations and its area standing spot. */
+  private _releaseReservations(index: number): void {
+    this.poiManager.releaseAll(index);
+    this.areaSpots.delete(index);
+  }
+
   /**
    * Walk a character to a POI by ID.
-   * Occupies the POI immediately; releases existing ones first.
+   * Seat-like POIs are exclusive: occupies the POI immediately and releases existing ones first.
+   * Area POIs (prefix AREA_POI_PREFIX, e.g. the boardroom) are shared: the agent walks to its own
+   * free standing spot around the area centre and faces the centre.
    */
   public walkToPoi(
     index: number,
@@ -144,7 +157,18 @@ export class CharacterController implements ICharacterDriver {
     fromPosition?: THREE.Vector3,
   ): boolean {
     const poi = this.poiManager.getPoi(poiId);
-    if (!poi || (poi.occupiedBy !== null && poi.occupiedBy !== index)) return false;
+    if (!poi) return false;
+    const isArea = poi.id.startsWith(AREA_POI_PREFIX);
+    if (!isArea && poi.occupiedBy !== null && poi.occupiedBy !== index) return false;
+
+    const target = isArea ? this._freeAreaSpot(index, poi.position) : poi.position;
+    if (!target) return false;
+    const orientation = isArea
+      ? new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        Math.atan2(poi.position.x - target.x, poi.position.z - target.z),
+      )
+      : poi.quaternion;
 
     const targetState = poi.arrivalState;
     const isSitVariant = targetState === 'sit_idle' || targetState === 'sit_work';
@@ -157,14 +181,12 @@ export class CharacterController implements ICharacterDriver {
     }
 
     // Check path before releasing old POIs
-    const moved = this.moveTo(index, poi.position, 'idle', (i) => {
-      // 1. Teleport to exact POI position (removes any sub-unit navmesh offset)
-      this.characterManager.setPosition(i, poi.position);
+    const moved = this.moveTo(index, target, 'idle', (i) => {
+      // 1. Teleport to the exact target (removes any sub-unit navmesh offset)
+      this.characterManager.setPosition(i, target);
 
-      // 2. Snap orientation to POI facing direction (skip if it's an 'area' POI)
-      if (!poi.id.startsWith(AREA_POI_PREFIX)) {
-        this.characterManager.setOrientation(i, poi.quaternion);
-      }
+      // 2. Snap orientation: POI facing direction, or towards the centre of an area
+      this.characterManager.setOrientation(i, orientation);
 
       // 3. Switch GPU to SEATED so the character won't be moved by any stray GOTO commands
       if (isSitVariant) {
@@ -180,10 +202,29 @@ export class CharacterController implements ICharacterDriver {
 
     if (!moved) return false;
 
-    this.poiManager.releaseAll(index);
-    this.poiManager.occupy(poiId, index);
+    if (isArea) this.areaSpots.set(index, target);
+    else this.poiManager.occupy(poiId, index);
 
     return true;
+  }
+
+  /**
+   * First walkable spot on rings around `centre` (radius and arc spacing AREA_SPOT_SPACING) that no
+   * other agent holds, so agents sharing an area never stand on top of each other.
+   */
+  private _freeAreaSpot(index: number, centre: THREE.Vector3): THREE.Vector3 | null {
+    for (let ring = 1; ring <= AREA_SPOT_RINGS; ring++) {
+      const radius = ring * AREA_SPOT_SPACING;
+      const slots = Math.floor((2 * Math.PI * radius) / AREA_SPOT_SPACING);
+      for (let slot = 0; slot < slots; slot++) {
+        const angle = (slot / slots) * 2 * Math.PI;
+        const spot = new THREE.Vector3(centre.x + Math.cos(angle) * radius, centre.y, centre.z + Math.sin(angle) * radius);
+        const taken = [...this.areaSpots].some(([i, held]) => i !== index && held.distanceTo(spot) < AREA_SPOT_SPACING / 2);
+        if (!taken && this.navMesh.isWalkable(spot)) return spot;
+      }
+    }
+    console.warn(`[CharacterController] agent ${index}: no free standing spot around (${centre.x.toFixed(2)}, ${centre.z.toFixed(2)})`);
+    return null;
   }
 
   /** Speaking mouth animation overlay — independent of character state. */
@@ -258,9 +299,10 @@ export class CharacterController implements ICharacterDriver {
    * @param npcIndices   Indices of all NPC agents, in the desired spawn-assignment order.
    */
   public warpAllToSpawn(playerIndex: number, npcIndices: number[]): void {
-    // 1. Release all POIs so spawn slots are free
+    // 1. Release all POIs and area spots so spawn slots are free
     this.poiManager.releaseAll(playerIndex);
     npcIndices.forEach(i => this.poiManager.releaseAll(i));
+    this.areaSpots.clear();
 
     // 2. Cancel in-flight paths and snap physics to IDLE
     this.cancelMovement(playerIndex);
@@ -311,6 +353,7 @@ export class CharacterController implements ICharacterDriver {
       this.pathAgents.push(new PathAgent(i, stateBuffer));
     }
     this.stateMachine = new CharacterStateMachine(newCount);
+    this.areaSpots.clear();
   }
 
   public setInstanceCount(count: number): void {
@@ -323,6 +366,7 @@ export class CharacterController implements ICharacterDriver {
       this.pathAgents.push(new PathAgent(i, stateBuffer));
     }
     this.stateMachine = new CharacterStateMachine(newCount);
+    this.areaSpots.clear();
   }
 
   public get isLoaded(): boolean {

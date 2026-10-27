@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { AgentNode, USER_ID, MAX_AGENTS } from '../../data/agents';
+import { AgentNode, USER_ID } from '../../data/agents';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { IAgentDriver } from '../../types';
 import { CharacterController } from '../CharacterController';
@@ -164,26 +164,13 @@ export class NpcAgentDriver implements IAgentDriver {
       }
     }
 
-    // B. Chance to wander to common areas (both standing and those getting up)
+    // B. Chance to wander to common areas (both standing and those getting up).
+    // Areas are shared: walkToPoi gives each agent its own standing spot facing the centre.
     if (rand < 0.7) {
-      const areaPois = this.controller.poiManager.getFreePoisByPrefix(AREA_POI_PREFIX, this.agentIndex);
+      const areaPois = this.controller.poiManager.getPoisByPrefix(AREA_POI_PREFIX);
       if (areaPois.length > 0) {
         const areaPoi = areaPois[Math.floor(Math.random() * areaPois.length)];
-
-        // Calculate distributed position (0.75m radius, 1 slot per MAX_AGENTS)
-        const angle = (this.agentIndex * (Math.PI * 2)) / MAX_AGENTS;
-        const radius = 1;
-        const target = areaPoi.position.clone();
-        target.x += Math.cos(angle) * radius;
-        target.z += Math.sin(angle) * radius;
-
-        // Calculate "natural" rotation: facing the center of the area
-        const direction = new THREE.Vector3().subVectors(areaPoi.position, target).normalize();
-        const rotationY = Math.atan2(direction.x, direction.z);
-        const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationY);
-
-        if (this.controller.moveTo(this.agentIndex, target, 'look_around', undefined, currentPos, targetQuaternion)) {
-          this.controller.poiManager.releaseAll(this.agentIndex);
+        if (this.controller.walkToPoi(this.agentIndex, areaPoi.id, (i) => this.controller.play(i, 'look_around'), currentPos)) {
           this.behaviorTimer = Math.random() * 5 + 10;
           return;
         }

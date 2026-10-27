@@ -56,4 +56,11 @@ export class NavMeshManager {
     if (!this.ready) return false;
     return this.pf.getGroup(NAVMESH_ZONE, point as any) !== null;
   }
+
+  /** True when `point` lies inside a navmesh polygon, i.e. findPath can start or end there. */
+  public isWalkable(point: THREE.Vector3): boolean {
+    if (!this.ready) return false;
+    const groupID = this.pf.getGroup(NAVMESH_ZONE, point);
+    return groupID !== null && this.pf.getClosestNode(point, NAVMESH_ZONE, groupID, true) !== null;
+  }
 }
