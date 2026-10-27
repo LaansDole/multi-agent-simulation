@@ -85,7 +85,12 @@ Remaining limitations seen in this capture:
 
 ![seven characters](3d-10-seven-characters.png)
 
-- Pre-existing, found while fixing the above: the last character in the team never walks (its GPU movement step leaves it in place; with 7 agents that is Synthesizer, before it was Pharmacology). `SceneManager.moveNpcToSpawn` and `moveNpcToBoardroom` look up `spawn-N` and `area-boardroom`, but the office ids are `idle-spawn-N` and `idle-area-boardroom`, so agents never walk back to their spawn or to the boardroom.
+- (Fixed in fc166fc) The last character in the team never walked. The movement compute shader is dispatched in whole 64-invocation workgroups and had no bounds check; WebGPU (Dawn/Metal) clamps the extra invocations' out-of-range accesses onto the last element, so ~60 idle invocations overwrote the last character with zero velocity every frame. A `instanceIndex >= count` guard fixes it. Measured after the fix: the last agent moves 1.08 m/s with 8 characters and 0.88 m/s with 5 (was 0.00 in both).
+- (Fixed in c428f00) `moveNpcToSpawn` / `moveNpcToBoardroom` looked up `spawn-N` and `area-boardroom`, which do not exist (the office uses `idle-spawn-N` and `idle-area-boardroom`). POI ids now come from constants in `PoiManager.ts`, and a missing id warns once. Verified live: on hold -> boardroom, done -> own spawn.
+
+![all characters walking](3d-11-all-characters-walk.png)
+
+- Still open (pre-existing): only one agent at a time can use the boardroom (single reserved POI, not released on the way back); an agent leaves its spawn the moment it returns (idle timer reset to 0); an agent seated slightly off its chair can fail path-finding and silently not move.
 - After re-importing a workflow, the 3D scene keeps the old characters until the page is reloaded.
 - PrimaryCare is labelled "Primarycare" (the existing `titleize` helper).
 - Not captured: characters in the "working" state mid-run. The headless run finished before a screenshot was taken. The animation path is covered by f2's smoke check (all three specialists go to working on the CareTeam `node_started` event).
