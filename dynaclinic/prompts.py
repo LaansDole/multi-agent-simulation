@@ -6,7 +6,9 @@ JSON prompts spell out the exact keys that ``triage``, ``divergence`` and ``crit
 Context policies (care team and Synthesizer): ``strict`` gives each specialist only its modality slice and
 the Synthesizer only the question, options and Blackboard (bounded-context personas); ``shared_core`` (default)
 adds the shared case summary (vignette, demographics, question, options) before each specialist's slice and
-the full case block before the Synthesizer's Blackboard.
+the full case block before the Synthesizer's Blackboard. On an open-ended case under ``shared_core`` each specialist
+reasons from the whole narrative (its slice also quotes the vignette sentences of its domain) and abstains only
+when the scenario holds nothing for its domain; ``strict`` keeps the slice-only rule.
 """
 
 import re
@@ -88,16 +90,21 @@ Respond with one JSON object:
 {{"findings": ["<finding from your {modality}>"], "claims": ["<one atomic, checkable statement>"]}}
 then, after the JSON, exactly one final line:
 PRIMARY ASSERTION: <the single leading diagnosis or recommendation, one short sentence>
-Write PRIMARY ASSERTION: ABSTAIN instead when your {modality} holds no relevant data."""
+"""
 _SPECIALIST_OPEN = _SPECIALIST_HEAD + """\
 You see ONLY the {modality} for this patient. Reason only from that data; do not assume findings from other
 modalities.
-""" + _SPECIALIST_ASSERT
+""" + _SPECIALIST_ASSERT + "Write PRIMARY ASSERTION: ABSTAIN instead when your {modality} holds no relevant data."
+# Open-ended shared_core: the narrative is every specialist's data, so an empty structured slice never means ABSTAIN.
 _SPECIALIST_SHARED_CORE_OPEN = _SPECIALIST_HEAD + """\
 You see a shared case summary (vignette, demographics and any question) and your own {modality}.
-Use the summary for clinical context; reason from your {modality} and do not prescribe outside your role.
-Do not assume findings from other modalities that the case does not state.
-""" + _SPECIALIST_ASSERT
+Read the whole scenario, not just your {modality}: the narrative states facts from your domain too. From it, give
+your domain's leading hypothesis or recommendation: {lens}. Do not prescribe outside your role or assume findings
+the case does not state.
+""" + _SPECIALIST_ASSERT + (
+    "Write PRIMARY ASSERTION: ABSTAIN only when the whole scenario holds nothing for your domain ({nothing}); "
+    "an empty modality data section alone is never a reason to abstain."
+)
 # (context policy, open-ended case) -> specialist system prompt template.
 _SPECIALIST_TEMPLATES = {
     (STRICT, False): _SPECIALIST,
@@ -138,10 +145,18 @@ _SINGLE_AGENT = f"""You are an experienced clinician. Read the case and answer t
 _SINGLE_AGENT_OPEN = f"""You are an experienced clinician. Read the clinical scenario.
 {_WRITE_UP}"""
 
+# lens/nothing are read only by the open-ended shared_core prompt.
 _PERSONAS = {
-    IMAGING: {"title": "Diagnostic Imaging", "modality": "imaging studies"},
-    PATHOLOGY: {"title": "Pathology/Lab", "modality": "laboratory results"},
-    PHARMACOLOGY: {"title": "Pharmacology", "modality": "medication list and allergies"},
+    IMAGING: {"title": "Diagnostic Imaging", "modality": "imaging studies",
+              "lens": "what the stated tests and imaging findings imply, or which test or imaging study the "
+                      "presentation needs",
+              "nothing": "no test or imaging result and no presentation that needs one"},
+    PATHOLOGY: {"title": "Pathology/Lab", "modality": "laboratory results",
+                "lens": "what the stated laboratory picture implies, or which laboratory tests decide the case",
+                "nothing": "no laboratory value and no condition whose work-up needs one"},
+    PHARMACOLOGY: {"title": "Pharmacology", "modality": "medication list and allergies",
+                   "lens": "the drug-related risk or the drug treatment decision",
+                   "nothing": "no medication, allergy or drug therapy and no drug treatment to decide"},
 }
 SYSTEM_PROMPTS: dict[str, str] = {
     TRIAGE: _TRIAGE,
@@ -165,9 +180,24 @@ _IMAGING_TERMS = re.compile(
     r"electrocardiogra|\bscan\b|angiogra|doppler|imaging",
     re.IGNORECASE,
 )
+_LAB_TERMS = re.compile(
+    r"d-dimer|troponin|creatinine|\be?gfr\b|\brenal\b|\bkidney\b|\binr\b|lactate|ha?emoglobin|hba1c|glucose|"
+    r"\bwbc\b|white (?:blood )?cell|platelet|potassium|\bbnp\b|\bcrp\b|\blabs?\b|laborator|blood tests?",
+    re.IGNORECASE,
+)
+# ponytail: keyword heuristic (drug classes, therapy words, "on <drug-like word>"); misses unlisted drug names,
+# a drug lexicon (e.g. RxNorm) would replace it if slice recall matters.
+_DRUG_TERMS = re.compile(
+    r"warfarin|anticoagul|insulin|metformin|aspirin|heparin|statin|antibiotic|steroid|opioid|therap|allerg|"
+    r"medication|\btakes\b|\btaking\b|\bdrugs?\b|prescri|\bon [a-z]+(?:in|ol|il|an|ide|ine|one|pam|lam|mab|vir)\b",
+    re.IGNORECASE,
+)
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 # Structured sections each specialist may see.
 _SLICES = {IMAGING: ("Imaging",), PATHOLOGY: ("Labs",), PHARMACOLOGY: ("Meds", "Allergies")}
+# Vignette sentences quoted in each slice: imaging always, labs and drugs on open-ended shared_core cases only.
+_MENTIONS = {IMAGING: ("Imaging", _IMAGING_TERMS), PATHOLOGY: ("Labs", _LAB_TERMS),
+             PHARMACOLOGY: ("Medications", _DRUG_TERMS)}
 
 
 def answer_system(role: str, case: Case) -> str:
@@ -200,25 +230,29 @@ def check_context_policy(policy: str) -> str:
     return policy
 
 
-def modality_data(role: str, case: Case, sections: dict[str, str]) -> str:
+def modality_data(role: str, case: Case, sections: dict[str, str], policy: str = DEFAULT_CONTEXT_POLICY) -> str:
     """One specialist's own data slice, ``""`` when the case has none for that modality.
 
-    Imaging also gets the vignette sentences that mention an imaging study; Pathology/Lab and
-    Pharmacology slices never include the vignette, so no slice carries another modality's data.
+    Imaging also gets the vignette sentences that mention an imaging study or ECG. Pathology/Lab and
+    Pharmacology get the vignette sentences that mention a lab or a drug only on an open-ended case under
+    ``shared_core`` (a bare narrative has no structured sections); otherwise their slices never include the vignette.
     """
     if role not in _SLICES:
         raise ValueError(f"unknown specialist role {role!r}; expected one of {SPECIALISTS}")
     parts = [_sections(sections, _SLICES[role])]
-    if role == IMAGING:
-        mentions = [s for s in _SENTENCE.split(case.vignette) if _IMAGING_TERMS.search(s)]
-        parts.append("Imaging mentioned in the case:\n" + "\n".join(mentions) if mentions else "")
+    if role == IMAGING or (case.open_ended and policy == SHARED_CORE):
+        label, terms = _MENTIONS[role]
+        mentions = [s for s in _SENTENCE.split(case.vignette) if terms.search(s)]
+        parts.append(f"{label} mentioned in the case:\n" + "\n".join(mentions) if mentions else "")
     return "\n\n".join(part for part in parts if part)
 
 
 def specialist_system(role: str, policy: str, open_ended: bool = False) -> str:
     """One specialist's system prompt under ``policy``; strict multiple choice is ``SYSTEM_PROMPTS[role]``.
 
-    An open-ended case drops the option distribution and asks for a final ``PRIMARY ASSERTION:`` line."""
+    An open-ended case drops the option distribution and asks for a final ``PRIMARY ASSERTION:`` line. Under
+    ``shared_core`` the specialist reasons from the whole narrative and abstains only when it holds nothing for its
+    domain; under ``strict`` it sees its slice only and abstains when that slice is empty."""
     return _SPECIALIST_TEMPLATES[check_context_policy(policy), open_ended].format(**_PERSONAS[role])
 
 
@@ -226,7 +260,7 @@ def specialist_block(role: str, case: Case, sections: dict[str, str], policy: st
     """One specialist's input: ``strict`` is its ``modality_data`` slice, question and options;
     ``shared_core`` is the shared case summary (vignette, demographics, question, options), then the slice."""
     check_context_policy(policy)
-    data = modality_data(role, case, sections) or f"(no {role} data available)"
+    data = modality_data(role, case, sections, policy) or f"(no {role} data available)"
     if policy == STRICT:
         return f"{data}\n\n{question_block(case)}"
     core = case_block(case, {"Demographics": sections.get("Demographics", "")})

@@ -157,10 +157,12 @@ class CaseRun:
         self.board.write(BlackboardEntry(PRIMARY_CARE, "verdict", text, step=1))  # read by a regeneration
 
     def team_roles(self) -> list[str]:
-        """MODERATE: the first two of ``_MODERATE_ORDER`` with data for the case; otherwise every specialist."""
+        """MODERATE: the first two of ``_MODERATE_ORDER`` with data for the case (under ``context_policy``, as the
+        specialists see it); otherwise every specialist."""
         if self.result.tier != "MODERATE":
             return list(SPECIALISTS)
-        chosen = sorted(_MODERATE_ORDER, key=lambda role: not modality_data(role, self.case, self.sections))[:2]
+        policy = self.context_policy
+        chosen = sorted(_MODERATE_ORDER, key=lambda role: not modality_data(role, self.case, self.sections, policy))[:2]
         return [role for role in SPECIALISTS if role in chosen]
 
     def care_team(self, roles: Sequence[str]) -> None:

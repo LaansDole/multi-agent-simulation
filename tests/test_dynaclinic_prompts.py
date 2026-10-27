@@ -189,3 +189,62 @@ def test_specialist_block_rejects_unknown_role() -> None:
 def test_specialist_block_rejects_unknown_policy() -> None:
     with pytest.raises(ValueError, match="loose"):
         specialist_block(PATHOLOGY, CASE, SECTIONS, "loose")
+
+
+NARRATIVE = sections_from_structured({})  # a bare free-text scenario has no structured sections
+WARFARIN = Case("chest-pain", "devall", "68-year-old diabetic patient with chest pain, renal insufficiency, and "
+                "concurrent warfarin therapy.", "", [], "")
+PE = replace(WARFARIN, vignette="55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long "
+                                "flight. She lives alone.")
+DRUGS = replace(WARFARIN, vignette="Chest pain since noon. Warfarin was stopped last week. She is on lisinopril. "
+                                   "She lives alone.")
+
+
+def _own(text: str) -> str:
+    """The specialist's own modality part of a ``specialist_block`` (all of it under ``strict``)."""
+    return text.rpartition("Your modality data (focus here):")[2]
+
+
+@pytest.mark.parametrize("role", SPECIALISTS)
+def test_open_ended_shared_core_specialists_abstain_only_when_the_whole_scenario_is_silent_on_their_domain(
+    role: str,
+) -> None:
+    shared = specialist_system(role, SHARED_CORE, open_ended=True)
+    assert "whole scenario" in shared and "holds no relevant data" not in shared
+    assert shared.splitlines()[-1].startswith("Write PRIMARY ASSERTION: ABSTAIN only when the whole scenario")
+    # strict means the slice only: abstain whenever the modality slice is empty
+    assert specialist_system(role, STRICT, open_ended=True).splitlines()[-1].endswith("holds no relevant data.")
+
+
+@pytest.mark.parametrize(
+    ("case", "role", "sentence"),
+    [
+        (WARFARIN, PHARMACOLOGY, "concurrent warfarin therapy"),
+        (WARFARIN, PATHOLOGY, "renal insufficiency"),
+        (PE, PATHOLOGY, "elevated D-dimer"),
+        (PE, IMAGING, "normal ECG"),
+        (PE, PHARMACOLOGY, None),
+        (DRUGS, PHARMACOLOGY, "Warfarin was stopped last week."),
+        (DRUGS, PHARMACOLOGY, "She is on lisinopril."),
+    ],
+)
+def test_open_ended_shared_core_slices_carry_the_narrative_sentences_of_their_domain(
+    case: Case, role: str, sentence: str | None
+) -> None:
+    own = _own(specialist_block(role, case, NARRATIVE, SHARED_CORE))
+    assert "lives alone" not in own
+    if sentence is None:
+        assert own.strip() == f"(no {role} data available)"
+    else:
+        assert sentence in own and "data available" not in own
+
+
+@pytest.mark.parametrize(
+    ("case", "policy"),
+    [(WARFARIN, STRICT), (replace(WARFARIN, question="Next step?", options=CASE.options, answer="A"), SHARED_CORE)],
+)
+@pytest.mark.parametrize("role", [PATHOLOGY, PHARMACOLOGY])
+def test_strict_and_multiple_choice_slices_take_no_narrative_lab_or_drug_sentences(
+    case: Case, policy: str, role: str
+) -> None:
+    assert _own(specialist_block(role, case, NARRATIVE, policy)).strip().startswith(f"(no {role} data available)")

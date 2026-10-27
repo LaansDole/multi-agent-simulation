@@ -319,6 +319,16 @@ def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(
     assert (result.embedder, result.final_text, result.warnings) == ("fake", WRITE_UP, [])
 
 
+@pytest.mark.parametrize(("policy", "team"), [(SHARED_CORE, "imaging,pathology"), (STRICT, "imaging,pharmacology")])
+def test_moderate_open_ended_team_follows_the_narrative_slices_under_shared_core(policy: str, team: str) -> None:
+    case = Case("pe", "devall", "55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long "
+                "flight.", "", [], "")
+    client = _client(triage=_triage("MODERATE"), synthesizer=WRITE_UP, imaging=_asserting("Pulmonary embolism."),
+                     pathology=_asserting("Pulmonary embolism."), pharmacology=_asserting("Pulmonary embolism."))
+    result = DynaClinicPipeline(client, context_policy=policy).run(case)
+    assert f"care_team:{team}" in _stages(result)
+
+
 # sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE, captured
 # at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte.
 STRICT_TRANSCRIPTS = {
