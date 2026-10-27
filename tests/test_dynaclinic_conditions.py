@@ -6,7 +6,8 @@ from tests.dynaclinic_fixtures import no_network  # noqa: F401
 from utils.function_manager import EDGE_FUNCTION_DIR, FunctionManager
 
 NAMES = (
-    "dc_route_low", "dc_route_team", "dc_mode_collaborative", "dc_mode_adversarial", "dc_gate_pass", "dc_gate_blocked",
+    "dc_route_low", "dc_route_team", "dc_mode_hierarchical", "dc_mode_team", "dc_mode_collaborative",
+    "dc_mode_adversarial", "dc_gate_pass", "dc_gate_blocked",
 )
 _EDGE_FUNCTIONS = FunctionManager(EDGE_FUNCTION_DIR)
 
@@ -21,8 +22,11 @@ def _fired(text: str) -> set[str]:
         ("ROUTE: LOW\nTriage: LLM tier LOW.", {"dc_route_low"}),
         ("ROUTE: MODERATE", {"dc_route_team"}),
         ("ROUTE: HIGH\n", {"dc_route_team"}),
-        ("MODE: COLLABORATIVE\nDivergence 0.02", {"dc_mode_collaborative"}),
-        ("MODE: ADVERSARIAL", {"dc_mode_adversarial"}),
+        ("MODE: HIERARCHICAL\nComplexity C=0.12", {"dc_mode_hierarchical"}),
+        # dc_uncertainty and dc_divergence_gate share the MODE marker; the graph wires each pair to one source
+        ("MODE: COLLABORATIVE\nDivergence 0.02", {"dc_mode_team", "dc_mode_collaborative"}),
+        ("MODE: ADVERSARIAL", {"dc_mode_team", "dc_mode_adversarial"}),
+        ("MODE: HIERARCHICALLY", set()),
         ("GATE: PASS\nFINAL ANSWER: B", {"dc_gate_pass"}),
         ("GATE: BLOCKED\nBLOCKED FOR MANUAL REVIEW", {"dc_gate_blocked"}),
         ("\n\n  **Route:** low  \n", {"dc_route_low"}),

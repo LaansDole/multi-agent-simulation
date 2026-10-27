@@ -215,10 +215,11 @@ def _walk(planner: GreedyPlanner, **outcomes: Any) -> list[str]:
         last = step.stage
 
 
-def test_planner_low_path() -> None:
-    assert _walk(GreedyPlanner(), tier="LOW") == [
+def test_planner_hierarchical_path() -> None:
+    assert _walk(GreedyPlanner(), mode="hierarchical") == [
         "retrieval:cache_lookup",
         "agent_call:triage",
+        "agent_call:uncertainty",
         "agent_call:primary_care",
         "agent_call:safety_gate",
         "terminal:done",
@@ -226,9 +227,10 @@ def test_planner_low_path() -> None:
 
 
 def test_planner_team_paths() -> None:
-    assert _walk(GreedyPlanner(), tier="HIGH", mode="adversarial") == [
+    assert _walk(GreedyPlanner(), mode="adversarial") == [
         "retrieval:cache_lookup",
         "agent_call:triage",
+        "agent_call:uncertainty",
         "agent_call:care_team",
         "agent_call:divergence",
         "agent_call:critic",
@@ -236,7 +238,8 @@ def test_planner_team_paths() -> None:
         "agent_call:safety_gate",
         "terminal:done",
     ]
-    assert "agent_call:critic" not in _walk(GreedyPlanner(), tier="MODERATE", mode="collaborative")
+    collaborative = _walk(GreedyPlanner(), mode="collaborative")
+    assert "agent_call:care_team" in collaborative and "agent_call:critic" not in collaborative
 
 
 def test_planner_cache_hit_terminates() -> None:
@@ -244,21 +247,21 @@ def test_planner_cache_hit_terminates() -> None:
 
 
 def test_planner_backtracks_once_on_gate_failure() -> None:
-    stages = _walk(GreedyPlanner(), tier="LOW", gate_results=[False, False])
+    stages = _walk(GreedyPlanner(), mode="hierarchical", gate_results=[False, False])
     assert stages[-4:] == [
         "agent_call:safety_gate",
         "backtrack:synthesizer",
         "agent_call:safety_gate",
         "terminal:done",
     ]
-    assert _walk(GreedyPlanner(), tier="LOW", gate_results=[False, True]).count("backtrack:synthesizer") == 1
+    assert _walk(GreedyPlanner(), mode="hierarchical", gate_results=[False, True]).count("backtrack:synthesizer") == 1
 
 
-def test_planner_rejects_unknown_stage_and_missing_tier() -> None:
+def test_planner_rejects_unknown_stage_and_missing_mode() -> None:
     with pytest.raises(ValueError, match="unknown stage"):
         GreedyPlanner().next_step("dance")
-    with pytest.raises(ValueError, match="tier"):
-        GreedyPlanner().next_step("triage")
+    with pytest.raises(ValueError, match="mode"):
+        GreedyPlanner().next_step("uncertainty")
 
 
 def test_planner_reward_formula_and_trace() -> None:

@@ -17,6 +17,17 @@ def dc_route_team(data: str) -> bool:
     return first_line_marker(data, "ROUTE") in {"MODERATE", "HIGH"}
 
 
+def dc_mode_hierarchical(data: str) -> bool:
+    """The mode rule chose the hierarchical hub (``MODE: HIERARCHICAL``): go to the Primary Care Agent."""
+    return first_line_marker(data, "MODE") == "HIERARCHICAL"
+
+
+def dc_mode_team(data: str) -> bool:
+    """The mode rule chose a team mode (``MODE: COLLABORATIVE`` or ``MODE: ADVERSARIAL``): go to the Care Team."""
+    return first_line_marker(data, "MODE") in {"COLLABORATIVE", "ADVERSARIAL"}
+
+
+
 def dc_mode_collaborative(data: str) -> bool:
     """The care team agrees (``MODE: COLLABORATIVE``): go straight to the Synthesizer."""
     return first_line_marker(data, "MODE") == "COLLABORATIVE"

@@ -325,22 +325,24 @@ class GreedyPlanner:
         self,
         last_stage: str,
         *,
-        tier: str | None = None,
         mode: str | None = None,
         cache_hit: bool = False,
         gate_passed: bool | None = None,
         regenerations: int = 0,
     ) -> PlannerStep:
-        """Fixed policy of design spec section 5 (cache -> triage -> single/team -> critic? -> gate)."""
+        """Fixed policy of design spec section 5 with the proposal's mode rule (cache -> triage -> uncertainty ->
+        hierarchical: primary care | collaborative/adversarial: team -> divergence -> critic? -> synthesizer -> gate)."""
         match last_stage:
             case "start":
                 return PlannerStep("retrieval", "cache_lookup")
             case "cache_lookup":
                 return PlannerStep("terminal", "done") if cache_hit else PlannerStep("agent_call", "triage")
             case "triage":
-                if tier is None:
-                    raise ValueError("triage outcome needs a tier")
-                return PlannerStep("agent_call", "primary_care" if tier == "LOW" else "care_team")
+                return PlannerStep("agent_call", "uncertainty")
+            case "uncertainty":
+                if mode is None:
+                    raise ValueError("the uncertainty stage needs a mode")
+                return PlannerStep("agent_call", "primary_care" if mode == "hierarchical" else "care_team")
             case "care_team":
                 return PlannerStep("agent_call", "divergence")
             case "divergence":

@@ -44,6 +44,7 @@ from dynaclinic.prompts import (
     CRITIC,
     CRITIC_JUDGE,
     DEFAULT_CONTEXT_POLICY,
+    GENERALIST,
     IMAGING,
     SPECIALISTS,
     TRIAGE,
@@ -89,6 +90,11 @@ def dry_run_reply(role: str, system: str, user: str) -> str:
         dist = {letter: 0.8 if letter == top else 0.05 for letter in letters}
         return json.dumps({"findings": ["dry-run finding"], "distribution": dist,
                            "claims": [f"The {role} data favour option {top}"]})
+    if role == GENERALIST:  # one leading hypothesis at 0.8: U stays under the default tau_u
+        top = pick(letters) or "dry-run diagnosis"
+        rest = [letter for letter in letters if letter != top]
+        return json.dumps({"differential": [{"hypothesis": top, "probability": 0.8}]
+                           + [{"hypothesis": letter, "probability": 0.2 / len(rest)} for letter in rest]})
     if role == CRITIC:
         return json.dumps({"claims": [{"text": "The team's findings are consistent with the case", "agent": IMAGING}]})
     if role == CRITIC_JUDGE:
@@ -222,6 +228,8 @@ def _arm_summary(rows: list[Row], env: Mapping[str, str]) -> dict[str, Any]:
     switches = [row["switch"] for row in rows if row["switch"] is not None]
     violations = sum(row["safety_violation"] for row in rows)
     blocked = sum(row["blocked"] for row in rows)
+    # Meta-Controller scores exist only on dynamic rows that reached triage (rows from before f14 lack the keys)
+    scored = [row for row in rows if row.get("complexity") is not None]
     models = Counter(call["model"] for call in calls)
     prices = {model: _price(env, model) for model in models}
     cost = None if None in prices.values() else sum(
@@ -238,6 +246,9 @@ def _arm_summary(rows: list[Row], env: Mapping[str, str]) -> dict[str, Any]:
         "adversarial_switch_rate": sum(switches) / n if switches else None,
         "mean_divergence": _mean(row["divergence"] for row in rows if row["divergence"] is not None),
         "mean_margin_loss": _mean(row["margin_loss"] for row in rows if row["margin_loss"] is not None),
+        "mean_complexity": _mean(row["complexity"] for row in scored),
+        "mean_uncertainty": _mean(row["uncertainty"] for row in scored if row["uncertainty"] is not None),
+        "uncertainty_not_measured": sum(row["uncertainty"] is None for row in scored) if scored else None,
         "safety_violations": violations,
         "safety_violation_rate": violations / n,
         "blocked": blocked,
@@ -282,6 +293,26 @@ def _pct(value: float | None) -> str:
 
 def _num(value: float | None, spec: str = ".3f") -> str:
     return "n/a" if value is None else format(value, spec)
+
+
+def _meta_controller_lines(summary: dict[str, Any], arms: Sequence[str]) -> list[str]:
+    """The dynamic arm's Complexity C and Uncertainty U; empty when no arm scored a case."""
+    scored = [arm for arm in arms if summary["arms_summary"][arm].get("mean_complexity") is not None]
+    if not scored:
+        return []
+    return [
+        "## Meta-Controller",
+        "",
+        ("C: Complexity Score, max(LLM tier level, feature density), tau_c 0.5. U: Uncertainty Score, normalised "
+         "entropy of the generalist differential, tau_u 0.8 (assumed, not validated). Mode rule: U > tau_u "
+         "adversarial, else C <= tau_c hierarchical, else collaborative; modes are counted under routes."),
+        "",
+        "| arm | mean C | mean U | U not measured |",
+        "|---|---|---|---|",
+        *(f"| {arm} | {_num(s['mean_complexity'])} | {_num(s['mean_uncertainty'])} | {s['uncertainty_not_measured']} |"
+          for arm in scored for s in [summary["arms_summary"][arm]]),
+        "",
+    ]
 
 
 def _arm_line(arm: str, s: dict[str, Any]) -> str:
@@ -336,6 +367,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "|" + "---|" * 16,
         *(_arm_line(arm, summary["arms_summary"][arm]) for arm in arms),
         "",
+        *_meta_controller_lines(summary, arms),
         "## Accuracy by gold tier",
         "",
         f"| tier | {' | '.join(arms)} |",

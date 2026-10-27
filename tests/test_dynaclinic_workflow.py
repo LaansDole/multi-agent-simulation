@@ -9,6 +9,7 @@ import pytest
 from dynaclinic.eval.cases import load_synthetic
 from dynaclinic.llm import FakeLLM, set_client_factory
 from dynaclinic.prompts import (
+    GENERALIST,
     IMAGING,
     PATHOLOGY,
     PHARMACOLOGY,
@@ -23,8 +24,8 @@ from tests.test_dynaclinic_pipeline import SCRIPT, _specialist, _triage
 
 WORKFLOW = Path(__file__).resolve().parents[1] / "yaml_instance" / "dynaclinic_mvp.yaml"
 CASES = {case.id: case for case in load_synthetic()}
-LOW_PATH = ["CaseInput", "Triage", "PrimaryCare", "SafetyGate", "Report"]
-TEAM = ["CaseInput", "Triage", "CareTeam", "DivergenceGate"]
+LOW_PATH = ["CaseInput", "Triage", "GeneralistSweep", "PrimaryCare", "SafetyGate", "Report"]
+TEAM = ["CaseInput", "Triage", "GeneralistSweep", "CareTeam", "DivergenceGate"]
 ADVERSARIAL_PATH = [*TEAM, "Critic", "Synthesizer", "SafetyGate", "Report"]
 COLLABORATIVE_PATH = [*TEAM, "Synthesizer", "SafetyGate", "Report"]
 COVID_PROMPT = "a patient has COVID-19 in a sunny day"
@@ -57,18 +58,28 @@ def run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator:
 
 
 @pytest.mark.parametrize(
-    ("case_id", "dissent", "path"),
-    [("syn-low-03", None, LOW_PATH), ("syn-mod-05", None, COLLABORATIVE_PATH), ("syn-high-01", "A", ADVERSARIAL_PATH)],
-    ids=["low", "moderate-collaborative", "high-adversarial"],
+    ("case_id", "dissent", "uncertain", "path"),
+    [
+        ("syn-low-03", None, False, LOW_PATH),
+        ("syn-mod-05", None, False, COLLABORATIVE_PATH),
+        ("syn-high-01", "A", False, ADVERSARIAL_PATH),
+        # a LOW case with a flat generalist differential (U = 1 > tau_u): adversarial although the team agrees
+        ("syn-low-03", None, True, ADVERSARIAL_PATH),
+    ],
+    ids=["low-hierarchical", "moderate-collaborative", "high-adversarial", "low-uncertain-adversarial"],
 )
-def test_case_json_routes_through_its_tier_path(run, case_id: str, dissent: str | None, path: list[str]) -> None:
+def test_case_json_routes_through_its_mode_path(
+    run, case_id: str, dissent: str | None, uncertain: bool, path: list[str]
+) -> None:
     case = CASES[case_id]
     answer = f"FINAL ANSWER: {case.answer}"
+    flat = json.dumps({"differential": [{"hypothesis": letter, "probability": 1} for letter in case.letters()]})
     result, executed, _ = run(
         json.dumps(case.to_dict()),
         **{TRIAGE: _triage(case.gold_tier), PRIMARY_CARE: f"Facts and risks of each option.\n{answer}",
            IMAGING: _specialist(_votes(dissent or case.answer)), PATHOLOGY: _specialist(_votes(case.answer)),
-           PHARMACOLOGY: _specialist(_votes(case.answer)), SYNTHESIZER: f"The team findings support it.\n{answer}"},
+           PHARMACOLOGY: _specialist(_votes(case.answer)), SYNTHESIZER: f"The team findings support it.\n{answer}",
+           **({GENERALIST: flat} if uncertain else {})},
     )
     assert executed == path
     assert set(result.meta_info.outputs) == {f"node_{node}" for node in path} | {"graph_summary"}

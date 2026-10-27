@@ -7,11 +7,13 @@ graph:
     Medications/Allergies/Labs/Imaging lines), a multiple-choice case (Question: plus options A.-E.),
     or Case JSON (vignette, question, options, optional structured meds/allergies/labs/imaging,
     unsafe_options). A case without options is open-ended: it is answered with a clinical write-up
-    ending in RECOMMENDATION:, not a letter. Triage sends LOW cases to a single Primary Care Agent and
-    MODERATE/HIGH cases to the Integrated Care Team, whose specialists write to a shared Blackboard. If
-    their answers diverge beyond tau the Clinical Critic reviews the claims before the Synthesizer
-    answers (adversarial mode). Every answer passes the Layer-4 safety gates before the report.
-    Routing reads only the first-line markers ROUTE:, MODE: and GATE:
+    ending in RECOMMENDATION:, not a letter. The Meta-Controller scores Complexity C (Triage) and
+    Uncertainty U (GeneralistSweep, normalised entropy of one generalist differential) and applies the
+    mode rule: U > tau_u -> adversarial; else C <= tau_c -> hierarchical (Primary Care hub, which may
+    consult specialist spokes); else collaborative. Team modes run the Integrated Care Team, whose
+    specialists write to a shared Blackboard; if their answers diverge beyond tau the Clinical Critic
+    reviews the claims before the Synthesizer answers (adversarial mode). Every answer passes the
+    Layer-4 safety gates before the report. Routing reads only the first-line markers ROUTE:, MODE: and GATE:
     (functions/edge/dynaclinic_conditions.py). Nodes use DYNACLINIC_MODEL and
     DYNACLINIC_FALLBACK_MODELS unless a node sets model. Research prototype on synthetic cases; not
     clinical advice.
@@ -29,14 +31,26 @@ graph:
     - id: Triage
       type: dc_triage
       description: >-
-        Meta-Controller. Ingests the case (FHIR-lite stub), asks the LLM for a complexity tier, scores
-        the case deterministically, bumps an LLM LOW to MODERATE when the score reaches
-        escalate_threshold (safety bias), and emits ROUTE: LOW|MODERATE|HIGH.
+        Meta-Controller, Complexity C. Ingests the case (FHIR-lite stub), asks the LLM for a complexity
+        tier, scores the case deterministically, bumps an LLM LOW to MODERATE when the score reaches
+        escalate_threshold (safety bias), and emits ROUTE: LOW|MODERATE|HIGH. C = max(tier level, feature
+        density), with tau_c 0.5 equivalent to the tier rule.
       config: {}
+    - id: GeneralistSweep
+      type: dc_uncertainty
+      description: >-
+        Meta-Controller, Uncertainty U and mode rule. One generalist call lists a probability-weighted
+        differential (top-k, or one entry per option); U is its normalised entropy. Emits
+        MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL. tau_u 0.8 is assumed, not validated.
+      config:
+        tau_u: 0.8
+        k: 5
     - id: PrimaryCare
       type: dc_primary_care
       description: >-
-        LOW path. Single Primary Care Agent restricted to the Emanuel & Emanuel Informative model:
+        Hierarchical mode hub. Primary Care Agent restricted to the Emanuel & Emanuel Informative model;
+        it may consult up to two specialist spokes (CONSULT: <role>: <question>), each answering only its
+        own question from its own slice, then answers:
         facts and risks of each option, ending in FINAL ANSWER: <letter>; for an open-ended case a
         write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION) ending
         in RECOMMENDATION:.
@@ -44,8 +58,8 @@ graph:
     - id: CareTeam
       type: dc_care_team
       description: >-
-        MODERATE/HIGH path. Integrated Care Team (Imaging, Pathology/Lab, Pharmacology; two of them
-        for MODERATE) writes findings, an answer distribution and claims to the shared Blackboard; for
+        Collaborative/adversarial modes. Integrated Care Team (Imaging, Pathology/Lab, Pharmacology; two of
+        them for a LOW or MODERATE tier) writes findings, an answer distribution and claims to the shared Blackboard; for
         an open-ended case a LEADING DIAGNOSIS (or ABSTAIN) and a DOMAIN RECOMMENDATION instead of a
         distribution. context_policy shared_core: each specialist reads the case summary,
         then its own modality slice; strict: its modality slice only.
@@ -58,7 +72,8 @@ graph:
         disagree or their mean pairwise Jensen-Shannon divergence reaches tau. Open-ended case: when
         the mean pairwise cosine distance between their leading diagnoses (text-embedding-3-small,
         hashing fallback) reaches tau_semantic (unset: the embedder's default), or fewer than two
-        specialists asserted anything. Else MODE: COLLABORATIVE. No LLM call.
+        specialists asserted anything. Else MODE: COLLABORATIVE. Adversarial mode entered by
+        uncertainty stays ADVERSARIAL; the divergence is only reported. No LLM call.
       config:
         tau: 0.25
     - id: Critic
@@ -106,17 +121,19 @@ graph:
     - from: CaseInput
       to: Triage
     - from: Triage
+      to: GeneralistSweep
+    - from: GeneralistSweep
       to: PrimaryCare
       condition:
         type: function
         config:
-          name: dc_route_low
-    - from: Triage
+          name: dc_mode_hierarchical
+    - from: GeneralistSweep
       to: CareTeam
       condition:
         type: function
         config:
-          name: dc_route_team
+          name: dc_mode_team
     - from: PrimaryCare
       to: SafetyGate
     - from: CareTeam

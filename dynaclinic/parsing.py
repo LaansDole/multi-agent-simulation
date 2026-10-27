@@ -15,6 +15,9 @@ ABSTAIN = "ABSTAIN"
 LEADING_DIAGNOSIS = "LEADING DIAGNOSIS"
 DOMAIN_RECOMMENDATION = "DOMAIN RECOMMENDATION"
 PRIMARY_ASSERTION = "PRIMARY ASSERTION"
+MAX_CONSULTS = 2
+_CONSULT = re.compile(r"^[ \t*_`#>-]*CONSULT[ \t*_`]*:[ \t]*([^:\n]+?)[ \t]*:[ \t]*(\S.*?)[ \t]*$",
+                      re.IGNORECASE | re.MULTILINE)
 
 
 def _balanced_objects(text: str) -> Iterator[str]:
@@ -99,3 +102,24 @@ def first_line_marker(text: str, key: str) -> str | None:
             match = pattern.match(line)
             return match.group(1).upper() if match else None
     return None
+
+
+def consult_requests(
+    text: str, roles: Iterable[str], limit: int = MAX_CONSULTS
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """``(requests, warnings)`` from the ``CONSULT: <role>: <question>`` lines of a hub reply, in order.
+
+    A line naming a role outside ``roles`` (case-insensitive) or past the first ``limit`` valid ones is ignored with
+    a warning."""
+    known = set(roles)
+    requests: list[tuple[str, str]] = []
+    warnings: list[str] = []
+    for name, question in _CONSULT.findall(text):
+        role = name.strip(" *_`").lower()
+        if role not in known:
+            warnings.append(f"ignored CONSULT for unknown role {name.strip()!r}")
+        elif len(requests) >= limit:
+            warnings.append(f"ignored CONSULT {role} beyond {limit} consults")
+        else:
+            requests.append((role, question.strip(" *_`")))
+    return requests, warnings

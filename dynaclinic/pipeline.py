@@ -7,7 +7,8 @@ single agent) or a care team in which every specialist failed sets ``error`` and
 or regeneration failure) go to ``warnings`` and the run continues.
 
 Route entries are stable identifiers: ``ingest``, ``cache_lookup:off|miss|rejected``, ``cache_hit``,
-``triage:<TIER>``, ``primary_care``, ``care_team:<roles>``, ``care_team:failed``,
+``triage:<TIER>``, ``uncertainty:<U>|n/a``, ``mode:hierarchical|collaborative|adversarial:uncertainty``,
+``primary_care``, ``hub_consult:<roles>``, ``care_team:<roles>``, ``care_team:failed``,
 ``divergence:<d>:switch|stay``, ``critic``, ``synthesizer``, ``regenerate``, ``safety_gate:pass|blocked``,
 ``single_agent``. In the dynamic arm every
 stage is chosen by the planner and followed by ``planner:<action>:<reward>``; the run ends with
@@ -45,13 +46,16 @@ from dynaclinic.parsing import (
     DOMAIN_RECOMMENDATION,
     LEADING_DIAGNOSIS,
     PRIMARY_ASSERTION,
+    consult_requests,
     extract_diagnosis,
     extract_final_answer,
     extract_json,
     extract_line,
 )
 from dynaclinic.prompts import (
+    CONSULT_ROLES,
     DEFAULT_CONTEXT_POLICY,
+    GENERALIST,
     IMAGING,
     PATHOLOGY,
     PHARMACOLOGY,
@@ -63,20 +67,34 @@ from dynaclinic.prompts import (
     answer_system,
     case_block,
     check_context_policy,
+    consult_block,
+    hub_system,
     modality_data,
     question_block,
     specialist_block,
     specialist_system,
+    spoke_block,
+    spoke_system,
+    sweep_system,
 )
 from dynaclinic.safety import SafetyReport, run_gates
 from dynaclinic.triage import (
     MODERATE_SCORE,
+    TAU_C,
     TriageResult,
+    complexity,
     feature_score,
     score_tier,
     triage_case,
 )
 from dynaclinic.types import BlackboardEntry, Case, RunResult
+from dynaclinic.uncertainty import (
+    DEFAULT_K,
+    TAU_U,
+    normalized_entropy,
+    parse_sweep,
+    select_mode,
+)
 
 BLOCKED_PREFIX = "BLOCKED FOR MANUAL REVIEW"
 # MODERATE takes the first two specialists that have data for the case, in this order: Pharmacology
@@ -134,6 +152,7 @@ class CaseRun:
         self.conf = 0.0  # confidence in the leading answer (planner reward input)
         self.abstainers: list[str] = []  # near-uniform specialists left out of the last divergence vote
         self.tau_semantic: float | None = None  # threshold of the last semantic divergence (open-ended case)
+        self.by_uncertainty = False  # adversarial mode entered by U > tau_u: divergence reports, never switches back
 
     def progress(self) -> tuple[float, float, str | None]:
         """``(missing, conf, answer)``; ``missing`` is the open fraction of {tier, answer, gate-verified}."""
@@ -152,19 +171,64 @@ class CaseRun:
                                   error=f"call failed ({err}); used deterministic tier")
         r = self.result
         r.tier = triage.tier
+        threshold = escalate_threshold if triage.llm_tier else MODERATE_SCORE  # the cut-off the tier rule applied
+        r.complexity, r.tau_c = complexity(triage.score, triage.llm_tier, threshold), TAU_C
         r.triage = {name: getattr(triage, name) for name in _TRIAGE_FIELDS}
         if triage.error:
             r.warnings.append(f"triage: {triage.error}")
         r.route.append(f"triage:{triage.tier}")
 
-    def primary_care(self, samples: int = 1) -> None:
-        """Informative-model answer; ``samples > 1`` majority-votes (ties: earliest sample)."""
+    def uncertainty(self, tau_u: float = TAU_U, k: int = DEFAULT_K) -> None:
+        """Meta-Controller mode rule: one generalist sweep gives U (a multiple-choice case's k is its option count),
+        then ``select_mode`` with the triage C. A failed or malformed sweep leaves U unmeasured with a warning and the
+        rule reads U = 0 (C-only routing), so a missing sweep never makes a case adversarial."""
         r = self.result
-        r.mode = "single"
+        if r.complexity is None or r.tau_c is None:
+            raise ValueError("the mode rule needs the triage Complexity Score: run triage first")
+        letters = self.case.letters()
+        k = len(letters) or k
+        try:
+            text, _ = self.client.complete(GENERALIST, sweep_system(self.case, k), case_block(self.case, self.sections),
+                                           json_mode=True)
+            differential, error = parse_sweep(text, letters, k)
+        except LLMError as err:
+            differential, error = None, f"call failed ({err})"
+        if differential is None:
+            r.warnings.append(f"{GENERALIST}: {error}; U not measured, routed on C only")
+        r.uncertainty = None if differential is None else normalized_entropy(list(differential.values()), k)
+        r.differential, r.tau_u, r.top_k = differential or {}, tau_u, k
+        r.mode = select_mode(r.complexity, r.uncertainty or 0.0, r.tau_c, tau_u)
+        self.by_uncertainty = r.mode == "adversarial"
+        c, u = f"C {r.complexity:.2f}", "U n/a (not measured, read as 0)" if r.uncertainty is None else f"U {r.uncertainty:.2f}"
+        if self.by_uncertainty:
+            r.mode_reason = f"{u} > tau_u {tau_u:g}: adversarial, entered by uncertainty regardless of {c}"
+        else:
+            side = ">" if r.mode == "collaborative" else "<="
+            r.mode_reason = f"{c} {side} tau_c {r.tau_c:g} and {u} <= tau_u {tau_u:g}: {r.mode}"
+        r.route.append(f"uncertainty:{'n/a' if r.uncertainty is None else f'{r.uncertainty:.2f}'}")
+        r.route.append(f"mode:{r.mode}{':uncertainty' if self.by_uncertainty else ''}")
+
+    def primary_care(self, samples: int = 1) -> None:
+        """Hierarchical mode: the Informative-model Primary Care Agent as hub. A reply may end in up to
+        ``MAX_CONSULTS`` ``CONSULT: <role>: <question>`` lines instead of an answer: each named specialist (spoke)
+        answers only its question from its own slice, concurrently and independently, and a second hub call finalises
+        with their answers. No CONSULT lines: one call. ``samples > 1`` majority-votes each hub call's replies (ties:
+        earliest sample); consults are read from the first reply that has any."""
+        r = self.result
+        r.mode = "hierarchical"
         r.route.append("primary_care")
-        user = case_block(self.case, self.sections)
-        system = answer_system(PRIMARY_CARE, self.case)
-        texts = [self.client.complete(PRIMARY_CARE, system, user)[0] for _ in range(samples)]
+        system, user = hub_system(self.case), case_block(self.case, self.sections)
+        texts = self._hub(system, user, samples)
+        requests, warnings = next(
+            (parsed for parsed in (consult_requests(text, SPECIALISTS) for text in texts) if any(parsed)), ([], []))
+        r.warnings.extend(f"{PRIMARY_CARE}: {warning}" for warning in warnings)
+        if requests:
+            r.route.append(f"hub_consult:{','.join(role for role, _ in requests)}")
+            with ThreadPoolExecutor(max_workers=len(requests)) as pool:
+                replies = list(pool.map(self._spoke, requests))
+            r.consults = [consult for consult, _ in replies]
+            r.warnings.extend(warning for _, warning in replies if warning)
+            texts = self._hub(system, f"{user}\n\n{consult_block(r.consults)}", samples)
         answers = [extract_final_answer(text, self.case.letters()) for text in texts]
         votes = Counter(answer for answer in answers if answer)
         text = texts[answers.index(votes.most_common(1)[0][0])] if votes else texts[0]
@@ -172,10 +236,25 @@ class CaseRun:
         _set_answer(r, text, self.case.letters(), PRIMARY_CARE)
         self.board.write(BlackboardEntry(PRIMARY_CARE, "verdict", text, step=1))  # read by a regeneration
 
+    def _hub(self, system: str, user: str, samples: int) -> list[str]:
+        return [self.client.complete(PRIMARY_CARE, system, user)[0] for _ in range(samples)]
+
+    def _spoke(self, request: tuple[str, str]) -> tuple[dict[str, str], str | None]:
+        """One spoke call (worker thread): ``({role, question, answer}, warning)``; it sees only its own slice and
+        the hub's question."""
+        role, question = request
+        user = spoke_block(role, question, self.case, self.sections, self.context_policy)
+        try:
+            answer, warning = self.client.complete(CONSULT_ROLES[role], spoke_system(role), user)[0].strip(), None
+        except LLMError as err:
+            answer, warning = "(no answer: the call failed)", f"{CONSULT_ROLES[role]}: call failed ({err})"
+        return {"role": role, "question": question, "answer": answer}, warning
+
     def team_roles(self) -> list[str]:
-        """MODERATE: the first two of ``_MODERATE_ORDER`` with data for the case (under ``context_policy``, as the
-        specialists see it); otherwise every specialist."""
-        if self.result.tier != "MODERATE":
+        """MODERATE, or LOW (a LOW case reaches the team only in adversarial mode entered by uncertainty): the first
+        two of ``_MODERATE_ORDER`` with data for the case (under ``context_policy``, as the specialists see it);
+        otherwise (HIGH, or no tier) every specialist."""
+        if self.result.tier not in ("LOW", "MODERATE"):
             return list(SPECIALISTS)
         policy = self.context_policy
         chosen = sorted(_MODERATE_ORDER, key=lambda role: not modality_data(role, self.case, self.sections, policy))[:2]
@@ -236,17 +315,20 @@ class CaseRun:
         return entry, warning
 
     def divergence(self, tau: float, tau_semantic: float | None = None) -> None:
-        """Tier 2 switch: JS divergence of the option distributions, or for an open-ended case the semantic
-        divergence of the leading diagnoses (``tau_semantic`` None: the embedder's ``TAU_SEMANTIC``)."""
+        """Tier 2 switch (Conflict Detector): JS divergence of the option distributions, or for an open-ended case
+        the semantic divergence of the leading diagnoses (``tau_semantic`` None: the embedder's ``TAU_SEMANTIC``).
+        In adversarial mode entered by uncertainty it is measured and reported, but the mode stays adversarial."""
         r = self.result
         if self.case.open_ended:
             self._semantic_divergence(tau_semantic)
-            return
-        report = assess(r.distributions, self.case.letters(), tau)
-        r.divergence, r.top1, r.disagreement = report.divergence, report.top1, report.disagreement
-        r.conflict_set, r.switch, self.abstainers = report.conflict_set, report.switch, report.abstainers
-        r.mode = "adversarial" if report.switch else "collaborative"
-        r.route.append(f"divergence:{report.divergence:.2f}:{'switch' if report.switch else 'stay'}")
+        else:
+            report = assess(r.distributions, self.case.letters(), tau)
+            r.divergence, r.top1, r.disagreement = report.divergence, report.top1, report.disagreement
+            r.conflict_set, r.switch, self.abstainers = report.conflict_set, report.switch, report.abstainers
+            r.mode = "adversarial" if report.switch else "collaborative"
+            r.route.append(f"divergence:{report.divergence:.2f}:{'switch' if report.switch else 'stay'}")
+        if self.by_uncertainty:
+            r.mode = "adversarial"
 
     def _semantic_divergence(self, tau: float | None) -> None:
         """Switch iff the mean pairwise cosine distance of the non-abstaining leading diagnoses is ``>= tau``; with
@@ -370,13 +452,15 @@ class _Pipeline:
 
 
 class DynaClinicPipeline(_Pipeline):
-    """Dynamic arm: cache -> triage -> primary care | care team -> divergence -> critic? -> synthesizer -> gate.
+    """Dynamic arm: cache -> triage (C) -> generalist sweep (U) and the mode rule -> hierarchical: primary care hub |
+    collaborative or adversarial: care team -> divergence -> critic? -> synthesizer -> gate.
 
     The ``GreedyPlanner`` stub picks every stage and its reward per stage is logged in the route.
     ``max_rollbacks`` bounds safety-gate backtracks (regenerations); the adversarial round runs at most
     once by construction. Only gate-verified answers are cached, and a cache hit is re-gated against
     the new case so a near-duplicate with a different allergy or med list is recomputed. ``tau_semantic``
-    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``.
+    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``. ``tau_u`` (assumed,
+    not validated) and ``top_k`` (open-ended cases) parametrise the Uncertainty Score.
     """
 
     arm = "dynamic"
@@ -392,9 +476,13 @@ class DynaClinicPipeline(_Pipeline):
         pca_samples: int = 1,
         max_rollbacks: int = 1,
         context_policy: str = DEFAULT_CONTEXT_POLICY,
+        tau_u: float = TAU_U,
+        top_k: int = DEFAULT_K,
     ) -> None:
         if pca_samples < 1 or max_rollbacks < 0:
             raise ValueError(f"need pca_samples >= 1 and max_rollbacks >= 0, got {pca_samples}, {max_rollbacks}")
+        if not 0.0 <= tau_u <= 1.0 or top_k < 2:
+            raise ValueError(f"need 0 <= tau_u <= 1 and top_k >= 2, got {tau_u}, {top_k}")
         super().__init__(client, context_policy=context_policy)
         self.tau = tau
         self.tau_semantic = tau_semantic
@@ -402,6 +490,8 @@ class DynaClinicPipeline(_Pipeline):
         self.cache = cache
         self.pca_samples = pca_samples
         self.max_rollbacks = max_rollbacks
+        self.tau_u = tau_u
+        self.top_k = top_k
         self.ingestor = FHIRLiteIngestor()
 
     def _run(self, case: Case, result: RunResult) -> None:
@@ -411,6 +501,7 @@ class DynaClinicPipeline(_Pipeline):
         stages: dict[str, Callable[[], None]] = {
             "cache_lookup": lambda: self._cache_lookup(run, key),
             "triage": lambda: run.triage(self.escalate_threshold),
+            "uncertainty": lambda: run.uncertainty(self.tau_u, self.top_k),
             "primary_care": lambda: run.primary_care(self.pca_samples),
             "care_team": lambda: run.care_team(run.team_roles()),
             "divergence": lambda: run.divergence(self.tau, self.tau_semantic),
@@ -422,7 +513,7 @@ class DynaClinicPipeline(_Pipeline):
         stage, regenerations = "start", 0
         while True:
             step = planner.next_step(
-                stage, tier=result.tier, mode=result.mode, cache_hit=result.cache_hit,
+                stage, mode=result.mode, cache_hit=result.cache_hit,
                 gate_passed=run.safety is not None and not run.safety.blocked, regenerations=regenerations,
             )
             if step.action == "terminal":

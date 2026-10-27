@@ -9,25 +9,34 @@ from dynaclinic.devall_nodes import (
     DCPrimaryCareConfig,
     DCSafetyGateConfig,
     DCTriageConfig,
+    DCUncertaintyConfig,
     DivergenceGateExecutor,
     PrimaryCareExecutor,
     SafetyGateExecutor,
     SynthesizerExecutor,
     TriageExecutor,
+    UncertaintyExecutor,
 )
 from dynaclinic.prompts import _PERSONAS, SPECIALISTS
 from runtime.node.registry import NodeCapabilities, register_node_type
 
 _LLM = NodeCapabilities(agent_like=True)
 _DETERMINISTIC = NodeCapabilities()
+# The generalist sweep calls the LLM but is no 3D character: the seven character slots are taken (Triage is the
+# Meta-Controller character) and an eighth agent-like node would push the Synthesizer out of its slot.
+_SWEEP = NodeCapabilities()
 # One 3D character per Care Team specialist (Diagnostic Imaging, Pathology/Lab, Pharmacology).
 _CARE_TEAM = NodeCapabilities(agent_like=True, sub_agents={role: _PERSONAS[role]["title"] for role in SPECIALISTS})
 
 NODE_TYPES = {
     "dc_triage": (DCTriageConfig, TriageExecutor, _LLM,
                   "DynaClinic Meta-Controller triage; emits ROUTE: LOW|MODERATE|HIGH."),
+    "dc_uncertainty": (DCUncertaintyConfig, UncertaintyExecutor, _SWEEP,
+                       ("DynaClinic Meta-Controller mode rule: generalist sweep (Uncertainty U) with triage "
+                        "complexity C; emits MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL.")),
     "dc_primary_care": (DCPrimaryCareConfig, PrimaryCareExecutor, _LLM,
-                        "DynaClinic Primary Care Agent (Informative model) for LOW-complexity cases."),
+                        ("DynaClinic Primary Care Agent (Informative model) as the hierarchical hub; may consult "
+                         "specialist spokes.")),
     "dc_care_team": (DCContextConfig, CareTeamExecutor, _CARE_TEAM,
                      "DynaClinic Integrated Care Team: specialists write to the shared Blackboard."),
     "dc_divergence_gate": (DCDivergenceGateConfig, DivergenceGateExecutor, _DETERMINISTIC,

@@ -9,7 +9,8 @@ from typing import Any, Literal, Self
 
 Tier = Literal["LOW", "MODERATE", "HIGH"]
 Route = Tier  # Meta-Controller routing decision (``ROUTE: LOW|MODERATE|HIGH``)
-Mode = Literal["single", "collaborative", "adversarial"]
+# single: the single-agent baseline; the dynamic arm's modes are the proposal's hierarchical | collaborative | adversarial.
+Mode = Literal["single", "hierarchical", "collaborative", "adversarial"]
 EntryKind = Literal["finding", "hypothesis", "critique", "verdict"]
 ClaimLabel = Literal["supported", "unsupported", "fabrication", "contradiction"]
 GateName = Literal["A_SAD", "T_SAD", "S_NAP"]
@@ -151,6 +152,17 @@ class RunResult(_Serializable):
     error: str | None = None
     # Meta-Controller tier 1: llm_tier, deterministic_tier, score, features, escalated, rationale, llm_features.
     triage: dict[str, Any] = field(default_factory=dict)
+    # Mode rule inputs: Complexity C, Uncertainty U (None: sweep not measured, the rule read 0), their thresholds, the
+    # sweep's k and top-k differential (hypothesis -> probability, most probable first) and why the mode was chosen.
+    complexity: float | None = None
+    uncertainty: float | None = None
+    tau_c: float | None = None
+    tau_u: float | None = None
+    top_k: int | None = None
+    differential: dict[str, float] = field(default_factory=dict)
+    mode_reason: str = ""
+    # Hierarchical hub-and-spoke: [{role, question, answer}] of the Primary Care hub's CONSULT calls.
+    consults: list[dict[str, str]] = field(default_factory=list)
     # Tier 2 divergence report beyond ``divergence``/``conflict_set``; ``distributions`` feed margin_loss in eval.
     distributions: dict[str, dict[str, float]] = field(default_factory=dict)
     top1: dict[str, str] = field(default_factory=dict)

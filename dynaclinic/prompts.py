@@ -24,6 +24,7 @@ CRITIC = "critic"
 CRITIC_JUDGE = "critic_judge"
 SYNTHESIZER = "synthesizer"
 SINGLE_AGENT = "single_agent"
+GENERALIST = "generalist"
 SPECIALISTS: tuple[str, ...] = (IMAGING, PATHOLOGY, PHARMACOLOGY)
 STRICT = "strict"
 SHARED_CORE = "shared_core"
@@ -148,6 +149,30 @@ _SINGLE_AGENT = f"""You are an experienced clinician. Read the case and answer t
 _SINGLE_AGENT_OPEN = f"""You are an experienced clinician. Read the clinical scenario.
 {_WRITE_UP}"""
 
+_SWEEP_HEAD = """You are a generalist clinician doing a quick baseline sweep for the Meta-Controller of a clinical
+decision-support system. Your initial probabilities measure how uncertain the case is: do not inflate them.
+"""
+_SWEEP = _SWEEP_HEAD + """Do not answer the question or explain. Give your initial probability that each answer option
+is correct.
+Respond with JSON only:
+{"differential": [{"hypothesis": "<option letter>", "probability": <float>}]}
+List every option letter once, most likely first; the probabilities sum to 1."""
+_SWEEP_OPEN = _SWEEP_HEAD + """Do not write a plan or explain. List the top {k} diagnostic differentials for this
+patient (diagnoses or clinical problems, short noun phrases), most likely first, with your initial probability for each.
+Respond with JSON only:
+{{"differential": [{{"hypothesis": "<diagnosis>", "probability": <float>}}]}}
+At most {k} entries; the probabilities sum to 1."""
+
+_HUB_PROTOCOL = """Hierarchical consults: you are the hub; the Diagnostic Imaging, Pathology/Lab and Pharmacology
+specialists are your spokes and never talk to each other. Only when a specialist's reading of this patient's data is
+needed before you can answer, reply instead with at most 2 lines, each exactly:
+CONSULT: <imaging|pathology|pharmacology>: <question>
+You will then receive their answers and give your final reply in the format above. Otherwise answer directly."""
+_SPOKE = """You are the {title} specialist, consulted by the Primary Care Agent (the hub). You see ONLY the {modality}
+for this patient and the hub's question, never another specialist's answer.
+Answer only that question, from your data, in at most three sentences. If your data cannot answer it, say so; do not
+assume findings from other modalities."""
+
 # lens/nothing are read only by the open-ended shared_core prompt (lens: the DOMAIN RECOMMENDATION).
 _PERSONAS = {
     IMAGING: {"title": "Diagnostic Imaging", "modality": "imaging studies",
@@ -170,6 +195,8 @@ SYSTEM_PROMPTS: dict[str, str] = {
     SYNTHESIZER: _SYNTHESIZER,
     SINGLE_AGENT: _SINGLE_AGENT,
 }
+# Ledger/script role of a specialist answering the Primary Care hub's CONSULT question (hierarchical mode).
+CONSULT_ROLES: dict[str, str] = {role: f"{role}_consult" for role in SPECIALISTS}
 # Answering roles' system prompts for an open-ended case: the clinical write-up instead of a FINAL ANSWER letter.
 OPEN_ENDED_PROMPTS: dict[str, str] = {
     PRIMARY_CARE: _PRIMARY_CARE_OPEN,
@@ -269,3 +296,33 @@ def specialist_block(role: str, case: Case, sections: dict[str, str], policy: st
         return f"{data}\n\n{question_block(case)}"
     core = case_block(case, {"Demographics": sections.get("Demographics", "")})
     return f"Shared case summary:\n{core}\n\nYour modality data (focus here):\n{data}"
+
+
+def sweep_system(case: Case, k: int) -> str:
+    """Generalist sweep prompt: a distribution over the options, or for an open-ended case the top-``k``
+    differential."""
+    return _SWEEP_OPEN.format(k=k) if case.open_ended else _SWEEP
+
+
+def hub_system(case: Case) -> str:
+    """Primary Care Agent as the hierarchical hub: its Informative-model prompt plus the CONSULT protocol."""
+    return f"{answer_system(PRIMARY_CARE, case)}\n{_HUB_PROTOCOL}"
+
+
+def spoke_system(role: str) -> str:
+    """System prompt of specialist ``role`` answering one hub question."""
+    return _SPOKE.format(**_PERSONAS[role])
+
+
+def spoke_block(role: str, question: str, case: Case, sections: dict[str, str], policy: str) -> str:
+    """A spoke's input: its own ``modality_data`` slice and the hub's question, nothing else."""
+    data = modality_data(role, case, sections, policy) or f"(no {role} data available)"
+    return f"Your {_PERSONAS[role]['modality']}:\n{data}\n\nQuestion from the Primary Care Agent:\n{question}"
+
+
+def consult_block(consults: list[dict[str, str]]) -> str:
+    """The spokes' answers appended to the hub's second (final) call."""
+    lines = "\n".join(f"- {_PERSONAS[c['role']]['title']} (your question: {c['question']}): {c['answer']}"
+                      for c in consults)
+    return (f"Specialist consults (each answered independently from its own data):\n{lines}\n"
+            "Give your final reply now, in the required format, without CONSULT lines.")

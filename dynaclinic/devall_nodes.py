@@ -6,9 +6,10 @@ holding the ``CaseRun`` (case, blackboard, ``RunResult`` with triage, divergence
 call ledger) and one client per model chain, so a sticky model fallback lasts the whole run.
 
 The first line of every output is an anchored marker read by ``functions/edge/dynaclinic_conditions.py``:
-``ROUTE: LOW|MODERATE|HIGH`` (dc_triage), ``MODE: COLLABORATIVE|ADVERSARIAL`` (dc_divergence_gate),
-``GATE: PASS|BLOCKED`` (dc_safety_gate) and ``STAGE: <name>`` (the others). Warnings raised by the stage
-(failed specialist, triage fallback, critic failure) are listed at the end.
+``ROUTE: LOW|MODERATE|HIGH`` (dc_triage), ``MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL`` (dc_uncertainty, the
+mode rule), ``MODE: COLLABORATIVE|ADVERSARIAL`` (dc_divergence_gate), ``GATE: PASS|BLOCKED`` (dc_safety_gate) and
+``STAGE: <name>`` (the others). Warnings raised by the stage (failed specialist, triage fallback, unmeasured
+uncertainty, critic failure) are listed at the end.
 
 ``dc_triage`` starts a new case run from its input text (``case_from_text``); the other model nodes
 start one only when none exists (a graph without triage). A fatal model error (failed primary care or
@@ -32,6 +33,7 @@ from dynaclinic.plaintext import parse_plain_case
 from dynaclinic.prompts import CONTEXT_POLICIES, DEFAULT_CONTEXT_POLICY
 from dynaclinic.triage import MODERATE_SCORE
 from dynaclinic.types import Case, RunResult
+from dynaclinic.uncertainty import DEFAULT_K, TAU_U
 from entity.configs import Node
 from entity.configs.base import (
     BaseConfig,
@@ -155,6 +157,48 @@ class DCTriageConfig(DCNodeConfig):
             advance=True,
         ),
     }
+
+
+@dataclass
+class DCUncertaintyConfig(DCNodeConfig):
+    """dc_uncertainty: generalist sweep (Uncertainty Score U) and the Meta-Controller's mode rule."""
+
+    tau_u: float = TAU_U
+    k: int = DEFAULT_K
+
+    @classmethod
+    def _parse(cls, mapping: Mapping[str, Any], path: str) -> dict[str, Any]:
+        return {**super()._parse(mapping, path), "tau_u": _number(mapping, "tau_u", TAU_U, path, float),
+                "k": _number(mapping, "k", DEFAULT_K, path, int)}
+
+    def validate(self) -> None:
+        super().validate()
+        _require(0.0 <= self.tau_u <= 1.0, "tau_u must be in [0, 1] (normalised entropy)", self.path, "tau_u")
+        _require(self.k >= 2, "k must be >= 2", self.path, "k")
+
+    FIELD_SPECS: ClassVar[dict[str, ConfigFieldSpec]] = {
+        **DCNodeConfig.FIELD_SPECS,
+        "tau_u": ConfigFieldSpec(
+            name="tau_u",
+            display_name="Tau U",
+            type_hint="float",
+            required=False,
+            default=TAU_U,
+            description="Uncertainty above which the case goes adversarial regardless of complexity "
+            "(assumed value, not validated).",
+        ),
+        "k": ConfigFieldSpec(
+            name="k",
+            display_name="Top-k",
+            type_hint="int",
+            required=False,
+            default=DEFAULT_K,
+            description="Differentials the generalist sweep lists for an open-ended case (multiple choice: one per "
+            "option); U = entropy / ln(k).",
+            advance=True,
+        ),
+    }
+
 
 
 @dataclass
@@ -361,14 +405,35 @@ class TriageExecutor(_StageExecutor):
         return "\n".join(line for line in (f"ROUTE: {run.result.tier}", summary, t["rationale"]) if line)
 
 
+class UncertaintyExecutor(_StageExecutor):
+    """dc_uncertainty: one generalist sweep, then the mode rule on C (from dc_triage) and U; emits
+    ``MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL``, then C, U, the thresholds, the rule and the differential."""
+
+    config_cls = DCUncertaintyConfig
+
+    def stage(self, run: CaseRun, config: DCUncertaintyConfig) -> str:
+        if run.result.complexity is None:
+            raise ValueError("dc_uncertainty needs an earlier dc_triage (Complexity Score C)")
+        run.uncertainty(config.tau_u, config.k)
+        r = run.result
+        u = "n/a" if r.uncertainty is None else f"{r.uncertainty:.2f}"
+        differential = "\n".join(f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()) or "- none"
+        return (f"MODE: {r.mode.upper()}\n"
+                f"Complexity C={r.complexity:.2f} (tau_c {r.tau_c:g}), Uncertainty U={u} (tau_u {r.tau_u:g}, "
+                f"k {r.top_k})\nRule: {r.mode_reason}\nDifferential (generalist sweep):\n{differential}")
+
+
 class PrimaryCareExecutor(_StageExecutor):
-    """dc_primary_care: Informative-model answer."""
+    """dc_primary_care: hierarchical hub (Informative-model answer, optional CONSULT round with the spokes)."""
 
     config_cls = DCPrimaryCareConfig
 
     def stage(self, run: CaseRun, config: DCPrimaryCareConfig) -> str:
         run.primary_care(config.pca_samples)
-        return f"STAGE: primary_care\n{run.result.final_text}"
+        consults = "".join(f"- {c['role']}: {c['question']} -> {c['answer']}\n" for c in run.result.consults)
+        if consults:
+            consults = f"Hub consults (each specialist answered independently):\n{consults}\n"
+        return f"STAGE: primary_care\n{consults}{run.result.final_text}"
 
 
 class CareTeamExecutor(_StageExecutor):
@@ -384,7 +449,8 @@ class CareTeamExecutor(_StageExecutor):
 
 class DivergenceGateExecutor(_StageExecutor):
     """dc_divergence_gate: emits ``MODE: COLLABORATIVE|ADVERSARIAL``, then the divergence (JS over option
-    distributions, or for an open-ended case the semantic divergence of the leading diagnoses)."""
+    distributions, or for an open-ended case the semantic divergence of the leading diagnoses). In adversarial mode
+    entered by uncertainty the divergence is reported but the mode stays ADVERSARIAL."""
 
     config_cls = DCDivergenceGateConfig
 
@@ -405,6 +471,9 @@ class DivergenceGateExecutor(_StageExecutor):
                              for agent, letter in r.top1.items())
             detail = (f"Divergence {r.divergence:.2f} (tau {config.tau}); top-1: {top1}; "
                       f"conflict set: {', '.join(r.conflict_set) or 'none'}.")
+        if run.by_uncertainty:
+            detail += (f"\nAdversarial mode entered by uncertainty (U {r.uncertainty:.2f} > tau_u {r.tau_u:g}): the "
+                       "Conflict Detector reports only; the mode stays adversarial.")
         return f"MODE: {r.mode.upper()}\n{detail}"
 
 

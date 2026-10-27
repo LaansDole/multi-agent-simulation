@@ -12,6 +12,9 @@ invalid LLM reply falls back to the deterministic tier and is recorded in ``erro
 
 The keyword maps, reference ranges and cut-offs are illustrative; ``MODERATE_SCORE``/``HIGH_SCORE`` were
 chosen by inspecting the 24 synthetic vignettes and are not validated on held-out data.
+
+Complexity Score C (``complexity``) is the continuous form of the same two signals for the Meta-Controller's mode
+rule; ``C > TAU_C`` holds exactly when the tier above is not LOW.
 """
 
 import re
@@ -26,6 +29,9 @@ from dynaclinic.types import TIERS, CallRecord, Case, Tier
 
 MODERATE_SCORE = 6
 HIGH_SCORE = 12
+# Mode-rule threshold on C: fixed by construction (the LOW vs team boundary), not a tuned value.
+TAU_C = 0.5
+_LLM_LEVEL: dict[str | None, float] = {"LOW": 0.0, "MODERATE": 0.75, "HIGH": 1.0}
 
 # Organ systems are counted in the vignette, history and imaging (meds and labs are scored separately).
 _ORGAN_SYSTEMS = {
@@ -115,6 +121,19 @@ def feature_score(case: Case) -> tuple[int, dict[str, int]]:
 def score_tier(score: int) -> Tier:
     """Deterministic tier: ``HIGH`` if ``score >= HIGH_SCORE``, ``MODERATE`` if ``>= MODERATE_SCORE``, else ``LOW``."""
     return "HIGH" if score >= HIGH_SCORE else "MODERATE" if score >= MODERATE_SCORE else "LOW"
+
+
+def complexity(score: int, llm_tier: Tier | None, threshold: int = MODERATE_SCORE) -> float:
+    """Complexity Score C in [0, 1]: ``max(LLM tier level, feature density)``.
+
+    Level: LLM LOW 0, MODERATE 0.75, HIGH 1; ``None`` (malformed reply or failed call) 0, so only the density counts.
+    Density: ``(score + 0.5) / (2 * threshold)`` capped at 1, which crosses ``TAU_C`` halfway between the last LOW
+    score (``threshold - 1``) and the score that escalates (``threshold``); ``threshold`` 0 escalates every score
+    (density 1). ``threshold`` is the cut-off the tier rule applied: ``escalate_threshold`` for a valid LLM tier,
+    ``MODERATE_SCORE`` for the deterministic fallback. Hence ``C > TAU_C`` iff the final tier is not LOW.
+    """
+    density = min((score + 0.5) / (2 * threshold), 1.0) if threshold > 0 else 1.0
+    return max(_LLM_LEVEL.get(llm_tier, 0.0), density)
 
 
 def triage_case(client: LLMClient, case: Case, escalate_threshold: int = MODERATE_SCORE) -> TriageResult:

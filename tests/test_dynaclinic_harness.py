@@ -215,3 +215,23 @@ def test_summary_metrics_tiers_and_cost_only_from_env_prices() -> None:
 
     unpriced = {k: v for k, v in priced.items() if "GPT_Y" not in k}
     assert harness.summarize(rows, ["single"], unpriced)["arms_summary"]["single"]["cost_usd"] is None
+
+
+def test_meta_controller_scores_are_summarised_and_pre_f14_rows_still_load() -> None:
+    legacy = _row("c4", "LOW", answer="A", correct=True, mode="single")
+    for key in ("complexity", "uncertainty", "tau_c", "tau_u", "top_k", "differential", "mode_reason", "consults"):
+        del legacy[key]  # a resumed results.jsonl row written before the Meta-Controller scores existed
+    rows = [_row("c1", "LOW", answer="A", correct=True, mode="hierarchical", complexity=0.25, uncertainty=0.5),
+            _row("c2", "HIGH", answer="A", correct=True, mode="adversarial", complexity=1.0, uncertainty=None),
+            _row("c3", "HIGH", answer="A", correct=True, mode="collaborative", complexity=0.75, uncertainty=0.2),
+            legacy]
+    summary = harness.summarize(rows, ["single"], {})
+    s = summary["arms_summary"]["single"]
+    assert (s["mean_complexity"], s["mean_uncertainty"], s["uncertainty_not_measured"]) == (
+        pytest.approx(2 / 3), pytest.approx(0.35), 1)
+    assert "| single | 0.667 | 0.350 | 1 |" in harness.render_markdown(
+        {**summary, "run_id": "r", "generated_at": "t", "dry_run": True, "dataset": "synthetic", "n_cases": 4,
+         "limit": None, "seed": None, "cache": False, "concurrency": 1, "context_policy": "shared_core",
+         "arms": ["single"]})
+    unscored = harness.summarize([legacy], ["single"], {})["arms_summary"]["single"]
+    assert (unscored["mean_complexity"], unscored["uncertainty_not_measured"]) == (None, None)

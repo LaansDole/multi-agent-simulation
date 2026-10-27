@@ -12,6 +12,7 @@ from dynaclinic.llm import FakeLLM, LLMError, set_client_factory
 from dynaclinic.parsing import first_line_marker
 from dynaclinic.pipeline import BLOCKED_PREFIX, CaseRun
 from dynaclinic.prompts import (
+    CONSULT_ROLES,
     CRITIC,
     IMAGING,
     PATHOLOGY,
@@ -27,6 +28,7 @@ from runtime.bootstrap.schema import ensure_schema_registry_populated
 from runtime.node.executor.base import ExecutionContext
 from runtime.node.registry import iter_node_registrations
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
+from tests.test_dynaclinic_metacontroller import DRUG_A, DRUG_Q, FINAL, ONE_HOT, UNIFORM
 from tests.test_dynaclinic_pipeline import (
     CASE,
     FOR_A,
@@ -39,8 +41,8 @@ from tests.test_dynaclinic_pipeline import (
 from utils.schema_exporter import build_schema_response
 
 NODE_TYPES = (
-    "dc_triage", "dc_primary_care", "dc_care_team", "dc_divergence_gate", "dc_critic", "dc_synthesizer",
-    "dc_safety_gate",
+    "dc_triage", "dc_uncertainty", "dc_primary_care", "dc_care_team", "dc_divergence_gate", "dc_critic",
+    "dc_synthesizer", "dc_safety_gate",
 )
 CASE_JSON = json.dumps(CASE.to_dict())
 SEPSIS_TEXT = "A 70-year-old man has fever, hypotension and confusion."
@@ -85,7 +87,7 @@ def harness() -> Iterator[Build]:
     set_client_factory(None)
 
 
-def test_registry_and_schema_export_include_the_seven_node_types() -> None:
+def test_registry_and_schema_export_include_the_eight_node_types() -> None:
     ensure_schema_registry_populated()
     assert set(NODE_TYPES) <= iter_node_registrations().keys()
     crumbs = [{"node": "DesignConfig", "field": "graph"}, {"node": "GraphDefinition", "field": "nodes"}]
@@ -96,6 +98,8 @@ def test_registry_and_schema_export_include_the_seven_node_types() -> None:
     for node_type in ("dc_care_team", "dc_synthesizer"):
         fields = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": node_type}])["fields"]
         assert "context_policy" in {f["name"] for f in fields}, node_type
+    sweep = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": "dc_uncertainty"}])
+    assert {"model", "tau_u", "k"} <= {f["name"] for f in sweep["fields"]}
 
 
 def test_configs_default_to_the_env_model_chain() -> None:
@@ -103,6 +107,8 @@ def test_configs_default_to_the_env_model_chain() -> None:
     config = Node.from_dict({"id": "g", "type": "dc_safety_gate", "config": {}}, path="n").config
     assert (config.model, config.fallback_models, config.max_rollbacks) == (None, [], 1)
     assert Node.from_dict({"id": "d", "type": "dc_divergence_gate", "config": {}}, path="n").config.tau == 0.25
+    sweep = Node.from_dict({"id": "u", "type": "dc_uncertainty", "config": {}}, path="n").config
+    assert (sweep.tau_u, sweep.k) == (0.8, 5)
 
 
 @pytest.mark.parametrize(
@@ -117,6 +123,9 @@ def test_configs_default_to_the_env_model_chain() -> None:
         ("dc_critic", {"fallback_models": "gpt-5.6-luna", "model": "gpt-6-luna"}),
         ("dc_care_team", {"context_policy": "loose"}),
         ("dc_synthesizer", {"context_policy": 1}),
+        ("dc_uncertainty", {"tau_u": 1.5}),
+        ("dc_uncertainty", {"tau_u": "high"}),
+        ("dc_uncertainty", {"k": 1}),
     ],
 )
 def test_invalid_config_is_a_config_error(node_type: str, config: dict) -> None:
@@ -315,3 +324,56 @@ def test_triage_starts_a_fresh_case_run(harness: Build) -> None:
     assert h.run_state is not first and isinstance(h.run_state.case, Case)
     assert (h.run_state.case.vignette, h.run_state.case.options) == (SEPSIS_TEXT, [])
     assert h.run_state.result.route == ["ingest", "triage:LOW"]
+
+
+@pytest.mark.parametrize(
+    ("tier", "sweep", "mode", "u"),
+    [("LOW", ONE_HOT, "HIERARCHICAL", "0.00"), ("HIGH", ONE_HOT, "COLLABORATIVE", "0.00"),
+     ("LOW", UNIFORM, "ADVERSARIAL", "1.00")],
+)
+def test_generalist_sweep_emits_the_mode_then_c_u_rule_and_differential(
+    harness: Build, tier: str, sweep: str, mode: str, u: str
+) -> None:
+    h = harness(triage=_triage(tier), generalist=sweep)
+    h.run("dc_triage", CASE_JSON)
+    lines = h.run("dc_uncertainty").splitlines()
+    r = h.run_state.result
+    assert lines[:4] == [f"MODE: {mode}",
+                         f"Complexity C={r.complexity:.2f} (tau_c 0.5), Uncertainty U={u} (tau_u 0.8, k 3)",
+                         f"Rule: {r.mode_reason}", "Differential (generalist sweep):"]
+    assert lines[4:] == [f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()]
+    assert r.route[-2:] == [f"uncertainty:{u}", f"mode:{mode.lower()}" + (":uncertainty" if tier == "LOW" and
+                                                                         mode == "ADVERSARIAL" else "")]
+
+
+def test_malformed_sweep_routes_on_c_and_says_u_was_not_measured(harness: Build) -> None:
+    h = harness(generalist="I would rather not guess.")
+    h.run("dc_triage", CASE_JSON)
+    out = h.run("dc_uncertainty")
+    assert out.startswith("MODE: HIERARCHICAL\n") and "Uncertainty U=n/a" in out and "\n- none\n" in out
+    assert out.splitlines()[-1].startswith("- generalist: ") and "U not measured, routed on C only" in out
+
+
+def test_sweep_without_triage_fails_loudly(harness: Build) -> None:
+    with pytest.raises(ValueError, match="dc_triage"):
+        harness().run("dc_uncertainty", CASE_JSON)
+
+
+def test_adversarial_by_uncertainty_gate_reports_divergence_but_keeps_the_mode(harness: Build) -> None:
+    h = harness(generalist=UNIFORM)  # LOW tier, the team agrees on B
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_uncertainty")
+    h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate")
+    assert gate.startswith("MODE: ADVERSARIAL\nDivergence 0.00")
+    assert gate.endswith("Adversarial mode entered by uncertainty (U 1.00 > tau_u 0.8): the Conflict Detector "
+                         "reports only; the mode stays adversarial.")
+    assert h.run_state.result.route[-1] == "divergence:0.00:stay"
+
+
+def test_primary_care_hub_lists_its_consults_before_the_answer(harness: Build) -> None:
+    h = harness(primary_care=[f"CONSULT: pharmacology: {DRUG_Q}", FINAL],
+                **{CONSULT_ROLES[PHARMACOLOGY]: DRUG_A})
+    h.run("dc_triage", CASE_JSON)
+    assert h.run("dc_primary_care") == (f"STAGE: primary_care\nHub consults (each specialist answered independently):\n"
+                                        f"- pharmacology: {DRUG_Q} -> {DRUG_A}\n\n{FINAL}")

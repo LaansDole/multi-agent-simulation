@@ -110,6 +110,7 @@ class TestSerializeDesign:
         assert {n["id"]: n["is_agent"] for n in result["nodes"]} == {
             "CaseInput": False,
             "Triage": True,
+            "GeneralistSweep": False,  # LLM call, but no 3D character: the seven slots are taken
             "PrimaryCare": True,
             "CareTeam": True,
             "DivergenceGate": False,

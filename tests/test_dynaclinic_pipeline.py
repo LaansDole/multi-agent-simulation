@@ -20,6 +20,7 @@ from dynaclinic.pipeline import (
 from dynaclinic.prompts import (
     CRITIC,
     CRITIC_JUDGE,
+    GENERALIST,
     IMAGING,
     PATHOLOGY,
     PHARMACOLOGY,
@@ -68,6 +69,7 @@ def _specialist(dist: dict[str, float], claim: str = "Azithromycin avoids the pe
 
 SCRIPT = {
     TRIAGE: _triage("LOW"),
+    GENERALIST: json.dumps({"differential": [{"hypothesis": "B", "probability": 1.0}]}),  # U = 0: the mode follows C
     PRIMARY_CARE: "Facts and risks of each option.\nFINAL ANSWER: B",
     IMAGING: _specialist(FOR_B),
     PATHOLOGY: _specialist(FOR_B),
@@ -109,15 +111,16 @@ def _prompts(client: FakeLLM, role: str) -> list[str]:
     return [user for called, _, user in client.prompts if called == role]
 
 
-def test_low_path_calls_only_triage_and_primary_care() -> None:
+def test_low_path_calls_triage_sweep_and_primary_care() -> None:
     result = DynaClinicPipeline(_client()).run(CASE)
-    assert _stages(result) == ["ingest", "cache_lookup:off", "triage:LOW", "primary_care", "safety_gate:pass"]
-    assert [call.role for call in result.calls] == [TRIAGE, PRIMARY_CARE]
-    assert (result.tier, result.mode, result.final_answer) == ("LOW", "single", "B")
+    assert _stages(result) == ["ingest", "cache_lookup:off", "triage:LOW", "uncertainty:0.00", "mode:hierarchical",
+                               "primary_care", "safety_gate:pass"]
+    assert [call.role for call in result.calls] == [TRIAGE, GENERALIST, PRIMARY_CARE]
+    assert (result.tier, result.mode, result.final_answer) == ("LOW", "hierarchical", "B")
     assert result.triage["llm_tier"] == "LOW" and result.triage["deterministic_tier"] == "LOW"
     assert not result.blocked and result.error is None
     planner_actions = [step.split(":")[1] for step in result.route if step.startswith("planner:")]
-    assert planner_actions == ["retrieval", "agent_call", "agent_call", "agent_call", "terminal"]
+    assert planner_actions == ["retrieval", "agent_call", "agent_call", "agent_call", "agent_call", "terminal"]
 
 
 def test_primary_care_samples_are_majority_voted() -> None:
@@ -130,10 +133,11 @@ def test_primary_care_samples_are_majority_voted() -> None:
 def test_high_agreeing_team_is_collaborative_without_critic() -> None:
     client = _client(triage=_triage("HIGH"))
     result = DynaClinicPipeline(client).run(CASE)
-    assert _roles(result) == Counter({TRIAGE: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1, SYNTHESIZER: 1})
+    assert _roles(result) == Counter({TRIAGE: 1, GENERALIST: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1,
+                                      SYNTHESIZER: 1})
     assert _stages(result) == [
-        "ingest", "cache_lookup:off", "triage:HIGH", "care_team:imaging,pathology,pharmacology",
-        "divergence:0.00:stay", "synthesizer", "safety_gate:pass",
+        "ingest", "cache_lookup:off", "triage:HIGH", "uncertainty:0.00", "mode:collaborative",
+        "care_team:imaging,pathology,pharmacology", "divergence:0.00:stay", "synthesizer", "safety_gate:pass",
     ]
     assert result.mode == "collaborative" and result.switch is False and result.divergence < 0.25
     assert set(result.distributions) == {IMAGING, PATHOLOGY, PHARMACOLOGY}
@@ -144,11 +148,12 @@ def test_high_disagreeing_team_switches_to_adversarial_critic() -> None:
     client = _client(triage=_triage("HIGH"), imaging=_specialist(FOR_A, UNSAFE_CLAIM))
     result = DynaClinicPipeline(client).run(CASE)
     assert _roles(result) == Counter(
-        {TRIAGE: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1, CRITIC: 1, CRITIC_JUDGE: 1, SYNTHESIZER: 1}
+        {TRIAGE: 1, GENERALIST: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1, CRITIC: 1, CRITIC_JUDGE: 1,
+         SYNTHESIZER: 1}
     )
     stages = _stages(result)
-    assert stages[4].startswith("divergence:") and stages[4].endswith(":switch")
-    assert stages[5:] == ["critic", "synthesizer", "safety_gate:pass"]
+    assert stages[6].startswith("divergence:") and stages[6].endswith(":switch")
+    assert stages[7:] == ["critic", "synthesizer", "safety_gate:pass"]
     assert result.mode == "adversarial" and result.switch is True and result.disagreement is True
     assert result.top1 == {IMAGING: "A", PATHOLOGY: "B", PHARMACOLOGY: "B"}
     assert result.conflict_set == ["A", "B"]
@@ -335,7 +340,7 @@ def test_open_ended_divergence_embeds_the_leading_diagnoses_never_the_recommenda
     client = FakeLLM(script, _one_hot(embedded))
     result = DynaClinicPipeline(client, tau_semantic=0.5).run(OPEN_CASE)
     assert embedded == list(diagnoses.values())
-    assert (_stages(result)[4:], result.assertions, result.warnings) == ([*stages, "safety_gate:pass"], diagnoses, [])
+    assert (_stages(result)[6:], result.assertions, result.warnings) == ([*stages, "safety_gate:pass"], diagnoses, [])
     blackboard = _prompts(client, SYNTHESIZER)[0]
     assert [f"domain recommendation: {text}" in blackboard for text in RECOMMENDATIONS.values()] == [True] * 3
 
@@ -350,7 +355,7 @@ def test_open_ended_specialist_without_a_leading_diagnosis_falls_back_to_its_pri
     result = DynaClinicPipeline(FakeLLM(script, _one_hot(embedded)), tau_semantic=0.5).run(OPEN_CASE)
     assert result.assertions == {IMAGING: "Pulmonary embolism", PATHOLOGY: "Pulmonary embolism", PHARMACOLOGY: ABSTAIN}
     assert result.warnings == ["imaging: no LEADING DIAGNOSIS line; read its PRIMARY ASSERTION line as the diagnosis"]
-    assert (embedded, _stages(result)[4]) == (["Pulmonary embolism"] * 2, "divergence:0.00:stay")
+    assert (embedded, _stages(result)[6]) == (["Pulmonary embolism"] * 2, "divergence:0.00:stay")
 
 
 @pytest.mark.parametrize(
@@ -371,7 +376,7 @@ def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(
     script = {**SCRIPT, "triage": _triage("HIGH"), "synthesizer": WRITE_UP, "imaging": _asserting("Septic shock."),
               "pathology": _asserting("Septic shock, likely pulmonary source."), "pharmacology": _asserting(pharmacology)}
     result = DynaClinicPipeline(FakeLLM(script, by_keyword), tau_semantic=tau_semantic).run(OPEN_CASE)
-    assert _stages(result)[4:] == stages
+    assert _stages(result)[6:] == stages
     assert (result.embedder, result.final_text, result.warnings) == ("fake", WRITE_UP, [])
 
 
@@ -386,7 +391,8 @@ def test_moderate_open_ended_team_follows_the_narrative_slices_under_shared_core
 
 
 # sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE, captured
-# at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte.
+# at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte. The dynamic arm's
+# generalist sweep (f14) is new and excluded; the dry run routes this case to the team, so no other prompt changed.
 STRICT_TRANSCRIPTS = {
     StaticTeamPipeline: "b86e0bc0c7991668f698b283533c3a27072486d54fece18e69613747ca4e458b",
     DynaClinicPipeline: "8f443582d89005f75911f4a92cff3c6ed986b57f8c0dede0428f25b2a6280583",
@@ -397,7 +403,8 @@ STRICT_TRANSCRIPTS = {
 def test_strict_policy_prompts_are_byte_identical_to_the_pre_policy_pipeline(pipeline_cls: type) -> None:
     client = dry_run_client()
     pipeline_cls(client, context_policy=STRICT).run(PROMPTS_CASE)
-    assert hashlib.sha256(json.dumps(sorted(client.prompts)).encode()).hexdigest() == STRICT_TRANSCRIPTS[pipeline_cls]
+    prompts = sorted(prompt for prompt in client.prompts if prompt[0] != GENERALIST)
+    assert hashlib.sha256(json.dumps(prompts).encode()).hexdigest() == STRICT_TRANSCRIPTS[pipeline_cls]
 
 
 @pytest.mark.parametrize("pipeline_cls", [StaticTeamPipeline, DynaClinicPipeline])
@@ -407,7 +414,7 @@ def test_context_policy_decides_whether_team_and_synthesizer_see_the_vignette(
 ) -> None:
     client = _client(triage=_triage("HIGH"))
     pipeline_cls(client, **({} if policy is None else {"context_policy": policy})).run(CASE)
-    seen = {role: "Tonsillar exudates" in user for role, _, user in client.prompts if role != TRIAGE}
+    seen = {role: "Tonsillar exudates" in user for role, _, user in client.prompts if role not in (TRIAGE, GENERALIST)}
     expected = dict.fromkeys((IMAGING, PATHOLOGY, PHARMACOLOGY, SYNTHESIZER), sees_case)
     if pipeline_cls is StaticTeamPipeline:  # decomposition reads the Blackboard; the judge always has the full case
         expected |= {CRITIC: False, CRITIC_JUDGE: True}
