@@ -201,6 +201,8 @@ class WorkflowRunService:
                     "data": {
                         "results": results,
                         "summary": graph_context.final_message(),
+                        # End-node output (same as the SDK/CLI final message); summary if there is none.
+                        "final_text": executor.get_final_output() or graph_context.final_message(),
                         "token_usage": executor.token_tracker.get_token_usage(),
                     },
                 },

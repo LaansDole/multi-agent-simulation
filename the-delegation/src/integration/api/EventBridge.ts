@@ -144,8 +144,9 @@ export class EventBridge {
   private onWorkflowCompleted(data: WorkflowCompletedData): void {
     const core = useCoreStore.getState();
 
-    if (data.summary) {
-      core.setFinalOutput(data.summary);
+    const finalText = data.final_text || data.summary;
+    if (finalText) {
+      core.setFinalOutput(finalText);
     }
 
     // Update token usage from backend

@@ -57,6 +57,7 @@ export interface WorkflowStartedData {
 export interface WorkflowCompletedData {
   results: Record<string, any>;
   summary: string | null;
+  final_text?: string | null; // end node output; older backends send only summary
   token_usage: TokenUsage | null;
 }
 
