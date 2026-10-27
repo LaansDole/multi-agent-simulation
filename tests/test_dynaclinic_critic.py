@@ -9,6 +9,7 @@ import pytest
 
 from dynaclinic.blackboard import Blackboard
 from dynaclinic.critic import (
+    KB_CONFIRMED_SCORE,
     LABELS,
     ClinicalCritic,
     adaptive_lambda,
@@ -16,6 +17,7 @@ from dynaclinic.critic import (
     judge_probs,
     rule_score,
 )
+from dynaclinic.eval.cases import load_synthetic
 from dynaclinic.llm import FakeLLM
 from dynaclinic.prompts import CRITIC, CRITIC_JUDGE, SYSTEM_PROMPTS
 from dynaclinic.types import BlackboardEntry, Case, Option
@@ -87,6 +89,32 @@ def test_caution_level_kb_hit_is_not_zeroed() -> None:
     # cephalosporin after a non-anaphylactic penicillin reaction is "caution" in the KB, not contraindicated
     assert rule_score("Oral cephalexin for the positive streptococcal test", rash) > 0.0
     assert rule_score("Oral cephalexin for the positive streptococcal test", CASE) == 0.0
+
+
+# syn-high-03: on phenelzine (MAOI) with renal colic; B meperidine and C tramadol are the KB interaction traps
+MAOI_CASE = next(case for case in load_synthetic() if case.id == "syn-high-03")
+MAOI_WARNING = "Phenelzine is a monoamine oxidase inhibitor, making meperidine and tramadol inappropriate choices"
+
+
+def test_kb_confirmed_warning_is_credited_but_asserting_the_drug_is_still_vetoed() -> None:
+    assert grounding(MAOI_WARNING, MAOI_CASE.vignette) < 0.5  # the live claim barely overlaps the case text
+    assert rule_score(MAOI_WARNING, MAOI_CASE) >= KB_CONFIRMED_SCORE
+    assert rule_score("Meperidine is inappropriate with phenelzine", MAOI_CASE) >= KB_CONFIRMED_SCORE
+    assert rule_score("Give meperidine", MAOI_CASE) == 0.0
+
+
+@pytest.mark.parametrize("claim", [INVENTED, "Avoid ketorolac in this patient"])
+def test_claims_without_a_kb_confirmed_warning_keep_their_low_grounding(claim: str) -> None:
+    # unrelated, and a warning against a drug the KB holds nothing against (the gold analgesic)
+    assert rule_score(claim, MAOI_CASE) < 0.5
+
+
+def test_neutral_judge_does_not_flag_a_kb_confirmed_warning() -> None:
+    # single claim: zero rule variance gives the judge its largest weight
+    client = FakeLLM({CRITIC: _decomposition(MAOI_WARNING), CRITIC_JUDGE: _judge(_logits())})
+    report = ClinicalCritic(client).review(MAOI_CASE, Blackboard(), ["D"])
+    [claim] = report.claims
+    assert (claim.label, report.flagged) == ("supported", [])
 
 
 def test_grounding_is_content_token_overlap_with_case_evidence() -> None:

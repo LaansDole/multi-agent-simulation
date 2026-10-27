@@ -5,7 +5,9 @@
 2. Rule score ``r`` in [0, 1]: 0 if the claim asserts a drug the KB marks ``contraindicated`` for this patient
    (``kb.patient_conflicts``: allergy class, interaction with current meds, condition contraindication);
    otherwise grounding ``|T(claim) & T(evidence)| / |T(claim)|`` over lower-case content tokens (stop-words and
-   one-letter words dropped), evidence = vignette + structured sections (options excluded).
+   one-letter words dropped), evidence = vignette + structured sections (options excluded), raised to
+   ``KB_CONFIRMED_SCORE`` when the claim warns against (mentions without asserting) a drug the KB marks
+   ``contraindicated`` for this patient: the judge sees only the case text and cannot verify KB pharmacology.
 3. Judge (role ``critic_judge``): logits ``z`` over (supported, unsupported, fabrication, contradiction);
    ``probs = softmax(z / T)`` with ``T = judge_temperature`` (default 1.5); ``judge_supported = probs["supported"]``.
 4. ``lambda = sigmoid(k * (var(r) - v0))``, ``k = 10``, ``v0 = 0.05``, ``var`` = population variance of the rule
@@ -32,7 +34,7 @@ import numpy as np
 
 from dynaclinic.blackboard import Blackboard
 from dynaclinic.interfaces import sections_from_structured
-from dynaclinic.kb import patient_conflicts
+from dynaclinic.kb import asserted_drugs, drugs_in, patient_conflicts
 from dynaclinic.llm import LLMClient
 from dynaclinic.parsing import extract_json
 from dynaclinic.prompts import (
@@ -49,6 +51,8 @@ JUDGE_TEMPERATURE = 1.5
 LAMBDA_K = 10.0
 LAMBDA_V0 = 0.05
 FLAG_THRESHOLD = 0.5
+# > 0.25 + 0.25 / sigmoid(-LAMBDA_K * LAMBDA_V0) ~ 0.912: a neutral judge (supported 0.25) can never flag it
+KB_CONFIRMED_SCORE = 0.95
 
 _TOKEN = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 _STOPWORDS = frozenset({
@@ -89,8 +93,12 @@ def _kb_contradicts(claim: str, case: Case) -> bool:
 
 
 def rule_score(claim: str, case: Case) -> float:
-    """0.0 if the claim asserts a KB-contraindicated drug for this patient, else its grounding in the case."""
-    return 0.0 if _kb_contradicts(claim, case) else grounding(claim, _evidence(case))
+    """0.0 if the claim asserts a KB-contraindicated drug; else grounding, raised for a KB-confirmed warning."""
+    if _kb_contradicts(claim, case):
+        return 0.0
+    score = grounding(claim, _evidence(case))
+    warned = drugs_in(claim) - asserted_drugs(claim)  # negated ("avoid X") or past-reaction mentions
+    return max(score, KB_CONFIRMED_SCORE) if any(_kb_contradicts(drug, case) for drug in warned) else score
 
 
 def judge_probs(logits: Mapping[str, float], temperature: float = JUDGE_TEMPERATURE) -> dict[str, float]:
@@ -183,8 +191,7 @@ class ClinicalCritic:
             pairs = [(entry.agent, claim) for entry in blackboard.entries() for claim in entry.claims]
             errors.append(f"malformed or empty decomposition; used {len(pairs)} Blackboard claims")
         kb_hits = [_kb_contradicts(claim, case) for _, claim in pairs]
-        evidence = _evidence(case)
-        rules = [0.0 if hit else grounding(claim, evidence) for (_, claim), hit in zip(pairs, kb_hits, strict=True)]
+        rules = [rule_score(claim, case) for _, claim in pairs]
         lambda_ = adaptive_lambda(rules, self.k, self.v0)
         if not pairs:
             return CriticReport([], [], lambda_, calls, errors)
