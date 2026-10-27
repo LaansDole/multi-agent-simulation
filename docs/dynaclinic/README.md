@@ -151,7 +151,7 @@ Behaviour:
 ## Known limitations
 
 - **Thresholds are not validated.** The triage cut-offs (`MODERATE_SCORE` / `HIGH_SCORE`) were chosen by inspecting the same 24 synthetic vignettes the eval uses, so triage accuracy on that set is in-sample. tau and the critic constants are the proposal's or hand-picked values and have not been tuned or validated on held-out data.
-- **Small synthetic dataset.** The cases are 24 hand-authored textbook vignettes (8 per tier), so confidence intervals are wide. No MedQA sample is in the repo.
+- **Small datasets.** The synthetic set is 24 hand-authored textbook vignettes (8 per tier), and the MedQA sample is 50 questions (see Results), so confidence intervals are wide.
 - **The KB is illustrative.** `kb.py` is a small, hand-written list of drug classes, interactions, contraindications and precedence rules. T_SAD and A_SAD catch only what it lists.
 - **Negation handling is heuristic.** Regex patterns ("no", "not", "avoid", "instead of") decide whether a drug is asserted. Unusual phrasing can produce false gate blocks or misses.
 - **The Critic, judge, triage and specialists are LLM-prompted.** Their quality depends on the model. The Informative-model constraint and the claim decomposition are not checked by code.
@@ -181,6 +181,22 @@ What the numbers support:
 - No arm ever chose an unsafe option on these cases; T_SAD blocks in earlier runs were false positives on correct answers, removed by the kb/safety fixes.
 
 What they do NOT support:
-- The single-agent baseline scores 100% at 1 call/case on this set: the synthetic vignettes are textbook-level and too easy to show any accuracy benefit from multi-agent collaboration (ceiling effect). A harder benchmark (e.g. MedQA/CSEDB-style cases) is needed before any accuracy claim. The MedQA sample loader exists, but no MedQA sample was fetched in this run.
+- The single-agent baseline scores 100% at 1 call/case on this set: the synthetic vignettes are textbook-level and too easy to show any accuracy benefit from multi-agent collaboration (ceiling effect). A harder benchmark is needed before any accuracy claim; the 50-question MedQA sample below did not separate the arms either.
 - One run per configuration and n = 24: differences of 1-2 cases are within the Wilson 95% intervals in each summary.md and within run-to-run model variance (triage agreement moved 62.5% -> 79.2% -> 70.8% across runs; triage code and prompts did not change between the last two).
 - Costs are reported as token counts only (no prices configured).
+
+### MedQA sample (harder benchmark)
+
+`data/dynaclinic/medqa_sample.jsonl`: 50 questions drawn with `random.Random(2026).sample` from the 1,273-question test split of MedQA-USMLE 4-option (Jin et al. 2021; Hugging Face `GBaker/MedQA-USMLE-4-options`, file `phrases_no_exclude_test.jsonl`, CC-BY-4.0). Ids are `medqa-test-<row index>`; 26 Step 1, 24 Step 2&3. The records have no structured patient data and no `unsafe_options`, so A_SAD/T_SAD have little to check and the safety columns are not meaningful for this set.
+
+Run `2026-10-27-medqa50-gpt-6-luna-shared-core` (code 3203fa4, gpt-6-luna, 0 fallback calls, 0 errors, concurrency 4, cache off):
+
+| arm | accuracy [95% CI] | calls/case | latency mean / p50 (s) | routes | adv. switch |
+|---|---|---|---|---|---|
+| dynamic | 92.0% (46/50) [81.2, 96.8] | 3.68 | 19.9 / 13.2 | single 17, collaborative 33 | 0% |
+| single | 94.0% (47/50) [83.8, 97.9] | 1.00 | 5.3 / 2.9 | single 50 | n/a |
+| static | 90.0% (45/50) [78.6, 95.7] | 6.00 | 29.9 / 22.5 | adversarial 50 | 2% (would-switch) |
+
+- Misses: 3 questions are missed by all three arms with the same wrong answer (0005, 0755, 0944), which points to model knowledge, not orchestration. medqa-test-0243 is missed only by the team arms (dynamic and static both C, single correct A); medqa-test-1230 only by static.
+- No accuracy benefit from the multi-agent arms: the three intervals overlap almost entirely, and single is 1 case ahead of dynamic. gpt-6-luna is still near ceiling on MedQA, so the benchmark is still not hard enough to separate the arms. A larger sample, a weaker base model, or a harder set (e.g. MedQA cases with many distractors, or CSEDB-style safety cases) is the next step.
+- Specialists agreed almost always (mean divergence 0.010, adversarial switch 0%), so the adversarial path was again not exercised.

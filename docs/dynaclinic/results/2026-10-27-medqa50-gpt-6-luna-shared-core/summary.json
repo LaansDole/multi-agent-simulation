@@ -1,0 +1,1182 @@
+{
+  "run_id": "2026-10-27-medqa50-gpt-6-luna-shared-core",
+  "generated_at": "2026-10-27T02:49:52+00:00",
+  "dataset": "medqa",
+  "arms": [
+    "dynamic",
+    "single",
+    "static"
+  ],
+  "n_cases": 50,
+  "limit": null,
+  "seed": null,
+  "cache": false,
+  "concurrency": 4,
+  "context_policy": "shared_core",
+  "dry_run": false,
+  "primary_model": "gpt-6-luna",
+  "arms_summary": {
+    "dynamic": {
+      "n": 50,
+      "correct": 46,
+      "accuracy": 0.92,
+      "accuracy_ci": [
+        0.8116149745493629,
+        0.9684509967442093
+      ],
+      "triage": null,
+      "routes": {
+        "collaborative": 33,
+        "single": 17
+      },
+      "adversarial_switch_rate": 0.0,
+      "mean_divergence": 0.009594767978898527,
+      "mean_margin_loss": 0.6228227714582706,
+      "safety_violations": 0,
+      "safety_violation_rate": 0.0,
+      "blocked": 0,
+      "blocked_rate": 0.0,
+      "errors": 0,
+      "mean_calls": 3.68,
+      "mean_prompt_tokens": 1581.22,
+      "mean_completion_tokens": 1038.08,
+      "mean_latency_s": 19.850818995060834,
+      "p50_latency_s": 13.246312792001845,
+      "models": {
+        "gpt-6-luna": 184
+      },
+      "fallback_calls": 0,
+      "cost_usd": null
+    },
+    "single": {
+      "n": 50,
+      "correct": 47,
+      "accuracy": 0.94,
+      "accuracy_ci": [
+        0.8378265662912299,
+        0.9793854036353695
+      ],
+      "triage": null,
+      "routes": {
+        "single": 50
+      },
+      "adversarial_switch_rate": null,
+      "mean_divergence": null,
+      "mean_margin_loss": null,
+      "safety_violations": 0,
+      "safety_violation_rate": 0.0,
+      "blocked": 0,
+      "blocked_rate": 0.0,
+      "errors": 0,
+      "mean_calls": 1.0,
+      "mean_prompt_tokens": 273.2,
+      "mean_completion_tokens": 171.04,
+      "mean_latency_s": 5.250308806640387,
+      "p50_latency_s": 2.945882457999687,
+      "models": {
+        "gpt-6-luna": 50
+      },
+      "fallback_calls": 0,
+      "cost_usd": null
+    },
+    "static": {
+      "n": 50,
+      "correct": 45,
+      "accuracy": 0.9,
+      "accuracy_ci": [
+        0.7863950966521162,
+        0.956524876008429
+      ],
+      "triage": null,
+      "routes": {
+        "adversarial": 50
+      },
+      "adversarial_switch_rate": 0.02,
+      "mean_divergence": 0.01681047557095114,
+      "mean_margin_loss": 0.5908046638823999,
+      "safety_violations": 0,
+      "safety_violation_rate": 0.0,
+      "blocked": 0,
+      "blocked_rate": 0.0,
+      "errors": 0,
+      "mean_calls": 6.0,
+      "mean_prompt_tokens": 2627.82,
+      "mean_completion_tokens": 1717.2,
+      "mean_latency_s": 29.92335621911989,
+      "p50_latency_s": 22.521845979001228,
+      "models": {
+        "gpt-6-luna": 300
+      },
+      "fallback_calls": 0,
+      "cost_usd": null
+    }
+  },
+  "per_tier": {
+    "none": {
+      "dynamic": {
+        "n": 50,
+        "correct": 46
+      },
+      "single": {
+        "n": 50,
+        "correct": 47
+      },
+      "static": {
+        "n": 50,
+        "correct": 45
+      }
+    }
+  },
+  "cases": {
+    "medqa-test-0005": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": false,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": false,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": false,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0023": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0050": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0156": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0165": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0183": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0185": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0200": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0210": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0226": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0243": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": false,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": false,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0288": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0430": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0457": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0491": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0515": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0588": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0589": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0598": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0632": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0643": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0654": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0697": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0712": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0730": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0744": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0755": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": false,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": false,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": false,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0770": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0813": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0861": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0864": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0903": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0920": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0936": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-0944": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": false,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": false,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": false,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1004": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1005": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1029": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1048": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1051": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1101": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1121": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1139": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1141": {
+      "gold": "B",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1172": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1182": {
+      "gold": "A",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1201": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1230": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": false,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1257": {
+      "gold": "D",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "medqa-test-1272": {
+      "gold": "C",
+      "gold_tier": null,
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    }
+  }
+}

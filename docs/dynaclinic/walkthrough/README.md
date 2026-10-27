@@ -81,7 +81,11 @@ Recaptured 2026-10-27 at 9ef6d86 with the same servers and model (gpt-6-luna).
 ![final output](3d-09-final-output-after-fix.png)
 
 Remaining limitations seen in this capture:
-- Only 5 character slots (`MAX_AGENT_SLOTS`), and DynaClinic has 7 agent-like characters. Critic and Synthesizer land under "Unmapped Agents" and get no 3D body.
+- (Fixed in 80f1b50) Only 5 character slots, so Critic and Synthesizer had no 3D body. The limit is now 7 (`MAX_AGENT_SLOTS` / `MAX_AGENTS`), with two extra spawn points and colours; agents without a desk sit in a lounge chair while working.
+
+![seven characters](3d-10-seven-characters.png)
+
+- Pre-existing, found while fixing the above: the last character in the team never walks (its GPU movement step leaves it in place; with 7 agents that is Synthesizer, before it was Pharmacology). `SceneManager.moveNpcToSpawn` and `moveNpcToBoardroom` look up `spawn-N` and `area-boardroom`, but the office ids are `idle-spawn-N` and `idle-area-boardroom`, so agents never walk back to their spawn or to the boardroom.
 - After re-importing a workflow, the 3D scene keeps the old characters until the page is reloaded.
 - PrimaryCare is labelled "Primarycare" (the existing `titleize` helper).
 - Not captured: characters in the "working" state mid-run. The headless run finished before a screenshot was taken. The animation path is covered by f2's smoke check (all three specialists go to working on the CareTeam `node_started` event).
