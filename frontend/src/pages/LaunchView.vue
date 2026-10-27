@@ -482,7 +482,7 @@
               class="launch-button"
               :class="{ glow: shouldGlow, 'is-sending': isWorkflowRunning }"
               @click="handleButtonClick"
-              :disabled="loading || (isWorkflowRunning && !taskPrompt.trim()) || (!isWorkflowRunning && status !== 'Completed' && status !== 'Cancelled' && !isConnectionReady)">
+              :disabled="loading || isLaunching || (isWorkflowRunning && !taskPrompt.trim()) || (!isWorkflowRunning && status !== 'Completed' && status !== 'Cancelled' && !isConnectionReady)">
               {{ buttonLabel }}
             </button>
 
@@ -568,6 +568,7 @@ import SpatialCanvas from '../components/SpatialCanvas.vue'
 import AgentInfoPanel from '../components/AgentInfoPanel.vue'
 import ObstacleEditor from '../components/ObstacleEditor.vue'
 import { useSpatialConfig } from '../composables/useSpatialConfig.js'
+import { useSingleFlight } from '../composables/useSingleFlight.js'
 
 const { saveConfig, loadConfig } = useSpatialConfig()
 
@@ -2049,7 +2050,8 @@ const copyPromptToInput = (prompt) => {
   })
 }
 
-const launchWorkflow = async () => {
+// Single-flight: a second activation while the POST is pending would start a duplicate run.
+const { run: launchWorkflow, inFlight: isLaunching } = useSingleFlight(async () => {
   if (!selectedFile.value) {
     alert(t('launch.alert_choose_workflow'))
     return
@@ -2145,7 +2147,7 @@ const launchWorkflow = async () => {
       status.value = 'Waiting for launch...'
     }
   }
-}
+})
 
 // When workflow is finished or cancelled, re-enable glow
 watch(status, (newStatus) => {
