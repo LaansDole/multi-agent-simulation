@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   atan,
   attribute, cos, float, Fn, If, instanceIndex, mat3,
-  mat4, positionLocal, sin, storage, texture, uint, uniform, uv, vec3,
+  mat4, positionLocal, Return, sin, storage, texture, uint, uniform, uv, vec3,
   vec4
 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
@@ -300,9 +300,17 @@ export class CharacterManager {
 
   private initComputeNode() {
     const agentStorage = this.agentStateBuffer!.storageNode;
+    const count = this.instanceCount;
 
     this.computeNode = Fn(() => {
       const index = instanceIndex;
+
+      // compute(count) dispatches whole 64-invocation workgroups. WebGPU robustness (Dawn) clamps
+      // the extra invocations' out-of-bounds storage accesses onto the last element, so without
+      // this guard they rewrite the last instance's velocity/position through the IDLE branch.
+      If(index.greaterThanEqual(uint(count)), () => {
+        Return();
+      });
 
       const posElement = this.positionStorage.element(index);
       const velElement = this.velocityStorage.element(index);
@@ -338,7 +346,7 @@ export class CharacterManager {
         posElement.assign(vec4(pos, 1.0));
       });
 
-    })().compute(this.instanceCount);
+    })().compute(count);
   }
 
   private createInstancedMesh() {
