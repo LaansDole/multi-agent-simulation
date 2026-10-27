@@ -36,6 +36,9 @@ export const useUiStore = create<CharacterState>()(
     isWorkflowBrowserOpen: false,
     setWorkflowBrowserOpen: (open: boolean) => set({ isWorkflowBrowserOpen: open }),
 
+    chatDraft: null,
+    setChatDraft: (text: string | null) => set({ chatDraft: text }),
+
     llmConfig: (() => {
       try {
         const saved = localStorage.getItem('byok-config');

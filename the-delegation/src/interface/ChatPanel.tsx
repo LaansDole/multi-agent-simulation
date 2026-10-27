@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { getAgentSet, getAllAgents } from '../data/agents';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../theme/brand';
 import { useCoreStore } from '../integration/store/coreStore';
+import { useMockScenarios } from '../integration/hooks/useMockScenarios';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
 import { useUiStore } from '../integration/store/uiStore';
 import { useSceneManager } from '../simulation/SceneContext';
@@ -18,12 +19,15 @@ const ChatPanel: React.FC = () => {
     isThinking,
     selectedNpcIndex,
     setIsTyping,
-    setActiveAuditTaskId
+    setActiveAuditTaskId,
+    chatDraft,
+    setChatDraft
   } = useUiStore();
   const scene = useSceneManager();
   const activeTeam = useActiveTeam();
   const agents = getAllAgents(activeTeam);
   const selectedAgentSetId = activeTeam.id;
+  const scenarios = useMockScenarios();
 
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,6 +50,13 @@ const ChatPanel: React.FC = () => {
       if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
     };
   }, []);
+
+  // Text handed over by "Use this case" in the Getting Started card; filled in, not sent.
+  useEffect(() => {
+    if (chatDraft === null) return;
+    setInput(chatDraft);
+    setChatDraft(null);
+  }, [chatDraft, setChatDraft]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -208,6 +219,26 @@ const ChatPanel: React.FC = () => {
 
       {/* Input */}
       <div className="p-2 border-t border-zinc-50">
+        {scenarios.length > 0 && agent.index === activeTeam.leadAgent.index && (
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <select
+              value=""
+              onChange={(e) => {
+                const scenario = scenarios.find((s) => s.id === e.target.value);
+                if (scenario) setInput(scenario.text);
+              }}
+              className="min-w-0 flex-1 bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-[11px] text-zinc-600 focus:outline-none cursor-pointer"
+            >
+              <option value="">Mock scenario...</option>
+              {scenarios.map((s) => (
+                <option key={s.id} value={s.id}>{s.title}</option>
+              ))}
+            </select>
+            <span className="shrink-0 text-[9px] text-zinc-400 leading-tight max-w-[130px]">
+              Mock patients for demonstration, not real data.
+            </span>
+          </div>
+        )}
         <div className="relative flex items-center gap-2">
           <div className="flex-1 relative">
             <textarea

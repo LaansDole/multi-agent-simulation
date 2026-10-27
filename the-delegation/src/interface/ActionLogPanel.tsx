@@ -6,6 +6,7 @@ import { DebugLogEntry, useCoreStore } from '../integration/store/coreStore'
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore'
 import { useUiStore } from '../integration/store/uiStore'
 import { useChatAvailability } from '../integration/hooks/useChatAvailability'
+import { DYNACLINIC_WORKFLOW, useMockScenarios } from '../integration/hooks/useMockScenarios'
 import { useSceneManager } from '../simulation/SceneContext'
 import { formatTokens } from './ProjectView'
 
@@ -334,8 +335,12 @@ const GettingStarted: React.FC = () => {
     const scene = useSceneManager()
     const { canChat } = useChatAvailability(lead.index)
     const setWorkflowBrowserOpen = useUiStore((s) => s.setWorkflowBrowserOpen)
+    const setChatDraft = useUiStore((s) => s.setChatDraft)
+    const scenarios = useMockScenarios()
+    const [previewId, setPreviewId] = useState<string | null>(null)
     const imported = Boolean(team.sourceYamlFile)
     const buttonClass = 'w-full flex items-center justify-center gap-2 bg-darkDelegation hover:bg-black active:scale-95 disabled:opacity-50 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm cursor-pointer'
+    const smallButtonClass = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all active:scale-95 disabled:opacity-50 cursor-pointer'
 
     return (
         <div className="rounded-2xl border border-zinc-100 bg-zinc-50/60 p-4 space-y-3">
@@ -346,9 +351,9 @@ const GettingStarted: React.FC = () => {
                 <li>Chat about the brief.</li>
                 <li>Paste the case and press Enter.</li>
             </ol>
-            {team.sourceYamlFile === 'dynaclinic_mvp.yaml' && (
+            {team.sourceYamlFile === DYNACLINIC_WORKFLOW && (
                 <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    DynaClinic takes one Case JSON line as input: copy one from{' '}
+                    DynaClinic takes one case as plain text{scenarios.length > 0 ? ' (pick a mock scenario below)' : ''} or as one Case JSON line from{' '}
                     <code className="font-mono text-zinc-700">data/dynaclinic/demo_cases.jsonl</code>. Walkthrough:{' '}
                     <code className="font-mono text-zinc-700">docs/dynaclinic/runbook/README.md</code>.
                 </p>
@@ -362,6 +367,41 @@ const GettingStarted: React.FC = () => {
                 <button onClick={() => setWorkflowBrowserOpen(true)} className={buttonClass}>
                     Browse workflows
                 </button>
+            )}
+            {scenarios.length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-[10px] font-black text-darkDelegation uppercase tracking-widest">Mock scenarios</p>
+                    <p className="text-[11px] text-zinc-500">Mock patients for demonstration, not real data.</p>
+                    {scenarios.map((scenario) => (
+                        <div key={scenario.id} className="rounded-xl border border-zinc-100 bg-white p-3 space-y-2">
+                            <p className="text-xs font-bold text-zinc-700 leading-snug">{scenario.title}</p>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed">{scenario.teaches}</p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        setChatDraft(scenario.text)
+                                        scene?.startChat(lead.index)
+                                    }}
+                                    disabled={!canChat}
+                                    className={`${smallButtonClass} bg-darkDelegation hover:bg-black text-white`}
+                                >
+                                    Use this case
+                                </button>
+                                <button
+                                    onClick={() => setPreviewId(previewId === scenario.id ? null : scenario.id)}
+                                    className={`${smallButtonClass} border border-zinc-200 text-zinc-600 hover:bg-zinc-50`}
+                                >
+                                    {previewId === scenario.id ? 'Hide preview' : 'Preview'}
+                                </button>
+                            </div>
+                            {previewId === scenario.id && (
+                                <pre className="text-[10px] leading-relaxed whitespace-pre-wrap font-mono text-zinc-600 bg-zinc-50 border border-zinc-100 rounded-lg p-2">
+                                    {scenario.text}
+                                </pre>
+                            )}
+                        </div>
+                    ))}
+                </div>
             )}
         </div>
     )

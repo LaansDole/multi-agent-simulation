@@ -13,6 +13,7 @@ import type {
   BackendConnectionStatus,
   BackendEvent,
   ClientMessage,
+  MockScenario,
   ModelInfo,
   NormalizedGraph,
   WorkflowExecuteRequest,
@@ -239,6 +240,18 @@ export class BackendClient {
       if (!response.ok) return [];
       const data = await response.json();
       return data.models || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Fetch the mock DynaClinic scenarios; [] when the backend call fails. */
+  public async fetchMockScenarios(): Promise<MockScenario[]> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/dynaclinic/scenarios`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      return response.ok ? await response.json() : [];
     } catch {
       return [];
     }

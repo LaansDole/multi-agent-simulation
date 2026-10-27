@@ -138,6 +138,17 @@ export interface WorkflowListItem {
 
 // ── Model Info ─────────────────────────────────────────────────────
 
+/** A fictional DynaClinic case in plain text (GET /api/dynaclinic/scenarios). */
+export interface MockScenario {
+  id: string;
+  title: string;
+  /** One line: what the demo shows. */
+  teaches: string;
+  /** Dataset case id the text was copied from. */
+  source: string;
+  text: string;
+}
+
 export interface ModelInfo {
   id: string;
   provider: string;

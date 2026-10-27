@@ -37,6 +37,10 @@ export interface CharacterState {
   isWorkflowBrowserOpen: boolean;
   setWorkflowBrowserOpen: (open: boolean) => void;
 
+  /** Text to put into the chat input (not sent); ChatPanel takes it and resets it to null. */
+  chatDraft: string | null;
+  setChatDraft: (text: string | null) => void;
+
   activeAuditTaskId: string | null;
   setActiveAuditTaskId: (taskId: string | null) => void;
 
