@@ -41,5 +41,11 @@ export const AREA_SPOT_SPACING = 0.8;
 /** Rings of standing spots around an area POI: 6 spots on the first ring, 12 on the second. */
 export const AREA_SPOT_RINGS = 2;
 
+// ── NPC Behaviour ────────────────────────────────────────────
+/** Seconds an NPC rests at its spawn after finishing a task before it wanders again. */
+export const SPAWN_REST_SECONDS = 4;
+/** Random extra rest (0 to this many seconds) so agents finishing together do not leave in lockstep. */
+export const SPAWN_REST_JITTER_SECONDS = 2;
+
 /** Color de fondo de la escena (Three.js) */
 export const SCENE_BACKGROUND_COLOR = 0xFaFcFb;

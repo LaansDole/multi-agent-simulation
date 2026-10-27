@@ -3,6 +3,7 @@ import { AgentNode, USER_ID } from '../../data/agents';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { IAgentDriver } from '../../types';
 import { CharacterController } from '../CharacterController';
+import { SPAWN_REST_JITTER_SECONDS, SPAWN_REST_SECONDS } from '../constants';
 import { AREA_POI_PREFIX, spawnPoiId } from '../world/PoiManager';
 
 
@@ -62,9 +63,10 @@ export class NpcAgentDriver implements IAgentDriver {
     );
     const isBusyWithSystem = !!activeTask;
 
-    // Detect busy→idle transition: kick the agent to move away immediately
+    // Busy→idle (task done): SceneManager walks the agent back to its spawn; rest there before
+    // wandering. The timer only counts down in resting states, so the dwell starts on arrival.
     if (this.wasBusy && !isBusyWithSystem) {
-      this.behaviorTimer = 0;
+      this.behaviorTimer = SPAWN_REST_SECONDS + Math.random() * SPAWN_REST_JITTER_SECONDS;
     }
     this.wasBusy = isBusyWithSystem;
 
