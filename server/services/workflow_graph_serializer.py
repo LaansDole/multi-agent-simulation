@@ -7,7 +7,9 @@ from runtime.node.registry import iter_node_registrations
 from schema_registry import iter_node_schemas
 from utils.strs import titleize
 
-MAX_AGENT_SLOTS = 5
+# Max agent characters (the user is not counted). Keep in sync with MAX_AGENTS in
+# the-delegation/src/data/agents.ts, which caps how many slots the 3D scene renders.
+MAX_AGENT_SLOTS = 7
 _ROLE_TRUNCATE = 200
 
 

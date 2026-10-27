@@ -1,9 +1,10 @@
 import { ArrowLeftRight } from 'lucide-react';
 import React, { useState } from 'react';
-import { characterId } from '../integration/api/YamlImporter';
+import { MAX_AGENTS } from '../data/agents';
+import { characterId, SLOT_COLORS } from '../integration/api/YamlImporter';
 import { useWorkflowStore } from '../integration/store/workflowStore';
 
-const SLOT_COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#64748B'];
+const SLOTS = Array.from({ length: MAX_AGENTS }, (_, i) => i + 1);
 
 const CharacterSlotMapping: React.FC = () => {
   const { workflowGraph, nodeAgentMap, swapSlots } = useWorkflowStore();
@@ -36,7 +37,7 @@ const CharacterSlotMapping: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-2">
-        {[1, 2, 3, 4, 5].map((slot) => {
+        {SLOTS.map((slot) => {
           const id = slotToCharacter[slot];
           const node = workflowGraph.agent_nodes.find((a) => characterId(a) === id);
           return (

@@ -196,8 +196,8 @@ const VisualConfiguratorContent: React.FC = () => {
       const verticalGap = 160;
 
       // Horizontal distribution
-      // Alternating offsets to spread them: 0, -280, 280, -560, 560
-      const offsets = [0, -280, 280, -560, 560];
+      // Alternating offsets to spread them: one per possible sibling (lead + MAX_AGENTS - 1 subagents)
+      const offsets = [0, -280, 280, -560, 560, -840];
       const xOffset = offsets[siblingCount % offsets.length];
 
       newPosition = {

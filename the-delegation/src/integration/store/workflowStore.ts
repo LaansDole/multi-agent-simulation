@@ -12,7 +12,7 @@ import { useTeamStore } from './teamStore';
 
 interface WorkflowState {
   workflowGraph: NormalizedGraph | null;
-  nodeAgentMap: Record<string, number>; // character id (YamlImporter.characterId) -> slot 1-5
+  nodeAgentMap: Record<string, number>; // character id (YamlImporter.characterId) -> slot 1-MAX_AGENTS
 
   setImportedWorkflow: (result: ImportResult, graph: NormalizedGraph) => void;
   swapSlots: (characterIdA: string, characterIdB: string) => void;

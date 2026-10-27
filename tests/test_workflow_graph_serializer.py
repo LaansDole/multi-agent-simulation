@@ -125,8 +125,8 @@ class TestSerializeDesign:
             ("CareTeam", "imaging", 3),
             ("CareTeam", "pathology", 4),
             ("CareTeam", "pharmacology", 5),
-            ("Critic", None, None),
-            ("Synthesizer", None, None),
+            ("Critic", None, 6),
+            ("Synthesizer", None, 7),
         ]
         assert [a["label"] for a in agents if a["node_id"] == "CareTeam"] == [
             "Diagnostic Imaging",
@@ -134,24 +134,24 @@ class TestSerializeDesign:
             "Pharmacology",
         ]
 
-    def test_overflow_agent_gets_null_slot(self, tmp_path):
+    def test_eighth_agent_gets_null_slot(self, tmp_path):
         nodes_yaml = "\n".join(
             f"    - id: agent_{i}\n      type: agent\n      config:\n"
             f"        provider: openai\n        name: m{i}\n        role: r{i}\n"
             f"        base_url: http://localhost\n        api_key: sk-test\n"
             f"        params: {{}}\n        tooling: null\n        thinking: null\n        memories: []\n"
-            for i in range(6)
+            for i in range(8)
         )
         many_yaml = (
             "version: 0.0.0\nvars: {}\ngraph:\n  id: many\n  is_majority_voting: false\n"
-            f"  nodes:\n{nodes_yaml}\n  start:\n    - agent_0\n  end:\n    - agent_5\n"
+            f"  nodes:\n{nodes_yaml}\n  start:\n    - agent_0\n  end:\n    - agent_7\n"
         )
         p = tmp_path / "many.yaml"
         p.write_text(many_yaml, encoding="utf-8")
         many_design = load_config(p)
         result = serialize_design(many_design, filename="many.yaml")
         slots = [a["proposed_slot"] for a in result["agent_nodes"]]
-        assert slots == [1, 2, 3, 4, 5, None]
+        assert slots == [1, 2, 3, 4, 5, 6, 7, None]
 
     def test_edges_serialized(self, design):
         result = serialize_design(design, filename="minimal.yaml")

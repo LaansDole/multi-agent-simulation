@@ -3,7 +3,9 @@ import { DEFAULT_MODELS } from '../core/llm/constants';
 
 export const USER_ID = 'user';
 export const USER_NAME = 'User';
-export const MAX_AGENTS = 5;
+// Max agent characters (the user is not counted). Keep in sync with MAX_AGENT_SLOTS in
+// server/services/workflow_graph_serializer.py, which proposes the slots an import fills.
+export const MAX_AGENTS = 7;
 export { USER_COLOR };
 export const DEFAULT_AGENTIC_SET_ID = 'single-agent';
 export interface AgentNode {

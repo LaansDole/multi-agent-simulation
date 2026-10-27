@@ -256,21 +256,15 @@ export class SceneManager {
     return null;
   }
 
-  /** 
-   * SMART DESK ASSIGNMENT
-   * Attempts to find a work POI. If work-${index} is missing, it picks 
-   * a desk from the 'sit_work' group based on the agent's unique index.
+  /**
+   * DESK ASSIGNMENT
+   * Agent N works at desk sit_work-N. The office has 5 desks but MAX_AGENTS is 7, so agents
+   * without a desk take a free chair instead of sharing (and blocking) another agent's desk.
    */
   public setNpcWorking(index: number, working: boolean): void {
     if (!this.controller) return;
     if (working) {
-      const id = `sit_work-${index}`;
-      let poi = this.poiManager.getPoi(id);
-      if (!poi) {
-         // Smart fallback: assign a desk based on order (agent index is 1-based)
-         const desks = this.poiManager.getPoisByPrefix('sit_work');
-         if (desks.length > 0) poi = desks[(index - 1) % desks.length];
-      }
+      const poi = this.poiManager.getPoi(`sit_work-${index}`) ?? this.poiManager.getFreePois('sit_idle', index)[0];
       if (poi) this.controller.walkToPoi(index, poi.id);
     }
   }

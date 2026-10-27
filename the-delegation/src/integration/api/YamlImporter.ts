@@ -2,7 +2,7 @@
  * YamlImporter -- Converts a NormalizedGraph (from the backend graph endpoint)
  * into an AgenticSystem + nodeAgentMap for the-delegation's 3D visualization.
  *
- * Pure transform, no IO. Agent nodes fill character slots 1-5 in YAML order;
+ * Pure transform, no IO. Agent nodes fill character slots 1-MAX_AGENTS in YAML order;
  * a node with sub_agent slots (e.g. the DynaClinic Care Team) fills one slot
  * per sub-agent. nodeAgentMap is keyed by character id; overflow agents and
  * all non-agent nodes are absent from it (they resolve to -1 / log-only in the
@@ -15,7 +15,8 @@ import type { AgenticSystem, AgentNode } from '../../data/agents';
 import { MAX_AGENTS } from '../../data/agents';
 import { DEFAULT_MODELS } from '../../core/llm/constants';
 
-const SLOT_COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#64748B'];
+/** One distinct colour per character slot (index = slot - 1); length must be MAX_AGENTS. */
+export const SLOT_COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#64748B', '#A142F4', '#12B5CB'];
 
 export interface ImportResult {
   system: AgenticSystem;
