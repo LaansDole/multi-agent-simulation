@@ -1,6 +1,8 @@
 # DynaClinic in 3D: runbook
 
-How to start the servers, open the three.js office (the-delegation), and replay the three DynaClinic routes from the research proposal: single Primary Care Agent, collaborative Integrated Care Team, and the adversarial switch to the Clinical Critic. Every screenshot here is from a real run on 2026-10-27, not a mock-up. Model gpt-6-luna through the OpenAI API (any OpenAI-compatible endpoint works). Scenarios A and B and the UI shots were captured at 0d3ed91. Scenario C's adversarial run was captured earlier at 231dd81. Between the two commits the DynaClinic routing and scoring code did not change; 0d3ed91 only adds a report of the model name.
+How to start the servers, open the three.js office (the-delegation), and replay the three DynaClinic routes from the research proposal: single Primary Care Agent, collaborative Integrated Care Team, and the adversarial switch to the Clinical Critic. Every screenshot and the video are from real runs on 2026-10-27 at 8f27bff, not mock-ups. Model: gpt-6-luna, provider OpenAI (any OpenAI-compatible endpoint works); no Gemini is involved anywhere in these runs.
+
+**Video of the whole workflow:** [dynaclinic-3d-journey.mp4](dynaclinic-3d-journey.mp4) (3 min 46 s, 1280 px, no audio). It is one continuous recording of a fresh browser profile: open the office, import `dynaclinic_mvp.yaml`, reload, check the badge (`OPENAI gpt-6-luna`), open and close the design view, then run Scenarios A, B and C through the Getting Started button, each ending in its final report. Idle stretches longer than 2.5 s are shortened to 2.5 s; nothing else is cut or sped up. In this recording, Scenario C did switch to the Critic (HIGH route, divergence 0.59).
 
 Time: about 5 minutes to start, about 30 seconds per case.
 
@@ -97,25 +99,27 @@ Case: `demo-contested-02` (30 weeks pregnant, suspected VTE; reference answer C)
 
 ![care team](08-adversarial-care-team.png)
 ![Critic working](09-adversarial-critic.png)
-![activity log: DivergenceGate -> Critic](10-adversarial-activity-log.png)
 ![report](11-adversarial-report.png)
 
 What to look for:
-- Triage: `ROUTE: MODERATE` (deterministic score 6). A MODERATE case consults two specialists: the first two, in the order Pharmacology, Pathology/Lab, Imaging, that have data for the case (`dynaclinic/pipeline.py`, `_MODERATE_ORDER`). Here the case has labs and medications, so Pathology/Lab and Pharmacology posted to the Blackboard.
-- DivergenceGate (live output): `MODE: ADVERSARIAL, Divergence 0.35 (tau 0.25); top-1: pathology C, pharmacology C; conflict set: C`. Both picked C, but with very different confidence (0.55 vs 0.90). The divergence between their distributions passes tau, so the gate switches architecture, as the proposal's conflict-aware routing specifies.
-- Critic goes to IN PROGRESS, and the ACTIVITY log shows `Edge condition met for DivergenceGate -> Critic`. The Critic splits the Blackboard into atomic claims and scores each with the hybrid rule / LLM-judge estimator. It flagged three claims in this run (see Findings).
-- Synthesizer then reconciles, and Layer 4 passes: FINAL ANSWER C.
-- Live run: 37 s.
+- Triage: `ROUTE: HIGH` (LLM tier HIGH, deterministic tier MODERATE, feature score 6), so all three specialists work.
+- DivergenceGate (live output of the run shown): `MODE: ADVERSARIAL, Divergence 0.72 (tau 0.25); top-1: imaging B, pathology A (abstains), pharmacology C; conflict set: B, C`. Imaging wants a V/Q scan first (B), Pharmacology wants heparin plus leg ultrasound first (C), and Pathology/Lab has no basis to choose, so it abstains. The divergence passes tau, so the gate switches architecture, as the proposal's conflict-aware routing specifies.
+- Critic goes to IN PROGRESS, and the ACTIVITY log (left) shows `Edge condition met for DivergenceGate -> Critic` and `Started: Critic`. The Critic splits the Blackboard into atomic claims and scores each with the hybrid rule / LLM-judge estimator.
+- Synthesizer then reconciles B against C, and Layer 4 passes: FINAL ANSWER C ("start LMWH and get compression ultrasonography of the left leg; a V/Q scan may come later").
+- Live run: 42 s.
 
-How often this case switches (5 real runs, same routing code):
+How often this case switches (all real runs of this case; the routing code is the same in all of them):
 
 | Run | Triage | Specialists consulted | Divergence | Mode |
 |---|---|---|---|---|
 | headless (SDK) | HIGH | imaging B, pathology abstains, pharmacology C | 0.52 | ADVERSARIAL |
 | 3D, shown above | MODERATE | pathology C (0.55), pharmacology C (0.90) | 0.35 | ADVERSARIAL |
 | 3D x3, after the UI changes | MODERATE | pathology abstains, pharmacology abstains | 0.00 | COLLABORATIVE |
+| video recording 1 (shipped) | HIGH | imaging B, pathology abstains, pharmacology C | 0.59 | ADVERSARIAL |
+| video recording 2 (not used) | MODERATE | pathology abstains, pharmacology C | 0.00 | COLLABORATIVE |
+| stills shown above | HIGH | imaging B, pathology abstains, pharmacology C | 0.72 | ADVERSARIAL |
 
-All five gave FINAL ANSWER C. The switch depends on which specialists triage consults. MODERATE picks the first two with data for the case (Pharmacology, then Pathology/Lab). Neither can choose a diagnostic step for this case from its own modality, so when both abstain there is no informed vote and the gate stays collaborative (see Findings). Treat Scenario C as "can switch", not "always switches".
+Switched in 4 of 8 runs; all 8 gave FINAL ANSWER C. The switch depends on which specialists triage consults: every HIGH run switched (Imaging and Pharmacology disagree), every MODERATE run but one stayed collaborative. MODERATE picks the first two with data for the case (Pharmacology, then Pathology/Lab). Neither can choose a diagnostic step for this case from its own modality, so when both abstain there is no informed vote and the gate stays collaborative (see Findings). Treat Scenario C as "can switch", not "always switches".
 
 ## 6. Proposal coverage you can and cannot see
 
@@ -134,7 +138,7 @@ For the numbers (Blackboard entries, divergence, flagged claims), open the same 
 
 ## 7. Stop
 
-Ctrl-C both terminals. Check nothing is left: `lsof -iTCP:6400 -iTCP:3100 -sTCP:LISTEN` prints nothing.
+Ctrl-C both terminals (if the servers were started in the background instead: `pkill -f "server_main.py --port 6400"` and `pkill -f "vite --port=3100"`). Check nothing is left: `lsof -iTCP:6400 -iTCP:3100 -sTCP:LISTEN` prints nothing.
 
 ## 8. Troubleshooting
 
@@ -144,7 +148,8 @@ Ctrl-C both terminals. Check nothing is left: `lsof -iTCP:6400 -iTCP:3100 -sTCP:
 | No CHAT ABOUT THE BRIEF button | You selected a non-lead character; select Triage |
 | Top bar not CONNECTED | Backend not running on 6400, or started from the wrong directory |
 | Run fails immediately | `.env` missing `OPENAI_API_KEY`, or the model is unreachable (the pipeline falls back to `DYNACLINIC_FALLBACK_MODELS` if set) |
-| Badge shows `gpt-5-mini` instead of your model | The backend is running older code, or the team was imported before the change. Restart the backend, then re-import the workflow |
+| Agent card or badge shows `GEMINI-3-FLASH-PREVIEW` | The team was saved in your browser before the OpenAI default (8f27bff). Reload the page with the backend running: saved imported teams resync their provider and model from the backend on every load. Agents you edited yourself keep your edit |
+| Badge shows `gpt-5-mini` instead of your model | That is the offline fallback: the backend was unreachable when the page loaded, or it runs code older than 0d3ed91. Start or restart the backend, then reload |
 | A full-screen view will not close | Press Escape, or click the X at the top right. Every overlay supports both |
 | `--strictPort` error | Port 3100 in use; pick another port. Do not stop the process on 3000 |
 | Automated screenshots show a blank canvas | Some automation browsers do not render WebGL/WebGPU. Use real Chrome (headless works: `--headless=new --remote-debugging-port=<port>`) |
@@ -156,6 +161,6 @@ Headless capture tip: click the Getting Started button (text "START: CHAT WITH")
 - Deterministic nodes (CaseInput, DivergenceGate, SafetyGate, Report) stay in IN PROGRESS / WORKING on the kanban after the run completes. These are the nodes without an agent character; the cause was not investigated.
 - With a MODERATE route the kanban still shows all three specialist cards as working, although only the two consulted specialists post to the Blackboard.
 - When every consulted specialist abstains (an even split), DivergenceGate reports divergence 0.00 and stays collaborative, so the Synthesizer answers with no informed specialist vote. A safer rule would consult the remaining specialist, or escalate to the Critic, when all votes abstain. MODERATE also picks specialists by which data the case contains, not by which specialty the question needs.
-- In Scenario C the Critic labelled "Low-molecular-weight heparin is preferred over warfarin for anticoagulation during pregnancy" as `[contradiction]`. That claim is correct; the KB has no pregnancy rule to credit it, and the judge sees only the case text. The final answer was unaffected.
+- In an earlier Scenario C run (231dd81) the Critic labelled "Low-molecular-weight heparin is preferred over warfarin for anticoagulation during pregnancy" as `[contradiction]`. That claim is correct; the KB has no pregnancy rule to credit it, and the judge sees only the case text. The final answer was unaffected.
 - Node text (Blackboard, divergence, flagged claims) is not shown inside the 3D view; only the route is.
 - From the f6 report, minor 3D behaviour: arrivals without a seat snap stop 0.16 to 0.25 m short; a boardroom standing spot can overlap spawn 5; `setNpcWorking` does not fall back when another agent holds the desk; an agent left seated at a desk never wanders again.
