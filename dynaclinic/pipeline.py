@@ -24,15 +24,28 @@ from concurrent.futures import ThreadPoolExecutor
 
 from dynaclinic.blackboard import Blackboard
 from dynaclinic.critic import ClinicalCritic
-from dynaclinic.divergence import TAU, assess, normalize
+from dynaclinic.divergence import (
+    HASHING_EMBEDDER,
+    TAU,
+    assess,
+    normalize,
+    semantic_divergence,
+    semantic_tau,
+)
 from dynaclinic.interfaces import (
     FHIRLiteIngestor,
     GreedyPlanner,
+    HashingEmbeddingMemory,
     SemanticCache,
     sections_from_structured,
 )
 from dynaclinic.llm import LLMClient, LLMError
-from dynaclinic.parsing import extract_final_answer, extract_json
+from dynaclinic.parsing import (
+    ABSTAIN,
+    extract_final_answer,
+    extract_json,
+    extract_primary_assertion,
+)
 from dynaclinic.prompts import (
     DEFAULT_CONTEXT_POLICY,
     IMAGING,
@@ -85,8 +98,9 @@ class CaseRun:
 
     Each stage appends its route id. Stages call ``client``, which DevAll nodes swap per node config.
     An open-ended case (no options) is supported: the answering roles write a clinical write-up ending in
-    ``RECOMMENDATION:`` instead of a FINAL ANSWER letter, specialists need no distribution and divergence is
-    not measurable (adversarial review, safety-biased). ``context_policy`` (``prompts``: strict |
+    ``RECOMMENDATION:`` instead of a FINAL ANSWER letter, and specialists post a ``PRIMARY ASSERTION``
+    instead of a distribution, so divergence is the semantic distance between those assertions (embedded
+    by the client, or the hashing stub when it cannot). ``context_policy`` (``prompts``: strict |
     shared_core) decides how much of the case the specialists and Synthesizer see.
     """
 
@@ -103,6 +117,7 @@ class CaseRun:
         self.safety: SafetyReport | None = None
         self.conf = 0.0  # confidence in the leading answer (planner reward input)
         self.abstainers: list[str] = []  # near-uniform specialists left out of the last divergence vote
+        self.tau_semantic: float | None = None  # threshold of the last semantic divergence (open-ended case)
 
     def progress(self) -> tuple[float, float, str | None]:
         """``(missing, conf, answer)``; ``missing`` is the open fraction of {tier, answer, gate-verified}."""
@@ -160,10 +175,15 @@ class CaseRun:
         for role, reply in zip(roles, replies, strict=True):
             if isinstance(reply, str):
                 self.result.warnings.append(reply)
-            else:
-                self.board.write(reply)
-                if reply.distribution is not None:
-                    self.result.distributions[role] = reply.distribution
+                continue
+            if self.case.open_ended:
+                if reply.assertion is None:
+                    self.result.warnings.append(f"{role}: no PRIMARY ASSERTION line; counted as abstaining")
+                    reply.assertion = ABSTAIN
+                self.result.assertions[role] = reply.assertion
+            self.board.write(reply)
+            if reply.distribution is not None:
+                self.result.distributions[role] = reply.distribution
         if all(isinstance(reply, str) for reply in replies):
             self.result.route.append("care_team:failed")
             raise LLMError("all specialists failed")
@@ -171,10 +191,15 @@ class CaseRun:
         self.conf = max(sum(d[letter] for d in dists) / len(dists) for letter in letters) if dists and letters else 0.0
 
     def _consult(self, role: str) -> BlackboardEntry | str:
-        """One specialist call (worker thread): its entry, or a warning when the call or reply fails."""
+        """One specialist call (worker thread): its entry, or a warning when the call or reply fails.
+
+        An open-ended case asks for findings, claims and a final ``PRIMARY ASSERTION:`` line instead of a
+        distribution, so the reply is not forced into JSON mode."""
         user = specialist_block(role, self.case, self.sections, self.context_policy)
+        open_ended = self.case.open_ended
+        system = specialist_system(role, self.context_policy, open_ended)
         try:
-            text, _ = self.client.complete(role, specialist_system(role, self.context_policy), user, json_mode=True)
+            text, _ = self.client.complete(role, system, user, json_mode=not open_ended)
         except LLMError as err:
             return f"{role}: call failed ({err}); excluded from the team"
         data = extract_json(text)
@@ -186,20 +211,49 @@ class CaseRun:
             return f"{role}: reply is not JSON; excluded from the team"
         findings = "; ".join(_strings(data.get("findings"))) or "(no findings)"
         dist = normalize(distribution, letters) if letters else None
-        return BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=1)
+        assertion = extract_primary_assertion(text) if open_ended else None
+        return BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=1,
+                               assertion=assertion)
 
-    def divergence(self, tau: float) -> None:
-        """Tier 2 switch; without options divergence is not measurable and the team goes adversarial."""
+    def divergence(self, tau: float, tau_semantic: float | None = None) -> None:
+        """Tier 2 switch: JS divergence of the option distributions, or for an open-ended case the semantic
+        divergence of the primary assertions (``tau_semantic`` None: the embedder's ``TAU_SEMANTIC``)."""
         r = self.result
-        if not self.case.letters():
-            r.switch, r.mode = True, "adversarial"
-            r.route.append("divergence:n/a:switch")
+        if self.case.open_ended:
+            self._semantic_divergence(tau_semantic)
             return
         report = assess(r.distributions, self.case.letters(), tau)
         r.divergence, r.top1, r.disagreement = report.divergence, report.top1, report.disagreement
         r.conflict_set, r.switch, self.abstainers = report.conflict_set, report.switch, report.abstainers
         r.mode = "adversarial" if report.switch else "collaborative"
         r.route.append(f"divergence:{report.divergence:.2f}:{'switch' if report.switch else 'stay'}")
+
+    def _semantic_divergence(self, tau: float | None) -> None:
+        """Switch iff the mean pairwise cosine distance of the non-abstaining assertions is ``>= tau``; with
+        fewer than two assertions it is not measurable and the team goes adversarial (safety-biased)."""
+        r = self.result
+        asserted = [assertion for assertion in r.assertions.values() if assertion != ABSTAIN]
+        if len(asserted) < 2:
+            r.switch, r.mode = True, "adversarial"
+            r.route.append("divergence:n/a:switch")
+            return
+        r.embedder, vectors = self._embed(asserted)
+        self.tau_semantic = semantic_tau(r.embedder, tau)
+        r.divergence = semantic_divergence(vectors)
+        r.switch = r.divergence >= self.tau_semantic
+        r.mode = "adversarial" if r.switch else "collaborative"
+        r.route.append(f"divergence:{r.divergence:.2f}:{'switch' if r.switch else 'stay'}")
+
+    def _embed(self, texts: list[str]) -> tuple[str, list[Sequence[float]]]:
+        """``(embedder, vectors)`` from the client's embedder; the hashing stub when it has none or it fails."""
+        model = self.client.embedding_model
+        if model:
+            try:
+                return model, list(self.client.embed(texts))
+            except LLMError as err:
+                self.result.warnings.append(f"divergence: embedder {model} failed ({err}); used {HASHING_EMBEDDER}")
+        memory = HashingEmbeddingMemory()
+        return HASHING_EMBEDDER, [memory.embed(text) for text in texts]
 
     def critic(self) -> None:
         self.result.route.append("critic")
@@ -301,7 +355,8 @@ class DynaClinicPipeline(_Pipeline):
     The ``GreedyPlanner`` stub picks every stage and its reward per stage is logged in the route.
     ``max_rollbacks`` bounds safety-gate backtracks (regenerations); the adversarial round runs at most
     once by construction. Only gate-verified answers are cached, and a cache hit is re-gated against
-    the new case so a near-duplicate with a different allergy or med list is recomputed.
+    the new case so a near-duplicate with a different allergy or med list is recomputed. ``tau_semantic``
+    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``.
     """
 
     arm = "dynamic"
@@ -311,6 +366,7 @@ class DynaClinicPipeline(_Pipeline):
         client: LLMClient,
         *,
         tau: float = TAU,
+        tau_semantic: float | None = None,
         escalate_threshold: int = MODERATE_SCORE,
         cache: SemanticCache | None = None,
         pca_samples: int = 1,
@@ -321,6 +377,7 @@ class DynaClinicPipeline(_Pipeline):
             raise ValueError(f"need pca_samples >= 1 and max_rollbacks >= 0, got {pca_samples}, {max_rollbacks}")
         super().__init__(client, context_policy=context_policy)
         self.tau = tau
+        self.tau_semantic = tau_semantic
         self.escalate_threshold = escalate_threshold
         self.cache = cache
         self.pca_samples = pca_samples
@@ -336,7 +393,7 @@ class DynaClinicPipeline(_Pipeline):
             "triage": lambda: run.triage(self.escalate_threshold),
             "primary_care": lambda: run.primary_care(self.pca_samples),
             "care_team": lambda: run.care_team(run.team_roles()),
-            "divergence": lambda: run.divergence(self.tau),
+            "divergence": lambda: run.divergence(self.tau, self.tau_semantic),
             "critic": run.critic,
             "synthesizer": run.synthesize,
             "safety_gate": run.gate,

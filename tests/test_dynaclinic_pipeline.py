@@ -293,6 +293,28 @@ def test_open_ended_case_is_answered_with_a_write_up_and_no_letter_anywhere(pipe
     assert [role for role, system, user in client.prompts if "FINAL ANSWER" in system + user] == []
 
 
+def _asserting(assertion: str) -> str:
+    return json.dumps({"findings": ["scripted finding"], "claims": []}) + f"\nPRIMARY ASSERTION: {assertion}"
+
+
+@pytest.mark.parametrize(
+    ("pharmacology", "stages"),
+    [
+        ("Septic shock from pneumonia.", ["divergence:0.00:stay", "synthesizer", "safety_gate:pass"]),
+        ("Pulmonary embolism.", ["divergence:0.67:switch", "critic", "synthesizer", "safety_gate:pass"]),
+    ],
+)
+def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(pharmacology: str, stages: list[str]) -> None:
+    def by_keyword(texts: list[str]) -> list[list[float]]:
+        return [[float("septic" in text.lower()), float("embol" in text.lower())] for text in texts]
+
+    script = {**SCRIPT, "triage": _triage("HIGH"), "synthesizer": WRITE_UP, "imaging": _asserting("Septic shock."),
+              "pathology": _asserting("Septic shock, likely pulmonary source."), "pharmacology": _asserting(pharmacology)}
+    result = DynaClinicPipeline(FakeLLM(script, by_keyword), tau_semantic=0.5).run(OPEN_CASE)
+    assert _stages(result)[4:] == stages
+    assert (result.embedder, result.final_text, result.warnings) == ("fake", WRITE_UP, [])
+
+
 # sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE, captured
 # at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte.
 STRICT_TRANSCRIPTS = {

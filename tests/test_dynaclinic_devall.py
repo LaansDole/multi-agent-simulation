@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 
 from dynaclinic.devall_nodes import STATE_KEY, case_from_text
+from dynaclinic.divergence import HASHING_EMBEDDER, TAU_SEMANTIC
 from dynaclinic.llm import FakeLLM, LLMError, set_client_factory
 from dynaclinic.parsing import first_line_marker
 from dynaclinic.pipeline import BLOCKED_PREFIX, CaseRun
@@ -49,8 +50,8 @@ Build = Callable[..., "Harness"]
 class Harness:
     """Runs DynaClinic nodes in one ``ExecutionContext`` the way the DevAll graph does, against a FakeLLM."""
 
-    def __init__(self, script: object) -> None:
-        self.client = FakeLLM(script)
+    def __init__(self, script: object, embed: Callable[[list[str]], list[list[float]]] | None = None) -> None:
+        self.client = FakeLLM(script, embed)
         self.models: list[list[str] | None] = []
         self.context = ExecutionContext(tool_manager=Mock(), function_manager=Mock(), log_manager=Mock())
 
@@ -75,8 +76,8 @@ def harness() -> Iterator[Build]:
     """Yield a ``Harness`` builder whose FakeLLM is installed through ``set_client_factory``."""
     ensure_schema_registry_populated()
 
-    def build(**overrides: object) -> Harness:
-        h = Harness({**SCRIPT, **overrides})
+    def build(embed: Callable[[list[str]], list[list[float]]] | None = None, **overrides: object) -> Harness:
+        h = Harness({**SCRIPT, **overrides}, embed)
         set_client_factory(h.factory)
         return h
 
@@ -108,6 +109,7 @@ def test_configs_default_to_the_env_model_chain() -> None:
     ("node_type", "config"),
     [
         ("dc_divergence_gate", {"tau": 1.5}),
+        ("dc_divergence_gate", {"tau_semantic": 1.5}),
         ("dc_primary_care", {"pca_samples": 0}),
         ("dc_safety_gate", {"max_rollbacks": -1}),
         ("dc_triage", {"escalate_threshold": "high"}),
@@ -212,21 +214,67 @@ def test_free_text_case_has_optional_final_answer_and_text_only_gates(harness: B
     assert result.final_answer is None and result.warnings == []
 
 
-def test_free_text_team_without_distributions_runs_the_adversarial_path(harness: Build) -> None:
+def _asserting(assertion: str) -> str:
+    return json.dumps({"findings": ["scripted finding"], "claims": ["scripted claim"]}) + f"\nPRIMARY ASSERTION: {assertion}"
+
+
+def _by_keyword(texts: list[str]) -> list[list[float]]:
+    """Deterministic fake embedder: one axis per diagnosis keyword."""
+    return [[float("embol" in text.lower()), float("coronary" in text.lower())] for text in texts]
+
+
+PE = "Pulmonary embolism is the leading diagnosis."
+ACS = "Acute coronary syndrome is the leading diagnosis."
+
+
+def test_open_ended_team_with_fewer_than_two_assertions_goes_adversarial_and_says_why(harness: Build) -> None:
     findings = json.dumps({"findings": ["hypotension with fever"], "claims": ["Septic shock is likely"]})
-    h = harness(triage=_triage("HIGH"), imaging=findings, pathology=findings, pharmacology=findings,
+    h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=_asserting("ABSTAIN (no imaging)"),
+                pathology=findings, pharmacology=_asserting("Septic shock; start fluids and antibiotics."),
                 synthesizer="Draw blood cultures, then start IV ceftriaxone and fluids.")
     h.run("dc_triage", SEPSIS_TEXT)
-    h.run("dc_care_team")
-    assert len(h.run_state.board) == 3
+    team = h.run("dc_care_team")
+    assert len(h.run_state.board) == 3 and "pathology: no PRIMARY ASSERTION line; counted as abstaining" in team
     gate = h.run("dc_divergence_gate")
-    assert first_line_marker(gate, "MODE") == "ADVERSARIAL" and "not measurable" in gate
+    assert gate == ("MODE: ADVERSARIAL\nSemantic divergence not measurable: fewer than two specialists asserted a "
+                    "diagnosis; adversarial review (safety-biased); assertions: imaging ABSTAIN, pathology ABSTAIN, "
+                    'pharmacology "Septic shock; start fluids and antibiotics.".')
     h.run("dc_critic")
     h.run("dc_synthesizer")
     assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
     result = h.run_state.result
-    assert result.divergence is None and result.final_answer is None and result.error is None
+    assert (result.divergence, result.embedder, result.final_answer, result.error) == (None, None, None, None)
     assert result.route[3:] == ["divergence:n/a:switch", "critic", "synthesizer", "safety_gate:pass"]
+
+
+@pytest.mark.parametrize(("pharmacology", "mode", "divergence"), [(PE, "COLLABORATIVE", 0.0), (ACS, "ADVERSARIAL", 2 / 3)])
+def test_open_ended_team_switches_on_the_semantic_divergence_of_its_assertions(
+    harness: Build, pharmacology: str, mode: str, divergence: float
+) -> None:
+    h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=_asserting(PE), pathology=_asserting(PE),
+                pharmacology=_asserting(pharmacology))
+    h.run("dc_triage", "A 61-year-old has sudden dyspnea and pleuritic chest pain.")
+    assert "primary assertion: " + PE in h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate", tau_semantic=0.5)
+    assert gate == (f"MODE: {mode}\nSemantic divergence {divergence:.2f} (tau_semantic 0.5, embedder fake); "
+                    f'assertions: imaging "{PE}", pathology "{PE}", pharmacology "{pharmacology}".')
+    result = h.run_state.result
+    assert result.divergence == pytest.approx(divergence) and result.mode == mode.lower()
+    assert result.assertions == {IMAGING: PE, PATHOLOGY: PE, PHARMACOLOGY: pharmacology}
+
+
+def test_failing_embedder_falls_back_to_hashing_and_the_gate_names_it(harness: Build) -> None:
+    def unavailable(texts: list[str]) -> list[list[float]]:
+        raise LLMError("embeddings endpoint not found")
+
+    h = harness(embed=unavailable, triage=_triage("HIGH"), imaging=_asserting(PE), pathology=_asserting(PE),
+                pharmacology=_asserting(ACS))
+    h.run("dc_triage", "A 61-year-old has sudden dyspnea and pleuritic chest pain.")
+    h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate")
+    assert f"(tau_semantic {TAU_SEMANTIC[HASHING_EMBEDDER]:g}, embedder hashing)" in gate.splitlines()[1]
+    assert gate.endswith("Warnings:\n- divergence: embedder fake failed (embeddings endpoint not found); used hashing")
+    assert h.run_state.result.embedder == HASHING_EMBEDDER
 
 
 def test_all_specialists_failing_raises_and_records_the_error(harness: Build) -> None:

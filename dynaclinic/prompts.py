@@ -83,6 +83,28 @@ Use the summary for clinical context; reason from your {modality} and do not pre
 Do not assume findings from other modalities that the case does not state. If your data cannot discriminate,
 spread probability evenly.
 """ + _SPECIALIST_JSON
+_SPECIALIST_ASSERT = """This is an open-ended clinical scenario with no answer options.
+Respond with one JSON object:
+{{"findings": ["<finding from your {modality}>"], "claims": ["<one atomic, checkable statement>"]}}
+then, after the JSON, exactly one final line:
+PRIMARY ASSERTION: <the single leading diagnosis or recommendation, one short sentence>
+Write PRIMARY ASSERTION: ABSTAIN instead when your {modality} holds no relevant data."""
+_SPECIALIST_OPEN = _SPECIALIST_HEAD + """\
+You see ONLY the {modality} for this patient. Reason only from that data; do not assume findings from other
+modalities.
+""" + _SPECIALIST_ASSERT
+_SPECIALIST_SHARED_CORE_OPEN = _SPECIALIST_HEAD + """\
+You see a shared case summary (vignette, demographics and any question) and your own {modality}.
+Use the summary for clinical context; reason from your {modality} and do not prescribe outside your role.
+Do not assume findings from other modalities that the case does not state.
+""" + _SPECIALIST_ASSERT
+# (context policy, open-ended case) -> specialist system prompt template.
+_SPECIALIST_TEMPLATES = {
+    (STRICT, False): _SPECIALIST,
+    (SHARED_CORE, False): _SPECIALIST_SHARED_CORE,
+    (STRICT, True): _SPECIALIST_OPEN,
+    (SHARED_CORE, True): _SPECIALIST_SHARED_CORE_OPEN,
+}
 
 _CRITIC = """You are the Clinical Critic in adversarial mode. The care team disagrees.
 Decompose the team's Blackboard reasoning into atomic claims: one checkable clinical statement each
@@ -130,7 +152,6 @@ SYSTEM_PROMPTS: dict[str, str] = {
     SYNTHESIZER: _SYNTHESIZER,
     SINGLE_AGENT: _SINGLE_AGENT,
 }
-_SHARED_CORE_SPECIALISTS = {role: _SPECIALIST_SHARED_CORE.format(**persona) for role, persona in _PERSONAS.items()}
 # Answering roles' system prompts for an open-ended case: the clinical write-up instead of a FINAL ANSWER letter.
 OPEN_ENDED_PROMPTS: dict[str, str] = {
     PRIMARY_CARE: _PRIMARY_CARE_OPEN,
@@ -194,9 +215,11 @@ def modality_data(role: str, case: Case, sections: dict[str, str]) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
-def specialist_system(role: str, policy: str) -> str:
-    """One specialist's system prompt under ``policy``; ``strict`` is ``SYSTEM_PROMPTS[role]``."""
-    return SYSTEM_PROMPTS[role] if check_context_policy(policy) == STRICT else _SHARED_CORE_SPECIALISTS[role]
+def specialist_system(role: str, policy: str, open_ended: bool = False) -> str:
+    """One specialist's system prompt under ``policy``; strict multiple choice is ``SYSTEM_PROMPTS[role]``.
+
+    An open-ended case drops the option distribution and asks for a final ``PRIMARY ASSERTION:`` line."""
+    return _SPECIALIST_TEMPLATES[check_context_policy(policy), open_ended].format(**_PERSONAS[role])
 
 
 def specialist_block(role: str, case: Case, sections: dict[str, str], policy: str = DEFAULT_CONTEXT_POLICY) -> str:

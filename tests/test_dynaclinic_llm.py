@@ -12,6 +12,7 @@ import openai
 import pytest
 
 from dynaclinic import llm
+from dynaclinic.divergence import OPENAI_EMBEDDING_MODEL
 from dynaclinic.llm import (
     FakeLLM,
     LLMError,
@@ -40,13 +41,14 @@ def _status_error(cls: type[openai.APIStatusError], status: int, message: str, c
 
 
 class _StubSDK:
-    """Stands in for ``openai.OpenAI``; records every ``chat.completions.create`` call."""
+    """Stands in for ``openai.OpenAI``; records every ``chat.completions.create`` and ``embeddings.create`` call."""
 
     def __init__(self, behaviour: Behaviour, **init_kwargs: Any) -> None:
         self.init_kwargs = init_kwargs
         self.api_key = init_kwargs["api_key"]
         self.calls: list[dict[str, Any]] = []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+        self.embeddings = SimpleNamespace(create=self._create)
         self._behaviour = behaviour
 
     def _create(self, **kwargs: Any) -> Any:
@@ -216,6 +218,27 @@ def test_real_sdk_call_fails_offline_instead_of_reaching_network(caplog: pytest.
         error = error.__cause__ or error.__context__
     assert any(isinstance(e, NetworkBlockedError) for e in chain)
     assert KEY not in caplog.text
+
+
+def test_embed_returns_vectors_in_input_order(make_client: Callable[..., Any]) -> None:
+    data = [SimpleNamespace(index=1, embedding=[0.0, 1.0]), SimpleNamespace(index=0, embedding=[1.0, 0.0])]
+    client, sdk = make_client(lambda kwargs: SimpleNamespace(data=data))
+    assert client.embed(["first", "second"]) == [[1.0, 0.0], [0.0, 1.0]]
+    assert sdk.calls == [{"model": OPENAI_EMBEDDING_MODEL, "input": ["first", "second"]}]
+
+
+@pytest.mark.parametrize(
+    "behaviour",
+    [
+        lambda kwargs: SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[1.0])]),  # one vector for two texts
+        _fail_model(OPENAI_EMBEDDING_MODEL, _status_error(openai.NotFoundError, 404, f"no embeddings for {KEY}")),
+    ],
+)
+def test_embed_failure_is_an_llm_error_without_the_key(make_client: Callable[..., Any], behaviour: Behaviour) -> None:
+    client, _ = make_client(behaviour)
+    with pytest.raises(LLMError) as excinfo:
+        client.embed(["first", "second"])
+    assert KEY not in str(excinfo.value)
 
 
 def test_fake_llm_mapping_script_and_accounting() -> None:

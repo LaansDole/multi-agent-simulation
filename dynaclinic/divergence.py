@@ -1,4 +1,5 @@
-"""Meta-Controller tier 2: conflict-aware routing over the care team's option distributions.
+"""Meta-Controller tier 2: conflict-aware routing over the care team's option distributions, or, for an
+open-ended case, over their primary diagnostic assertions.
 
 Every distribution is first ``normalize``d over the case's option letters:
 ``p_i = (max(x_i, 0) + eps) / sum_j (max(x_j, 0) + eps)`` (non-numeric / non-finite / unknown-letter entries
@@ -14,6 +15,18 @@ count as 0; an empty distribution becomes uniform), so every log below is finite
 - Conflict Set: letters in at least one informative agent's top-2 whose spread ``max_a p_a(l) - min_a p_a(l)``
   is ``>= spread_threshold`` (default 0.3).
 - Switch to adversarial mode iff ``divergence >= tau`` (default 0.25) OR top-1 disagreement.
+
+Open-ended cases (no options) use semantic divergence instead (proposal: D(H1, H2), the normalized semantic
+distance between the primary diagnostic assertions):
+
+- Each non-abstaining specialist's ``PRIMARY ASSERTION`` sentence is embedded; abstainers are left out.
+- Distance ``d(u, v) = min(max(1 - cos(u, v), 0), 1)`` (clipped, not ``(1 - cos) / 2``: hashing vectors are
+  non-negative and embedding-model cosines of clinical sentences are rarely negative, so halving would only
+  squeeze the useful range into [0, 0.5]); 1 for a zero vector.
+- Semantic divergence: mean ``d`` over all unordered pairs. Switch iff it is ``>= tau_semantic``; with fewer
+  than two assertions it is not measurable and the caller goes adversarial (safety bias).
+- ``tau_semantic`` depends on the embedder's scale: ``TAU_SEMANTIC[embedder]`` (hashing: calibrated on the
+  paraphrase fixture in ``tests/test_dynaclinic_semantic.py``; OpenAI: intended, not validated).
 
 ``margin_loss`` is the proposal's multi-label margin objective (BCE + hinge margin). It needs the gold
 answer, so it is a calibration metric for evaluation and tests only; it is NOT used for live routing.
@@ -35,6 +48,30 @@ MARGIN = 0.2
 ABSTAIN_ENTROPY = 0.95
 
 Distribution = Mapping[str, Any]
+
+HASHING_EMBEDDER = "hashing"
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+# Per-embedder semantic switch threshold. hashing: lowest max-accuracy cut on the test fixture (19/20 pairs).
+# ponytail: the OpenAI value is a prior (paraphrase d ~0.1-0.3, rival diagnoses ~0.4-0.6), not validated on data.
+TAU_SEMANTIC: dict[str, float] = {HASHING_EMBEDDER: 0.595, OPENAI_EMBEDDING_MODEL: 0.35}
+
+
+def cosine_distance(u: Sequence[float], v: Sequence[float]) -> float:
+    """Clipped cosine distance ``min(max(1 - cos(u, v), 0), 1)``; 1.0 when either vector is zero."""
+    a, b = np.asarray(u, dtype=float), np.asarray(v, dtype=float)
+    norm = float(np.linalg.norm(a) * np.linalg.norm(b))
+    return 1.0 if norm == 0 else min(max(1.0 - float(a @ b) / norm, 0.0), 1.0)
+
+
+def semantic_divergence(vectors: Sequence[Sequence[float]]) -> float:
+    """Mean ``cosine_distance`` over all unordered pairs; 0.0 for fewer than two vectors."""
+    pairs = [cosine_distance(u, v) for u, v in itertools.combinations(vectors, 2)]
+    return sum(pairs) / len(pairs) if pairs else 0.0
+
+
+def semantic_tau(embedder: str, tau: float | None = None) -> float:
+    """``tau`` if given, else ``TAU_SEMANTIC[embedder]`` (an unknown embedder gets the hashing value)."""
+    return tau if tau is not None else TAU_SEMANTIC.get(embedder, TAU_SEMANTIC[HASHING_EMBEDDER])
 
 
 def _as_float(value: Any) -> float:

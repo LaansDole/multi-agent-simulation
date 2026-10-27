@@ -2,7 +2,13 @@
 
 import pytest
 
-from dynaclinic.parsing import extract_final_answer, extract_json, first_line_marker
+from dynaclinic.parsing import (
+    ABSTAIN,
+    extract_final_answer,
+    extract_json,
+    extract_primary_assertion,
+    first_line_marker,
+)
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
 
 LETTERS = ["A", "B", "C", "D", "E"]
@@ -97,3 +103,21 @@ def test_first_line_marker(text: str, key: str, expected: str) -> None:
 )
 def test_first_line_marker_only_first_non_empty_line(text: str) -> None:
     assert first_line_marker(text, "ROUTE") is None
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ('{"findings": []}\nPRIMARY ASSERTION: Pulmonary embolism is most likely.', "Pulmonary embolism is most likely."),
+        ("**Primary assertion:** `Community-acquired pneumonia`", "Community-acquired pneumonia"),
+        ("- PRIMARY ASSERTION : Sepsis\nnotes\nPRIMARY ASSERTION: Septic shock", "Septic shock"),  # last line wins
+        ("PRIMARY ASSERTION: ABSTAIN", ABSTAIN),
+        ("PRIMARY ASSERTION: abstain - no imaging in this case.", ABSTAIN),
+        ("PRIMARY ASSERTION: Abstinence syndrome from alcohol", "Abstinence syndrome from alcohol"),
+        ('{"findings": ["x"], "claims": []}', None),
+        ("PRIMARY ASSERTION:   ", None),
+        ("The primary assertion: is inline, not a line of its own", None),
+    ],
+)
+def test_extract_primary_assertion(text: str, expected: str | None) -> None:
+    assert extract_primary_assertion(text) == expected

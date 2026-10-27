@@ -1,7 +1,8 @@
 """LLM access for DynaClinic: OpenAI chat client with sticky model fallback, offline fake.
 
-``OpenAIChatClient`` calls ``chat.completions.create`` only (never the Responses
-API). The API key is handed to the SDK and never stored, logged or echoed.
+``OpenAIChatClient`` calls ``chat.completions.create`` (never the Responses API) and, for the semantic
+divergence of open-ended cases, ``embeddings.create``. The API key is handed to the SDK and never stored,
+logged or echoed.
 """
 
 import logging
@@ -9,13 +10,14 @@ import os
 import re
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
 import openai
 from openai import OpenAI
 
+from dynaclinic.divergence import OPENAI_EMBEDDING_MODEL
 from dynaclinic.types import CallRecord
 
 logger = logging.getLogger(__name__)
@@ -43,11 +45,16 @@ class LLMClient(Protocol):
     """Minimal chat interface shared by the real client and ``FakeLLM``."""
 
     ledger: list[CallRecord]
+    embedding_model: str | None  # None: no embeddings; semantic divergence uses the hashing fallback
 
     def complete(
         self, role: str, system: str, user: str, json_mode: bool = False, temperature: float | None = None
     ) -> tuple[str, CallRecord]:
         """Return the reply text and its accounting record."""
+        ...
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """Return one ``embedding_model`` vector per text; raise ``LLMError`` on failure."""
         ...
 
     def reset_ledger(self) -> list[CallRecord]:
@@ -72,6 +79,7 @@ class OpenAIChatClient:
             raise LLMError("an API key is required")
         self.models = list(dict.fromkeys(models))
         self.base_url = base_url
+        self.embedding_model: str | None = OPENAI_EMBEDDING_MODEL
         self.ledger: list[CallRecord] = []
         self._sdk = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries)
         self._active = 0
@@ -131,6 +139,17 @@ class OpenAIChatClient:
         self.ledger.append(record)
         return text, record
 
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """Embed ``texts`` with ``embedding_model`` on the chat endpoint and key (no fallback chain, no ledger)."""
+        try:
+            response = self._sdk.embeddings.create(model=self.embedding_model, input=texts)
+        except openai.OpenAIError as err:
+            raise self._error("embedding", self.embedding_model, err) from err
+        vectors = [item.embedding for item in sorted(response.data, key=lambda item: item.index)]
+        if len(vectors) != len(texts):
+            raise LLMError(f"embedding: model {self.embedding_model} returned {len(vectors)} vectors for {len(texts)} texts")
+        return vectors
+
     def reset_ledger(self) -> list[CallRecord]:
         """Return the accumulated records and start a fresh ledger."""
         records, self.ledger = self.ledger, []
@@ -178,14 +197,17 @@ class FakeLLM:
 
     List replies are consumed in order; running out raises ``LLMError``.
     Every call is recorded in ``ledger`` (model ``"fake"``, word-count tokens) and ``prompts``.
+    ``embed`` (optional, texts -> vectors) makes it an embedder named ``"fake"``; without it there is none.
     """
 
-    def __init__(self, script: Script) -> None:
+    def __init__(self, script: Script, embed: Callable[[list[str]], Sequence[Sequence[float]]] | None = None) -> None:
         self.ledger: list[CallRecord] = []
         self.prompts: list[tuple[str, str, str]] = []
         self._script = script if callable(script) else {
             role: list(reply) if isinstance(reply, list) else reply for role, reply in script.items()
         }
+        self._embed = embed
+        self.embedding_model: str | None = "fake" if embed else None
         self._lock = threading.Lock()
 
     def complete(
@@ -198,6 +220,12 @@ class FakeLLM:
             record = CallRecord(role, "fake", len(f"{system} {user}".split()), len(text.split()), 0.0, False)
             self.ledger.append(record)
         return text, record
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """Return the scripted vectors; ``LLMError`` without an ``embed`` script."""
+        if self._embed is None:
+            raise LLMError("FakeLLM has no embedder")
+        return [list(vector) for vector in self._embed(texts)]
 
     def reset_ledger(self) -> list[CallRecord]:
         """Return the accumulated records and start a fresh ledger."""

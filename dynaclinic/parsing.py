@@ -10,6 +10,8 @@ _TRAILING_COMMA = re.compile(r",\s*([}\]])")
 _FINAL_ANSWER = re.compile(
     r"(?i:final\s*answer)[\s*_`:\-]*(?:(?i:option)\s+)?[(\[*_`\s]*([A-Z])(?![A-Za-z])"
 )
+ABSTAIN = "ABSTAIN"
+_ASSERTION = re.compile(r"^[\s*_`#>-]*primary\s+assertion[\s*_`]*:(.*)$", re.IGNORECASE | re.MULTILINE)
 
 
 def _balanced_objects(text: str) -> Iterator[str]:
@@ -67,6 +69,16 @@ def extract_final_answer(text: str, letters: Iterable[str]) -> str | None:
         return None
     letter = matches[-1]
     return letter if letter in {item.upper() for item in letters} else None
+
+
+def extract_primary_assertion(text: str) -> str | None:
+    """Return the value of the last ``PRIMARY ASSERTION:`` line: ``ABSTAIN`` when it starts with that word
+    (a reason may follow), ``None`` when the line is missing or empty. Tolerates markdown around key and value."""
+    values = [value.strip(" \t*_`\"'") for value in _ASSERTION.findall(text)]
+    values = [value for value in values if value]
+    if not values:
+        return None
+    return ABSTAIN if re.match(rf"{ABSTAIN}\b", values[-1], re.IGNORECASE) else values[-1]
 
 
 def first_line_marker(text: str, key: str) -> str | None:

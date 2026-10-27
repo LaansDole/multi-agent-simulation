@@ -108,6 +108,16 @@ def test_shared_core_specialist_prompts_keep_the_json_contract(role: str) -> Non
     assert [key for key in ('"findings"', '"distribution"', '"claims"') if key not in prompt] == []
 
 
+@pytest.mark.parametrize("policy", [STRICT, SHARED_CORE])
+@pytest.mark.parametrize("role", SPECIALISTS)
+def test_open_ended_specialist_prompts_ask_for_a_primary_assertion_not_a_distribution(role: str, policy: str) -> None:
+    prompt = specialist_system(role, policy, open_ended=True)
+    assert role in prompt.lower() and '"findings"' in prompt and '"claims"' in prompt
+    assert "distribution" not in prompt and "FINAL ANSWER" not in prompt
+    assert prompt.splitlines()[-1].startswith("Write PRIMARY ASSERTION: ABSTAIN")
+    assert any(line.startswith("PRIMARY ASSERTION: <") for line in prompt.splitlines())
+
+
 def test_primary_care_prompt_enforces_the_informative_model() -> None:
     prompt = SYSTEM_PROMPTS[PRIMARY_CARE].lower()
     assert "informative" in prompt

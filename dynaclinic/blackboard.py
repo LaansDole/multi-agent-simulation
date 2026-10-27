@@ -50,4 +50,6 @@ class Blackboard:
             if entry.claims:
                 lines.append("  claims:")
                 lines.extend(f"  - {claim}" for claim in entry.claims)
+            if entry.assertion:
+                lines.append(f"  primary assertion: {entry.assertion}")
         return "\n".join(lines) or "(blackboard is empty)"

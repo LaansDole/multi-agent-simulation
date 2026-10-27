@@ -23,9 +23,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from dynaclinic.divergence import TAU
+from dynaclinic.divergence import TAU, TAU_SEMANTIC
 from dynaclinic.interfaces import FHIRLiteIngestor
 from dynaclinic.llm import LLMClient, LLMError, get_client
+from dynaclinic.parsing import ABSTAIN
 from dynaclinic.pipeline import CaseRun
 from dynaclinic.plaintext import parse_plain_case
 from dynaclinic.prompts import CONTEXT_POLICIES, DEFAULT_CONTEXT_POLICY
@@ -246,16 +247,22 @@ class DCContextConfig(DCNodeConfig):
 
 @dataclass
 class DCDivergenceGateConfig(BaseConfig):
-    """dc_divergence_gate: tier-2 switch. Makes no LLM call, so it has no model."""
+    """dc_divergence_gate: tier-2 switch. Makes no LLM call, so it has no model (an open-ended case's
+    assertions are embedded with the care team's client)."""
 
     tau: float = TAU
+    tau_semantic: float | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None, *, path: str) -> "DCDivergenceGateConfig":
-        return cls(path=path, tau=_number(require_mapping(data or {}, path), "tau", TAU, path, float))
+        mapping = require_mapping(data or {}, path)
+        semantic = None if mapping.get("tau_semantic") is None else _number(mapping, "tau_semantic", 0, path, float)
+        return cls(path=path, tau=_number(mapping, "tau", TAU, path, float), tau_semantic=semantic)
 
     def validate(self) -> None:
         _require(0.0 <= self.tau <= 1.0, "tau must be in [0, 1] (Jensen-Shannon distance)", self.path, "tau")
+        _require(self.tau_semantic is None or 0.0 <= self.tau_semantic <= 1.0,
+                 "tau_semantic must be in [0, 1] (cosine distance)", self.path, "tau_semantic")
 
     FIELD_SPECS: ClassVar[dict[str, ConfigFieldSpec]] = {
         "tau": ConfigFieldSpec(
@@ -266,6 +273,16 @@ class DCDivergenceGateConfig(BaseConfig):
             default=TAU,
             description="Mean pairwise JS divergence at which the team switches to adversarial mode "
             "(top-1 disagreement always switches).",
+        ),
+        "tau_semantic": ConfigFieldSpec(
+            name="tau_semantic",
+            display_name="Tau (open-ended)",
+            type_hint="float",
+            required=False,
+            description="Open-ended cases: mean pairwise cosine distance of the specialists' primary assertions "
+            "at which the team switches to adversarial mode. Unset: the embedder's default "
+            f"({', '.join(f'{name} {tau}' for name, tau in TAU_SEMANTIC.items())}).",
+            advance=True,
         ),
     }
 
@@ -366,15 +383,23 @@ class CareTeamExecutor(_StageExecutor):
 
 
 class DivergenceGateExecutor(_StageExecutor):
-    """dc_divergence_gate: emits ``MODE: COLLABORATIVE|ADVERSARIAL``."""
+    """dc_divergence_gate: emits ``MODE: COLLABORATIVE|ADVERSARIAL``, then the divergence (JS over option
+    distributions, or for an open-ended case the semantic divergence of the primary assertions)."""
 
     config_cls = DCDivergenceGateConfig
 
     def stage(self, run: CaseRun, config: DCDivergenceGateConfig) -> str:
-        run.divergence(config.tau)
+        run.divergence(config.tau, config.tau_semantic)
         r = run.result
-        if r.divergence is None:
-            detail = "Divergence not measurable without options; adversarial review (safety-biased)."
+        if run.case.open_ended:
+            assertions = ", ".join(f"{agent} {text}" if text == ABSTAIN else f'{agent} "{text}"'
+                                   for agent, text in r.assertions.items()) or "none"
+            if r.divergence is None:
+                detail = ("Semantic divergence not measurable: fewer than two specialists asserted a diagnosis; "
+                          f"adversarial review (safety-biased); assertions: {assertions}.")
+            else:
+                detail = (f"Semantic divergence {r.divergence:.2f} (tau_semantic {run.tau_semantic:g}, "
+                          f"embedder {r.embedder}); assertions: {assertions}.")
         else:
             top1 = ", ".join(f"{agent} {letter}{' (abstains)' if agent in run.abstainers else ''}"
                              for agent, letter in r.top1.items())
