@@ -78,6 +78,11 @@ The system automatically loads the `.env` file from the project root (if present
   - **Metadata**: `id` (required), `description`, `log_level` (default `DEBUG`), `is_majority_voting`, `initial_instruction`, and optional `organization`.
   - **Execution controls**: `start`/`end` entry lists (the system executes nodes listed in `start` at the beginning), plus `nodes` and `edges`. Provider/model/tooling settings now live inside each `node.config`; the legacy top-level `providers` table is deprecated. In the example the `keyword` condition on `Human Reviewer -> Article Writer` keeps looping unless the reviewer types `ACCEPT`.
   - **Shared resources**: `memory` defines stores available to `node.config.memories`. The validator ensures every attachment points to a declared store.
+  - **Demo scenarios**: optional `demo_scenarios`, a list of `{id, title, teaches, text}` strings (`id`, `title` and `text` required; `id` unique). They are mock plain-text task prompts for demonstrations and have no effect on execution. `GET /api/workflows/{filename}/scenarios` returns them (`[]` when the key is absent), and the 3D UI lists them in the lead agent's chat, where **Insert** puts `text` into the input without sending it. `yaml_instance/dynaclinic_mvp.yaml` defines six; a minimal one:
+    ```yaml
+    demo_scenarios:
+      - {id: greet, title: "Say hello", teaches: "One agent, one turn", text: "Write a two-line greeting."}
+    ```
   - **Schema references**: `yaml_template/design.yaml` mirrors the latest `GraphDefinition` shape. After editing configs run `python -m tools.export_design_template` or hit the Schema API to validate.
 
 Further reading: `docs/user_guide/en/field_specs.md` (field catalog), `docs/user_guide/en/runtime_ops.md` (runtime observability), and `yaml_template/design.yaml` (generated baseline template).
