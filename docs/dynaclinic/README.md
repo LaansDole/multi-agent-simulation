@@ -59,6 +59,8 @@ In the pure pipeline, the `GreedyPlanner` stub picks each stage and logs its rew
 
 ## How to run
 
+To watch DynaClinic in the three.js office (Primary Care, collaborative care team, adversarial Critic, with screenshots mapped to the proposal), follow [runbook/README.md](runbook/README.md).
+
 All commands run from the repo root. `.env` provides `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `DYNACLINIC_MODEL` and the comma list `DYNACLINIC_FALLBACK_MODELS`. If the primary model is missing or unavailable, the client switches to the next model for the rest of the run (sticky fallback).
 
 **Pure pipeline (Python):**
