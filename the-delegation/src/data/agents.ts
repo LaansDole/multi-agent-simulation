@@ -22,6 +22,7 @@ export interface AgentNode {
   humanInTheLoop?: boolean;
   position?: { x: number; y: number };
   subagents?: AgentNode[];
+  userEdited?: boolean; // set when the user saves an edit; resync and migration then leave name/description/model/provider alone
 }
 
 export type OutputType = 'text' | 'image' | 'music' | 'video';

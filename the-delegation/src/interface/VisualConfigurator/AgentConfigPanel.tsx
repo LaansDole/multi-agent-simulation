@@ -71,8 +71,8 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
 
     // 1. Recursive update function
     const updateRecursive = (node: AgentNode): AgentNode => {
-      // If this is the node being edited
-      let updatedNode = node.id === agent.id ? { ...editData } : { ...node };
+      // If this is the node being edited (marked so backend resync keeps the user's values)
+      let updatedNode = node.id === agent.id ? { ...editData, userEdited: true } : { ...node };
 
 
       // Recurse subagents

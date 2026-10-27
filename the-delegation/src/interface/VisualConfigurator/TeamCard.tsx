@@ -119,6 +119,10 @@ export const TeamCard: React.FC<TeamCardProps> = ({
       baseUrl: localEditData.leadAgentBaseUrl || system.leadAgent.baseUrl,
       apiKey: localEditData.leadAgentApiKey || system.leadAgent.apiKey,
     };
+    // A changed model/provider is the user's choice: backend resync must keep it.
+    updatedLeadAgent.userEdited = system.leadAgent.userEdited
+      || updatedLeadAgent.model !== system.leadAgent.model
+      || updatedLeadAgent.provider !== system.leadAgent.provider;
     const { leadAgentModel, ...systemChanges } = localEditData;
     const finalChanges = {
       ...systemChanges,

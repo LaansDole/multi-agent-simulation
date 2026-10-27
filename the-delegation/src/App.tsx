@@ -18,6 +18,7 @@ import ReadOnlyWorkflowGraph from './interface/ReadOnlyWorkflowGraph';
 import CharacterSlotMapping from './interface/CharacterSlotMapping';
 import { useEscapeToClose } from './interface/components/useEscapeToClose';
 import { useWorkflowStore } from './integration/store/workflowStore';
+import { syncImportedTeams } from './integration/store/teamStore';
 import { SceneContext } from './simulation/SceneContext';
 import { SceneManager } from './simulation/SceneManager';
 
@@ -28,10 +29,13 @@ const App: React.FC = () => {
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null);
   const { isLogOpen, isKanbanOpen, setIsResizing, viewMode, setViewMode } = useCoreStore();
   const fetchModelsFromBackend = useCoreStore(s => s.fetchModelsFromBackend);
+  const backendStatus = useCoreStore(s => s.backendStatus);
   const workflowGraph = useWorkflowStore((s) => s.workflowGraph);
+  // On load and every (re)connect: refresh the backend default, then resync saved imported teams.
   useEffect(() => {
-    fetchModelsFromBackend();
-  }, []);
+    if (backendStatus === 'connecting' || backendStatus === 'reconnecting') return;
+    fetchModelsFromBackend().then(syncImportedTeams);
+  }, [backendStatus]);
 
   const closeDesign = () => setViewMode('simulation');
   useEscapeToClose(closeDesign, viewMode === 'design');
