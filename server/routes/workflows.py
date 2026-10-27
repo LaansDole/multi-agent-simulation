@@ -185,6 +185,27 @@ async def get_workflow_graph(filename: str) -> dict[str, Any]:
         raise WorkflowExecutionError(f"Failed to retrieve workflow graph: {exc}")
 
 
+@router.get("/api/workflows/{filename}/scenarios")
+async def get_workflow_scenarios(filename: str) -> list[dict[str, str]]:
+    """``graph.demo_scenarios`` as ``[{id, title, teaches, text}]``; ``[]`` when the workflow defines none."""
+    try:
+        safe_filename = validate_workflow_filename(filename, require_yaml_extension=True)
+        file_path = YAML_DIR / safe_filename
+        if not file_path.exists() or not file_path.is_file():
+            raise ResourceNotFoundError(
+                "Workflow file not found",
+                resource_type="workflow",
+                resource_id=safe_filename,
+            )
+        design = load_config(file_path)
+    except DesignError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return [
+        {"id": s.id, "title": s.title, "teaches": s.teaches, "text": s.text}
+        for s in design.graph.demo_scenarios
+    ]
+
+
 @router.get("/api/workflows/{filename}/desc")
 async def get_workflow_desc(filename: str):
     try:

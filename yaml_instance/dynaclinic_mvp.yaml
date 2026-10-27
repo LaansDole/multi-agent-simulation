@@ -127,3 +127,136 @@ graph:
       to: SafetyGate
     - from: SafetyGate
       to: Report
+  demo_scenarios:
+    - id: low-leg-redness
+      title: "Mock case: 34-year-old man with a warm, red lower leg"
+      teaches: "Low complexity: the Meta-Controller usually keeps one Primary Care Agent; no care team is called."
+      text: |
+        Mock case: 34-year-old man with a warm, red lower leg
+
+        A 34-year-old man presents with 2 days of a spreading, warm, tender, erythematous area on his left lower leg after a minor scrape while gardening. There is no fluctuance or purulent drainage, and bedside ultrasound shows no fluid collection. Temperature is 37.4 C, heart rate 82/min, and blood pressure 128/78 mm Hg. He has no medical history and takes no medications. He developed a rash after taking a sulfonamide antibiotic in the past. White blood cell count is 9,800/mm3.
+
+        Age: 34
+        Sex: male
+        History: none
+        Medications: none
+        Allergies: sulfonamide antibiotics (rash)
+        Labs: white blood cell count 9.8 x10^3/uL
+        Imaging: Bedside soft-tissue ultrasound: subcutaneous edema, no fluid collection
+
+        Question: Which of the following is the most appropriate treatment?
+        A. Oral cephalexin for 5 days
+        B. Oral trimethoprim-sulfamethoxazole for 7 days
+        C. Hospital admission for intravenous vancomycin
+        D. Incision and drainage of the affected area
+        E. Topical mupirocin alone
+    - id: moderate-atrial-fibrillation
+      title: "Mock case: 72-year-old woman with newly found atrial fibrillation"
+      teaches: "Moderate complexity: triage usually consults two specialists who share the Blackboard; they usually agree, so the Synthesizer answers without the Critic."
+      text: |
+        Mock case: 72-year-old woman with newly found atrial fibrillation
+
+        A 72-year-old woman is found to have atrial fibrillation at a routine visit. She has hypertension and type 2 diabetes. Medications are lisinopril, metformin, and metoprolol, which was started last week and has controlled her heart rate to 78/min. Blood pressure is 132/80 mm Hg. ECG shows an irregularly irregular rhythm without P waves. Transthoracic echocardiography shows normal valves and a normal ejection fraction. eGFR is 70 mL/min/1.73 m2 and hemoglobin is 13.2 g/dL. She has no history of bleeding and no allergies.
+
+        Age: 72
+        Sex: female
+        History: atrial fibrillation; hypertension; type 2 diabetes
+        Medications: lisinopril 20 mg daily; metformin 1 g twice daily; metoprolol succinate 50 mg daily
+        Allergies: none
+        Labs: eGFR 70 mL/min/1.73 m2; hemoglobin 13.2 g/dL
+        Imaging: ECG: irregularly irregular rhythm without P waves, ventricular rate 78/min; Transthoracic echocardiogram: normal valves, ejection fraction 60%
+
+        Question: Which of the following is the most appropriate long-term therapy to prevent stroke?
+        A. No antithrombotic therapy
+        B. Aspirin plus clopidogrel
+        C. Left atrial appendage occlusion as first-line therapy
+        D. Apixaban
+        E. Aspirin 81 mg daily alone
+    - id: high-flank-pain
+      title: "Mock case: 48-year-old man on phenelzine with severe flank pain"
+      teaches: "Drug-interaction trap: meperidine and tramadol are dangerous with phenelzine (an MAOI). Triage sends it to the care team; the Clinical Critic is called only if the specialists diverge, which varies from run to run."
+      text: |
+        Mock case: 48-year-old man on phenelzine with severe flank pain
+
+        A 48-year-old man with treatment-resistant major depressive disorder and hypertension presents with sudden, severe left flank pain radiating to the groin, with nausea. Medications are phenelzine 15 mg three times daily and amlodipine. He has no allergies. Temperature is 37.0 C, heart rate 96/min, and blood pressure 146/88 mm Hg. Urinalysis shows microscopic hematuria without pyuria. Serum creatinine is 0.9 mg/dL. Non-contrast CT of the abdomen and pelvis shows a 4-mm stone in the left distal ureter with mild hydronephrosis.
+
+        Age: 48
+        Sex: male
+        History: treatment-resistant major depressive disorder; hypertension
+        Medications: phenelzine 15 mg three times daily; amlodipine 10 mg daily
+        Allergies: none
+        Labs: serum creatinine 0.9 mg/dL; urinalysis: microscopic hematuria, no pyuria
+        Imaging: Non-contrast CT abdomen and pelvis: 4-mm left distal ureteral stone, mild hydronephrosis
+
+        Question: Which of the following is the most appropriate analgesic?
+        A. Emergency ureteroscopy before any analgesia
+        B. Intravenous meperidine
+        C. Oral tramadol
+        D. Intravenous ketorolac
+        E. Intravenous fluid bolus of 3 L as the only treatment
+    - id: contested-fall-on-apixaban
+      title: "Mock case: 74-year-old woman on apixaban, short of breath after a fall"
+      teaches: "High complexity, specialists usually agree: the full care team writes to the Blackboard and the Synthesizer answers without the Critic."
+      text: |
+        Mock case: 74-year-old woman on apixaban, short of breath after a fall
+
+        A 74-year-old woman with atrial fibrillation on apixaban 5 mg twice daily, hypertension, and chronic kidney disease (eGFR 38 mL/min/1.73m2) fell at home 6 hours ago and now has new dyspnea and pleuritic chest pain. She is alert, GCS 15, without focal deficits. Heart rate 112/min, blood pressure 104/66 mm Hg, SpO2 90% on room air. Non-contrast CT head shows a 6-mm acute left frontal subdural hematoma without midline shift. CT pulmonary angiography shows bilateral segmental pulmonary emboli with an RV/LV ratio of 1.1. Troponin is mildly elevated. Hemoglobin 11.2 g/dL, platelets 190,000/mm3.
+
+        Age: 74
+        Sex: female
+        History: atrial fibrillation; hypertension; chronic kidney disease stage 3b; fall 6 hours ago
+        Medications: apixaban 5 mg twice daily
+        Allergies: none
+        Labs: hemoglobin 11.2 g/dL; platelets 190 x10^3/uL; eGFR 38 mL/min/1.73m2; troponin I 0.09 ng/mL
+        Imaging: Non-contrast CT head: 6-mm acute left frontal subdural hematoma, no midline shift; CT pulmonary angiography: bilateral segmental pulmonary emboli, RV/LV ratio 1.1
+
+        Question: Which of the following is the most appropriate next step in management?
+        A. Continue apixaban at the current dose
+        B. Hold apixaban, give andexanet alfa, and place an inferior vena cava filter
+        C. Start a weight-based unfractionated heparin infusion without bolus
+        D. Systemic thrombolysis with alteplase
+        E. Switch apixaban to warfarin with a target INR of 2 to 3
+    - id: contested-pregnancy-chest-pain
+      title: "Mock case: Pregnant woman at 30 weeks with chest pain and shortness of breath"
+      teaches: "When triage calls this HIGH, Imaging and Pharmacology disagree and the Clinical Critic is called; when it calls MODERATE, the team usually stays collaborative. The Critic ran in 4 of 9 real runs."
+      text: |
+        Mock case: Pregnant woman at 30 weeks with chest pain and shortness of breath
+
+        A 29-year-old woman at 30 weeks of gestation presents with 1 day of pleuritic chest pain and dyspnea. She has mild swelling of the left calf. Heart rate 108/min, blood pressure 118/72 mm Hg, SpO2 95% on room air. Chest radiograph is normal. D-dimer is elevated. She takes prenatal vitamins only. Creatinine is 0.6 mg/dL.
+
+        Age: 29
+        Sex: female
+        History: pregnancy, 30 weeks of gestation
+        Medications: prenatal vitamins
+        Allergies: none
+        Labs: D-dimer 1.9 ug/mL FEU; creatinine 0.6 mg/dL
+        Imaging: Chest radiograph: normal
+
+        Question: Which of the following is the most appropriate next step in management?
+        A. CT pulmonary angiography
+        B. Ventilation-perfusion scan
+        C. Start low-molecular-weight heparin and obtain compression ultrasonography of the left leg
+        D. Start warfarin
+        E. Reassure and discharge because D-dimer is physiologically elevated in pregnancy
+    - id: contested-abdominal-pain
+      title: "Mock case: 81-year-old man with severe abdominal pain and kidney disease"
+      teaches: "Clinically contested (contrast risk versus a time-critical diagnosis): expect the full care team; its route has not been measured in recorded runs yet."
+      text: |
+        Mock case: 81-year-old man with severe abdominal pain and kidney disease
+
+        A 81-year-old man with chronic kidney disease (eGFR 22 mL/min/1.73m2), atrial fibrillation not on anticoagulation, and heart failure presents with 5 hours of severe periumbilical abdominal pain out of proportion to a soft, mildly tender abdomen. Lactate is 4.1 mmol/L. Heart rate 118/min irregular, blood pressure 98/60 mm Hg. Plain abdominal radiograph is unremarkable. He takes furosemide and metoprolol.
+
+        Age: 81
+        Sex: male
+        History: chronic kidney disease stage 4; atrial fibrillation; heart failure
+        Medications: furosemide; metoprolol
+        Allergies: none
+        Labs: lactate 4.1 mmol/L; eGFR 22 mL/min/1.73m2
+        Imaging: Plain abdominal radiograph: unremarkable
+
+        Question: Which of the following is the most appropriate next step in management?
+        A. CT angiography of the abdomen now, with intravenous fluids
+        B. Non-contrast CT of the abdomen to avoid contrast nephropathy
+        C. Abdominal ultrasound and serial lactate in 6 hours
+        D. Start oral ibuprofen and observe
+        E. Colonoscopy within 24 hours

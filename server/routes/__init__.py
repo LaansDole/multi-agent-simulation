@@ -2,7 +2,6 @@
 
 from . import (
     artifacts,
-    dynaclinic,
     execute,
     execute_sync,
     health,
@@ -31,7 +30,6 @@ ALL_ROUTERS = [
     tools.router,
     websocket.router,
     spatial_configs.router,
-    dynaclinic.router,
 ]
 
 __all__ = ["ALL_ROUTERS"]

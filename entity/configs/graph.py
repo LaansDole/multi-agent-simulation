@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from collections import Counter
-from typing import Any, Dict, List, Mapping
+from typing import Any, ClassVar, Dict, List, Mapping
 
 from entity.enums import LogLevel
 from entity.enum_options import enum_options_for
@@ -16,12 +16,66 @@ from .base import (
     optional_dict,
     optional_str,
     require_mapping,
+    require_str,
     extend_path,
 )
 from .edge import EdgeConfig
 from entity.configs.node.memory import MemoryStoreConfig
 from entity.configs.node.agent import AgentConfig
 from entity.configs.node.node import Node
+
+
+@dataclass
+class DemoScenarioConfig(BaseConfig):
+    """A mock task prompt a UI can offer for demonstrations; not used by execution."""
+
+    id: str
+    title: str
+    text: str
+    teaches: str = ""
+
+    FIELD_SPECS: ClassVar[dict[str, ConfigFieldSpec]] = {
+        "id": ConfigFieldSpec(
+            name="id",
+            display_name="Scenario ID",
+            type_hint="str",
+            required=True,
+            description="Unique within the workflow",
+        ),
+        "title": ConfigFieldSpec(
+            name="title",
+            display_name="Title",
+            type_hint="str",
+            required=True,
+            description="Short label shown in the scenario list",
+        ),
+        "teaches": ConfigFieldSpec(
+            name="teaches",
+            display_name="Teaches",
+            type_hint="str",
+            required=False,
+            default="",
+            description="One line on what the scenario demonstrates",
+        ),
+        "text": ConfigFieldSpec(
+            name="text",
+            display_name="Task Prompt",
+            type_hint="text",
+            required=True,
+            description="Plain-text task prompt the UI puts into the chat input",
+        ),
+    }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any], *, path: str) -> "DemoScenarioConfig":
+        mapping = require_mapping(data, path)
+        return cls(
+            id=require_str(mapping, "id", path),
+            title=require_str(mapping, "title", path),
+            text=require_str(mapping, "text", path),
+            teaches=optional_str(mapping, "teaches", path) or "",
+            path=path,
+        )
 
 
 @dataclass
@@ -37,6 +91,7 @@ class GraphDefinition(BaseConfig):
     initial_instruction: str | None = None
     start_nodes: List[str] = field(default_factory=list)
     end_nodes: List[str] | None = None
+    demo_scenarios: list[DemoScenarioConfig] = field(default_factory=list)
 
     FIELD_SPECS = {
         "id": ConfigFieldSpec(
@@ -127,6 +182,15 @@ class GraphDefinition(BaseConfig):
             description="End node ID list (used to collect final graph output, not part of execution logic). Commonly needed in subgraphs. This is an ordered list: earlier nodes are checked first; the first with output becomes the graph output, otherwise continue down the list.",
             advance=True,
         ),
+        "demo_scenarios": ConfigFieldSpec(
+            name="demo_scenarios",
+            display_name="Demo Scenarios",
+            type_hint="list[DemoScenarioConfig]",
+            required=False,
+            description="Mock plain-text task prompts a UI can offer for demonstrations; no effect on execution.",
+            child=DemoScenarioConfig,
+            advance=True,
+        ),
     }
 
     # CONSTRAINTS = (
@@ -211,6 +275,19 @@ class GraphDefinition(BaseConfig):
             else:
                 raise ConfigError("end must be a string or list of strings", extend_path(path, "end"))
 
+        demo_scenarios: list[DemoScenarioConfig] = []
+        if mapping.get("demo_scenarios") is not None:
+            scenarios_path = extend_path(path, "demo_scenarios")
+            if not isinstance(mapping["demo_scenarios"], list):
+                raise ConfigError("demo_scenarios must be a list", scenarios_path)
+            seen_ids: set[str] = set()
+            for idx, item in enumerate(mapping["demo_scenarios"]):
+                scenario = DemoScenarioConfig.from_dict(item, path=extend_path(scenarios_path, f"[{idx}]"))
+                if scenario.id in seen_ids:
+                    raise ConfigError(f"duplicated demo scenario id '{scenario.id}'", extend_path(scenario.path, "id"))
+                seen_ids.add(scenario.id)
+                demo_scenarios.append(scenario)
+
         definition = cls(
             id=graph_id,
             description=description,
@@ -223,6 +300,7 @@ class GraphDefinition(BaseConfig):
             initial_instruction=initial_instruction,
             start_nodes=start_nodes,
             end_nodes=end_nodes,
+            demo_scenarios=demo_scenarios,
             path=path,
         )
         definition.validate()
