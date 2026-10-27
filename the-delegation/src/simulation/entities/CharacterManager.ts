@@ -36,6 +36,9 @@ export class CharacterManager {
 
   // CPU-side mirror of GPU positions (updated via GPU readback each frame)
   private debugPosArray: Float32Array | null = null;
+  // Compute passes run so far, and setPosition() teleports that GPU readbacks may predate (see syncFromGPU)
+  private computePasses = 0;
+  private pendingTeleports = new Map<number, { position: THREE.Vector3; computePass: number }>();
 
   // Track global time for animation resets (also drives the paused-safe shader uTime uniform)
   private currentTime = 0;
@@ -170,9 +173,19 @@ export class CharacterManager {
    */
   public async syncFromGPU(renderer: any): Promise<Float32Array | null> {
     if (!this.posAttribute) return null;
+    const issuedAfterPass = this.computePasses;
     try {
       const buffer = await renderer.getArrayBufferAsync(this.posAttribute);
-      this.debugPosArray = new Float32Array(buffer);
+      const positions = new Float32Array(buffer);
+      // A readback resolves frames after it is issued; one issued before a setPosition() still holds
+      // the old position, and copying it into posAttribute.array below would overwrite the teleport
+      // before the next compute pass uploads it. Re-apply teleports until a readback issued after
+      // their upload pass returns them.
+      for (const [index, teleport] of this.pendingTeleports) {
+        if (issuedAfterPass > teleport.computePass) this.pendingTeleports.delete(index);
+        else positions.set([teleport.position.x, teleport.position.y, teleport.position.z], index * 4);
+      }
+      this.debugPosArray = positions;
       // Keep the CPU-side attribute array in sync so setPosition doesn't upload stale data
       (this.posAttribute.array as Float32Array).set(this.debugPosArray);
     } catch {
@@ -190,6 +203,7 @@ export class CharacterManager {
     }
     if (this.computeNode) {
       renderer.compute(this.computeNode);
+      this.computePasses++;
     }
   }
 
@@ -200,6 +214,7 @@ export class CharacterManager {
     this.instancedMeshes = [];
     this.computeNode = null;
     this.expressionBuffer = null;
+    this.pendingTeleports.clear();
   }
 
   private initInstances() {
@@ -587,6 +602,7 @@ export class CharacterManager {
     arr[index * 4 + 1] = position.y;
     arr[index * 4 + 2] = position.z;
     this.posAttribute.needsUpdate = true;
+    this.pendingTeleports.set(index, { position: position.clone(), computePass: this.computePasses });
     // Also update the CPU mirror so getCPUPosition() is immediately accurate
     if (this.debugPosArray) {
       this.debugPosArray[index * 4 + 0] = position.x;

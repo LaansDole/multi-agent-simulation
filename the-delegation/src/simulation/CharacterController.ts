@@ -32,6 +32,8 @@ export class CharacterController implements ICharacterDriver {
   private arrivalCallbacks: ((index: number) => void)[] = [];
   /** Standing spot each agent holds at a shared area POI; released when the agent moves on. */
   private areaSpots = new Map<number, THREE.Vector3>();
+  /** "agent->target" moves already reported as impossible, so per-frame retries warn once. */
+  private warnedNoPath = new Set<string>();
 
   constructor(
     public readonly characterManager: CharacterManager,
@@ -115,6 +117,11 @@ export class CharacterController implements ICharacterDriver {
         return true;
       }
 
+      const key = `${index}->${target.x.toFixed(2)},${target.z.toFixed(2)}`;
+      if (!this.warnedNoPath.has(key)) {
+        this.warnedNoPath.add(key);
+        console.warn(`[CharacterController] agent ${index}: no navmesh path from (${from.x.toFixed(2)}, ${from.z.toFixed(2)}) to (${target.x.toFixed(2)}, ${target.z.toFixed(2)})`);
+      }
       return false;
     }
 
