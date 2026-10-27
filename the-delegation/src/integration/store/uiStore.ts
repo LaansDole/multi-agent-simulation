@@ -33,6 +33,9 @@ export const useUiStore = create<CharacterState>()(
     activeAuditTaskId: null,
     setActiveAuditTaskId: (taskId: string | null) => set({ activeAuditTaskId: taskId }),
 
+    isWorkflowBrowserOpen: false,
+    setWorkflowBrowserOpen: (open: boolean) => set({ isWorkflowBrowserOpen: open }),
+
     llmConfig: (() => {
       try {
         const saved = localStorage.getItem('byok-config');

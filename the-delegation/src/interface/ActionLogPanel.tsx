@@ -4,6 +4,9 @@ import { getAgentSet, getAllAgents } from '../data/agents'
 import { USER_COLOR, USER_COLOR_LIGHT } from '../theme/brand'
 import { DebugLogEntry, useCoreStore } from '../integration/store/coreStore'
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore'
+import { useUiStore } from '../integration/store/uiStore'
+import { useChatAvailability } from '../integration/hooks/useChatAvailability'
+import { useSceneManager } from '../simulation/SceneContext'
 import { formatTokens } from './ProjectView'
 
 function formatTime(ts: number): string {
@@ -324,8 +327,48 @@ ${JSON.stringify(entry.raw, null, 2)}
     );
 };
 
+// Shown instead of the empty logs before anything has run.
+const GettingStarted: React.FC = () => {
+    const team = useActiveTeam()
+    const lead = team.leadAgent
+    const scene = useSceneManager()
+    const { canChat } = useChatAvailability(lead.index)
+    const setWorkflowBrowserOpen = useUiStore((s) => s.setWorkflowBrowserOpen)
+    const imported = Boolean(team.sourceYamlFile)
+    const buttonClass = 'w-full flex items-center justify-center gap-2 bg-darkDelegation hover:bg-black active:scale-95 disabled:opacity-50 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm cursor-pointer'
+
+    return (
+        <div className="rounded-2xl border border-zinc-100 bg-zinc-50/60 p-4 space-y-3">
+            <p className="text-[10px] font-black text-darkDelegation uppercase tracking-widest">Getting started</p>
+            <ol className="list-decimal pl-4 space-y-1 text-xs text-zinc-600 leading-relaxed">
+                <li>Browse Workflows and pick one, e.g. dynaclinic_mvp.yaml.</li>
+                <li>Select the lead agent{imported ? ` (${lead.name})` : ''}.</li>
+                <li>Chat about the brief.</li>
+                <li>Paste the case and press Enter.</li>
+            </ol>
+            {team.sourceYamlFile === 'dynaclinic_mvp.yaml' && (
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    DynaClinic takes one Case JSON line as input: copy one from{' '}
+                    <code className="font-mono text-zinc-700">data/dynaclinic/demo_cases.jsonl</code>. Walkthrough:{' '}
+                    <code className="font-mono text-zinc-700">docs/dynaclinic/runbook/README.md</code>.
+                </p>
+            )}
+            {imported ? (
+                <button onClick={() => scene?.startChat(lead.index)} disabled={!canChat} className={buttonClass}>
+                    <MessageSquare size={14} strokeWidth={3} />
+                    Start: chat with {lead.name}
+                </button>
+            ) : (
+                <button onClick={() => setWorkflowBrowserOpen(true)} className={buttonClass}>
+                    Browse workflows
+                </button>
+            )}
+        </div>
+    )
+}
+
 export function ActionLogPanel() {
-    const { setLogOpen, actionLog, debugLog, logFilterAgentIndex } = useCoreStore()
+    const { setLogOpen, actionLog, debugLog, logFilterAgentIndex, phase } = useCoreStore()
     const activeTeam = useActiveTeam();
     const agents = getAllAgents(activeTeam);
     const [activeTab, setActiveTab] = useState<'activity' | 'technical'>('technical')
@@ -503,7 +546,9 @@ ${JSON.stringify(entry.raw, null, 2)}
             <div className="flex-1 overflow-y-auto p-5 space-y-4 shadow-[inset_0_-20px_20px_-20px_rgba(0,0,0,0.05)]">
                 <div ref={topRef} />
 
-                {activeTab === 'activity' ? (
+                {phase === 'idle' && actionLog.length === 0 && debugLog.length === 0 ? (
+                    <GettingStarted />
+                ) : activeTab === 'activity' ? (
                     entries.length === 0 ? (
                         <p className="text-zinc-300 text-[10px] font-bold uppercase tracking-widest text-center py-16">Awaiting actions...</p>
                     ) : (

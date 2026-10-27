@@ -1,11 +1,13 @@
 import { Maximize2, Settings } from 'lucide-react';
-import React, { useState } from 'react';
+import React from 'react';
 import { useCoreStore } from '../integration/store/coreStore';
+import { useUiStore } from '../integration/store/uiStore';
 import WorkflowBrowser from './WorkflowBrowser';
 
 const Header: React.FC = () => {
   const { backendStatus, setViewMode } = useCoreStore();
-  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
+  const isWorkflowBrowserOpen = useUiStore((s) => s.isWorkflowBrowserOpen);
+  const setWorkflowBrowserOpen = useUiStore((s) => s.setWorkflowBrowserOpen);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -32,7 +34,7 @@ const Header: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setIsBrowserOpen(true)}
+          onClick={() => setWorkflowBrowserOpen(true)}
           className="flex items-center gap-2 px-3 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg transition-all active:scale-95 cursor-pointer h-9 shrink-0"
           title="Browse and import YAML workflows"
         >
@@ -93,7 +95,7 @@ const Header: React.FC = () => {
           </div>
         </div>
       </div>
-      <WorkflowBrowser isOpen={isBrowserOpen} onClose={() => setIsBrowserOpen(false)} />
+      <WorkflowBrowser isOpen={isWorkflowBrowserOpen} onClose={() => setWorkflowBrowserOpen(false)} />
     </header>
   );
 };

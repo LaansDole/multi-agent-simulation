@@ -212,7 +212,9 @@ export class SceneManager {
     });
   }
 
+  /** Selects npcIndex and opens the chat with it (the player walks over). */
   public startChat(npcIndex: number): void {
+    useUiStore.getState().setSelectedNpc(npcIndex);
     useUiStore.getState().setChatting(true);
   }
 
