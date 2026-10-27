@@ -361,7 +361,8 @@ class DivergenceGateExecutor(_StageExecutor):
         if r.divergence is None:
             detail = "Divergence not measurable without options; adversarial review (safety-biased)."
         else:
-            top1 = ", ".join(f"{agent} {letter}" for agent, letter in r.top1.items())
+            top1 = ", ".join(f"{agent} {letter}{' (abstains)' if agent in run.abstainers else ''}"
+                             for agent, letter in r.top1.items())
             detail = (f"Divergence {r.divergence:.2f} (tau {config.tau}); top-1: {top1}; "
                       f"conflict set: {', '.join(r.conflict_set) or 'none'}.")
         return f"MODE: {r.mode.upper()}\n{detail}"

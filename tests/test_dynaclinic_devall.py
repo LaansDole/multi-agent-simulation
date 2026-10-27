@@ -166,6 +166,15 @@ def test_high_agreeing_team_is_collaborative(harness: Build) -> None:
     assert CRITIC not in [call.role for call in h.run_state.result.calls]
 
 
+def test_divergence_gate_shows_an_abstaining_specialist_without_counting_its_vote(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"), imaging=_specialist(dict.fromkeys("ABC", 1 / 3)))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate")
+    assert first_line_marker(gate, "MODE") == "COLLABORATIVE"
+    assert "imaging A (abstains)" in gate and "pathology B," in gate
+
+
 @pytest.mark.parametrize(
     ("config", "sees_case"),
     [({}, True), ({"context_policy": "shared_core"}, True), ({"context_policy": "strict"}, False)],

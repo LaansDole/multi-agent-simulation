@@ -101,6 +101,7 @@ class CaseRun:
         self.board = Blackboard()
         self.safety: SafetyReport | None = None
         self.conf = 0.0  # confidence in the leading answer (planner reward input)
+        self.abstainers: list[str] = []  # near-uniform specialists left out of the last divergence vote
 
     def progress(self) -> tuple[float, float, str | None]:
         """``(missing, conf, answer)``; ``missing`` is the open fraction of {tier, answer, gate-verified}."""
@@ -194,7 +195,7 @@ class CaseRun:
             return
         report = assess(r.distributions, self.case.letters(), tau)
         r.divergence, r.top1, r.disagreement = report.divergence, report.top1, report.disagreement
-        r.conflict_set, r.switch = report.conflict_set, report.switch
+        r.conflict_set, r.switch, self.abstainers = report.conflict_set, report.switch, report.abstainers
         r.mode = "adversarial" if report.switch else "collaborative"
         r.route.append(f"divergence:{report.divergence:.2f}:{'switch' if report.switch else 'stay'}")
 

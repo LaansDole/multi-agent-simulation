@@ -4,11 +4,14 @@ Every distribution is first ``normalize``d over the case's option letters:
 ``p_i = (max(x_i, 0) + eps) / sum_j (max(x_j, 0) + eps)`` (non-numeric / non-finite / unknown-letter entries
 count as 0; an empty distribution becomes uniform), so every log below is finite.
 
+- Abstention: an agent whose normalized entropy ``H(p) / ln k`` (k = number of options) is
+  ``>= ABSTAIN_ENTROPY`` (0.95) is near-uniform, i.e. declines to pick an option. Its top-1 is still
+  reported, but it is left out of the divergence, the top-1 vote and the Conflict Set below.
 - JS distance (base 2, in [0, 1]): ``d(P, Q) = sqrt(JSD(P, Q))`` with
   ``JSD = 1/2 KL(P || M) + 1/2 KL(Q || M)``, ``M = (P + Q) / 2``, ``KL(P || M) = sum_i p_i log2(p_i / m_i)``.
-- Divergence: mean of ``d`` over all unordered agent pairs (0 with fewer than two agents).
-- Top-1 disagreement: agents' argmax letters differ (ties go to the earlier option letter).
-- Conflict Set: letters in at least one agent's top-2 whose spread ``max_a p_a(l) - min_a p_a(l)``
+- Divergence: mean of ``d`` over all unordered pairs of informative agents (0 with fewer than two).
+- Top-1 disagreement: informative agents' argmax letters differ (ties go to the earlier option letter).
+- Conflict Set: letters in at least one informative agent's top-2 whose spread ``max_a p_a(l) - min_a p_a(l)``
   is ``>= spread_threshold`` (default 0.3).
 - Switch to adversarial mode iff ``divergence >= tau`` (default 0.25) OR top-1 disagreement.
 
@@ -19,7 +22,7 @@ answer, so it is a calibration metric for evaluation and tests only; it is NOT u
 import itertools
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -28,6 +31,8 @@ EPS = 1e-6
 TAU = 0.25
 SPREAD_THRESHOLD = 0.3
 MARGIN = 0.2
+# ponytail: 0.95 keeps a 0.5/0.5 split or a 0.4 leader (5 options) voting; a learned abstain head would replace it.
+ABSTAIN_ENTROPY = 0.95
 
 Distribution = Mapping[str, Any]
 
@@ -75,6 +80,14 @@ def top1(dist: Distribution, letters: Sequence[str], eps: float = EPS) -> str:
     return _ranked(dist, letters, eps)[0]
 
 
+def abstains(dist: Distribution, letters: Sequence[str], threshold: float = ABSTAIN_ENTROPY, eps: float = EPS) -> bool:
+    """True when ``dist`` is near-uniform: normalized entropy ``H(p) / ln k >= threshold`` (never for k < 2)."""
+    if len(letters) < 2:
+        return False
+    probs = _vector(dist, letters, eps)
+    return float(-(probs * np.log(probs)).sum()) / math.log(len(letters)) >= threshold
+
+
 def top1_disagreement(dists: Sequence[Distribution], letters: Sequence[str], eps: float = EPS) -> bool:
     """True when the agents' top-1 letters are not all the same."""
     return len({top1(dist, letters, eps) for dist in dists}) > 1
@@ -106,6 +119,7 @@ class DivergenceReport:
     disagreement: bool
     conflict_set: list[str]
     switch: bool
+    abstainers: list[str] = field(default_factory=list)  # near-uniform agents: top-1 shown, no vote
 
 
 def assess(
@@ -115,8 +129,9 @@ def assess(
     spread_threshold: float = SPREAD_THRESHOLD,
     eps: float = EPS,
 ) -> DivergenceReport:
-    """Compute divergence, top-1 disagreement, Conflict Set and the switch decision for ``{agent: distribution}``."""
-    dists = list(distributions.values())
+    """Divergence, top-1 disagreement, Conflict Set and switch for ``{agent: distribution}``, abstainers excluded."""
+    abstainers = [agent for agent, dist in distributions.items() if abstains(dist, letters, eps=eps)]
+    dists = [dist for agent, dist in distributions.items() if agent not in abstainers]
     divergence = mean_pairwise_divergence(dists, letters, eps)
     disagreement = top1_disagreement(dists, letters, eps)
     return DivergenceReport(
@@ -125,6 +140,7 @@ def assess(
         disagreement=disagreement,
         conflict_set=conflict_set(dists, letters, spread_threshold, eps),
         switch=should_switch(divergence, disagreement, tau),
+        abstainers=abstainers,
     )
 
 

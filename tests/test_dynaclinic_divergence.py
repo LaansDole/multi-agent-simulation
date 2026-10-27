@@ -8,6 +8,7 @@ import pytest
 
 from dynaclinic.divergence import (
     TAU,
+    abstains,
     assess,
     conflict_set,
     js_distance,
@@ -120,6 +121,48 @@ def test_assess_divergent_team_reports_conflict_set() -> None:
     assert report.divergence == pytest.approx(js_distance({"A": 0.9, "B": 0.1}, {"B": 0.9, "A": 0.1}, LETTERS))
     assert report.conflict_set == ["A", "B"]
     assert report.switch is True  # via top-1 disagreement even though tau is not reached
+
+
+UNIFORM = dict.fromkeys(LETTERS, 0.2)
+
+
+def test_abstains_on_near_uniform_but_not_on_a_split_or_a_leader() -> None:
+    assert abstains(UNIFORM, LETTERS) and abstains({}, LETTERS)
+    assert abstains({"A": 0.24, "B": 0.22, "C": 0.2, "D": 0.18, "E": 0.16}, LETTERS)
+    assert not abstains({"A": 0.5, "B": 0.5}, LETTERS)
+    assert not abstains({"D": 0.4, "A": 0.15, "B": 0.15, "C": 0.15, "E": 0.15}, LETTERS)
+    assert not abstains({"D": 0.96}, LETTERS)
+
+
+def test_assess_live_abstainer_does_not_force_a_switch() -> None:
+    # walkthrough capture, syn-high-03: imaging cannot pick the analgesic; both informative specialists say D
+    pathology, pharmacology = {"D": 0.96}, {"D": 0.98}
+    report = assess({"imaging": UNIFORM, "pathology": pathology, "pharmacology": pharmacology}, LETTERS)
+    assert report.abstainers == ["imaging"]
+    assert report.top1 == {"imaging": "A", "pathology": "D", "pharmacology": "D"}
+    assert report.divergence == pytest.approx(js_distance(pathology, pharmacology, LETTERS))
+    assert (report.disagreement, report.conflict_set, report.switch) == (False, [], False)
+
+
+def test_assess_informative_disagreement_still_switches_beside_an_abstainer() -> None:
+    pathology, pharmacology = {"A": 0.9, "D": 0.1}, {"D": 0.9, "A": 0.1}
+    report = assess({"imaging": UNIFORM, "pathology": pathology, "pharmacology": pharmacology}, LETTERS)
+    assert report.abstainers == ["imaging"]
+    assert report.divergence == pytest.approx(js_distance(pathology, pharmacology, LETTERS))
+    assert report.conflict_set == conflict_set([pathology, pharmacology], LETTERS) == ["A", "D"]
+    assert report.disagreement is True and report.switch is True
+
+
+@pytest.mark.parametrize(
+    ("pharmacology", "abstainers"),
+    [(UNIFORM, ["imaging", "pathology", "pharmacology"]), ({"D": 0.98}, ["imaging", "pathology"])],
+)
+def test_assess_with_fewer_than_two_informative_agents_never_switches(
+    pharmacology: dict[str, float], abstainers: list[str]
+) -> None:
+    report = assess({"imaging": UNIFORM, "pathology": {}, "pharmacology": pharmacology}, LETTERS)
+    assert report.abstainers == abstainers
+    assert (report.divergence, report.disagreement, report.conflict_set, report.switch) == (0.0, False, [], False)
 
 
 def test_margin_loss_decreases_as_gold_margin_grows() -> None:
