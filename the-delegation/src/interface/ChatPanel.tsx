@@ -1,17 +1,106 @@
-import { Send } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronRight, Send } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getAgentSet, getAllAgents } from '../data/agents';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../theme/brand';
 import { useCoreStore } from '../integration/store/coreStore';
-import { useMockScenarios } from '../integration/hooks/useMockScenarios';
+import { DYNACLINIC_WORKFLOW, mockScenariosLabel, useMockScenarios } from '../integration/hooks/useMockScenarios';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
 import { useUiStore } from '../integration/store/uiStore';
 import { useSceneManager } from '../simulation/SceneContext';
 import { Avatar } from './components/Avatar';
 import { AuditModal } from './AuditModal';
 import { FileSearch } from 'lucide-react';
+
+// The chat input grows with its text up to about 12 lines (text-sm: 20px per line, plus padding), then scrolls.
+const INPUT_MAX_HEIGHT_PX = 12 * 20 + 26;
+
+const smallButtonClass = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all active:scale-95 cursor-pointer';
+const secondaryButtonClass = `${smallButtonClass} border border-zinc-200 text-zinc-600 bg-white hover:bg-zinc-50`;
+
+// Lead chat only: the imported workflow's graph.demo_scenarios plus a plain-text file import.
+// Every action fills the chat input; nothing is sent.
+const MockScenariosSection: React.FC<{ onInsert: (text: string) => void; hasSentMessage: boolean }> = ({ onInsert, hasSentMessage }) => {
+  const { file, loading, failed, scenarios, retry } = useMockScenarios();
+  const { mockScenariosOpen, setMockScenariosOpen } = useUiStore();
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!file) return null;
+  const open = mockScenariosOpen ?? !hasSentMessage;
+  const isDynaClinic = file === DYNACLINIC_WORKFLOW;
+
+  return (
+    <div className="mb-2 min-h-0 flex flex-col rounded-2xl border border-zinc-100 bg-zinc-50/60">
+      <button
+        onClick={() => setMockScenariosOpen(!open)}
+        className="w-full shrink-0 flex items-center gap-1.5 px-3 py-2 text-left cursor-pointer"
+      >
+        {open ? <ChevronDown size={12} strokeWidth={3} /> : <ChevronRight size={12} strokeWidth={3} />}
+        <span className="text-[10px] font-black text-darkDelegation uppercase tracking-widest">Mock scenarios</span>
+        {scenarios.length > 0 && <span className="text-[10px] font-bold text-zinc-400">{scenarios.length}</span>}
+      </button>
+      {open && (
+        <div className="min-h-0 max-h-[38vh] overflow-y-auto px-3 pb-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <p className="flex-1 text-[11px] text-zinc-500">{mockScenariosLabel(file)}</p>
+            <button onClick={() => fileInputRef.current?.click()} className={secondaryButtonClass}>
+              Import plain text
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.md,text/plain,text/markdown"
+              className="hidden"
+              onChange={(e) => {
+                const picked = e.target.files?.[0];
+                e.target.value = ''; // picking the same file again fires onChange again
+                picked?.text().then(onInsert);
+              }}
+            />
+          </div>
+          {isDynaClinic && (
+            <p className="text-[10px] text-zinc-400 leading-relaxed">
+              Or paste a case as plain text: a vignette, optional Age/Sex/History/Medications/Allergies/Labs/Imaging lines, Question:, then options A.-E.
+            </p>
+          )}
+          {loading && <p className="text-[11px] text-zinc-500">Loading mock scenarios...</p>}
+          {failed && (
+            <div className="flex items-center gap-2">
+              <p className="flex-1 text-[11px] text-red-500 leading-snug">
+                Could not load mock scenarios from the backend (restart it on the current code).
+              </p>
+              <button onClick={retry} className={secondaryButtonClass}>Retry</button>
+            </div>
+          )}
+          {!loading && !failed && scenarios.length === 0 && (
+            <p className="text-[11px] text-zinc-500">This workflow defines no mock scenarios.</p>
+          )}
+          {scenarios.map((scenario) => (
+            <div key={scenario.id} className="rounded-xl border border-zinc-100 bg-white p-3 space-y-2">
+              <p className="text-xs font-bold text-zinc-700 leading-snug">{scenario.title}</p>
+              {scenario.teaches && <p className="text-[11px] text-zinc-500 leading-relaxed">{scenario.teaches}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => onInsert(scenario.text)} className={`${smallButtonClass} bg-darkDelegation hover:bg-black text-white`}>
+                  Insert
+                </button>
+                <button onClick={() => setPreviewId(previewId === scenario.id ? null : scenario.id)} className={secondaryButtonClass}>
+                  {previewId === scenario.id ? 'Hide preview' : 'Preview'}
+                </button>
+              </div>
+              {previewId === scenario.id && (
+                <pre className="text-[10px] leading-relaxed whitespace-pre-wrap font-mono text-zinc-600 bg-zinc-50 border border-zinc-100 rounded-lg p-2">
+                  {scenario.text}
+                </pre>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ChatPanel: React.FC = () => {
   const {
@@ -27,10 +116,11 @@ const ChatPanel: React.FC = () => {
   const activeTeam = useActiveTeam();
   const agents = getAllAgents(activeTeam);
   const selectedAgentSetId = activeTeam.id;
-  const scenarios = useMockScenarios();
+  const isLead = selectedNpcIndex === activeTeam.leadAgent.index;
 
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -57,6 +147,15 @@ const ChatPanel: React.FC = () => {
     setInput(chatDraft);
     setChatDraft(null);
   }, [chatDraft, setChatDraft]);
+
+  // Grow the input with its text (an inserted case stays readable before sending), then scroll.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, INPUT_MAX_HEIGHT_PX)}px`;
+    el.style.overflowY = el.scrollHeight > INPUT_MAX_HEIGHT_PX ? 'auto' : 'hidden';
+  }, [input, isChatting]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -218,30 +317,18 @@ const ChatPanel: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="p-2 border-t border-zinc-50">
-        {scenarios.length > 0 && agent.index === activeTeam.leadAgent.index && (
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <select
-              value=""
-              onChange={(e) => {
-                const scenario = scenarios.find((s) => s.id === e.target.value);
-                if (scenario) setInput(scenario.text);
-              }}
-              className="min-w-0 flex-1 bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-[11px] text-zinc-600 focus:outline-none cursor-pointer"
-            >
-              <option value="">Mock scenario...</option>
-              {scenarios.map((s) => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-            <span className="shrink-0 text-[9px] text-zinc-400 leading-tight max-w-[130px]">
-              Mock patients for demonstration, not real data.
-            </span>
-          </div>
+      <div className="min-h-0 flex flex-col p-2 border-t border-zinc-50">
+        {isLead && (
+          <MockScenariosSection
+            onInsert={setInput}
+            hasSentMessage={chatMessages.some((msg) => msg.role === 'user')}
+          />
         )}
-        <div className="relative flex items-center gap-2">
+        <div className="relative shrink-0 flex items-center gap-2">
           <div className="flex-1 relative">
             <textarea
+              ref={inputRef}
+              rows={1}
               value={input}
               onChange={(e) => {
                 const val = e.target.value;
@@ -264,7 +351,7 @@ const ChatPanel: React.FC = () => {
                 }
               }}
               placeholder="Message (↵ to send)"
-              className="w-full bg-white border border-zinc-200 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 transition-all resize-none pr-12 [scrollbar-width:none]"
+              className="w-full bg-white border border-zinc-200 rounded-2xl px-3 py-3 text-sm focus:outline-none focus:ring-2 transition-all resize-none pr-12 [scrollbar-width:thin]"
               style={{
                 borderColor: input.trim() ? USER_COLOR : undefined,
                 boxShadow: input.trim() ? `0 0 0 2px ${USER_COLOR_LIGHT}` : undefined
@@ -283,7 +370,7 @@ const ChatPanel: React.FC = () => {
             <Send size={16} strokeWidth={3} />
           </button>
         </div>
-        <p className="text-[8px] text-zinc-400 mt-2 text-center font-medium uppercase tracking-wider">
+        <p className="shrink-0 text-[8px] text-zinc-400 mt-2 text-center font-medium uppercase tracking-wider">
           Shift + ↵ for new line
         </p>
       </div>

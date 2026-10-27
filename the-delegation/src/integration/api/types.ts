@@ -138,14 +138,13 @@ export interface WorkflowListItem {
 
 // ── Model Info ─────────────────────────────────────────────────────
 
-/** A fictional DynaClinic case in plain text (GET /api/dynaclinic/scenarios). */
+/** A mock task prompt from the workflow YAML's graph.demo_scenarios (GET /api/workflows/{filename}/scenarios). */
 export interface MockScenario {
   id: string;
   title: string;
-  /** One line: what the demo shows. */
+  /** One line: what the demo shows ('' when the YAML gives none). */
   teaches: string;
-  /** Dataset case id the text was copied from. */
-  source: string;
+  /** Plain-text task prompt. */
   text: string;
 }
 

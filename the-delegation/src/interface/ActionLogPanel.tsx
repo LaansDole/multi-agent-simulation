@@ -6,7 +6,7 @@ import { DebugLogEntry, useCoreStore } from '../integration/store/coreStore'
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore'
 import { useUiStore } from '../integration/store/uiStore'
 import { useChatAvailability } from '../integration/hooks/useChatAvailability'
-import { DYNACLINIC_WORKFLOW, useMockScenarios } from '../integration/hooks/useMockScenarios'
+import { DYNACLINIC_WORKFLOW, mockScenariosLabel, useMockScenarios } from '../integration/hooks/useMockScenarios'
 import { useSceneManager } from '../simulation/SceneContext'
 import { formatTokens } from './ProjectView'
 
@@ -336,7 +336,7 @@ const GettingStarted: React.FC = () => {
     const { canChat } = useChatAvailability(lead.index)
     const setWorkflowBrowserOpen = useUiStore((s) => s.setWorkflowBrowserOpen)
     const setChatDraft = useUiStore((s) => s.setChatDraft)
-    const scenarios = useMockScenarios()
+    const { scenarios } = useMockScenarios()
     const [previewId, setPreviewId] = useState<string | null>(null)
     const imported = Boolean(team.sourceYamlFile)
     const buttonClass = 'w-full flex items-center justify-center gap-2 bg-darkDelegation hover:bg-black active:scale-95 disabled:opacity-50 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm cursor-pointer'
@@ -371,7 +371,7 @@ const GettingStarted: React.FC = () => {
             {scenarios.length > 0 && (
                 <div className="space-y-2">
                     <p className="text-[10px] font-black text-darkDelegation uppercase tracking-widest">Mock scenarios</p>
-                    <p className="text-[11px] text-zinc-500">Mock patients for demonstration, not real data.</p>
+                    <p className="text-[11px] text-zinc-500">{mockScenariosLabel(team.sourceYamlFile ?? '')}</p>
                     {scenarios.map((scenario) => (
                         <div key={scenario.id} className="rounded-xl border border-zinc-100 bg-white p-3 space-y-2">
                             <p className="text-xs font-bold text-zinc-700 leading-snug">{scenario.title}</p>

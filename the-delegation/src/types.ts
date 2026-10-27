@@ -41,6 +41,10 @@ export interface CharacterState {
   chatDraft: string | null;
   setChatDraft: (text: string | null) => void;
 
+  /** Lead-chat "Mock scenarios" section; null = never toggled: open while no message has been sent. */
+  mockScenariosOpen: boolean | null;
+  setMockScenariosOpen: (open: boolean) => void;
+
   activeAuditTaskId: string | null;
   setActiveAuditTaskId: (taskId: string | null) => void;
 

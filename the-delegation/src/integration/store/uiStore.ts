@@ -39,6 +39,9 @@ export const useUiStore = create<CharacterState>()(
     chatDraft: null,
     setChatDraft: (text: string | null) => set({ chatDraft: text }),
 
+    mockScenariosOpen: null,
+    setMockScenariosOpen: (open: boolean) => set({ mockScenariosOpen: open }),
+
     llmConfig: (() => {
       try {
         const saved = localStorage.getItem('byok-config');

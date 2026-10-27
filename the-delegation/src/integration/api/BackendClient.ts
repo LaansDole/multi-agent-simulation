@@ -245,16 +245,14 @@ export class BackendClient {
     }
   }
 
-  /** Fetch the mock DynaClinic scenarios; [] when the backend call fails. */
-  public async fetchMockScenarios(): Promise<MockScenario[]> {
-    try {
-      const response = await fetch(`${this.apiUrl}/api/dynaclinic/scenarios`, {
-        signal: AbortSignal.timeout(5000)
-      });
-      return response.ok ? await response.json() : [];
-    } catch {
-      return [];
-    }
+  /** Fetch graph.demo_scenarios of a workflow file; throws when the backend call fails. */
+  public async fetchWorkflowScenarios(filename: string): Promise<MockScenario[]> {
+    const response = await fetch(
+      `${this.apiUrl}/api/workflows/${encodeURIComponent(filename)}/scenarios`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+    if (!response.ok) throw new Error(`Failed to fetch mock scenarios (${response.status})`);
+    return response.json();
   }
 
   /** Fetch the normalized graph for a workflow file. */
