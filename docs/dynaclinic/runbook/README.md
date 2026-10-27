@@ -51,6 +51,10 @@ Check: `curl -s localhost:6400/health` returns 200, and http://localhost:3100/th
 
 1. In the Getting Started card on the left, click START: CHAT WITH TRIAGE. It selects the lead agent (Triage, the Meta-Controller) and opens its chat on the right. You can also click the Triage character and then CHAT ABOUT THE BRIEF, but the characters wander.
 2. Paste one Case JSON line (below) into the message box.
+
+   Quicker: under the Start button, the **Mock scenarios** list has six labelled mock patients (low, moderate, an MAOI drug-interaction trap, and three contested cases), each with a line on what it shows. **Use this case** opens the Triage chat with the case filled in as plain text, and **Preview** shows it first; the chat panel has the same list in its "Mock scenario..." menu. Nothing is sent until you press Enter. The cases are files in `data/dynaclinic/demo_scenarios/`, served by `GET /api/dynaclinic/scenarios`. Plain text works anywhere a Case JSON does: a vignette, optional `Age:` / `Sex:` / `History:` / `Medications:` / `Allergies:` / `Labs:` / `Imaging:` lines, a `Question:` line, then options `A.` to `E.`.
+
+   One real run of each scenario as plain text (gpt-6-luna, after 8947e25): all six answered correctly. Routes: 01 LOW; 02 MODERATE (divergence 0.14); 03 MODERATE (0.04); 04 HIGH (0.05); 05 MODERATE (0.00, both specialists abstained, so no Critic); 06 HIGH (0.08). Routes and the Critic switch vary between runs (see Scenario C below).
 3. Press Enter.
 
 ![Getting Started opens the Triage chat](02a-getting-started-chat-open.png)
@@ -118,8 +122,9 @@ How often this case switches (all real runs of this case; the routing code is th
 | video recording 1 (shipped) | HIGH | imaging B, pathology abstains, pharmacology C | 0.59 | ADVERSARIAL |
 | video recording 2 (not used) | MODERATE | pathology abstains, pharmacology C | 0.00 | COLLABORATIVE |
 | stills shown above | HIGH | imaging B, pathology abstains, pharmacology C | 0.72 | ADVERSARIAL |
+| plain-text mock scenario 05 (headless, after 8947e25) | MODERATE | pathology abstains, pharmacology abstains | 0.00 | COLLABORATIVE |
 
-Switched in 4 of 8 runs; all 8 gave FINAL ANSWER C. The switch depends on which specialists triage consults: every HIGH run switched (Imaging and Pharmacology disagree), every MODERATE run but one stayed collaborative. MODERATE picks the first two with data for the case (Pharmacology, then Pathology/Lab). Neither can choose a diagnostic step for this case from its own modality, so when both abstain there is no informed vote and the gate stays collaborative (see Findings). Treat Scenario C as "can switch", not "always switches".
+Switched in 4 of 9 runs; all 9 gave FINAL ANSWER C. The switch depends on which specialists triage consults: every HIGH run switched (Imaging and Pharmacology disagree), every MODERATE run but one stayed collaborative. MODERATE picks the first two with data for the case (Pharmacology, then Pathology/Lab). Neither can choose a diagnostic step for this case from its own modality, so when both abstain there is no informed vote and the gate stays collaborative (see Findings). Treat Scenario C as "can switch", not "always switches".
 
 ## 6. Proposal coverage you can and cannot see
 

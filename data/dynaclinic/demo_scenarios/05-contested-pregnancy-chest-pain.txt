@@ -1,5 +1,5 @@
 # title: Mock case: Pregnant woman at 30 weeks with chest pain and shortness of breath
-# teaches: Specialists often disagree here; the switch to the Clinical Critic is likely but not guaranteed.
+# teaches: When triage calls this HIGH, Imaging and Pharmacology disagree and the Clinical Critic is called; when it calls MODERATE, the team usually stays collaborative. The Critic ran in 4 of 9 real runs.
 # source: demo-contested-02
 Mock case: Pregnant woman at 30 weeks with chest pain and shortness of breath
 

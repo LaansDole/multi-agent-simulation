@@ -1,5 +1,5 @@
 # title: Mock case: 48-year-old man on phenelzine with severe flank pain
-# teaches: High complexity: all three specialists consult; whether the Clinical Critic is called depends on how far they diverge, and it varies from run to run.
+# teaches: Drug-interaction trap: meperidine and tramadol are dangerous with phenelzine (an MAOI). Triage sends it to the care team; the Clinical Critic is called only if the specialists diverge, which varies from run to run.
 # source: syn-high-03
 Mock case: 48-year-old man on phenelzine with severe flank pain
 
