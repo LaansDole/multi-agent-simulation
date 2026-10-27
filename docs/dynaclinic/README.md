@@ -14,7 +14,7 @@ Status key: **implemented** means the behaviour is in code. **prompt-level** mea
 | Primary Care Agent, Emanuel & Emanuel Informative model | `prompts.py` (`_PRIMARY_CARE`), `pipeline.CaseRun.primary_care` | prompt-level | Paternalistic and interpretive language is forbidden by the prompt only. No checker enforces it. |
 | Integrated Care Team (Imaging, Pathology/Lab, Pharmacology) | `prompts.specialist_block`, `pipeline.CaseRun.care_team` | implemented | Each specialist gets its modality slice, plus the shared case summary under the default `shared_core` context policy (see [Context policy](#context-policy)). Specialists run concurrently. MODERATE uses 2 specialists, HIGH uses 3. |
 | L3 shared Blackboard | `dynaclinic/blackboard.py` | implemented | In-memory, append-only, one per case. Specialists never see each other's entries. |
-| Meta-Controller tier 2: conflict-aware routing (divergence, Conflict Set, tau) | `dynaclinic/divergence.py` | implemented | Mean pairwise Jensen-Shannon distance. Switches if `>= tau` or the top-1 answers disagree. |
+| Meta-Controller tier 2: conflict-aware routing (divergence, Conflict Set, tau) | `dynaclinic/divergence.py` | implemented | Multiple choice: mean pairwise Jensen-Shannon distance; switches if `>= tau` or the top-1 answers disagree. Open-ended cases: mean pairwise cosine distance between the specialists' `PRIMARY ASSERTION` lines (the proposal's D(H1, H2)); switches if `>= tau_semantic` or fewer than two specialists assert anything. |
 | Multi-label margin loss | `divergence.margin_loss`, `eval/grade.py` | implemented (eval only) | Calibration metric on the team's mean distribution. It needs the gold answer, so it is never used for live routing. |
 | Clinical Critic: atomic-claim decomposition | `dynaclinic/critic.py`, `prompts.py` | prompt-level | One LLM call splits the Blackboard into claims. A malformed reply falls back to the specialists' own claims. |
 | Adaptive hybrid rule / LLM-judge estimator | `dynaclinic/critic.py` | implemented | Rule score = token grounding plus a KB veto. The judge's logits are temperature-scaled, and `lambda = sigmoid(k (var(r) - v0))`. The judge itself is an LLM call. |
@@ -43,8 +43,8 @@ flowchart TD
     TRI -- LOW --> PCA[Primary Care Agent<br/>Informative model]
     TRI -- "MODERATE (2 specialists) / HIGH (3)" --> TEAM[Integrated Care Team<br/>Imaging / Pathology-Lab / Pharmacology]
     TEAM --> BB[(Blackboard)]
-    BB --> DIV{Divergence >= tau 0.25<br/>or top-1 disagreement?}
-    DIV -- no: COLLABORATIVE --> SYN[Synthesizer]
+    BB --> DIV{"Divergence >= tau 0.25 or top-1 disagreement?<br/>open-ended: semantic divergence >= tau_semantic?"}
+    DIV -- no: COLLABORATIVE --> SYN[Synthesizer<br/>Consensus Builder / Conflict Resolver]
     DIV -- yes: ADVERSARIAL --> CRIT[Clinical Critic<br/>atomic claims, hybrid rule/judge, KB veto]
     CRIT -- flagged claims --> SYN
     PCA --> GATE{L4 gates: A_SAD, T_SAD, S_NAP stub}
@@ -56,6 +56,8 @@ flowchart TD
 ```
 
 In the pure pipeline, the `GreedyPlanner` stub picks each stage and logs its reward as `planner:<action>:<reward>` in `RunResult.route`. In DevAll, the graph itself is the policy, and the planner and cache are not used.
+
+**Open-ended cases.** A case without answer options (any clinical text, e.g. "a patient has COVID-19 on a sunny day") gets a sectioned write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION) ending in `RECOMMENDATION:`, never a letter; the report heads it `Assessment and plan:`. Each specialist ends its reply with `PRIMARY ASSERTION: <leading diagnosis or recommendation>` or `ABSTAIN`. The divergence is the mean pairwise cosine distance `1 - cos` (clipped to [0, 1]) between the non-abstaining assertions, embedded with the client's `text-embedding-3-small` or, when the client has no embedder or the call fails (warning), the `HashingEmbeddingMemory` stub. The gate prints the divergence, `tau_semantic`, the embedder and every assertion. With fewer than two assertions it is not measurable and the team goes adversarial (safety-biased). The synthesizer stage is labelled Consensus Builder (collaborative) or Conflict Resolver (adversarial).
 
 ## How to run
 
@@ -137,6 +139,7 @@ Behaviour:
 | Parameter | Default | Where |
 |---|---|---|
 | tau (adversarial switch on divergence) | 0.25 | `divergence.TAU`; `DynaClinicPipeline(tau=)`; `dc_divergence_gate` config `tau` |
+| tau_semantic (open-ended switch on semantic divergence) | hashing 0.595 (calibrated: 19/20 on a 10 same + 10 different diagnosis pair fixture); text-embedding-3-small 0.35 (prior, not validated) | `divergence.TAU_SEMANTIC`; `DynaClinicPipeline(tau_semantic=)`; `dc_divergence_gate` config `tau_semantic` (overrides both) |
 | Conflict Set spread | 0.3 | `divergence.SPREAD_THRESHOLD` |
 | Margin (margin loss) | 0.2 | `divergence.MARGIN` |
 | Abstention (near-uniform specialist, no vote) | normalized entropy >= 0.95 | `divergence.ABSTAIN_ENTROPY` |
@@ -160,6 +163,8 @@ Behaviour:
 - **Single-run variance.** Each case is run once per arm. The pipelines never set a temperature, so provider defaults apply, and the client drops `temperature` for models that reject it. Repeated runs can differ.
 - **Stubs.** No FHIR, Neo4j, MCTS, BioBERT, Qdrant, S_NAP, trust region or CSEDB. The MVP reports no scores for any of them.
 - **Safety-violation definition.** A final answer in `unsafe_options` counts as a violation even when the gate blocked it. The blocked rate is reported separately.
+- **Open-ended semantic divergence is weak evidence.** The hashing fallback is lexical: its calibrated tau_semantic separates the 20-pair fixture with a margin of 0.007 (same-diagnosis max 0.592, different min 0.599, one different pair at 0.522 missed), and paraphrases with no shared words read as conflict. The text-embedding-3-small threshold is a prior, never run against the API. Embedding calls are not in the cost ledger.
+- **Open-ended answers are not cached or graded.** `final_answer` is None, so the semantic cache never stores them, the eval harness has no gold to grade, and the planner's progress counts the answer as missing.
 
 ## Results
 

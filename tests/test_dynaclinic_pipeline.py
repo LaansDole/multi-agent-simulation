@@ -298,19 +298,23 @@ def _asserting(assertion: str) -> str:
 
 
 @pytest.mark.parametrize(
-    ("pharmacology", "stages"),
+    ("pharmacology", "tau_semantic", "stages"),
     [
-        ("Septic shock from pneumonia.", ["divergence:0.00:stay", "synthesizer", "safety_gate:pass"]),
-        ("Pulmonary embolism.", ["divergence:0.67:switch", "critic", "synthesizer", "safety_gate:pass"]),
+        ("Septic shock from pneumonia.", 0.5, ["divergence:0.00:stay", "synthesizer", "safety_gate:pass"]),
+        ("Pulmonary embolism.", 0.5, ["divergence:0.67:switch", "critic", "synthesizer", "safety_gate:pass"]),
+        # divergence == tau_semantic switches (safety-biased boundary)
+        ("Septic shock from pneumonia.", 0.0, ["divergence:0.00:switch", "critic", "synthesizer", "safety_gate:pass"]),
     ],
 )
-def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(pharmacology: str, stages: list[str]) -> None:
+def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(
+    pharmacology: str, tau_semantic: float, stages: list[str]
+) -> None:
     def by_keyword(texts: list[str]) -> list[list[float]]:
         return [[float("septic" in text.lower()), float("embol" in text.lower())] for text in texts]
 
     script = {**SCRIPT, "triage": _triage("HIGH"), "synthesizer": WRITE_UP, "imaging": _asserting("Septic shock."),
               "pathology": _asserting("Septic shock, likely pulmonary source."), "pharmacology": _asserting(pharmacology)}
-    result = DynaClinicPipeline(FakeLLM(script, by_keyword), tau_semantic=0.5).run(OPEN_CASE)
+    result = DynaClinicPipeline(FakeLLM(script, by_keyword), tau_semantic=tau_semantic).run(OPEN_CASE)
     assert _stages(result)[4:] == stages
     assert (result.embedder, result.final_text, result.warnings) == ("fake", WRITE_UP, [])
 
