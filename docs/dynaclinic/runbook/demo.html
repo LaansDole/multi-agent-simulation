@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DynaClinic in 3D: runbook demo</title>
+<style>
+  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; --ok:#34a853; --warn:#fbbc05; --adv:#ea4335; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  header { padding:28px 36px 8px; }
+  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
+  .sub { color:var(--muted); max-width:980px; }
+  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:24px; padding:20px 36px 40px; }
+  video { width:100%; border-radius:10px; background:#000; border:1px solid var(--line); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+  .steps { list-style:none; margin:0; padding:0; }
+  .steps li { padding:8px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:52px 1fr; gap:8px; border-left:3px solid transparent; }
+  .steps li:hover { background:#24242d; }
+  .steps li.active { background:#22304a; border-left-color:var(--accent); }
+  .steps .t { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .steps .chapter { margin-top:10px; padding:6px 10px 2px; cursor:pointer; font-weight:700; color:#fff; display:block; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:4px; vertical-align:1px; }
+  .low { background:#1f3a2a; color:#8fd6a5; } .collab { background:#1f2f4a; color:#9cc0ff; } .adv { background:#4a1f1f; color:#ffa49b; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:14px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
+  .below { padding:0 36px 48px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  code { background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
+  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; }
+  a { color:#8ab4ff; }
+  .note { color:var(--muted); font-size:13px; }
+  @media (max-width: 1100px) { .wrap, .below { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>DynaClinic in 3D: runbook demo</h1>
+  <div class="sub">One continuous recording of the <a href="README.md">runbook</a>, step by step, in the three.js office. Three real cases on OpenAI <code>gpt-6-luna</code>: the Meta-Controller keeps one Primary Care Agent for a simple case, calls the Integrated Care Team for a complex one, and switches to the adversarial Clinical Critic when the specialists disagree. Captions name the runbook step and quote the run's own output. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged.</div>
+</header>
+
+<div class="wrap">
+  <div>
+    <video id="v" controls preload="metadata" src="dynaclinic-3d-runbook-demo.mp4"></video>
+    <p class="note">Recorded 2026-10-27 at commit 8f27bff, fresh browser profile, backend on :6400, office on :3100. Click any step on the right to jump there.</p>
+  </div>
+  <div class="panel">
+    <h2>Runbook steps in the video</h2>
+    <ul class="steps" id="steps">
+      <span class="chapter" data-t="0">Intro</span>
+      <span class="chapter" data-t="7.2">Load DynaClinic (runbook section 3)</span>
+      <li data-t="7.2"><span class="t"></span><span>3.1 Open the 3D office</span></li>
+      <li data-t="18.4"><span class="t"></span><span>3.2 Browse Workflows -> <code>dynaclinic_mvp.yaml</code></span></li>
+      <li data-t="24.7"><span class="t"></span><span>3.3 Reload: 7 agents appear</span></li>
+      <li data-t="34.6"><span class="t"></span><span>3.4 Badge: OPENAI gpt-6-luna</span></li>
+      <li data-t="37.1"><span class="t"></span><span>3.5 Design view, closed with Escape</span></li>
+      <span class="chapter" data-t="45.2">Scenario A <span class="tag low">LOW</span></span>
+      <li data-t="50.9"><span class="t"></span><span>4.1 Getting Started -> START: CHAT WITH TRIAGE</span></li>
+      <li data-t="54.3"><span class="t"></span><span>4.2 Paste the Case JSON, Enter</span></li>
+      <li data-t="62.6"><span class="t"></span><span>ROUTE: LOW -> Primary Care Agent only</span></li>
+      <li data-t="73.9"><span class="t"></span><span>Report: FINAL ANSWER A (correct)</span></li>
+      <span class="chapter" data-t="98.6">Scenario B <span class="tag collab">COLLABORATIVE</span></span>
+      <li data-t="115.0"><span class="t"></span><span>ROUTE: HIGH -> Integrated Care Team</span></li>
+      <li data-t="123.6"><span class="t"></span><span>Divergence 0.16 &lt; tau 0.25: stay collaborative</span></li>
+      <li data-t="132.2"><span class="t"></span><span>Report: FINAL ANSWER B (correct)</span></li>
+      <span class="chapter" data-t="155.5">Scenario C <span class="tag adv">ADVERSARIAL</span></span>
+      <li data-t="172.4"><span class="t"></span><span>ROUTE: HIGH; Imaging B vs Pharmacology C</span></li>
+      <li data-t="179.9"><span class="t"></span><span>Divergence 0.59 &gt; tau 0.25: Clinical Critic</span></li>
+      <li data-t="187.4"><span class="t"></span><span>Synthesizer reconciles B vs C</span></li>
+      <li data-t="202.4"><span class="t"></span><span>Report: FINAL ANSWER C (correct)</span></li>
+      <span class="chapter" data-t="216.8">Summary</span>
+    </ul>
+  </div>
+</div>
+
+<div class="below">
+  <div class="panel">
+    <h2>What each run did (from the run's own output)</h2>
+    <table>
+      <tr><th>Case</th><th>Meta-Controller</th><th>Care team</th><th>Mode</th><th>Answer</th></tr>
+      <tr><td>A <code>syn-low-01</code><br><span class="note">cellulitis, sulfonamide allergy</span></td><td>LOW</td><td>not called</td><td><span class="tag low">single agent</span></td><td>A, correct</td></tr>
+      <tr><td>B <code>demo-contested-01</code><br><span class="note">subdural bleed + PE on apixaban</span></td><td>HIGH</td><td>B 0.84 / B 0.80 / B 0.95</td><td><span class="tag collab">div 0.16</span></td><td>B, correct</td></tr>
+      <tr><td>C <code>demo-contested-02</code><br><span class="note">30 weeks pregnant, suspected VTE</span></td><td>HIGH</td><td>Imaging B 0.75, Pathology abstains, Pharmacology C 0.82</td><td><span class="tag adv">div 0.59, Critic</span></td><td>C, correct</td></tr>
+    </table>
+    <p class="note">Care team order: Imaging / Pathology-Lab / Pharmacology, top choice and its probability. Layer 4 safety gates (A_SAD, T_SAD) passed in all three; S_NAP is a stub. Scenario C switched to the Critic in 4 of 8 real runs (every run where triage said HIGH); the runbook lists all 8.</p>
+  </div>
+  <div class="panel">
+    <h2>Run it yourself</h2>
+    <pre>cd /Users/laansdole/Projects/multi-agent-simulation
+env -u PYTHONPATH -u VIRTUAL_ENV uv run python server_main.py --port 6400
+
+cd the-delegation
+npx vite --port=3100 --host=127.0.0.1 --strictPort</pre>
+    <p>Open <a href="http://localhost:3100/the-delegation/">localhost:3100/the-delegation/</a>, then follow the steps on the left of this page. Case lines: <code>data/dynaclinic/synthetic_cases.jsonl</code> (A) and <code>data/dynaclinic/demo_cases.jsonl</code> (B, C). Full instructions, troubleshooting and the proposal mapping: <a href="README.md">runbook</a>.</p>
+  </div>
+</div>
+
+<script>
+  const v = document.getElementById('v');
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const items = [...document.querySelectorAll('#steps [data-t]')];
+  items.forEach(el => {
+    const t = parseFloat(el.dataset.t);
+    const slot = el.querySelector('.t'); if (slot) slot.textContent = fmt(t);
+    el.addEventListener('click', () => { v.currentTime = t; v.play(); });
+  });
+  const lis = items.filter(el => el.tagName === 'LI');
+  v.addEventListener('timeupdate', () => {
+    let cur = null;
+    for (const el of lis) if (parseFloat(el.dataset.t) <= v.currentTime + 0.2) cur = el;
+    lis.forEach(el => el.classList.toggle('active', el === cur));
+  });
+</script>
+</body>
+</html>
