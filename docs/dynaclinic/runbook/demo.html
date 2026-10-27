@@ -6,7 +6,7 @@
 <title>DynaClinic in 3D: runbook demo</title>
 <link rel="canonical" href="https://laansdole.github.io/multi-agent-simulation/">
 <style>
-  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; --ok:#34a853; --warn:#fbbc05; --adv:#ea4335; }
+  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
   header { padding:28px 36px 8px; }
@@ -14,7 +14,7 @@
   .sub { color:var(--muted); }
   .wrap { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:24px; padding:20px 36px 40px; }
   video { width:100%; border-radius:10px; background:#000; border:1px solid var(--line); }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
   .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
   .steps { list-style:none; margin:0; padding:0; }
   .steps li { padding:7px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:44px 1fr; gap:6px; border-left:3px solid transparent; }
@@ -22,23 +22,20 @@
   .steps li.active { background:#22304a; border-left-color:var(--accent); }
   .steps .t { color:var(--muted); font-variant-numeric:tabular-nums; }
   .steps .chapter { margin-top:10px; padding:6px 10px 2px; cursor:pointer; font-weight:700; color:#fff; display:block; }
-  .tag { white-space:nowrap; display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:4px; vertical-align:1px; }
-  .low { background:#1f3a2a; color:#8fd6a5; } .collab { background:#1f2f4a; color:#9cc0ff; } .adv { background:#4a1f1f; color:#ffa49b; }
+  .tag { white-space:nowrap; display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:4px; vertical-align:1px; background:#1f2f4a; color:#9cc0ff; }
+  .tag.good, .tag.low { background:#1f3a2a; color:#8fd6a5; } .tag.warn, .tag.adv { background:#4a1f1f; color:#ffa49b; } .tag.collab { background:#1f2f4a; color:#9cc0ff; }
+  .table-wrap { overflow-x:auto; }
   table { width:100%; border-collapse:collapse; margin-top:6px; font-size:14px; }
   th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
   th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
-  .below { padding:0 36px 48px; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:24px; }
-  .panel { min-width:0; }
-  .table-wrap { overflow-x:auto; }
-  pre { max-width:100%; }
-  code { white-space:nowrap; background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
-  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; }
-  a { color:#8ab4ff; }
   td.nw, th.nw { white-space:nowrap; }
-  .case-id { display:block; margin-bottom:2px; }
-  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
-
+  .below { padding:0 36px 48px; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:24px; }
+  code { white-space:nowrap; background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
+  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; max-width:100%; }
+  pre code { white-space:pre; background:none; padding:0; }
+  a { color:#8ab4ff; }
   .note { color:var(--muted); font-size:13px; }
+  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
   @media (max-width: 1180px) { .wrap { grid-template-columns:1fr; } }
   @media (max-width: 1400px) { .below { grid-template-columns:1fr; } }
   @media (max-width: 600px) { header, .wrap, .below, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
@@ -47,7 +44,7 @@
 <body>
 <header>
   <h1>DynaClinic in 3D: runbook demo</h1>
-  <div class="sub">One continuous recording of the <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/runbook/README.md">runbook</a>, step by step, in the three.js office. Three real cases on OpenAI <code>gpt-6-luna</code>: the Meta-Controller keeps one Primary Care Agent for a simple case, calls the Integrated Care Team for a complex one, and switches to the adversarial Clinical Critic when the specialists disagree. Captions name the runbook step and quote the run's own output. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged.</div>
+  <div class="sub">One continuous recording of the runbook, step by step, in the three.js office. Three real cases on OpenAI gpt-6-luna: the Meta-Controller keeps one Primary Care Agent for a simple case, calls the Integrated Care Team for a complex one, and switches to the adversarial Clinical Critic when the specialists disagree. Captions name the runbook step and quote the run&#x27;s own output. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged.</div>
 </header>
 
 <div class="wrap">
@@ -58,25 +55,25 @@
   <div class="panel">
     <h2>Runbook steps in the video</h2>
     <ul class="steps" id="steps">
-      <span class="chapter" data-t="0">Intro</span>
+      <span class="chapter" data-t="0.0">Intro</span>
       <span class="chapter" data-t="7.2">Load DynaClinic</span>
       <li data-t="7.2"><span class="t"></span><span>3.1 Open the 3D office</span></li>
       <li data-t="18.4"><span class="t"></span><span>3.2 Import <code>dynaclinic_mvp.yaml</code></span></li>
       <li data-t="24.7"><span class="t"></span><span>3.3 Reload: 7 agents appear</span></li>
       <li data-t="34.6"><span class="t"></span><span>3.4 Badge: OPENAI gpt-6-luna</span></li>
-      <li data-t="37.1"><span class="t"></span><span>3.5 Design view, close with Escape</span></li>
-      <span class="chapter" data-t="45.2">Scenario A <span class="tag low">LOW</span></span>
+      <li data-t="37.2"><span class="t"></span><span>3.5 Design view, close with Escape</span></li>
+      <span class="chapter" data-t="45.2">Scenario A: low complexity</span>
       <li data-t="50.9"><span class="t"></span><span>4.1 START: CHAT WITH TRIAGE</span></li>
-      <li data-t="54.3"><span class="t"></span><span>4.2 Paste the case, press Enter</span></li>
-      <li data-t="62.6"><span class="t"></span><span>Route LOW: Primary Care only</span></li>
+      <li data-t="54.4"><span class="t"></span><span>4.2 Paste the case, press Enter</span></li>
+      <li data-t="62.7"><span class="t"></span><span>Route LOW: Primary Care only</span></li>
       <li data-t="73.9"><span class="t"></span><span>Report: answer A (correct)</span></li>
-      <span class="chapter" data-t="98.6">Scenario B <span class="tag collab">COLLABORATIVE</span></span>
+      <span class="chapter" data-t="98.6">Scenario B: collaborative care team</span>
       <li data-t="115.0"><span class="t"></span><span>Route HIGH: Integrated Care Team</span></li>
       <li data-t="123.6"><span class="t"></span><span>Divergence 0.16 &lt; 0.25: collaborative</span></li>
       <li data-t="132.2"><span class="t"></span><span>Report: answer B (correct)</span></li>
-      <span class="chapter" data-t="155.5">Scenario C <span class="tag adv">ADVERSARIAL</span></span>
-      <li data-t="172.4"><span class="t"></span><span>Route HIGH: Imaging B vs Pharmacology C</span></li>
-      <li data-t="179.9"><span class="t"></span><span>Divergence 0.59 &gt; 0.25: Clinical Critic</span></li>
+      <span class="chapter" data-t="155.5">Scenario C: adversarial switch</span>
+      <li data-t="172.5"><span class="t"></span><span>Route HIGH: Imaging B vs Pharmacology C</span></li>
+      <li data-t="180.0"><span class="t"></span><span>Divergence 0.59 &gt; 0.25: Clinical Critic</span></li>
       <li data-t="187.4"><span class="t"></span><span>Synthesizer reconciles B vs C</span></li>
       <li data-t="202.4"><span class="t"></span><span>Report: answer C (correct)</span></li>
       <span class="chapter" data-t="216.8">Summary</span>
@@ -86,8 +83,8 @@
 
 <div class="below">
   <div class="panel">
-    <h2>What each run did (from the run's own output)</h2>
-    <div class="table-wrap"><table>
+    <h2>What each run did (from the run&#x27;s own output)</h2>
+<div class="table-wrap"><table>
       <tr><th>Case</th><th class="nw">Triage</th><th>Care team</th><th>Mode</th><th class="nw">Answer</th></tr>
       <tr><td><code class="case-id">A: syn-low-01</code><span class="note">Cellulitis with a sulfonamide allergy</span></td><td class="nw">LOW</td><td>Not called</td><td class="nw"><span class="tag low">single agent</span></td><td class="nw">A, correct</td></tr>
       <tr><td><code class="case-id">B: demo-contested-01</code><span class="note">Subdural bleed and PE on apixaban</span></td><td class="nw">HIGH</td><td>All three pick B<br><span class="note">0.84, 0.80, 0.95</span></td><td class="nw"><span class="tag collab">div 0.16</span></td><td class="nw">B, correct</td></tr>
@@ -97,11 +94,11 @@
   </div>
   <div class="panel">
     <h2>Run it yourself</h2>
-    <pre>cd /Users/laansdole/Projects/multi-agent-simulation
+    <pre><code># from the repo root (git clone https://github.com/LaansDole/multi-agent-simulation)
 env -u PYTHONPATH -u VIRTUAL_ENV uv run python server_main.py --port 6400
 
 cd the-delegation
-npx vite --port=3100 --host=127.0.0.1 --strictPort</pre>
+npx vite --port=3100 --host=127.0.0.1 --strictPort</code></pre>
     <p>Open <a href="http://localhost:3100/the-delegation/">localhost:3100/the-delegation/</a>, then follow the steps in the list above. Case lines: <code>data/dynaclinic/synthetic_cases.jsonl</code> (A) and <code>data/dynaclinic/demo_cases.jsonl</code> (B, C). Full instructions, troubleshooting and the proposal mapping: <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/runbook/README.md">runbook</a>.</p>
   </div>
 </div>
