@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DynamiClinic: dynamic architecture switching, proof of concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   THEME: ECG-paper clinical chart
+   Change these variables to restyle the whole deck.
+   =========================================== */
+:root {
+  --stage-bg: #1b1a17;
+  --slide-bg: #f6f2ea;
+  --paper: #f6f2ea;
+  --grid-fine: rgba(214, 120, 104, 0.10);
+  --grid-major: rgba(214, 120, 104, 0.22);
+  --ink: #16171a;
+  --ink-soft: #3d3d40;
+  --muted: #77736b;
+  --rule: #d9d2c4;
+  --teal: #0f6e66;
+  --teal-soft: #dcebe7;
+  --red: #b8392a;
+  --red-soft: #f3dcd6;
+  --amber: #a86b0c;
+  --amber-soft: #f4e6c9;
+  --green: #2f7a4b;
+  --green-soft: #dcecdf;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Instrument Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --pad: 96px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES (viewport-base.css, verbatim)
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+@media print {
+    html,
+    body {
+        width: 1920px;
+        height: auto;
+        overflow: visible;
+        background: #fff;
+    }
+    .deck-viewport {
+        position: static;
+        overflow: visible;
+        background: #fff;
+    }
+    .deck-stage {
+        position: static;
+        width: auto;
+        height: auto;
+        transform: none !important;
+        background: none;
+    }
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+    .slide:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+    .deck-controls {
+        display: none !important;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   SLIDE SURFACE: ECG paper grid + frame chrome
+   =========================================== */
+.slide {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid-fine) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-fine) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: -1px -1px;
+}
+.chrome {
+  position: absolute; left: var(--pad); right: var(--pad); top: 48px;
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--font-mono); font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.chrome b { color: var(--teal); font-weight: 600; }
+.foot {
+  position: absolute; left: var(--pad); right: var(--pad); bottom: 44px;
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 16px; color: var(--muted); letter-spacing: 0.04em;
+}
+.body { position: absolute; left: var(--pad); right: var(--pad); top: 128px; bottom: 100px; }
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.015em; }
+h2 { font-size: 64px; line-height: 1.05; margin-bottom: 18px; }
+h2 em { font-style: italic; color: var(--teal); font-weight: 600; }
+.lede { font-size: 28px; line-height: 1.45; color: var(--ink-soft); max-width: 1500px; }
+.mono { font-family: var(--font-mono); }
+.kicker { font-family: var(--font-mono); font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); margin-bottom: 14px; }
+
+.card {
+  background: rgba(255, 253, 248, 0.92); border: 1.5px solid var(--rule); border-radius: 14px;
+  padding: 28px 30px; box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+}
+.card h3 { font-size: 30px; margin-bottom: 10px; }
+.card p, .card li { font-size: 23px; line-height: 1.42; color: var(--ink-soft); }
+.card ul { list-style: none; }
+.card li { padding-left: 22px; position: relative; margin: 7px 0; }
+.card li::before { content: ""; position: absolute; left: 0; top: 13px; width: 9px; height: 9px; background: var(--teal); border-radius: 2px; }
+.src { font-family: var(--font-mono); font-size: 16px; color: var(--muted); margin-top: 10px; }
+
+.tag { display: inline-block; font-family: var(--font-mono); font-size: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 11px; border-radius: 99px; white-space: nowrap; }
+.t-green { background: var(--green-soft); color: var(--green); }
+.t-amber { background: var(--amber-soft); color: var(--amber); }
+.t-red { background: var(--red-soft); color: var(--red); }
+.t-teal { background: var(--teal-soft); color: var(--teal); }
+
+/* ===========================================
+   REVEAL ANIMATION (staggered via --d)
+   =========================================== */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(var(--d, 0) * 0.09s); }
+.slide.visible .reveal { opacity: 1; transform: none; }
+
+/* ===========================================
+   SLIDE 1: TITLE
+   =========================================== */
+.title-wrap { position: absolute; left: var(--pad); top: 210px; right: var(--pad); }
+.title-wrap h1 { font-size: 168px; line-height: 0.92; font-weight: 800; letter-spacing: -0.035em; }
+.title-wrap h1 span { color: var(--teal); }
+.title-wrap .sub { font-family: var(--font-display); font-size: 44px; font-weight: 400; line-height: 1.25; margin-top: 26px; max-width: 1380px; color: var(--ink-soft); }
+.ecg { position: absolute; left: 0; right: 0; top: 640px; height: 220px; }
+.ecg path.trace { fill: none; stroke: var(--red); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 3200; stroke-dashoffset: 3200; }
+.slide.visible .ecg path.trace { animation: draw 2.6s var(--ease) 0.3s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.ecg text { font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.1em; fill: var(--ink); text-transform: uppercase; }
+.ecg text.small { font-size: 16px; fill: var(--muted); letter-spacing: 0.04em; text-transform: none; }
+.byline { position: absolute; left: var(--pad); right: var(--pad); bottom: 70px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 24px; color: var(--ink-soft); }
+.byline b { font-weight: 700; color: var(--ink); }
+
+/* ===========================================
+   SLIDE 2: PROBLEM
+   =========================================== */
+.two { display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; margin-top: 34px; }
+.prior { display: grid; gap: 18px; }
+.prior .card { padding: 22px 26px; }
+.prior .card h3 { font-size: 27px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.prior .card h3 .mono { font-size: 16px; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+.modes { display: grid; gap: 16px; }
+.mode { display: grid; grid-template-columns: 210px 1fr; gap: 20px; align-items: center; padding: 20px 24px; border-radius: 14px; border: 1.5px solid var(--rule); background: rgba(255,253,248,0.92); }
+.mode .name { font-family: var(--font-display); font-size: 34px; font-weight: 600; }
+.mode p { font-size: 22px; line-height: 1.4; color: var(--ink-soft); }
+.mode.h .name { color: var(--green); } .mode.c .name { color: var(--teal); } .mode.a .name { color: var(--red); }
+.switch-note { font-size: 24px; line-height: 1.45; color: var(--ink-soft); margin-top: 6px; }
+.switch-note b { color: var(--ink); }
+
+/* ===========================================
+   SLIDE 3: PIPELINE DIAGRAM
+   =========================================== */
+.flow { position: relative; margin-top: 30px; height: 560px; }
+.node { box-sizing: border-box; }
+.node { position: absolute; border-radius: 14px; border: 2px solid var(--ink); background: #fffdf8; padding: 14px 18px; font-size: 21px; line-height: 1.3; }
+.node b { display: block; font-family: var(--font-display); font-size: 27px; font-weight: 600; margin-bottom: 4px; }
+.node .mono { font-size: 15px; color: var(--muted); }
+.node.teal { border-color: var(--teal); } .node.teal b { color: var(--teal); }
+.node.red { border-color: var(--red); } .node.red b { color: var(--red); }
+.node.green { border-color: var(--green); } .node.green b { color: var(--green); }
+.flow svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wires path { fill: none; stroke: var(--ink); stroke-width: 2.2; }
+.wires path.r { stroke: var(--red); stroke-dasharray: 8 7; }
+.wires path.g { stroke: var(--green); }
+.wires text { font-family: var(--font-mono); font-size: 17px; fill: var(--ink-soft); }
+.wires text.r { fill: var(--red); } .wires text.g { fill: var(--green); }
+.built-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 18px; }
+.built-strip .card { padding: 18px 22px; }
+.built-strip .num { font-family: var(--font-display); font-size: 40px; font-weight: 800; color: var(--teal); line-height: 1; }
+.built-strip p { font-size: 20px; margin-top: 6px; }
+
+/* ===========================================
+   SLIDE 4: 3D VIEW
+   =========================================== */
+.shots { display: grid; grid-template-columns: 1.55fr 1fr; gap: 34px; margin-top: 26px; align-items: start; }
+.shot { border-radius: 14px; overflow: hidden; border: 1.5px solid var(--rule); background: #fff; box-shadow: 0 18px 50px rgba(30, 25, 15, 0.14); }
+.shot img { display: block; width: 100%; height: auto; max-height: none; }
+.shot-cap { font-family: var(--font-mono); font-size: 16px; color: var(--muted); margin-top: 10px; }
+.timeline { display: grid; gap: 14px; }
+.step { display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: start; }
+.step .dot { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 20px; background: var(--teal-soft); color: var(--teal); }
+.step.alert .dot { background: var(--red-soft); color: var(--red); }
+.step p { font-size: 23px; line-height: 1.38; color: var(--ink-soft); }
+.step p b { color: var(--ink); }
+
+/* ===========================================
+   SLIDE 5: RESULTS
+   =========================================== */
+.res { display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; margin-top: 26px; }
+.bars { display: grid; gap: 22px; margin-top: 14px; }
+.bar-row { display: grid; grid-template-columns: 130px 1fr 150px; gap: 18px; align-items: center; }
+.bar-row .lab { font-family: var(--font-mono); font-size: 21px; font-weight: 600; }
+.bar-track { position: relative; height: 44px; background: rgba(255,253,248,0.9); border: 1.5px solid var(--rule); border-radius: 8px; }
+.bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px 0 0 7px; background: var(--teal); transform-origin: left; transform: scaleX(0); transition: transform 1.1s var(--ease); }
+.slide.visible .bar-fill { transform: scaleX(1); }
+.bar-ci { position: absolute; top: 50%; height: 3px; background: var(--ink); transform: translateY(-50%); }
+.bar-ci::before, .bar-ci::after { content: ""; position: absolute; top: -9px; width: 3px; height: 21px; background: var(--ink); }
+.bar-ci::before { left: 0; } .bar-ci::after { right: 0; }
+.bar-row .val { font-family: var(--font-display); font-size: 36px; font-weight: 800; text-align: right; }
+.axis { display: grid; grid-template-columns: 130px 1fr 150px; gap: 18px; font-family: var(--font-mono); font-size: 15px; color: var(--muted); }
+.axis div:nth-child(2) { display: flex; justify-content: space-between; }
+table.t { width: 100%; border-collapse: collapse; font-size: 21px; }
+table.t th { font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 8px 10px; border-bottom: 1.5px solid var(--rule); font-weight: 600; }
+table.t td { padding: 9px 10px; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+table.t td.n { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+table.t th.n { text-align: right; }
+.verdict { margin-top: 22px; padding: 20px 26px; border-left: 6px solid var(--teal); background: rgba(255,253,248,0.92); border-radius: 0 12px 12px 0; font-size: 25px; line-height: 1.42; }
+.verdict b { color: var(--ink); }
+
+/* ===========================================
+   SLIDE 6: FACT CHECK
+   =========================================== */
+.fc { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; margin-top: 24px; }
+.fc .card { padding: 22px 24px; }
+.fc .card h3 { display: flex; align-items: center; gap: 12px; font-size: 28px; margin-bottom: 8px; }
+.fc .card li { font-size: 21px; margin: 9px 0; }
+.fc .ok li::before { background: var(--green); } .fc .part li::before { background: var(--amber); } .fc .miss li::before { background: var(--red); }
+.examples { margin-top: 22px; }
+.examples table.t td { font-size: 20px; }
+
+/* ===========================================
+   SLIDE 7: NEXT
+   =========================================== */
+.next { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 28px; }
+.next .card { display: grid; grid-template-columns: 76px 1fr; gap: 18px; align-items: start; padding: 26px 28px; }
+.next .n { font-family: var(--font-display); font-size: 64px; font-weight: 800; color: var(--teal); line-height: 0.9; }
+.next h3 { font-size: 29px; margin-bottom: 8px; }
+.next p { font-size: 22px; line-height: 1.42; color: var(--ink-soft); }
+
+/* ===========================================
+   SLIDE 8: CLOSE
+   =========================================== */
+.close-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 56px; margin-top: 34px; }
+.take { display: grid; gap: 22px; }
+.take div { display: grid; grid-template-columns: 70px 1fr; gap: 18px; align-items: baseline; }
+.take .n { font-family: var(--font-display); font-size: 54px; font-weight: 800; color: var(--red); }
+.take p { font-size: 28px; line-height: 1.38; }
+.links .card { margin-bottom: 18px; padding: 22px 26px; }
+.links .card .mono { font-size: 21px; color: var(--teal); word-break: break-all; }
+.links .card p { font-size: 20px; margin-top: 6px; }
+
+/* ===========================================
+   DECK CHROME (outside slide design): progress + counter
+   =========================================== */
+.progress { position: fixed; left: 0; top: 0; height: 4px; background: var(--red); z-index: 1001; transition: width 0.4s var(--ease); }
+.counter { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #cfc8ba; background: rgba(0,0,0,0.45); padding: 5px 12px; border-radius: 99px; }
+
+/* ===========================================
+   INLINE EDITING (press E, or hover the top-left corner)
+   =========================================== */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle { position: fixed; top: 16px; left: 16px; z-index: 10001; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 7px 12px; border-radius: 8px; border: 1px solid #555; background: #222; color: #eee; cursor: pointer; }
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--red); border-color: var(--red); }
+body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.5); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">Edit</button>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- =========================================================
+     SLIDE 1: TITLE
+     ========================================================= -->
+<section class="slide active" data-title="Title">
+  <div class="chrome"><span><b>DynamiClinic</b> / research proposal, proof of concept</span><span>27 October 2026</span></div>
+  <div class="title-wrap">
+    <h1 class="reveal" style="--d:1">Dynami<span>Clinic</span></h1>
+    <p class="sub reveal" style="--d:2">Switching a multi-agent system's architecture per clinical case: what the prototype does, what it shows, and what it does not yet show.</p>
+  </div>
+  <svg class="ecg" viewBox="0 0 1920 220" preserveAspectRatio="none" aria-hidden="true">
+    <path class="trace" d="M0,150 L260,150 L290,150 L305,128 L320,150 L360,150 L372,170 L392,40 L414,190 L430,150 L520,150 L545,135 L575,150
+      L760,150 L790,150 L805,128 L820,150 L860,150 L872,170 L892,40 L914,190 L930,150 L1020,150 L1045,135 L1075,150
+      L1260,150 L1290,150 L1305,128 L1320,150 L1350,150 L1362,175 L1380,18 L1394,205 L1406,60 L1420,200 L1436,150 L1520,150 L1545,135 L1575,150 L1920,150"/>
+    <text x="440" y="70">Hierarchical</text><text class="small" x="440" y="96">speed</text>
+    <text x="940" y="70">Collaborative</text><text class="small" x="940" y="96">breadth</text>
+    <text x="1450" y="70">Adversarial</text><text class="small" x="1450" y="96">depth</text>
+  </svg>
+  <div class="byline reveal" style="--d:4">
+    <div><b>Do Le Long An</b><br>Reviewed by A/Prof. Arthur Tang and Dr. Linh Tran, School of Science, Engineering and Technology</div>
+    <div class="mono" style="font-size:19px;text-align:right">github.com/LaansDole/multi-agent-simulation<br>branch threejs-devall</div>
+  </div>
+</section>
+
+<!-- =========================================================
+     SLIDE 2: PROBLEM AND IDEA
+     ========================================================= -->
+<section class="slide" data-title="Problem">
+  <div class="chrome"><span><b>01</b> / the problem</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">Clinical multi-agent systems commit to <em>one architecture</em> before they see the case</h2>
+    <div class="two">
+      <div class="prior">
+        <div class="card reveal" style="--d:2"><h3>MedAgents <span class="mono">Findings of ACL 2024</span></h3><p>Multi-round expert consensus on every question: the same heavy pipeline for an easy case and a hard one.</p></div>
+        <div class="card reveal" style="--d:3"><h3>MDAgents <span class="mono">NeurIPS 2024</span></h3><p>Picks solo or team once, by complexity. Best on 7 of 10 benchmarks (up to +4.2%), but the structure cannot change mid-case.</p></div>
+        <div class="card reveal" style="--d:4"><h3>Dialectic-Med <span class="mono">Findings of ACL 2026</span></h3><p>Proponent, opponent and mediator falsify a hypothesis; fewer hallucinations on medical image QA.</p></div>
+      </div>
+      <div>
+        <p class="kicker reveal" style="--d:2">The proposal: make the topology a variable</p>
+        <div class="modes">
+          <div class="mode h reveal" style="--d:3"><span class="name">Hierarchical</span><p>Routine, low-acuity cases. A hub queries specialists, who do not talk to each other.</p></div>
+          <div class="mode c reveal" style="--d:4"><span class="name">Collaborative</span><p>Multi-system cases. Specialists share reasoning and build one differential.</p></div>
+          <div class="mode a reveal" style="--d:5"><span class="name">Adversarial</span><p>Uncertain or conflicting evidence. A critic attacks the consensus; a mediator resolves.</p></div>
+        </div>
+        <p class="switch-note reveal" style="--d:6">A <b>Meta-Controller</b> scores complexity and uncertainty and switches mode, so heavy compute is spent <b>only where the case needs it</b>.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Sources: ACL Anthology 2024.findings-acl.33; arXiv 2404.15155; ACL Anthology 2026.findings-acl.1837</span><span>2 / 8</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 3: WHAT WAS BUILT
+     ========================================================= -->
+<section class="slide" data-title="Built">
+  <div class="chrome"><span><b>02</b> / what was built</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">A working pipeline on the DevAll multi-agent platform</h2>
+    <div class="flow reveal" style="--d:2">
+      <svg class="wires" viewBox="0 0 1728 560" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16171a"/></marker>
+          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7a4b"/></marker>
+          <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8392a"/></marker>
+        </defs>
+        <path d="M200,290 L286,290" marker-end="url(#ah)"/>
+        <path class="g" d="M530,250 C575,250 575,85 616,85" marker-end="url(#ahg)"/>
+        <path d="M530,300 L616,300" marker-end="url(#ah)"/>
+        <path d="M860,300 L946,300" marker-end="url(#ah)"/>
+        <path class="g" d="M1170,300 L1256,300" marker-end="url(#ahg)"/>
+        <path class="r" d="M1060,382 C1060,470 1150,480 1256,480" marker-end="url(#ahr)"/>
+        <path class="r" d="M1370,420 L1370,388" marker-end="url(#ahr)"/>
+        <path d="M1480,300 L1536,300" marker-end="url(#ah)"/>
+        <path class="g" d="M860,85 L1590,85 C1632,85 1632,110 1632,206" marker-end="url(#ahg)"/>
+        <text class="g" x="548" y="150">LOW</text>
+        <text class="g" x="1180" y="284">agree</text>
+        <text class="r" x="1080" y="500">disagree</text>
+      </svg>
+      <div class="node" style="left:0;top:222px;width:200px"><b>Case</b>Vignette, labs, meds, imaging</div>
+      <div class="node teal" style="left:290px;top:200px;width:240px"><b>Meta-Controller</b>LLM tier + rule-based complexity score</div>
+      <div class="node green" style="left:620px;top:30px;width:240px"><b>Primary Care</b>LOW: one agent, one call</div>
+      <div class="node teal" style="left:620px;top:220px;width:240px"><b>Care Team</b>Imaging, Pathology/Lab, Pharmacology; Blackboard</div>
+      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Divergence vs <span class="mono">tau 0.25</span></div>
+      <div class="node green" style="left:1260px;top:220px;width:220px"><b>Synthesizer</b>Consensus Builder or Conflict Resolver</div>
+      <div class="node red" style="left:1260px;top:420px;width:220px"><b>Clinical Critic</b>Scores each claim: rules, KB, LLM judge</div>
+      <div class="node" style="left:1540px;top:210px;width:188px"><b>Safety gates</b>Allergy, interaction, order checks; report</div>
+    </div>
+    <div class="built-strip">
+      <div class="card reveal" style="--d:3"><div class="num">7</div><p>custom node types in one YAML workflow</p></div>
+      <div class="card reveal" style="--d:4"><div class="num">3</div><p>arms evaluated: single, dynamic, static (always full team + Critic)</p></div>
+      <div class="card reveal" style="--d:5"><div class="num">3D</div><p>office view: each agent is a character that walks to work</p></div>
+      <div class="card reveal" style="--d:6"><div class="num" id="testsNum">818</div><p>automated tests, no model calls needed</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>yaml_instance/dynaclinic_mvp.yaml / dynaclinic/ / the-delegation/ (React + Three.js)</span><span>3 / 8</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 4: THE 3D VIEW
+     ========================================================= -->
+<section class="slide" data-title="3D">
+  <div class="chrome"><span><b>03</b> / watching it switch</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">The care team disagrees, and the <em>Critic</em> is called in</h2>
+    <div class="shots">
+      <div class="reveal" style="--d:2">
+        <div class="shot"><img src="slides-critic.png" alt="3D office during the adversarial switch: the activity log shows the Critic starting after the divergence gate; Triage's chat shows ROUTE: HIGH"></div>
+        <p class="shot-cap">Real run, OpenAI gpt-6-luna. Log: DivergenceGate, then Critic started. Chat: ROUTE: HIGH.</p>
+      </div>
+      <div class="timeline">
+        <p class="kicker reveal" style="--d:2">Mock patient: 30 weeks pregnant, suspected clot</p>
+        <div class="step reveal" style="--d:3"><span class="dot">1</span><p><b>Triage</b> calls the case HIGH; all three specialists are consulted.</p></div>
+        <div class="step reveal" style="--d:4"><span class="dot">2</span><p><b>Imaging</b> picks B (0.75), <b>Pharmacology</b> picks C (0.82), Pathology abstains.</p></div>
+        <div class="step alert reveal" style="--d:5"><span class="dot">3</span><p><b>Divergence 0.59 &gt; 0.25</b>: adversarial mode, the Clinical Critic reviews every claim.</p></div>
+        <div class="step reveal" style="--d:6"><span class="dot">4</span><p>The Synthesizer resolves B vs C and answers <b>C, correct</b>; safety gates pass.</p></div>
+        <div class="card reveal" style="--d:7;padding:18px 22px"><p style="font-size:21px">The switch fired in <b>4 of 9</b> real runs of this case: all 3 runs triaged HIGH, and 1 of 6 triaged MODERATE. Reported, not forced.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Live demo with video: laansdole.github.io/multi-agent-simulation</span><span>4 / 8</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 5: RESULTS
+     ========================================================= -->
+<section class="slide" data-title="Results">
+  <div class="chrome"><span><b>04</b> / results</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">Cheaper than an always-on team. <em>Not more accurate</em> than one agent, yet.</h2>
+    <div class="res">
+      <div class="card reveal" style="--d:2">
+        <h3>MedQA-USMLE, 50 random test questions</h3>
+        <p style="font-size:20px">Accuracy with 95% interval. gpt-6-luna, one run per arm.</p>
+        <div class="bars">
+          <!-- Bars span 75% to 100%: left = (x - 75) / 25 -->
+          <div class="bar-row"><span class="lab">single</span><div class="bar-track"><div class="bar-fill" style="width:76%"></div><div class="bar-ci" style="left:35.2%;width:56.4%"></div></div><span class="val">94%</span></div>
+          <div class="bar-row"><span class="lab">dynamic</span><div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--red)"></div><div class="bar-ci" style="left:24.8%;width:62.4%"></div></div><span class="val">92%</span></div>
+          <div class="bar-row"><span class="lab">static</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--ink-soft)"></div><div class="bar-ci" style="left:14.4%;width:68.4%"></div></div><span class="val">90%</span></div>
+          <div class="axis"><div></div><div><span>75%</span><span>80%</span><span>85%</span><span>90%</span><span>95%</span><span>100%</span></div><div></div></div>
+        </div>
+      </div>
+      <div class="reveal" style="--d:3">
+        <table class="t">
+          <tr><th></th><th class="n">single</th><th class="n">dynamic</th><th class="n">static</th></tr>
+          <tr><td>MedQA calls / question</td><td class="n">1.00</td><td class="n">3.68</td><td class="n">6.00</td></tr>
+          <tr><td>MedQA latency, mean</td><td class="n">5.3 s</td><td class="n">19.9 s</td><td class="n">29.9 s</td></tr>
+          <tr><td>MedQA adversarial switch</td><td class="n">n/a</td><td class="n">0%</td><td class="n">always</td></tr>
+          <tr><td>Synthetic 24 accuracy</td><td class="n">100%</td><td class="n">100%</td><td class="n">100%</td></tr>
+          <tr><td>Synthetic calls / case</td><td class="n">1.00</td><td class="n">3.92</td><td class="n">6.08</td></tr>
+          <tr><td>Unsafe answers (synthetic)</td><td class="n">0</td><td class="n">0</td><td class="n">0</td></tr>
+        </table>
+        <div class="verdict"><b>Dynamic matches the full team with 36 to 39% fewer calls.</b> The intervals overlap almost completely, and 3 of the 4 dynamic misses were the same wrong answer in every arm: a model-knowledge ceiling, not an orchestration effect.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. Full tables: laansdole.github.io/multi-agent-simulation/results.html</span><span>5 / 8</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 6: FACT CHECK VS PROPOSAL
+     ========================================================= -->
+<section class="slide" data-title="Fact check">
+  <div class="chrome"><span><b>05</b> / checked against the reviewed proposal</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">The pipeline matches; the <em>uncertainty score</em> and <em>mesh mode</em> are still missing</h2>
+    <div class="fc">
+      <div class="card ok reveal" style="--d:2"><h3><span class="tag t-green">matches</span></h3><ul>
+        <li>LOW cases go to one Primary Care Agent</li>
+        <li>HIGH cases go to Imaging, Pathology and Pharmacology in parallel, then a Consensus Builder</li>
+        <li>Conflict sends the case to a Clinical Critic and a resolver</li>
+        <li>Runs on DevAll, as the proposal's Figure 1 shows</li></ul></div>
+      <div class="card part reveal" style="--d:3"><h3><span class="tag t-amber">partial</span></h3><ul>
+        <li>Complexity score: rule-based, cut-offs not validated</li>
+        <li>Conflict Detector: answer divergence; semantic distance for free text added today</li>
+        <li>Adversarial: one critic round, not proponent and opponent teams</li>
+        <li>Today's "collaborative" team is really hub-and-spoke</li></ul></div>
+      <div class="card miss reveal" style="--d:4"><h3><span class="tag t-red">missing</span></h3><ul>
+        <li><b>Uncertainty score</b> at triage (entropy of a first generalist pass)</li>
+        <li><b>Mesh collaboration</b>: agents never read each other's reasoning</li>
+        <li>Counterfactual grounding loss</li>
+        <li>One rule over complexity and uncertainty choosing all three modes</li></ul></div>
+    </div>
+    <div class="examples reveal" style="--d:5">
+      <table class="t" id="pdfExamples">
+        <tr><th>Proposal's own example (Figures 2, 3)</th><th>expects</th><th>triage, 2 runs</th><th>conflict routing</th></tr>
+        <tr><td>Sore throat and mild fever for 2 days</td><td>LOW</td><td class="mono">LOW, LOW</td><td>not reached</td></tr>
+        <tr><td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td><td>HIGH</td><td class="mono">HIGH, HIGH</td><td id="exHigh">adversarial by fallback (no options to compare)</td></tr>
+        <tr><td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td><td>CONFLICT</td><td class="mono">HIGH, HIGH</td><td id="exConflict">adversarial by fallback (no options to compare)</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="foot"><span>Details: docs/dynaclinic/proposal-alignment.md</span><span>6 / 8</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 7: NEXT STEPS
+     ========================================================= -->
+<section class="slide" data-title="Next">
+  <div class="chrome"><span><b>06</b> / next</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">To test the thesis, the benchmark must make the agents <em>disagree</em></h2>
+    <div class="next">
+      <div class="card reveal" style="--d:2"><span class="n">1</span><div><h3>A harder benchmark</h3><p>MedXpertQA (ICML 2025): 4,460 expert-level questions in 17 specialties, filtered to be harder than MedQA. Larger samples to narrow the intervals.</p></div></div>
+      <div class="card reveal" style="--d:3"><span class="n">2</span><div><h3>Headroom for the team</h3><p>Repeat with a weaker base model, where a single agent is far from the ceiling and specialists can add value.</p></div></div>
+      <div class="card reveal" style="--d:4"><span class="n">3</span><div><h3>Finish the controller</h3><p>Add the uncertainty score and one rule over complexity and uncertainty; build a true mesh mode where agents read each other's reasoning.</p></div></div>
+      <div class="card reveal" style="--d:5"><span class="n">4</span><div><h3>Safety and validity</h3><p>Cases with structured data and known unsafe options; thresholds tuned on held-out data; repeated runs; clinician review of the critic's verdicts.</p></div></div>
+    </div>
+  </div>
+  <div class="foot"><span>MedXpertQA: arXiv 2501.18362, PMLR v267</span><span>7 / 8</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 8: SUMMARY
+     ========================================================= -->
+<section class="slide" data-title="Summary">
+  <div class="chrome"><span><b>07</b> / summary</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">What the evidence supports today</h2>
+    <div class="close-grid">
+      <div class="take">
+        <div class="reveal" style="--d:2"><span class="n">1</span><p>Switching per case <b>works end to end</b>: triage, team, conflict detection, critic and safety gates run live, and you can watch them in 3D.</p></div>
+        <div class="reveal" style="--d:3"><span class="n">2</span><p>It <b>saves compute</b>: the same accuracy as an always-on team with about a third fewer calls.</p></div>
+        <div class="reveal" style="--d:4"><span class="n">3</span><p>It does <b>not yet beat one strong model</b>, and the adversarial mode is rarely reached. The next benchmark has to create disagreement.</p></div>
+      </div>
+      <div class="links">
+        <div class="card reveal" style="--d:3"><span class="mono">laansdole.github.io/multi-agent-simulation</span><p>Runbook demo: the full journey on video, step by step</p></div>
+        <div class="card reveal" style="--d:4"><span class="mono">.../multi-agent-simulation/results.html</span><p>MedQA and synthetic results, every miss listed</p></div>
+        <div class="card reveal" style="--d:5"><span class="mono">github.com/LaansDole/multi-agent-simulation</span><p>Code, eval harness and data, branch threejs-devall</p></div>
+      </div>
+    </div>
+  </div>
+  <svg class="ecg" style="top:760px" viewBox="0 0 1920 220" preserveAspectRatio="none" aria-hidden="true">
+    <path class="trace" d="M0,150 L260,150 L290,150 L305,128 L320,150 L360,150 L372,170 L392,40 L414,190 L430,150 L520,150 L545,135 L575,150
+      L760,150 L790,150 L805,128 L820,150 L860,150 L872,170 L892,40 L914,190 L930,150 L1020,150 L1045,135 L1075,150
+      L1260,150 L1290,150 L1305,128 L1320,150 L1350,150 L1362,175 L1380,18 L1394,205 L1406,60 L1420,200 L1436,150 L1520,150 L1545,135 L1575,150 L1920,150"/>
+    <text x="440" y="70">Hierarchical</text><text class="small" x="440" y="96">speed</text>
+    <text x="940" y="70">Collaborative</text><text class="small" x="940" y="96">breadth</text>
+    <text x="1450" y="70">Adversarial</text><text class="small" x="1450" y="96">depth</text>
+  </svg>
+  <div class="foot"><span>Research prototype on synthetic and exam cases. Not clinical advice.</span><span>8 / 8</span></div>
+</section>
+
+</main>
+<div class="deck-controls"><span class="counter" id="counter">1 / 8</span></div>
+</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Keyboard (arrows, space, PageUp/PageDown, Home/End), wheel, touch swipe, stage scaling.
+   =========================================== */
+class SlidePresentation {
+  constructor() {
+    this.slides = document.querySelectorAll('.slide');
+    this.stage = document.getElementById('deckStage');
+    this.counter = document.getElementById('counter');
+    this.progress = document.getElementById('progress');
+    this.current = 0;
+    this.wheelLock = false;
+    this.setupStageScale();
+    this.setupKeyboardNav();
+    this.setupWheelNav();
+    this.setupTouchNav();
+    const fromHash = parseInt((location.hash || '').replace('#', ''), 10);
+    this.show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+  }
+  setupStageScale() {
+    const scale = () => {
+      const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const x = (window.innerWidth - 1920 * f) / 2;
+      const y = (window.innerHeight - 1080 * f) / 2;
+      this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+    };
+    scale();
+    window.addEventListener('resize', scale);
+  }
+  setupKeyboardNav() {
+    document.addEventListener('keydown', (e) => {
+      if (document.body.classList.contains('editing')) return;
+      if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.show(this.current + 1); }
+      if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.show(this.current - 1); }
+      if (e.key === 'Home') this.show(0);
+      if (e.key === 'End') this.show(this.slides.length - 1);
+    });
+  }
+  setupWheelNav() {
+    window.addEventListener('wheel', (e) => {
+      if (this.wheelLock || document.body.classList.contains('editing')) return;
+      if (Math.abs(e.deltaY) < 30) return;
+      this.wheelLock = true;
+      this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+      setTimeout(() => { this.wheelLock = false; }, 700);
+    }, { passive: true });
+  }
+  setupTouchNav() {
+    let sx = null;
+    window.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+    window.addEventListener('touchend', (e) => {
+      if (sx === null) return;
+      const dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 50) this.show(this.current + (dx < 0 ? 1 : -1));
+      sx = null;
+    }, { passive: true });
+  }
+  show(i) {
+    this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+    this.slides.forEach((s, k) => {
+      s.classList.toggle('active', k === this.current);
+      s.classList.toggle('visible', k === this.current);
+    });
+    this.counter.textContent = `${this.current + 1} / ${this.slides.length}`;
+    this.progress.style.width = `${((this.current + 1) / this.slides.length) * 100}%`;
+    history.replaceState(null, '', `#${this.current + 1}`);
+  }
+}
+const deck = new SlidePresentation();
+
+/* ===========================================
+   INLINE EDITOR: E toggles; text edits auto-save to localStorage; Ctrl/Cmd+S downloads the edited HTML.
+   =========================================== */
+const editor = {
+  isActive: false,
+  key: 'dynamiclinic-deck-edits',
+  targets() { return document.querySelectorAll('.slide h1, .slide h2, .slide h3, .slide p, .slide li, .slide td'); },
+  toggleEditMode() {
+    this.isActive = !this.isActive;
+    document.body.classList.toggle('editing', this.isActive);
+    document.getElementById('editToggle').classList.toggle('active', this.isActive);
+    this.targets().forEach((el) => el.setAttribute('contenteditable', this.isActive ? 'true' : 'false'));
+    if (!this.isActive) this.save();
+  },
+  save() {
+    const data = [...this.targets()].map((el) => el.innerHTML);
+    localStorage.setItem(this.key, JSON.stringify(data));
+  },
+  restore() {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.key) || 'null');
+      if (!Array.isArray(data)) return;
+      const els = [...this.targets()];
+      if (data.length !== els.length) return;
+      els.forEach((el, i) => { el.innerHTML = data[i]; });
+    } catch (err) { /* ignore corrupt saves */ }
+  },
+  download() {
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = 'dynamiclinic-slides.html';
+    a.click();
+  },
+};
+editor.restore();
+document.getElementById('editToggle').addEventListener('click', () => editor.toggleEditMode());
+const hotzone = document.querySelector('.edit-hotzone');
+const editToggle = document.getElementById('editToggle');
+let hideTimeout = null;
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && editor.isActive) { e.preventDefault(); editor.save(); editor.download(); }
+});
+</script>
+</body>
+</html>
