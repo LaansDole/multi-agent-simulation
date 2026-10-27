@@ -1,0 +1,21 @@
+# title: Mock case: 72-year-old woman with newly found atrial fibrillation
+# teaches: Moderate complexity: triage usually consults two specialists who share the Blackboard; they usually agree, so the Synthesizer answers without the Critic.
+# source: syn-mod-01
+Mock case: 72-year-old woman with newly found atrial fibrillation
+
+A 72-year-old woman is found to have atrial fibrillation at a routine visit. She has hypertension and type 2 diabetes. Medications are lisinopril, metformin, and metoprolol, which was started last week and has controlled her heart rate to 78/min. Blood pressure is 132/80 mm Hg. ECG shows an irregularly irregular rhythm without P waves. Transthoracic echocardiography shows normal valves and a normal ejection fraction. eGFR is 70 mL/min/1.73 m2 and hemoglobin is 13.2 g/dL. She has no history of bleeding and no allergies.
+
+Age: 72
+Sex: female
+History: atrial fibrillation; hypertension; type 2 diabetes
+Medications: lisinopril 20 mg daily; metformin 1 g twice daily; metoprolol succinate 50 mg daily
+Allergies: none
+Labs: eGFR 70 mL/min/1.73 m2; hemoglobin 13.2 g/dL
+Imaging: ECG: irregularly irregular rhythm without P waves, ventricular rate 78/min; Transthoracic echocardiogram: normal valves, ejection fraction 60%
+
+Question: Which of the following is the most appropriate long-term therapy to prevent stroke?
+A. No antithrombotic therapy
+B. Aspirin plus clopidogrel
+C. Left atrial appendage occlusion as first-line therapy
+D. Apixaban
+E. Aspirin 81 mg daily alone

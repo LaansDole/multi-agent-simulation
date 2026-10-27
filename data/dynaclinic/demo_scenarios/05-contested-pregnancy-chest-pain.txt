@@ -1,0 +1,21 @@
+# title: Mock case: Pregnant woman at 30 weeks with chest pain and shortness of breath
+# teaches: Specialists often disagree here; the switch to the Clinical Critic is likely but not guaranteed.
+# source: demo-contested-02
+Mock case: Pregnant woman at 30 weeks with chest pain and shortness of breath
+
+A 29-year-old woman at 30 weeks of gestation presents with 1 day of pleuritic chest pain and dyspnea. She has mild swelling of the left calf. Heart rate 108/min, blood pressure 118/72 mm Hg, SpO2 95% on room air. Chest radiograph is normal. D-dimer is elevated. She takes prenatal vitamins only. Creatinine is 0.6 mg/dL.
+
+Age: 29
+Sex: female
+History: pregnancy, 30 weeks of gestation
+Medications: prenatal vitamins
+Allergies: none
+Labs: D-dimer 1.9 ug/mL FEU; creatinine 0.6 mg/dL
+Imaging: Chest radiograph: normal
+
+Question: Which of the following is the most appropriate next step in management?
+A. CT pulmonary angiography
+B. Ventilation-perfusion scan
+C. Start low-molecular-weight heparin and obtain compression ultrasonography of the left leg
+D. Start warfarin
+E. Reassure and discharge because D-dimer is physiologically elevated in pregnancy

@@ -1,0 +1,21 @@
+# title: Mock case: 81-year-old man with severe abdominal pain and kidney disease
+# teaches: Clinically contested (contrast risk versus a time-critical diagnosis): expect the full care team; its route has not been measured in recorded runs yet.
+# source: demo-contested-03
+Mock case: 81-year-old man with severe abdominal pain and kidney disease
+
+A 81-year-old man with chronic kidney disease (eGFR 22 mL/min/1.73m2), atrial fibrillation not on anticoagulation, and heart failure presents with 5 hours of severe periumbilical abdominal pain out of proportion to a soft, mildly tender abdomen. Lactate is 4.1 mmol/L. Heart rate 118/min irregular, blood pressure 98/60 mm Hg. Plain abdominal radiograph is unremarkable. He takes furosemide and metoprolol.
+
+Age: 81
+Sex: male
+History: chronic kidney disease stage 4; atrial fibrillation; heart failure
+Medications: furosemide; metoprolol
+Allergies: none
+Labs: lactate 4.1 mmol/L; eGFR 22 mL/min/1.73m2
+Imaging: Plain abdominal radiograph: unremarkable
+
+Question: Which of the following is the most appropriate next step in management?
+A. CT angiography of the abdomen now, with intravenous fluids
+B. Non-contrast CT of the abdomen to avoid contrast nephropathy
+C. Abdominal ultrasound and serial lactate in 6 hours
+D. Start oral ibuprofen and observe
+E. Colonoscopy within 24 hours
