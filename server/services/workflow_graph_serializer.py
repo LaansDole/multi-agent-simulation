@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from entity.configs import AgentConfig, DesignConfig, EdgeConfig, Node
+from runtime.node.registry import iter_node_registrations
 from schema_registry import iter_node_schemas
 from utils.strs import titleize
 
@@ -59,8 +60,11 @@ def serialize_design(design: DesignConfig, *, filename: str) -> Dict[str, Any]:
     nodes_out: List[Dict[str, Any]] = []
     agent_nodes: List[Dict[str, Any]] = []
 
+    registrations = iter_node_registrations()
     for node in graph.nodes:
-        is_agent = node.type == "agent"
+        registration = registrations.get(node.type)
+        capabilities = registration.capabilities if registration else None
+        is_agent = node.type == "agent" or bool(capabilities and capabilities.agent_like)
         label = _node_label(node)
         nodes_out.append({
             "id": node.id,
@@ -70,10 +74,14 @@ def serialize_design(design: DesignConfig, *, filename: str) -> Dict[str, Any]:
             "is_agent": is_agent,
             "config_summary": _agent_config_summary(node) if is_agent else None,
         })
-        if is_agent:
+        if not is_agent:
+            continue
+        sub_agents = capabilities.sub_agents if capabilities else {}
+        characters = [{"label": sub_label, "sub_agent": key} for key, sub_label in sub_agents.items()]
+        for character in characters or [{"label": label}]:
             assigned = len(agent_nodes)
             proposed_slot = assigned + 1 if assigned < MAX_AGENT_SLOTS else None
-            agent_nodes.append({"node_id": node.id, "label": label, "proposed_slot": proposed_slot})
+            agent_nodes.append({"node_id": node.id, **character, "proposed_slot": proposed_slot})
 
     return {
         "filename": filename,

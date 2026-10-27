@@ -26,6 +26,10 @@ class NodeCapabilities:
     exposes_tools: bool = False
     resource_key: str | None = None
     resource_limit: int | None = None
+    # Shown as a 3D character like ``agent`` nodes (workflow_graph_serializer).
+    agent_like: bool = False
+    # Agents hosted by one node, key -> display label; each becomes its own character.
+    sub_agents: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

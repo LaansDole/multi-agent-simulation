@@ -1,5 +1,6 @@
 import { ArrowLeftRight } from 'lucide-react';
 import React, { useState } from 'react';
+import { characterId } from '../integration/api/YamlImporter';
 import { useWorkflowStore } from '../integration/store/workflowStore';
 
 const SLOT_COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#64748B'];
@@ -10,19 +11,19 @@ const CharacterSlotMapping: React.FC = () => {
 
   if (!workflowGraph) return null;
 
-  const slotToNode: Record<number, string> = {};
-  for (const [nodeId, slot] of Object.entries(nodeAgentMap)) slotToNode[slot] = nodeId;
+  const slotToCharacter: Record<number, string> = {};
+  for (const [id, slot] of Object.entries(nodeAgentMap)) slotToCharacter[slot] = id;
   const overflow = workflowGraph.agent_nodes.filter(
-    (a) => !Object.prototype.hasOwnProperty.call(nodeAgentMap, a.node_id),
+    (a) => !Object.prototype.hasOwnProperty.call(nodeAgentMap, characterId(a)),
   );
 
-  const handleNodeClick = (nodeId: string) => {
+  const handleNodeClick = (id: string) => {
     if (selected === null) {
-      setSelected(nodeId);
-    } else if (selected === nodeId) {
+      setSelected(id);
+    } else if (selected === id) {
       setSelected(null);
     } else {
-      swapSlots(selected, nodeId);
+      swapSlots(selected, id);
       setSelected(null);
     }
   };
@@ -36,20 +37,20 @@ const CharacterSlotMapping: React.FC = () => {
 
       <div className="flex flex-col gap-2">
         {[1, 2, 3, 4, 5].map((slot) => {
-          const nodeId = slotToNode[slot];
-          const node = workflowGraph.agent_nodes.find((a) => a.node_id === nodeId);
+          const id = slotToCharacter[slot];
+          const node = workflowGraph.agent_nodes.find((a) => characterId(a) === id);
           return (
             <button
               key={slot}
-              onClick={() => nodeId && handleNodeClick(nodeId)}
-              disabled={!nodeId}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all disabled:opacity-40 ${selected === nodeId ? 'ring-2 ring-darkDelegation' : 'hover:bg-zinc-50'}`}
+              onClick={() => id && handleNodeClick(id)}
+              disabled={!id}
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all disabled:opacity-40 ${selected === id ? 'ring-2 ring-darkDelegation' : 'hover:bg-zinc-50'}`}
             >
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ backgroundColor: SLOT_COLORS[slot - 1] }}>
                 {slot}
               </div>
               <span className="text-sm font-medium text-zinc-700 truncate">{node ? node.label : '(empty)'}</span>
-              {nodeId && <ArrowLeftRight size={12} className="ml-auto text-zinc-300" />}
+              {id && <ArrowLeftRight size={12} className="ml-auto text-zinc-300" />}
             </button>
           );
         })}
@@ -61,9 +62,9 @@ const CharacterSlotMapping: React.FC = () => {
           <div className="flex flex-col gap-1">
             {overflow.map((a) => (
               <div
-                key={a.node_id}
-                onClick={() => handleNodeClick(a.node_id)}
-                className={`px-3 py-1.5 rounded-lg text-xs text-zinc-500 cursor-pointer transition-all ${selected === a.node_id ? 'ring-2 ring-darkDelegation bg-zinc-50' : 'hover:bg-zinc-50'}`}
+                key={characterId(a)}
+                onClick={() => handleNodeClick(characterId(a))}
+                className={`px-3 py-1.5 rounded-lg text-xs text-zinc-500 cursor-pointer transition-all ${selected === characterId(a) ? 'ring-2 ring-darkDelegation bg-zinc-50' : 'hover:bg-zinc-50'}`}
               >
                 {a.label}
               </div>

@@ -46,14 +46,15 @@ export class BackendAgentSimulation {
   /**
    * Build a mapping from DevAll graph node IDs to 3D agent indices.
    * When a YAML workflow is generated from an AgenticSystem, each agent's
-   * `id` field becomes the node ID in the graph. This mapping lets the
-   * EventBridge route backend events to the correct 3D character.
+   * `id` field becomes the node ID in the graph; imported characters carry
+   * `nodeId`, and several characters may share one node. This mapping lets
+   * the EventBridge route backend events to the correct 3D characters.
    */
   private buildNodeAgentMap(): void {
     const agents = getAllAgents(this.system);
-    const map: Record<string, number> = {};
+    const map: Record<string, number[]> = {};
     for (const agent of agents) {
-      map[agent.id] = agent.index;
+      (map[agent.nodeId ?? agent.id] ??= []).push(agent.index);
     }
     this.bridge.setNodeAgentMap(map);
   }

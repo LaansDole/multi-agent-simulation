@@ -12,10 +12,10 @@ import { useTeamStore } from './teamStore';
 
 interface WorkflowState {
   workflowGraph: NormalizedGraph | null;
-  nodeAgentMap: Record<string, number>; // node_id -> slot 1-5
+  nodeAgentMap: Record<string, number>; // character id (YamlImporter.characterId) -> slot 1-5
 
   setImportedWorkflow: (result: ImportResult, graph: NormalizedGraph) => void;
-  swapSlots: (nodeIdA: string, nodeIdB: string) => void;
+  swapSlots: (characterIdA: string, characterIdB: string) => void;
   clearImportedWorkflow: () => void;
 }
 
@@ -30,21 +30,21 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
     set({ workflowGraph: graph, nodeAgentMap: { ...result.nodeAgentMap } });
   },
 
-  swapSlots: (nodeIdA, nodeIdB) => {
+  swapSlots: (characterIdA, characterIdB) => {
     const map = { ...get().nodeAgentMap };
-    const slotA = map[nodeIdA];
-    const slotB = map[nodeIdB];
+    const slotA = map[characterIdA];
+    const slotB = map[characterIdB];
     if (slotA === undefined || slotB === undefined) return;
-    map[nodeIdA] = slotB;
-    map[nodeIdB] = slotA;
+    map[characterIdA] = slotB;
+    map[characterIdB] = slotA;
     set({ nodeAgentMap: map });
     // Reflect the swap in the team store's AgenticSystem agent indices.
     const { selectedAgentSetId, customSystems } = useTeamStore.getState();
     const system = customSystems.find((s) => s.id === selectedAgentSetId);
     if (!system) return;
     const all = [system.leadAgent, ...(system.leadAgent.subagents ?? [])];
-    const agentA = all.find((a) => a.id === nodeIdA);
-    const agentB = all.find((a) => a.id === nodeIdB);
+    const agentA = all.find((a) => a.id === characterIdA);
+    const agentB = all.find((a) => a.id === characterIdB);
     if (agentA) agentA.index = slotB;
     if (agentB) agentB.index = slotA;
     useTeamStore.getState().saveCustomSystem({ ...system });

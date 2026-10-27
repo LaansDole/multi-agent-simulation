@@ -3,9 +3,11 @@
  * into an AgenticSystem + nodeAgentMap for the-delegation's 3D visualization.
  *
  * Pure transform, no IO. Agent nodes fill character slots 1-5 in YAML order;
- * overflow agents and all non-agent nodes are absent from nodeAgentMap (they
- * resolve to -1 / log-only in the EventBridge). The original YAML file runs
- * unchanged on the backend; this mapping is purely a visualization layer.
+ * a node with sub_agent slots (e.g. the DynaClinic Care Team) fills one slot
+ * per sub-agent. nodeAgentMap is keyed by character id; overflow agents and
+ * all non-agent nodes are absent from it (they resolve to -1 / log-only in the
+ * EventBridge). The original YAML file runs unchanged on the backend; this
+ * mapping is purely a visualization layer.
  */
 
 import type { AgentNodeSlot, NormalizedGraph } from './types';
@@ -20,6 +22,11 @@ export interface ImportResult {
   nodeAgentMap: Record<string, number>;
 }
 
+/** Character id: the node id, or `node_id:sub_agent` when one node hosts several characters. */
+export function characterId(slot: AgentNodeSlot): string {
+  return slot.sub_agent ? `${slot.node_id}:${slot.sub_agent}` : slot.node_id;
+}
+
 export function importWorkflow(graph: NormalizedGraph): ImportResult {
   const nodeAgentMap: Record<string, number> = {};
   const nodeLookup = new Map(graph.nodes.map((n) => [n.id, n]));
@@ -28,7 +35,8 @@ export function importWorkflow(graph: NormalizedGraph): ImportResult {
     const fullNode = nodeLookup.get(slot.node_id);
     const summary = fullNode?.config_summary;
     return {
-      id: slot.node_id,
+      id: characterId(slot),
+      nodeId: slot.node_id,
       index,
       name: slot.label,
       description: summary?.role || fullNode?.description || 'Imported agent node',
@@ -46,10 +54,10 @@ export function importWorkflow(graph: NormalizedGraph): ImportResult {
   let leadAgent: AgentNode;
   if (mapped.length > 0) {
     leadAgent = buildFromSlot(mapped[0], 1);
-    nodeAgentMap[mapped[0].node_id] = 1;
+    nodeAgentMap[characterId(mapped[0])] = 1;
     leadAgent.subagents = mapped.slice(1).map((slot, i) => {
       const idx = i + 2;
-      nodeAgentMap[slot.node_id] = idx;
+      nodeAgentMap[characterId(slot)] = idx;
       return buildFromSlot(slot, idx);
     });
   } else {

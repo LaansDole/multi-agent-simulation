@@ -8,6 +8,7 @@ export { USER_COLOR };
 export const DEFAULT_AGENTIC_SET_ID = 'single-agent';
 export interface AgentNode {
   id: string;
+  nodeId?: string; // backend graph node id when it differs from id (several characters per node)
   index: number;
   name: string;
   description: string;

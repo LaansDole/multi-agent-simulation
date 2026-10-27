@@ -9,7 +9,7 @@
  * Design:
  * - Subscribes to BackendClient events
  * - Translates each event type into one or more Zustand store mutations
- * - Maintains a mapping from backend node_id to frontend agent_index
+ * - Maintains a mapping from backend node_id to frontend agent indices
  */
 
 import type { BackendClient } from './BackendClient';
@@ -31,10 +31,11 @@ import { useCoreStore } from '../store/coreStore';
 import { useUiStore } from '../store/uiStore';
 
 /**
- * Mapping from backend graph node_id to 3D agent index.
+ * Mapping from backend graph node_id to 3D agent indices (several when one
+ * node hosts several characters, e.g. the DynaClinic Care Team specialists).
  * This is populated when a workflow starts, based on the team config.
  */
-type NodeAgentMap = Map<string, number>;
+type NodeAgentMap = Map<string, number[]>;
 
 export class EventBridge {
   private client: BackendClient;
@@ -68,21 +69,20 @@ export class EventBridge {
    * Must be called before a workflow starts so events can be routed to
    * the correct 3D characters.
    */
-  public setNodeAgentMap(map: Record<string, number>): void {
+  public setNodeAgentMap(map: Record<string, number[]>): void {
     this.nodeAgentMap = new Map(Object.entries(map));
   }
 
   /**
-   * Resolve a backend node_id to a frontend agent index.
+   * Resolve a backend node_id to its frontend agent indices.
    * The frontend nodeAgentMap is authoritative when present; the backend's
-   * explicitIndex is only a fallback. Unmapped/non-agent nodes resolve to -1
+   * explicitIndex is only a fallback. Unmapped/non-agent nodes resolve to [-1]
    * (log + Kanban only, no 3D character).
    */
-  private resolveAgentIndex(nodeId?: string, explicitIndex?: number): number {
-    if (!nodeId) return explicitIndex ?? -1;
+  private resolveAgentIndices(nodeId?: string, explicitIndex?: number): number[] {
+    if (!nodeId) return [explicitIndex ?? -1];
     const cleanNodeId = nodeId.startsWith('review_') ? nodeId.substring(7) : nodeId;
-    if (this.nodeAgentMap.has(cleanNodeId)) return this.nodeAgentMap.get(cleanNodeId)!;
-    return -1;
+    return this.nodeAgentMap.get(cleanNodeId) ?? [-1];
   }
 
   // ── Event Router ────────────────────────────────────────────────
@@ -170,59 +170,58 @@ export class EventBridge {
 
   private onNodeStarted(data: NodeStartedData): void {
     const core = useCoreStore.getState();
-    const agentIndex = this.resolveAgentIndex(data.node_id, data.agent_index);
+    const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
 
-    const task = core.addTask({
+    // One task per character: the 3D scene walks a character to its desk while it has an in_progress task.
+    const taskIds = agentIndices.map((agentIndex) => core.addTask({
       title: data.node_name || data.node_id,
       description: `Executing node: ${data.node_id}`,
       assignedAgentId: agentIndex,
       status: 'in_progress',
       requiresUserApproval: false,
-    });
+    }).id);
 
-    this._nodeTaskMap.set(data.node_id, task.id);
+    this._nodeTaskMap.set(data.node_id, taskIds);
 
     // Only update 3D character status for mapped agent nodes (index >= 1).
-    if (agentIndex >= 1) {
-      useUiStore.getState().setAgentStatus(agentIndex, 'working');
+    for (const agentIndex of agentIndices) {
+      if (agentIndex >= 1) useUiStore.getState().setAgentStatus(agentIndex, 'working');
     }
 
     core.addLogEntry({
-      agentIndex,
+      agentIndex: agentIndices[0],
       action: `Started: ${data.node_name || data.node_id}`,
-      taskId: task.id,
+      taskId: taskIds[0],
     });
   }
 
   private onNodeOutput(data: NodeOutputData): void {
     const core = useCoreStore.getState();
-    const taskId = this._nodeTaskMap.get(data.node_id);
+    const taskIds = this._nodeTaskMap.get(data.node_id) ?? [];
 
-    if (taskId) {
-      core.setTaskOutput(taskId, data.output);
-    }
+    for (const taskId of taskIds) core.setTaskOutput(taskId, data.output);
 
-    const agentIndex = this.resolveAgentIndex(data.node_id, data.agent_index);
     core.addLogEntry({
-      agentIndex,
+      agentIndex: this.resolveAgentIndices(data.node_id, data.agent_index)[0],
       action: `Output received for ${data.node_id}`,
-      taskId,
+      taskId: taskIds[0],
     });
   }
 
   private onNodeCompleted(data: NodeCompletedData): void {
     const core = useCoreStore.getState();
-    const taskId = this._nodeTaskMap.get(data.node_id);
-    const agentIndex = this.resolveAgentIndex(data.node_id, data.agent_index);
+    const taskIds = this._nodeTaskMap.get(data.node_id) ?? [];
+    const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
 
-    if (taskId) {
+    for (const taskId of taskIds) {
       if (data.output) {
         core.setTaskOutput(taskId, data.output);
       }
       core.updateTaskStatus(taskId, 'done');
     }
 
-    if (agentIndex >= 1) {
+    for (const agentIndex of agentIndices) {
+      if (agentIndex < 1) continue;
       useUiStore.getState().setAgentStatus(agentIndex, 'idle');
       if (data.output) {
         core.setAgentHistory(agentIndex, [
@@ -233,9 +232,9 @@ export class EventBridge {
     }
 
     core.addLogEntry({
-      agentIndex,
+      agentIndex: agentIndices[0],
       action: `Completed: ${data.node_id}`,
-      taskId,
+      taskId: taskIds[0],
     });
 
     this._nodeTaskMap.delete(data.node_id);
@@ -243,8 +242,9 @@ export class EventBridge {
 
   private onHumanInputRequired(data: HumanInputRequiredData): void {
     const core = useCoreStore.getState();
-    const agentIndex = this.resolveAgentIndex(data.node_id, data.agent_index);
-    const taskId = this._nodeTaskMap.get(data.node_id);
+    // Review goes to the node's first character only: each approved task sends one human input.
+    const agentIndex = this.resolveAgentIndices(data.node_id, data.agent_index)[0];
+    const taskId = this._nodeTaskMap.get(data.node_id)?.[0];
 
     if (taskId) {
       core.submitTaskForReview(taskId, data.prompt);
@@ -302,8 +302,8 @@ export class EventBridge {
 
   // ── Internal State ──────────────────────────────────────────────
 
-  /** Maps backend node_id -> frontend task_id (from coreStore). */
-  private _nodeTaskMap: Map<string, string> = new Map();
+  /** Maps backend node_id -> frontend task ids (from coreStore), one per character. */
+  private _nodeTaskMap: Map<string, string[]> = new Map();
 
   // ── Cleanup ─────────────────────────────────────────────────────
 

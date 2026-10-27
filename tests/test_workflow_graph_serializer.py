@@ -7,6 +7,7 @@ import pytest
 from check.check import load_config
 from server.services.workflow_graph_serializer import serialize_design
 
+DYNACLINIC_MVP = Path(__file__).resolve().parents[1] / "yaml_instance" / "dynaclinic_mvp.yaml"
 
 # Minimal workflow that passes load_config with concrete (non-${VAR}) values
 # so validation does not depend on environment variables.
@@ -100,9 +101,38 @@ class TestSerializeDesign:
 
     def test_agent_nodes_convenience_list_with_slots(self, design):
         result = serialize_design(design, filename="minimal.yaml")
-        assert len(result["agent_nodes"]) == 1
-        assert result["agent_nodes"][0]["node_id"] == "worker"
-        assert result["agent_nodes"][0]["proposed_slot"] == 1
+        # A plain agent entry carries no sub_agent key (shape unchanged for agent workflows).
+        assert result["agent_nodes"] == [{"node_id": "worker", "label": "Worker", "proposed_slot": 1}]
+
+    def test_dynaclinic_llm_nodes_are_characters_and_care_team_has_three(self):
+        design = load_config(DYNACLINIC_MVP)
+        result = serialize_design(design, filename="dynaclinic_mvp.yaml")
+        assert {n["id"]: n["is_agent"] for n in result["nodes"]} == {
+            "CaseInput": False,
+            "Triage": True,
+            "PrimaryCare": True,
+            "CareTeam": True,
+            "DivergenceGate": False,
+            "Critic": True,
+            "Synthesizer": True,
+            "SafetyGate": False,
+            "Report": False,
+        }
+        agents = result["agent_nodes"]
+        assert [(a["node_id"], a.get("sub_agent"), a["proposed_slot"]) for a in agents] == [
+            ("Triage", None, 1),
+            ("PrimaryCare", None, 2),
+            ("CareTeam", "imaging", 3),
+            ("CareTeam", "pathology", 4),
+            ("CareTeam", "pharmacology", 5),
+            ("Critic", None, None),
+            ("Synthesizer", None, None),
+        ]
+        assert [a["label"] for a in agents if a["node_id"] == "CareTeam"] == [
+            "Diagnostic Imaging",
+            "Pathology/Lab",
+            "Pharmacology",
+        ]
 
     def test_overflow_agent_gets_null_slot(self, tmp_path):
         nodes_yaml = "\n".join(

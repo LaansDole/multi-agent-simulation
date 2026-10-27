@@ -192,6 +192,7 @@ export interface AgentNodeSlot {
   node_id: string;
   label: string;
   proposed_slot: number | null; // 1-5, or null for overflow agents
+  sub_agent?: string; // set when one node hosts several characters (they share node_id)
 }
 
 export interface NormalizedGraph {
