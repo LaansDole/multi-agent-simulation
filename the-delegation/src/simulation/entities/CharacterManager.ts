@@ -14,7 +14,7 @@ import { AgentBehavior, AnimationName, ExpressionKey } from '../../types';
 import { AgentStateBuffer } from '../behavior/AgentStateBuffer';
 import { ExpressionBuffer } from '../behavior/ExpressionBuffer';
 import { DRACO_LIB_PATH } from '../constants';
-import { PoiManager } from '../world/PoiManager';
+import { PoiManager, SPAWN_POI_PREFIX } from '../world/PoiManager';
 
 export class CharacterManager {
   private instanceCount = getAllAgents(getActiveAgentSet()).length + 1;
@@ -213,7 +213,7 @@ export class CharacterManager {
     const tempColor = new THREE.Color();
     const spawnRadius = 8; // Default spawn area
 
-    const spawnPois = this.poiManager?.getFreePoisByPrefix('spawn') || [];
+    const spawnPois = this.poiManager?.getFreePoisByPrefix(SPAWN_POI_PREFIX) || [];
     let spawnIndex = 0;
 
     const agentsBuffer = []; // Temporary to store POIs for orientation

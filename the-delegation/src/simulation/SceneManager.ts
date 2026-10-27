@@ -7,7 +7,7 @@ import { DriverManager } from './drivers/DriverManager';
 import { CharacterManager } from './entities/CharacterManager';
 import { InputManager } from './input/InputManager';
 import { NavMeshManager } from './pathfinding/NavMeshManager';
-import { PoiManager } from './world/PoiManager';
+import { BOARDROOM_POI_ID, PoiManager, spawnPoiId } from './world/PoiManager';
 import { WorldManager } from './world/WorldManager';
 
 import { BackendAgentSimulation } from './core/BackendAgentSimulation';
@@ -283,18 +283,13 @@ export class SceneManager {
 
   public moveNpcToBoardroom(index: number): void {
     if (!this.controller) return;
-    const poi = this.poiManager.getPoi('area-boardroom') || this.poiManager.getPoi('boardroom');
-    if (poi) {
-      this.controller.walkToPoi(index, poi.id, () => {
-        const core = useCoreStore.getState();
-        const t = core.tasks.find(t => t.status === 'on_hold' && t.assignedAgentId === index);
-      });
-    }
+    const poi = this.poiManager.expectPoi(BOARDROOM_POI_ID);
+    if (poi) this.controller.walkToPoi(index, poi.id);
   }
 
   public moveNpcToSpawn(index: number, onArrival?: () => void): void {
     if (!this.controller) return;
-    const poi = this.poiManager.getPoi(`spawn-${index}`);
+    const poi = this.poiManager.expectPoi(spawnPoiId(index));
     if (poi) this.controller.moveTo(index, poi.position, 'idle', onArrival, undefined, poi.quaternion);
     else if (onArrival) onArrival();
   }

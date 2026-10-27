@@ -6,7 +6,7 @@ import { getAgentSet } from '../../data/agents';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { DRACO_LIB_PATH } from '../constants';
 import { NavMeshManager } from '../pathfinding/NavMeshManager';
-import { PoiManager } from './PoiManager';
+import { PoiManager, spawnPoiId } from './PoiManager';
 
 export class WorldManager {
   private office: THREE.Group | null = null;
@@ -68,7 +68,7 @@ export class WorldManager {
     // office.glb ships spawn POIs for agents 1-5 only, but MAX_AGENTS is 7.
     // ponytail: hand-placed on open navmesh floor (>= 1.8 m from every other POI and the
     // user's origin spawn); bake poi-idle-spawn-6/7 into office.glb and drop this on re-export.
-    for (const [id, x, z] of [['idle-spawn-6', -1.2, 4.1], ['idle-spawn-7', -0.1, -2.8]] as const) {
+    for (const [id, x, z] of [[spawnPoiId(6), -1.2, 4.1], [spawnPoiId(7), -0.1, -2.8]] as const) {
       if (this.poiManager.getPoi(id)) continue;
       // Face the room centre; characters look down +Z at yaw 0.
       const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-x, -z));

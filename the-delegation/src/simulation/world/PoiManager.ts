@@ -1,6 +1,13 @@
 import * as THREE from 'three/webgpu';
 import { CharacterStateKey, PoiDef } from '../../types';
 
+// office.glb names POIs "poi-<arrivalState>-<name>" and loadFromGlb drops the "poi-" prefix,
+// so spawns and areas are "idle-spawn-<agentIndex>" and "idle-area-<name>".
+export const SPAWN_POI_PREFIX = 'idle-spawn-';
+export const AREA_POI_PREFIX = 'idle-area-';
+export const BOARDROOM_POI_ID = `${AREA_POI_PREFIX}boardroom`;
+export const spawnPoiId = (agentIndex: number): string => `${SPAWN_POI_PREFIX}${agentIndex}`;
+
 /**
  * Manages Points of Interest (POIs) in the world.
  *
@@ -13,6 +20,7 @@ import { CharacterStateKey, PoiDef } from '../../types';
  */
 export class PoiManager {
   private pois = new Map<string, PoiDef>();
+  private warnedMissing = new Set<string>();
 
   // ── Registration ─────────────────────────────────────────────
 
@@ -49,6 +57,16 @@ export class PoiManager {
 
   public getPoi(id: string): PoiDef | undefined {
     return this.pois.get(id);
+  }
+
+  /** getPoi for ids the office is expected to have: warns once per missing id instead of failing silently. */
+  public expectPoi(id: string): PoiDef | undefined {
+    const poi = this.pois.get(id);
+    if (!poi && !this.warnedMissing.has(id)) {
+      this.warnedMissing.add(id);
+      console.warn(`[PoiManager] the office has no POI "${id}" (known: ${[...this.pois.keys()].join(', ')})`);
+    }
+    return poi;
   }
 
   /** Returns all free POIs for a specific arrival state.

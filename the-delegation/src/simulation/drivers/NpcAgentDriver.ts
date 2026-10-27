@@ -3,6 +3,7 @@ import { AgentNode, USER_ID, MAX_AGENTS } from '../../data/agents';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { IAgentDriver } from '../../types';
 import { CharacterController } from '../CharacterController';
+import { AREA_POI_PREFIX, spawnPoiId } from '../world/PoiManager';
 
 
 /**
@@ -90,8 +91,7 @@ export class NpcAgentDriver implements IAgentDriver {
   }
 
   private _updateProjectReadyBehavior(positions: Float32Array, delta: number, currentState: string): void {
-    const spawnId = `idle-spawn-${this.agentIndex}`;
-    const targetPoi = this.controller.poiManager.getPoi(spawnId);
+    const targetPoi = this.controller.poiManager.expectPoi(spawnPoiId(this.agentIndex));
     if (!targetPoi) return;
 
     const currentPos = new THREE.Vector3(
@@ -166,7 +166,7 @@ export class NpcAgentDriver implements IAgentDriver {
 
     // B. Chance to wander to common areas (both standing and those getting up)
     if (rand < 0.7) {
-      const areaPois = this.controller.poiManager.getFreePoisByPrefix('area-', this.agentIndex);
+      const areaPois = this.controller.poiManager.getFreePoisByPrefix(AREA_POI_PREFIX, this.agentIndex);
       if (areaPois.length > 0) {
         const areaPoi = areaPois[Math.floor(Math.random() * areaPois.length)];
 

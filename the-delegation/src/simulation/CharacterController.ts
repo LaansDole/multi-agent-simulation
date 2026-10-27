@@ -7,7 +7,7 @@ import { CharacterStateMachine } from './behavior/CharacterStateMachine';
 import { CharacterManager } from './entities/CharacterManager';
 import { NavMeshManager } from './pathfinding/NavMeshManager';
 import { PathAgent } from './pathfinding/PathAgent';
-import { PoiManager } from './world/PoiManager';
+import { AREA_POI_PREFIX, PoiManager, SPAWN_POI_PREFIX } from './world/PoiManager';
 
 /**
  * CharacterController — unified API for controlling any character (player or NPC).
@@ -162,7 +162,7 @@ export class CharacterController implements ICharacterDriver {
       this.characterManager.setPosition(i, poi.position);
 
       // 2. Snap orientation to POI facing direction (skip if it's an 'area' POI)
-      if (!poi.id.startsWith('area')) {
+      if (!poi.id.startsWith(AREA_POI_PREFIX)) {
         this.characterManager.setOrientation(i, poi.quaternion);
       }
 
@@ -271,7 +271,7 @@ export class CharacterController implements ICharacterDriver {
     this.play(playerIndex, 'idle');
 
     // 4. Reassign spawn POIs in sorted order (same as initInstances)
-    const spawnPois = this.poiManager.getPoisByPrefix('spawn');
+    const spawnPois = this.poiManager.getPoisByPrefix(SPAWN_POI_PREFIX);
     npcIndices.forEach((agentIndex, order) => {
       const poi = spawnPois[order % spawnPois.length];
       if (poi) {
