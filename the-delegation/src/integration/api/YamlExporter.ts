@@ -1,4 +1,5 @@
 import { AgenticSystem, AgentNode } from '../../data/agents';
+import { DEFAULT_MODELS, inferProvider } from '../../core/llm/constants';
 import { BackendClient } from './BackendClient';
 
 // Helper to escape or format multi-line text for YAML
@@ -55,10 +56,8 @@ export function exportSystemToYaml(system: AgenticSystem): string {
   const traverse = (agent: AgentNode) => {
     const currentId = agent.id;
     allNodeIds.push(currentId);
-    const modelName = agent.model || 'gemini-3-flash-preview';
-    const provider = agent.provider ?? (
-      modelName.toLowerCase().startsWith('gemini') ? 'gemini' : 'openai'
-    );
+    const modelName = agent.model || DEFAULT_MODELS.text;
+    const provider = agent.provider ?? inferProvider(modelName);
 
     // Build config block
     const configLines: string[] = [];

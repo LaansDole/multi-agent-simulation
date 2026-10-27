@@ -80,7 +80,7 @@ export function importWorkflow(graph: NormalizedGraph): ImportResult {
     teamDescription: graph.description || `Imported from ${graph.filename}`,
     color: SLOT_COLORS[0],
     outputType: 'text',
-    outputModel: DEFAULT_MODELS.text,
+    outputModel: leadAgent.model,
     outputAutoApprove: true,
     user: { index: 0, model: 'Human', position: { x: 0, y: 0 } },
     leadAgent,

@@ -4,6 +4,7 @@ import os
 
 from fastapi import APIRouter
 
+from dynaclinic.devall_nodes import default_model
 from entity.configs.node.agent import AgentConfig
 from runtime.node.agent.providers.base import ModelInfo, ProviderRegistry
 
@@ -39,5 +40,6 @@ async def get_models():
             continue
 
     return {
-        "models": [{"id": m.id, "provider": m.provider, "type": m.type} for m in models]
+        "models": [{"id": m.id, "provider": m.provider, "type": m.type} for m in models],
+        "default": {"provider": "openai", "model": default_model()},
     }

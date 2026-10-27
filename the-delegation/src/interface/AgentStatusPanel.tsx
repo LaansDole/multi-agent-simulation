@@ -1,5 +1,6 @@
 import React from 'react';
 import { getAgentSet, getAllAgents, getAllCharacters } from '../data/agents';
+import { inferProvider } from '../core/llm/constants';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
 import { Avatar } from './components/Avatar';
@@ -48,6 +49,9 @@ const AgentStatusPanel: React.FC<AgentStatusPanelProps> = ({ agentIndex }) => {
             <p className="text-[11px] font-bold text-darkDelegation uppercase tracking-tighter">
               {agent.model}
             </p>
+            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+              {(agent.provider || inferProvider(agent.model)) === 'gemini' ? 'Gemini' : 'OpenAI'}
+            </span>
           </div>
         </div>
         {/* Token Usage */}

@@ -1,7 +1,7 @@
 import { Edit2, Pipette, Trash2, Users, X } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AgenticSystem, DEFAULT_AGENTIC_SET_ID, getAllAgents } from '../../data/agents';
-import { DEFAULT_MODELS, AVAILABLE_MODELS, ModelType } from '../../core/llm/constants';
+import { DEFAULT_MODELS, AVAILABLE_MODELS, GEMINI_TEXT_MODEL, ModelType, inferProvider } from '../../core/llm/constants';
 import { USER_COLOR } from '../../theme/brand';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
@@ -38,7 +38,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({
   onModeChange,
 }) => {
   const { setActiveTeam, updateSystem, deleteCustomSystem, selectedAgentSetId } = useTeamStore();
-  const { availableModels } = useCoreStore();
+  const openaiModels = useCoreStore((s) => s.openaiModels);
+  const defaultTextModel = useCoreStore((s) => s.defaultTextModel);
+  const modelListId = useId();
   const scene = useSceneManager();
   const colorInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +90,10 @@ export const TeamCard: React.FC<TeamCardProps> = ({
       localEditData.leadAgentBaseUrl !== (system.leadAgent.baseUrl || '') ||
       localEditData.leadAgentApiKey !== (system.leadAgent.apiKey || '');
   }, [localEditData, system]);
+  const leadProvider = localEditData.provider || inferProvider(localEditData.leadAgentModel);
+  const outputModelOptions: readonly string[] = localEditData.outputType === 'text'
+    ? [...new Set([...openaiModels, ...AVAILABLE_MODELS.text])]
+    : AVAILABLE_MODELS[localEditData.outputType as ModelType] || [];
 
   const isFormValid = !!(localEditData.teamName?.trim() &&
     localEditData.teamType?.trim() &&
@@ -289,14 +295,12 @@ export const TeamCard: React.FC<TeamCardProps> = ({
               <div className="space-y-1">
                 <label className="text-[7px] font-black uppercase text-zinc-400 ml-1">Lead Agent Provider</label>
                 <select
-                  value={localEditData.provider || (localEditData.leadAgentModel?.startsWith('gemini') ? 'gemini' : 'openai')}
+                  value={leadProvider}
                   onChange={(e) => {
                     const val = e.target.value;
                     setLocalEditData(prev => {
-                      if (val === 'gemini' && !prev.leadAgentModel?.startsWith('gemini')) {
-                        return { ...prev, provider: val, leadAgentModel: 'gemini-3-flash-preview' };
-                      }
-                      return { ...prev, provider: val };
+                      if (inferProvider(prev.leadAgentModel) === val) return { ...prev, provider: val };
+                      return { ...prev, provider: val, leadAgentModel: val === 'gemini' ? GEMINI_TEXT_MODEL : defaultTextModel };
                     });
                   }}
                   className="w-full bg-white border border-zinc-100 text-[11px] font-bold rounded-xl px-2.5 py-1.5 outline-none cursor-pointer lowercase"
@@ -309,11 +313,12 @@ export const TeamCard: React.FC<TeamCardProps> = ({
               <div className="space-y-1">
                 <label className="text-[7px] font-black uppercase text-zinc-400 ml-1">Lead Agent Model</label>
                 <div className="space-y-1.5">
-                  {(localEditData.provider || 'openai') === 'openai' ? (
+                  {leadProvider === 'openai' ? (
                     <>
                       <input
                         type="text"
                         value={localEditData.leadAgentModel || ''}
+                        list={modelListId}
                         onChange={(e) => {
                           setLocalEditData(prev => ({ ...prev, leadAgentModel: e.target.value }));
                         }}
@@ -322,6 +327,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                         onFocus={(e) => e.target.style.borderColor = USER_COLOR}
                         onBlur={(e) => e.target.style.borderColor = '#f4f4f5'}
                       />
+                      <datalist id={modelListId}>
+                        {openaiModels.map(model => <option key={model} value={model} />)}
+                      </datalist>
                       <input
                         type="text"
                         value={localEditData.leadAgentBaseUrl ?? ''}
@@ -343,11 +351,11 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                     </>
                   ) : (
                     <select
-                      value={localEditData.leadAgentModel || 'gemini-3-flash-preview'}
+                      value={localEditData.leadAgentModel || GEMINI_TEXT_MODEL}
                       onChange={(e) => setLocalEditData(prev => ({ ...prev, leadAgentModel: e.target.value }))}
                       className="w-full bg-white border border-zinc-100 text-[11px] font-bold rounded-xl px-2.5 py-1.5 outline-none cursor-pointer lowercase"
                     >
-                      {availableModels.filter(m => m.startsWith('gemini') || m === 'custom-local').map(model => (
+                      {AVAILABLE_MODELS.text.filter(m => m.startsWith('gemini')).map(model => (
                         <option key={model} value={model}>{model}</option>
                       ))}
                     </select>
@@ -381,7 +389,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                   <label className="text-[7px] font-black uppercase text-zinc-400 ml-1">Output Model</label>
                   <div className="space-y-1.5">
                     <select
-                      value={localEditData.outputModel ? ((!((AVAILABLE_MODELS[localEditData.outputType as ModelType] || []) as readonly string[]).includes(localEditData.outputModel) || localEditData.outputModel === 'custom-local') ? 'custom-local' : localEditData.outputModel) : DEFAULT_MODELS.text}
+                      value={localEditData.outputModel ? ((!outputModelOptions.includes(localEditData.outputModel) || localEditData.outputModel === 'custom-local') ? 'custom-local' : localEditData.outputModel) : DEFAULT_MODELS.text}
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === 'custom-local') {
@@ -392,14 +400,14 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                       }}
                       className="w-full bg-white border border-zinc-100 text-[10px] font-bold rounded-xl px-2.5 py-1.5 outline-none cursor-pointer lowercase"
                     >
-                      {(AVAILABLE_MODELS[localEditData.outputType as ModelType] || []).map(model => (
+                      {outputModelOptions.map(model => (
                         <option key={model} value={model}>{model}</option>
                       ))}
-                      {!((AVAILABLE_MODELS[localEditData.outputType as ModelType] || []) as readonly string[]).includes('custom-local') && (
+                      {!outputModelOptions.includes('custom-local') && (
                         <option value="custom-local">custom-local</option>
                       )}
                     </select>
-                    {(localEditData.outputModel && (!((AVAILABLE_MODELS[localEditData.outputType as ModelType] || []) as readonly string[]).includes(localEditData.outputModel) || localEditData.outputModel === 'custom-local')) && (
+                    {(localEditData.outputModel && (!outputModelOptions.includes(localEditData.outputModel) || localEditData.outputModel === 'custom-local')) && (
                       <input
                         type="text"
                         value={localEditData.outputModel === 'custom-local' ? '' : localEditData.outputModel}

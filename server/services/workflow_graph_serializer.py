@@ -16,7 +16,10 @@ _ROLE_TRUNCATE = 200
 def _agent_config_summary(node: Node) -> Optional[Dict[str, Any]]:
     agent = node.as_config(AgentConfig)
     if agent is None:
-        return None
+        model_summary = getattr(node.config, "model_summary", None)
+        if not callable(model_summary):
+            return None
+        return {"role": "", "has_tooling": False, "has_memory": False, "has_thinking": False, **model_summary()}
     return {
         "provider": agent.provider,
         "model": agent.name,

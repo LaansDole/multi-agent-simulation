@@ -18,6 +18,7 @@ DevAll run fails instead of routing on a missing answer. In DevAll the graph is 
 """
 
 import json
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
@@ -67,6 +68,15 @@ def _require(ok: bool, message: str, path: str, key: str) -> None:
         raise ConfigError(message, extend_path(path, key))
 
 
+def default_model(models: list[str] | None = None) -> str | None:
+    """First model of ``models``, else of ``DYNACLINIC_MODEL`` + ``DYNACLINIC_FALLBACK_MODELS``; ``None`` if unset.
+
+    Mirrors the chain in ``dynaclinic.llm.client_from_env``; ``.env`` is already loaded into ``os.environ``.
+    """
+    chain = models or [os.environ.get("DYNACLINIC_MODEL", ""), *os.environ.get("DYNACLINIC_FALLBACK_MODELS", "").split(",")]
+    return next((model.strip() for model in chain if model and model.strip()), None)
+
+
 @dataclass
 class DCNodeConfig(BaseConfig):
     """Model chain of a DynaClinic node that calls the LLM."""
@@ -92,6 +102,10 @@ class DCNodeConfig(BaseConfig):
     def models(self) -> list[str] | None:
         """``[model, *fallback_models]``; ``None`` = ``DYNACLINIC_MODEL`` + ``DYNACLINIC_FALLBACK_MODELS``."""
         return [self.model, *self.fallback_models] if self.model else None
+
+    def model_summary(self) -> dict[str, str | None]:
+        """Provider and effective model, for the workflow graph serializer."""
+        return {"provider": "openai", "model": default_model(self.models())}
 
     FIELD_SPECS: ClassVar[dict[str, ConfigFieldSpec]] = {
         "model": ConfigFieldSpec(

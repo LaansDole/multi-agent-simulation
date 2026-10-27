@@ -1,4 +1,4 @@
-import { DEFAULT_MODELS } from './constants';
+import { DEFAULT_MODELS, GEMINI_TEXT_MODEL } from './constants';
 
 export interface ModelPricing {
   inputPer1M?: number;
@@ -10,7 +10,7 @@ export interface ModelPricing {
 
 export const GEMINI_PRICING: Record<string, ModelPricing> = {
   // Text Models
-  [DEFAULT_MODELS.text]: { inputPer1M: 0.50, outputPer1M: 3.00 },
+  [GEMINI_TEXT_MODEL]: { inputPer1M: 0.50, outputPer1M: 3.00 },
   'gemini-3.1-pro-preview': { inputPer1M: 2.00, outputPer1M: 12.00 },
   'gemini-3.1-flash-lite-preview': { inputPer1M: 0.25, outputPer1M: 1.50 },
   
@@ -29,7 +29,7 @@ export const GEMINI_PRICING: Record<string, ModelPricing> = {
   'veo-3.1-generate-preview': { perSecond: 0.400 },
 };
 
-export const DEFAULT_PRICING: ModelPricing = GEMINI_PRICING[DEFAULT_MODELS.text];
+export const DEFAULT_PRICING: ModelPricing = GEMINI_PRICING[GEMINI_TEXT_MODEL];
 
 export function calculateCost(promptTokens: number, completionTokens: number, modelName: string, durationOrCount?: number): number {
   const lowerName = modelName.toLowerCase();
@@ -64,7 +64,7 @@ export function calculateTokensForCost(modelName: string, durationOrCount?: numb
   const pricing = pricingKey ? GEMINI_PRICING[pricingKey] : DEFAULT_PRICING;
   
   const cost = calculateCost(0, 0, modelName, durationOrCount);
-  const baseOutputPrice = GEMINI_PRICING[DEFAULT_MODELS.text]?.outputPer1M || 3.0;
+  const baseOutputPrice = GEMINI_PRICING[GEMINI_TEXT_MODEL]?.outputPer1M || 3.0;
   
   return Math.floor((cost / baseOutputPrice) * 1000000);
 }

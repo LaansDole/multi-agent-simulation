@@ -1,6 +1,7 @@
 import { FileText, Image as ImageIcon, Music, Video } from 'lucide-react';
 import React from 'react';
 import { AgenticSystem } from '../../data/agents';
+import { inferProvider } from '../../core/llm/constants';
 import { InfoTooltip } from './InfoTooltip';
 import { USER_COLOR, USER_COLOR_SOFT } from '../../theme/brand';
 
@@ -52,7 +53,9 @@ export const TeamOutputBadge: React.FC<TeamOutputBadgeProps> = ({ system, classN
 
       {/* Right Column: Model Name */}
       <div className="flex flex-col gap-0.5 flex-1 min-w-0 pl-1">
-        <span className="text-[7px] font-black text-zinc-300 uppercase tracking-widest leading-none">GENERATION MODEL</span>
+        <span className="text-[7px] font-black text-zinc-300 uppercase tracking-widest leading-none">
+          GENERATION MODEL · {inferProvider(system.outputModel) === 'gemini' ? 'Gemini' : 'OpenAI'}
+        </span>
         <span className="text-[10px] font-bold text-zinc-600 font-mono lowercase leading-tight">
           {system.outputModel}
         </span>

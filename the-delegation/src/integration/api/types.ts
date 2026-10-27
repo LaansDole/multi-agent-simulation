@@ -163,7 +163,8 @@ export interface BackendState {
 
 export interface AgentConfigSummary {
   provider: string;
-  model: string;
+  /** null when the backend cannot resolve one (e.g. DYNACLINIC_MODEL unset). */
+  model: string | null;
   role: string;
   has_tooling: boolean;
   has_memory: boolean;

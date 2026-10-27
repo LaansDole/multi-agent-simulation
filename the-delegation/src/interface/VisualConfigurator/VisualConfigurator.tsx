@@ -3,7 +3,6 @@ import '@xyflow/react/dist/style.css';
 import { Plus, Settings, User, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { AgentNode, getAllCharacters, getAgentSet, MAX_AGENTS, USER_COLOR } from '../../data/agents';
-import { DEFAULT_MODELS } from '../../core/llm/constants';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { AgentConfigPanel } from './AgentConfigPanel';
@@ -233,7 +232,7 @@ const VisualConfiguratorContent: React.FC = () => {
       name: `Specialist ${characters.length}`,
       description: 'Collaborate with the team to achieve the project goals.',
       color: '#A855F7',
-      model: DEFAULT_MODELS.text,
+      model: useCoreStore.getState().defaultTextModel,
       position: newPosition
     };
 
