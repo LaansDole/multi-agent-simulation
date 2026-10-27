@@ -31,6 +31,9 @@ jobs:
           cp docs/dynaclinic/runbook/demo.html _site/index.html
           cp docs/dynaclinic/runbook/demo.html _site/demo.html
           cp docs/dynaclinic/runbook/results.html _site/results.html
+          cp docs/dynaclinic/runbook/slides.html _site/slides.html
+          cp docs/dynaclinic/runbook/alignment.html _site/alignment.html
+          cp docs/dynaclinic/runbook/*.pdf _site/
           cp docs/dynaclinic/runbook/*.mp4 docs/dynaclinic/runbook/*.png _site/
           touch _site/.nojekyll
           ls -la _site
@@ -39,6 +42,9 @@ jobs:
           grep -q "DynaClinic in 3D: runbook demo" _site/index.html
           test -s _site/dynaclinic-3d-runbook-demo.mp4
           grep -q "MedQA-USMLE sample" _site/results.html
+          grep -q "DynamiClinic" _site/slides.html
+          grep -q "reviewed proposal" _site/alignment.html
+          test -s _site/dynamiclinic-slides.pdf
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

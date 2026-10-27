@@ -6,6 +6,8 @@ Code: `dynaclinic/` (pure-Python pipeline and eval harness), `yaml_instance/dyna
 
 ## Proposal component -> module
 
+This table follows the extended draft the MVP was built from. For a check against the **reviewed** proposal (DynamiClinic: L0 to L4, three modes, complexity and uncertainty scores), with real runs of its own examples and citation notes, see [proposal-alignment.md](proposal-alignment.md).
+
 Status key: **implemented** means the behaviour is in code. **prompt-level** means it rests only on an LLM prompt. **stub** means a simplified stand-in behind the proposal's interface. **not implemented** means absent.
 
 | Proposal component | Module | Status | Notes |

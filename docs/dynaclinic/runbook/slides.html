@@ -431,11 +431,11 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
         <text class="g" x="1180" y="284">agree</text>
         <text class="r" x="1080" y="500">disagree</text>
       </svg>
-      <div class="node" style="left:0;top:222px;width:200px"><b>Case</b>Vignette, labs, meds, imaging</div>
+      <div class="node" style="left:0;top:200px;width:200px"><b>Any case</b>A quiz question, or any scenario in plain words</div>
       <div class="node teal" style="left:290px;top:200px;width:240px"><b>Meta-Controller</b>LLM tier + rule-based complexity score</div>
       <div class="node green" style="left:620px;top:30px;width:240px"><b>Primary Care</b>LOW: one agent, one call</div>
       <div class="node teal" style="left:620px;top:220px;width:240px"><b>Care Team</b>Imaging, Pathology/Lab, Pharmacology; Blackboard</div>
-      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Divergence vs <span class="mono">tau 0.25</span></div>
+      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Distance between the specialists' diagnoses vs tau</div>
       <div class="node green" style="left:1260px;top:220px;width:220px"><b>Synthesizer</b>Consensus Builder or Conflict Resolver</div>
       <div class="node red" style="left:1260px;top:420px;width:220px"><b>Clinical Critic</b>Scores each claim: rules, KB, LLM judge</div>
       <div class="node" style="left:1540px;top:210px;width:188px"><b>Safety gates</b>Allergy, interaction, order checks; report</div>
@@ -444,7 +444,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       <div class="card reveal" style="--d:3"><div class="num">7</div><p>custom node types in one YAML workflow</p></div>
       <div class="card reveal" style="--d:4"><div class="num">3</div><p>arms evaluated: single, dynamic, static (always full team + Critic)</p></div>
       <div class="card reveal" style="--d:5"><div class="num">3D</div><p>office view: each agent is a character that walks to work</p></div>
-      <div class="card reveal" style="--d:6"><div class="num" id="testsNum">818</div><p>automated tests, no model calls needed</p></div>
+      <div class="card reveal" style="--d:6"><div class="num" id="testsNum">866</div><p>automated tests, no model calls needed</p></div>
     </div>
   </div>
   <div class="foot"><span>yaml_instance/dynaclinic_mvp.yaml / dynaclinic/ / the-delegation/ (React + Three.js)</span><span>3 / 8</span></div>
@@ -522,11 +522,11 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       <div class="card ok reveal" style="--d:2"><h3><span class="tag t-green">matches</span></h3><ul>
         <li>LOW cases go to one Primary Care Agent</li>
         <li>HIGH cases go to Imaging, Pathology and Pharmacology in parallel, then a Consensus Builder</li>
-        <li>Conflict sends the case to a Clinical Critic and a resolver</li>
+        <li>Any scenario, not only quiz questions: assessment, plan, red flags, missing information</li>
         <li>Runs on DevAll, as the proposal's Figure 1 shows</li></ul></div>
       <div class="card part reveal" style="--d:3"><h3><span class="tag t-amber">partial</span></h3><ul>
         <li>Complexity score: rule-based, cut-offs not validated</li>
-        <li>Conflict Detector: answer divergence; semantic distance for free text added today</li>
+        <li>Conflict Detector: semantic distance between leading diagnoses, as specified; threshold not validated</li>
         <li>Adversarial: one critic round, not proponent and opponent teams</li>
         <li>Today's "collaborative" team is really hub-and-spoke</li></ul></div>
       <div class="card miss reveal" style="--d:4"><h3><span class="tag t-red">missing</span></h3><ul>
@@ -537,14 +537,14 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
     </div>
     <div class="examples reveal" style="--d:5">
       <table class="t" id="pdfExamples">
-        <tr><th>Proposal's own example (Figures 2, 3)</th><th>expects</th><th>triage, 2 runs</th><th>conflict routing</th></tr>
-        <tr><td>Sore throat and mild fever for 2 days</td><td>LOW</td><td class="mono">LOW, LOW</td><td>not reached</td></tr>
-        <tr><td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td><td>HIGH</td><td class="mono">HIGH, HIGH</td><td id="exHigh">adversarial by fallback (no options to compare)</td></tr>
-        <tr><td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td><td>CONFLICT</td><td class="mono">HIGH, HIGH</td><td id="exConflict">adversarial by fallback (no options to compare)</td></tr>
+        <tr><th>Proposal's own example (Figures 2, 3)</th><th>expects</th><th>route, 2 runs</th><th>before the fixes</th><th>after: specialists' diagnoses</th></tr>
+        <tr><td>Sore throat and mild fever for 2 days</td><td>LOW</td><td class="mono">LOW, LOW</td><td>-</td><td>not reached</td></tr>
+        <tr><td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td><td>HIGH</td><td class="mono">HIGH, HIGH</td><td>fallback, letter answers</td><td>all: acute coronary syndrome (0.11, 0.12)</td></tr>
+        <tr><td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td><td>CONFLICT</td><td class="mono">MOD, HIGH</td><td>fallback, letter answers</td><td>all: pulmonary embolism (0.05, 0.14): they agree</td></tr>
       </table>
     </div>
   </div>
-  <div class="foot"><span>Details: docs/dynaclinic/proposal-alignment.md</span><span>6 / 8</span></div>
+  <div class="foot"><span>Details and run folders: laansdole.github.io/multi-agent-simulation/alignment.html</span><span>6 / 8</span></div>
 </section>
 
 <!-- =========================================================
@@ -573,13 +573,13 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
     <h2 class="reveal" style="--d:1">What the evidence supports today</h2>
     <div class="close-grid">
       <div class="take">
-        <div class="reveal" style="--d:2"><span class="n">1</span><p>Switching per case <b>works end to end</b>: triage, team, conflict detection, critic and safety gates run live, and you can watch them in 3D.</p></div>
+        <div class="reveal" style="--d:2"><span class="n">1</span><p>Switching per case <b>works end to end</b> on quiz questions and on any scenario in plain words: triage, team, conflict detection, critic and safety gates run live, and you can watch them in 3D.</p></div>
         <div class="reveal" style="--d:3"><span class="n">2</span><p>It <b>saves compute</b>: the same accuracy as an always-on team with about a third fewer calls.</p></div>
-        <div class="reveal" style="--d:4"><span class="n">3</span><p>It does <b>not yet beat one strong model</b>, and the adversarial mode is rarely reached. The next benchmark has to create disagreement.</p></div>
+        <div class="reveal" style="--d:4"><span class="n">3</span><p>It does <b>not yet beat one strong model</b>, and the adversarial mode is rarely reached: even the proposal's own conflict example produced agreement. The next benchmark has to create disagreement.</p></div>
       </div>
       <div class="links">
         <div class="card reveal" style="--d:3"><span class="mono">laansdole.github.io/multi-agent-simulation</span><p>Runbook demo: the full journey on video, step by step</p></div>
-        <div class="card reveal" style="--d:4"><span class="mono">.../multi-agent-simulation/results.html</span><p>MedQA and synthetic results, every miss listed</p></div>
+        <div class="card reveal" style="--d:4"><span class="mono">.../results.html and .../alignment.html</span><p>MedQA and synthetic results; the proposal fact check</p></div>
         <div class="card reveal" style="--d:5"><span class="mono">github.com/LaansDole/multi-agent-simulation</span><p>Code, eval harness and data, branch threejs-devall</p></div>
       </div>
     </div>

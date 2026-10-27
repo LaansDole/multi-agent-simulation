@@ -2,7 +2,7 @@
 
 The implementation was built from an extended draft of the proposal (5 layers: FHIR/Neo4j ingestion, MCTS control plane, Blackboard, A_SAD/S_NAP/T_SAD safety gates, BioBERT/Qdrant memory). This page checks it against the **reviewed** proposal, *"DynamiClinic: A Dynamic Architecture Switching Multi-Agent Framework in Healthcare Settings"* (Do Le Long An; reviewed by A/Prof. Arthur Tang and Dr. Linh Tran), which is shorter and defines the system differently: layers L0 to L4, three communication modes, a complexity score and an uncertainty score, and a Conflict Detector between two hypotheses.
 
-Checked on 2026-10-27 against the code at commit 7c83807 and with real runs on OpenAI gpt-6-luna. The repo keeps the name DynaClinic; the reviewed proposal spells it DynamiClinic.
+Checked on 2026-10-27 against the code at commit 7c83807 and with real runs on OpenAI gpt-6-luna, then re-checked after the fixes it led to (f11 to f13, commits ac19ad6 to 302f550). The repo keeps the name DynaClinic; the reviewed proposal spells it DynamiClinic.
 
 Status key: **matches**: the code does what the proposal says. **partial**: the idea is there but the mechanism differs. **differs**: the code does something else. **missing**: not in the code. **extra**: in the code, not in the reviewed proposal.
 
@@ -29,24 +29,28 @@ Status key: **matches**: the code does what the proposal says. **partial**: the 
 | Piecewise mode selection from C and U (2) | One rule over both scores chooses Hierarchical / Collaborative / Adversarial | Two separate steps: triage on C chooses single vs team; after the team answers, divergence chooses collaborative vs adversarial | differs |
 | Hierarchical mode (1) | Meta-Controller as hub querying subordinate specialists, no inter-agent talk | The care team works this way: specialists answer independently and never see each other's Blackboard entries; the synthesizer is the hub | present, but labelled "collaborative" |
 | Collaborative mode (1) | Fully connected mesh; agents share intermediate reasoning | Not implemented: no agent reads another's reasoning before answering | missing |
-| Conflict Detector (4) | Normalized semantic distance between the primary diagnostic assertions of two hypotheses, threshold tau | Mean pairwise Jensen-Shannon distance over the specialists' multiple-choice answer distributions, tau 0.25, plus top-1 disagreement. Free-text cases (no options) cannot be measured and always go adversarial | partial; free-text gap being fixed (f11) |
-| Adversarial mode (1, 4) | Proponent team vs Opponent team, Mediator adjudicates; Clinical Critic does destructive, evidence-grounded testing of both hypotheses, Conflict Resolver synthesizes | Clinical Critic splits the Blackboard into atomic claims and scores each with a rule/KB check plus an LLM judge; flagged claims go to the synthesizer, which resolves. No separate proponent/opponent teams, one round | partial |
+| Conflict Detector (4) | Normalized semantic distance between the primary diagnostic assertions of two hypotheses, threshold tau | Multiple choice: mean pairwise Jensen-Shannon distance over answer distributions, tau 0.25, plus top-1 disagreement. Open-ended (since f11 to f13): each specialist states a LEADING DIAGNOSIS; mean pairwise cosine distance of their embeddings (text-embedding-3-small, hashing fallback), tau_semantic 0.35 (not validated) | matches for open-ended cases; threshold not validated |
+| Adversarial mode (1, 4) | Proponent team vs Opponent team, Mediator adjudicates; Clinical Critic does destructive, evidence-grounded testing of both hypotheses, Conflict Resolver synthesizes | Clinical Critic splits the Blackboard into atomic claims and scores each with a rule/KB check plus an LLM judge; flagged claims go to the synthesizer, labelled Conflict Resolver in this mode (Consensus Builder otherwise). No separate proponent/opponent teams, one round | partial |
+| Input form (2, 3, Figures 2-3) | Free-text clinical queries | Multiple-choice cases, and since f11 any open-ended scenario (bare narrative, optional Labs/Meds/Imaging lines) answered with ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS, MISSING INFORMATION and RECOMMENDATION, no letter | matches |
 | Counterfactual grounding loss (2) | Opponent maximizes the distance between the proposed diagnostic embedding and verified medical constraints | Closest analogue: KB veto and grounding score inside the critic. No embedding-space objective | missing |
 | Safety gates A_SAD / S_NAP / T_SAD | Not in the reviewed proposal | Implemented (A_SAD, T_SAD) and stubbed (S_NAP) from the extended draft | extra |
 | MCTS control plane, FHIR/Neo4j, BioBERT/Qdrant memory, semantic cache | Not in the reviewed proposal | Stubs from the extended draft | extra (stubs) |
 
 ## The proposal's own examples, run for real
 
-The reviewed proposal gives four example queries (Figures 2 and 3). Each was run twice through `dynaclinic_mvp.yaml` (gpt-6-luna, commit 7c83807; run folders `WareHouse/pdf-before_*`).
+The reviewed proposal gives four example queries (Figures 2 and 3). Each was run twice through `dynaclinic_mvp.yaml` on gpt-6-luna before the fixes (commit 7c83807, run folders `WareHouse/pdf-before_*`) and twice after them (commit 302f550, `WareHouse/f13run1_*`, `f13run2_*`), with the user's own open-ended example added.
 
-| Example | Proposal expects | Route (2 runs) | Conflict routing (2 runs) |
+| Example | Proposal expects | Before: route / conflict routing | After: route / conflict routing |
 |---|---|---|---|
-| "Patient presents with sore throat and mild fever for 2 days." | LOW | LOW, LOW | not reached |
-| "68-year-old diabetic patient with chest pain, renal insufficiency, and concurrent warfarin therapy." | HIGH | HIGH, HIGH (LLM tier HIGH; the rule score alone said LOW, 4) | ADVERSARIAL, by the "not measurable without options" fallback |
-| "Young adult with fever, sore throat, and cervical lymphadenopathy." | likely CONSENSUS | LOW, LOW | not reached: triage keeps it with Primary Care |
-| "55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long flight." | likely CONFLICT | HIGH, HIGH | ADVERSARIAL, by the same fallback, not by a measured distance |
+| "Patient presents with sore throat and mild fever for 2 days." | LOW | LOW, LOW / not reached | LOW, LOW / not reached |
+| "68-year-old diabetic patient with chest pain, renal insufficiency, and concurrent warfarin therapy." | HIGH | HIGH, HIGH / adversarial by the "not measurable without options" fallback | HIGH, HIGH / all three specialists: acute coronary syndrome; divergence 0.11, 0.12, collaborative |
+| "Young adult with fever, sore throat, and cervical lymphadenopathy." | likely CONSENSUS | LOW, LOW / not reached | LOW, LOW / not reached (triage keeps it with Primary Care) |
+| "55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long flight." | likely CONFLICT | HIGH, HIGH / adversarial by the same fallback | MODERATE, HIGH / every specialist: pulmonary embolism; divergence 0.05, 0.14, collaborative |
+| "a patient has COVID-19 in a sunny day" (user's example) | (open-ended) | LOW / report ended "FINAL ANSWER: A" | LOW, LOW / six-section write-up, weather called irrelevant, no letter |
 
-Triage matched the proposal on all four. Conflict-aware routing never measured anything on these queries, because they have no answer options, and free-text reports ended with meaningless letter answers. Dispatch f11 adds the proposal's semantic distance for free-text cases; the results after the fix are added below when it lands.
+Triage matched the proposal on every run. Before the fixes, conflict routing never measured anything on these queries and reports ended in meaningless letters. Two intermediate states were also run and rejected (`WareHouse/after*`, `f12run*`): first every specialist abstained because its structured data section was empty (fixed in f12: specialists read the narrative), then the distance compared each specialist's own next step ("order CT", "check troponin", "avoid NSAIDs") and crossed tau although all three agreed on the diagnosis (fixed in f13: the distance uses only the LEADING DIAGNOSIS line, as the proposal specifies).
+
+After the fixes the detector measures what the proposal defines, and on these examples gpt-6-luna's specialists agree, so the "likely conflict" example stays collaborative. That is a property of the model and the example, not a fallback; nothing was tuned to change it. tau_semantic 0.35 for text-embedding-3-small is an assumed value, not validated.
 
 ## Citations checked (web, 2026-10-27)
 
@@ -57,4 +61,5 @@ Triage matched the proposal on all four. Conflict-aware routing never measured a
 ## What follows for the research
 
 - The two gaps that matter most for the proposal's thesis are the **uncertainty score** at triage and a **real mesh collaborative mode**: today the system switches between one agent and a parallel team, and between a consensus and a critic round, but not between three topologies chosen by one rule over C and U.
-- The MedQA and synthetic benchmarks do not exercise conflict routing (adversarial switch 0% on MedQA): a benchmark with real expert disagreement is needed before claiming the adversarial mode helps.
+- The MedQA and synthetic benchmarks do not exercise conflict routing (adversarial switch 0% on MedQA), and neither did the proposal's own conflict example after the fixes: a benchmark with real expert disagreement, or a weaker base model, is needed before claiming the adversarial mode helps.
+- tau_semantic needs validating on labelled agree/disagree diagnosis pairs embedded with the production embedder.

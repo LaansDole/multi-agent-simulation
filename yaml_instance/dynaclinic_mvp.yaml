@@ -46,8 +46,8 @@ graph:
       description: >-
         MODERATE/HIGH path. Integrated Care Team (Imaging, Pathology/Lab, Pharmacology; two of them
         for MODERATE) writes findings, an answer distribution and claims to the shared Blackboard; for
-        an open-ended case a PRIMARY ASSERTION (leading diagnosis or recommendation, or ABSTAIN)
-        instead of a distribution. context_policy shared_core: each specialist reads the case summary,
+        an open-ended case a LEADING DIAGNOSIS (or ABSTAIN) and a DOMAIN RECOMMENDATION instead of a
+        distribution. context_policy shared_core: each specialist reads the case summary,
         then its own modality slice; strict: its modality slice only.
       config:
         context_policy: shared_core
@@ -56,7 +56,7 @@ graph:
       description: >-
         Conflict-aware switch. Multiple choice: MODE: ADVERSARIAL when the specialists' top-1 answers
         disagree or their mean pairwise Jensen-Shannon divergence reaches tau. Open-ended case: when
-        the mean pairwise cosine distance between their primary assertions (text-embedding-3-small,
+        the mean pairwise cosine distance between their leading diagnoses (text-embedding-3-small,
         hashing fallback) reaches tau_semantic (unset: the embedder's default), or fewer than two
         specialists asserted anything. Else MODE: COLLABORATIVE. No LLM call.
       config:

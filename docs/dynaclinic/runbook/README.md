@@ -56,7 +56,7 @@ Check: `curl -s localhost:6400/health` returns 200, and http://localhost:3100/th
 
    One real run of each multiple-choice scenario as plain text (gpt-6-luna, after 8947e25): all six answered correctly. Routes: 01 LOW; 02 MODERATE (divergence 0.14); 03 MODERATE (0.04); 04 HIGH (0.05); 05 MODERATE (0.00, both specialists abstained, so no Critic); 06 HIGH (0.08). Routes and the Critic switch vary between runs (see Scenario C below).
 
-   Open-ended scenarios (added after this capture): any clinical text without a `Question:` line and options A.-E., such as "a patient has COVID-19 on a sunny day" or the two "open-ended" mock scenarios, gets a sectioned write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION, RECOMMENDATION) under `Assessment and plan:` in the final report instead of a FINAL ANSWER letter. On the team route, DivergenceGate compares the specialists' PRIMARY ASSERTION lines by semantic distance and prints the distance, `tau_semantic`, the embedder and each assertion.
+   Open-ended scenarios (added after this capture): any clinical text without a `Question:` line and options A.-E., such as "a patient has COVID-19 on a sunny day" or the two "open-ended" mock scenarios, gets a sectioned write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION, RECOMMENDATION) under `Assessment and plan:` in the final report instead of a FINAL ANSWER letter. On the team route, each specialist states a LEADING DIAGNOSIS and a DOMAIN RECOMMENDATION; DivergenceGate compares only the leading diagnoses by semantic distance and prints the distance, `tau_semantic`, the embedder and each diagnosis.
 3. Press Enter.
 
 ![Getting Started opens the Triage chat](02a-getting-started-chat-open.png)
