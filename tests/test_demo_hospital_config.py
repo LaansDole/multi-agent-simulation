@@ -22,8 +22,6 @@ def test_demo_hospital_agents_and_embedder_use_openai() -> None:
     assert agents
     for agent in agents:
         assert (agent.name, agent.base_url, agent.api_key) == ("gpt-6-luna", "https://openai.test/v1", "sk-openai-dummy")
-        # gpt-6-luna rejects any temperature but its default; the provider sends 0.7 when unset
-        assert agent.params.get("temperature") == 1
 
     embeddings = [store.config.embedding for store in design.graph.memory or [] if getattr(store.config, "embedding", None)]
     assert embeddings

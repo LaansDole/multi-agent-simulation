@@ -3,7 +3,9 @@
 import base64
 import hashlib
 import json
+import logging
 import re
+import threading
 
 import binascii
 import os
@@ -29,6 +31,12 @@ from runtime.node.agent import ModelProvider
 from runtime.node.agent import ModelResponse
 from runtime.node.agent.providers.base import ModelInfo
 from utils.token_tracker import TokenUsage
+
+logger = logging.getLogger(__name__)
+
+# (base_url, model) pairs that answered 400 "temperature unsupported"; process-wide so later calls omit it.
+_NO_TEMPERATURE: set[tuple[str | None, str]] = set()
+_NO_TEMPERATURE_LOCK = threading.Lock()
 
 
 class _DataUnwrapTransport(httpx.BaseTransport):
@@ -124,7 +132,7 @@ class OpenAIProvider(ModelProvider):
 
         if is_chat:
             request_payload = self._build_chat_payload(conversation, tool_specs, kwargs)
-            response = client.chat.completions.create(**request_payload)
+            response = self._create(client.chat.completions.create, request_payload)
             self._track_token_usage(response)
             self._append_chat_response_output(timeline, response)
             message = self._deserialize_chat_response(response)
@@ -133,7 +141,7 @@ class OpenAIProvider(ModelProvider):
         # 2. Try Responses API with fallback
         request_payload = self._build_request_payload(timeline, tool_specs, kwargs)
         try:
-            response = client.responses.create(**request_payload)
+            response = self._create(client.responses.create, request_payload)
             self._track_token_usage(response)
             self._append_response_output(timeline, response)
             message = self._deserialize_response(response)
@@ -142,11 +150,30 @@ class OpenAIProvider(ModelProvider):
             new_request_payload = self._build_chat_payload(
                 conversation, tool_specs, kwargs
             )
-            response = client.chat.completions.create(**new_request_payload)
+            response = self._create(client.chat.completions.create, new_request_payload)
             self._track_token_usage(response)
             self._append_chat_response_output(timeline, response)
             message = self._deserialize_chat_response(response)
             return ModelResponse(message=message, raw_response=response)
+
+    def _create(self, create: Any, payload: dict[str, Any]) -> Any:
+        """Call ``create(**payload)``; if the model rejects ``temperature``, retry once without it and remember."""
+        key = (self.base_url, self.model_name)
+        if key in _NO_TEMPERATURE:
+            payload.pop("temperature", None)
+        try:
+            return create(**payload)
+        except openai.BadRequestError as err:
+            message = str(err).lower()
+            if "temperature" not in payload or "temperature" not in message or "unsupported" not in message:
+                raise
+            with _NO_TEMPERATURE_LOCK:
+                first = key not in _NO_TEMPERATURE
+                _NO_TEMPERATURE.add(key)
+            if first:
+                logger.warning("model %s rejects temperature; omitting it from now on", self.model_name)
+            payload.pop("temperature")
+            return create(**payload)
 
     def _is_chat_completions_mode(self, client: Any) -> bool:
         """Determine if we should use standard chat completions instead of responses API."""

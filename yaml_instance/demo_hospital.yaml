@@ -34,7 +34,7 @@ graph:
           Generate varied patient data for each request.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
-        params: {temperature: 1}
+        params: {}
         tooling: null
         thinking: null
         memories: []
@@ -50,7 +50,7 @@ graph:
         role: You received a patient admission report. Acknowledge it briefly.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
-        params: {temperature: 1}
+        params: {}
         tooling: null
         thinking: null
         memories: []
@@ -73,7 +73,7 @@ graph:
           Output ONLY valid JSON. Vary the patient data for each request.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
-        params: {temperature: 1}
+        params: {}
         tooling: null
         thinking: null
         memories: []
@@ -89,7 +89,7 @@ graph:
         role: You received a triage status report. Acknowledge it briefly.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
-        params: {temperature: 1}
+        params: {}
         tooling: null
         thinking: null
         memories: []
@@ -112,7 +112,7 @@ graph:
           Keep it concise (2-3 sentences total).
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
-        params: {temperature: 1}
+        params: {}
         tooling: null
         thinking: null
         memories:
@@ -140,7 +140,7 @@ graph:
           Begin with "HOSPITAL SIMULATION - FINAL REPORT" header.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
-        params: {temperature: 1}
+        params: {}
         tooling: null
         thinking: null
         memories:
@@ -328,7 +328,6 @@ graph:
   end:
     - FinalReport
 # Agents and the memory embedder call OpenAI (OPENAI_BASE_URL / OPENAI_API_KEY from .env).
-# temperature: 1 because gpt-6-luna rejects any other value and the openai provider sends 0.7 when unset.
 vars:
   MODEL_NAME: gpt-6-luna
   EMBEDDING_MODEL: text-embedding-3-small
