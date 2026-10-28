@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from entity.configs.base import (
     BaseConfig,
+    ConfigError,
     ConfigFieldSpec,
     require_mapping,
     require_str,
@@ -32,6 +33,8 @@ class EdgeConfig(BaseConfig):
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], *, path: str) -> "EdgeConfig":
         mapping = require_mapping(data, path)
+        if "processor" in mapping:
+            raise ConfigError("unknown edge key 'processor'; use 'process'", extend_path(path, "processor"))
         source = require_str(mapping, "from", path)
         target = require_str(mapping, "to", path)
         trigger_value = optional_bool(mapping, "trigger", path, default=True)
