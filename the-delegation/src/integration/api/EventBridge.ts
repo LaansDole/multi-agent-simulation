@@ -205,17 +205,20 @@ export class EventBridge {
 
   /**
    * The run's final text. A literal end node (e.g. "Hospital simulation ended.") is a marker, so
-   * show the content node that fed it last instead (full text from `results`).
+   * show the content node that fed it last instead (full text from `results`), skipping feeders
+   * with blank output such as a save_file agent.
    */
   private finalOutput(data: WorkflowCompletedData): string | null {
     const nodeType = (nodeId: string) => this.graph?.nodes.find((n) => n.id === nodeId)?.type ?? '';
     const endId = this.graph?.end?.[0];
-    if (endId && nodeType(endId) === 'literal') {
-      const source = this.tracker.latestFeeder(endId, (nodeId) => !MARKER_NODE_TYPES[nodeType(nodeId)]);
-      const text = source && (resultText(data.results?.[`node_${source}`]) ?? this.tracker.outputOf(source));
-      if (text) return text;
-    }
-    return data.final_text || data.summary;
+    const text = endId && nodeType(endId) === 'literal'
+      ? this.tracker.feederText(
+        endId,
+        (nodeId) => !MARKER_NODE_TYPES[nodeType(nodeId)],
+        (nodeId) => resultText(data.results?.[`node_${nodeId}`]) || this.tracker.outputOf(nodeId),
+      )
+      : null;
+    return text || data.final_text || data.summary;
   }
 
   private onWorkflowCancelled(): void {

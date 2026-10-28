@@ -159,12 +159,34 @@ export class InteractionTracker {
 
   public completed(nodeId: string, output: string): void {
     this.completedAt.set(nodeId, ++this.seq);
-    if (output) this.outputs.set(nodeId, output);
+    this.outputs.set(nodeId, output); // a blank output replaces the previous one: no stale speech
   }
 
-  /** Most recently completed node feeding `nodeId` for which `isSource` holds (e.g. the content behind a literal end node). */
-  public latestFeeder(nodeId: string, isSource: (nodeId: string) => boolean): string | undefined {
-    return feedingAgents(this.edges, isSource, this.completedAt, nodeId, 0)[0];
+  /**
+   * Text of the content behind `nodeId` (e.g. a literal end node): the most recently completed
+   * feeder for which `isSource` holds, walking further back past feeders whose text is blank (a
+   * tool-calling agent that only saved a file), at most `maxDepth` feeders deep. Leading blank
+   * lines are dropped. Null when no feeder has text.
+   */
+  public feederText(
+    nodeId: string,
+    isSource: (nodeId: string) => boolean,
+    textOf: (nodeId: string) => string | null | undefined,
+    maxDepth: number = 5,
+  ): string | null {
+    const visited = new Set([nodeId]);
+    let layer = [nodeId];
+    for (let depth = 0; depth < maxDepth && layer.length > 0; depth++) {
+      layer = [...new Set(layer.flatMap((id) => feedingAgents(this.edges, isSource, this.completedAt, id, 0)))]
+        .filter((id) => !visited.has(id))
+        .sort((a, b) => this.completedAt.get(b)! - this.completedAt.get(a)!);
+      for (const id of layer) {
+        const text = textOf(id);
+        if (text?.trim()) return text.replace(/^\s*\n/, '');
+        visited.add(id);
+      }
+    }
+    return null;
   }
 
   /** Last output seen for `nodeId` (node_completed payload, truncated by the backend). */

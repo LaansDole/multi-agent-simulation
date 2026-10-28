@@ -91,13 +91,37 @@ test('conversationLoop: pairs and trios alternate, longer relays do not', () => 
   assert.equal(conversationLoop([['A', 'B'], ['C', 'D']]), null);
 });
 
-test('latestFeeder finds the content behind a literal end node', () => {
-  // simulation_hospital tail: ... -> Formatter (template) -> ReportSaver (agent) -> SimulationEnd (literal)
+test('feederText: the content behind a literal end node, past a blank tool-agent output', () => {
+  // simulation_hospital tail: ... -> Formatter (template) -> ReportSaver (save_file agent) -> SimulationEnd (literal)
   const edges = chain('Extractor', 'Formatter', 'ReportSaver', 'SimulationEnd');
   const tracker = new InteractionTracker(edges, () => true);
   run(tracker, ['Extractor', 'Formatter', 'ReportSaver', 'SimulationEnd']);
-  assert.equal(tracker.latestFeeder('SimulationEnd', (id) => id !== 'SimulationEnd'), 'ReportSaver');
-  assert.equal(tracker.outputOf('ReportSaver'), 'ReportSaver says hello');
+  const isSource = (id: string) => id !== 'SimulationEnd';
+  const texts = new Map([['Extractor', '{"case": 1}'], ['Formatter', '\n\n  \n\n# MEDICAL CASE REPORT\nbody'], ['ReportSaver', 'Saved.']]);
+  const textOf = (id: string) => texts.get(id);
+  assert.equal(tracker.feederText('SimulationEnd', isSource, textOf), 'Saved.', 'a feeder with text is used as is');
+  texts.set('ReportSaver', ' \n ');
+  assert.equal(tracker.feederText('SimulationEnd', isSource, textOf), '# MEDICAL CASE REPORT\nbody', 'leading blank lines dropped');
+  texts.clear();
+  assert.equal(tracker.feederText('SimulationEnd', isSource, textOf), null, 'no text: the caller falls back to final_text');
+});
+
+test('feederText stops at cycles and at maxDepth', () => {
+  const edges = [...chain('A', 'B', 'Counter', 'A'), ...chain('B', 'End')];
+  const tracker = new InteractionTracker(edges, () => true);
+  run(tracker, ['A', 'B', 'Counter', 'A', 'B', 'End']);
+  const isSource = (id: string) => id !== 'Counter' && id !== 'End';
+  assert.equal(tracker.feederText('End', isSource, () => ''), null);
+  assert.equal(tracker.feederText('End', isSource, (id) => (id === 'A' ? 'from A' : '')), 'from A');
+  assert.equal(tracker.feederText('End', isSource, (id) => (id === 'A' ? 'from A' : ''), 1), null);
+});
+
+test('a hand-off from an agent with blank output has no speech text, not its previous one', () => {
+  const tracker = new InteractionTracker(chain('Saver', 'Next'), () => true);
+  run(tracker, ['Saver', 'Next']);
+  tracker.started('Saver');
+  tracker.completed('Saver', '  \n');
+  assert.deepEqual(tracker.started('Next').handOff, { from: 'Saver', to: 'Next', also: [], text: '' });
 });
 
 test('speechSnippet and nearestToCentroid', () => {
