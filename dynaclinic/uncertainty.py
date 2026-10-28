@@ -33,10 +33,13 @@ class TauU(NamedTuple):
 
 FALLBACK_MODEL = "gpt-6-luna"
 # Model id as the client sends it -> its thresholds. Add a row per model from `python -m dynaclinic.eval.calibrate`
-# (it prints the row). qwen3.5-4b: pending, its MedQA-50 U quartiles run 0.51 / 0.65 / 0.74, far above gpt-6-luna's.
+# (it prints the row). qwen3.5-4b is calibrated on synthetic-24 only: MedQA-50 was NOT used, so it stays held out for qwen.
 TAU_U_BY_MODEL: dict[str, TauU] = {
     "gpt-6-luna": TauU(0.15, 0.59, "p75 of U on held-out MedQA-50 + synthetic-24 (n = 74; multiple choice p50 0.086, "
                        "p90 0.342) and the same vignettes without options or question (k = 5; p50 0.385, p90 0.744)"),
+    "qwen3.5-4b": TauU(0.81, 0.77, "p75 of U on synthetic (multiple choice, n = 24, p50 0.653, p90 0.819) and the same "
+                       "vignettes without options or question (k = 5, n = 24, p50 0.685, p90 0.857); "
+                       "dynaclinic.eval.calibrate 2026-10-28"),
 }
 TAU_U_MCQ, TAU_U_OPEN, _ = TAU_U_BY_MODEL[FALLBACK_MODEL]
 DEFAULT_K = 5

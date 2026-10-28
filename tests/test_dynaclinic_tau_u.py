@@ -38,6 +38,12 @@ def test_gpt_6_luna_row_is_the_fallback_and_the_module_defaults() -> None:
     assert "MedQA-50 + synthetic-24" in TAU_U_BY_MODEL["gpt-6-luna"].provenance
 
 
+def test_qwen3_5_4b_row_is_calibrated_on_synthetic_only() -> None:
+    row, source, warning = tau_u_row("qwen3.5-4b")
+    assert (row[:2], source, warning) == ((0.81, 0.77), "calibrated for qwen3.5-4b", None)
+    assert "MedQA-50" not in row.provenance  # MedQA-50 stays held out for qwen
+
+
 def test_tau_u_row_known_unknown_and_no_model(calibrated: TauU) -> None:
     luna = TAU_U_BY_MODEL["gpt-6-luna"]
     assert tau_u_row("model-x") == (calibrated, "calibrated for model-x", None)
