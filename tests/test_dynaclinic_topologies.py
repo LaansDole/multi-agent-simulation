@@ -148,6 +148,12 @@ def _adversarial(**replies: str) -> tuple[RunResult, object]:
     return DynaClinicPipeline(client).run(CASE), client
 
 
+def test_an_abstaining_specialist_does_not_vote_for_h1() -> None:
+    # imaging A vs pathology B tie once the near-uniform pharmacologist is left out: the sweep's top (B) breaks it
+    result, _ = _adversarial(pharmacology=_specialist(dict.fromkeys("ABC", 1 / 3)))
+    assert result.debate["h1"] == "B" and result.debate["basis"].startswith("the generalist sweep's top")
+
+
 def test_adversarial_debate_runs_proponent_then_opponent_then_mediator() -> None:
     result, client = _adversarial(synthesizer="SURVIVING HYPOTHESIS: H1 - no penicillin exposure.\nFINAL ANSWER: B")
     stages = _stages(result)
