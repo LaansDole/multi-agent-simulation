@@ -47,7 +47,9 @@ graph:
       config:
         name: ${MODEL_NAME}
         provider: openai
-        role: You received a patient admission report. Acknowledge it briefly.
+        role: |
+          You received a patient admission report. Acknowledge it briefly in one sentence
+          that always restates the patient's name, age and condition from the report.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
         params: {}
@@ -149,6 +151,7 @@ graph:
             top_k: 100
             retrieve_stage:
               - gen
+            write: false
         retry: null
       description: Generates final simulation summary from daily memory
       context_window: 0

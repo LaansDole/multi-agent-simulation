@@ -42,6 +42,13 @@ def test_demo_hospital_agents_and_embedder_use_openai() -> None:
         )
 
 
+def test_admission_acknowledgement_restates_patient_name_age_and_condition() -> None:
+    design = load_config(DEMO_HOSPITAL, vars_override=DUMMY_VARS)
+    role = next(node.as_config(AgentConfig).role for node in design.graph.nodes if node.id == "AdmissionReport")
+    # f21 real run: day 1 replied "Routine processing" with no patient, so DailySummary never saw the admission.
+    assert all(field in role for field in ("name", "age", "condition")), role
+
+
 PATIENTS = ["Maya Chen", "Omar Haddad", "Lena Novak"]
 
 
@@ -94,6 +101,6 @@ def test_each_day_summary_and_memory_name_only_that_days_admission(tmp_path: Pat
 
     assert [_names_in(prompt) for prompt in summary_prompts] == [[name] for name in PATIENTS]
     memory = json.loads((Path(result.meta_info.output_dir) / "daily_summaries.json").read_text())
-    # FinalReport also writes its report to this store (default write: true); only DailySummary's items are days.
-    days = [item for item in memory if item["metadata"]["agent_role"].startswith("You received a hospital report")]
-    assert [_names_in(item["content_summary"]) for item in days] == [[name] for name in PATIENTS]
+    # FinalReport only reads the store, so every item is one of DailySummary's days.
+    assert [item["metadata"]["agent_role"].startswith("You received a hospital report") for item in memory] == [True] * 3
+    assert [_names_in(item["content_summary"]) for item in memory] == [[name] for name in PATIENTS]
