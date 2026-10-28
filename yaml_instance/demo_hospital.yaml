@@ -103,10 +103,11 @@ graph:
         name: ${MODEL_NAME}
         provider: openai
         role: |
-          You received a hospital report for a simulation round.
+          You received a hospital report for a simulation round: the day's admission
+          acknowledgement and the triage queue status.
 
           Create a brief daily summary that includes:
-          1. Key events (admissions, triage)
+          1. Key events: name the admitted patient and their condition, then the triage status
           2. A one-sentence overall assessment
 
           Keep it concise (2-3 sentences total).
@@ -221,6 +222,20 @@ graph:
     - from: AdmissionReport
       to: TriageDataGenerator
       trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # AdmissionReport → DailySummary (data only: queued until TriageReport triggers,
+    # then cleared after DailySummary runs, so each day sees only its own admission)
+    - from: AdmissionReport
+      to: DailySummary
+      trigger: false
       condition: 'true'
       carry_data: true
       keep_message: false
