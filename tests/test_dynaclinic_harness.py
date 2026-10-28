@@ -221,25 +221,30 @@ def test_meta_controller_scores_are_summarised_and_pre_f14_rows_still_load() -> 
     legacy = _row("c4", "LOW", answer="A", correct=True, mode="single")
     for key in ("complexity", "uncertainty", "tau_c", "tau_u", "top_k", "differential", "mode_reason", "consults"):
         del legacy[key]  # a resumed results.jsonl row written before the Meta-Controller scores existed
+    luna = "calibrated for gpt-6-luna"
     rows = [_row("c1", "LOW", answer="A", correct=True, mode="hierarchical", complexity=0.25, uncertainty=0.5,
-                 tau_u=0.15),
+                 tau_u=0.15, tau_u_source=luna),
             _row("c2", "HIGH", answer="A", correct=True, mode="adversarial", complexity=1.0, uncertainty=None,
-                 tau_u=0.15, route=["uncertainty:n/a", "mode:adversarial:uncertainty"]),
+                 tau_u=0.15, tau_u_source=luna, route=["uncertainty:n/a", "mode:adversarial:uncertainty"]),
             {**_row("c3", "HIGH", answer="A", correct=True, mode="collaborative", complexity=0.75, uncertainty=0.2,
-                    tau_u=0.59), "open_ended": True},
+                    tau_u=0.59, tau_u_source=luna), "open_ended": True},
             _row("c5", "HIGH", answer="A", correct=True, mode="adversarial", complexity=0.75, uncertainty=0.1,
-                 tau_u=0.15, route=["mode:collaborative", "divergence:0.40:switch"]),
+                 tau_u=0.15, route=["mode:collaborative", "divergence:0.40:switch"]),  # pre-f19: no tau_u_source
             legacy]
     summary = harness.summarize(rows, ["single"], {})
     s = summary["arms_summary"]["single"]
     assert (s["mean_complexity"], s["mean_uncertainty"], s["uncertainty_not_measured"]) == (
         pytest.approx(0.6875), pytest.approx(0.8 / 3), 1)
-    assert s["tau_u"] == {"multiple choice": [0.15], "open-ended": [0.59]}
+    assert (s["tau_u"], s["tau_u_source"]) == ({"multiple choice": [0.15], "open-ended": [0.59]}, [luna])
     assert s["adversarial_entry"] == {"uncertainty": 1, "conflict": 1}
-    assert "| single | 0.688 | 0.267 | 1 | multiple choice 0.15; open-ended 0.59 | 1 / 1 |" in harness.render_markdown(
-        {**summary, "run_id": "r", "generated_at": "t", "dry_run": True, "dataset": "synthetic", "n_cases": 5,
-         "limit": None, "seed": None, "cache": False, "concurrency": 1, "context_policy": "shared_core",
-         "arms": ["single"]})
+    meta = {"run_id": "r", "generated_at": "t", "dry_run": True, "dataset": "synthetic", "n_cases": 5, "limit": None,
+            "seed": None, "cache": False, "concurrency": 1, "context_policy": "shared_core", "arms": ["single"]}
+    assert ("| single | 0.688 | 0.267 | 1 | multiple choice 0.15; open-ended 0.59 (calibrated for gpt-6-luna) "
+            "| 1 / 1 |") in harness.render_markdown({**summary, **meta})
+    fallback = _row("c6", "LOW", answer="A", correct=True, mode="hierarchical", complexity=0.25, uncertainty=0.1,
+                    tau_u=0.15, tau_u_source="uncalibrated: fallback to gpt-6-luna's")
+    assert "| multiple choice 0.15 (uncalibrated: fallback to gpt-6-luna's) |" in harness.render_markdown(
+        {**harness.summarize([fallback], ["single"], {}), **meta})
     unscored = harness.summarize([legacy], ["single"], {})["arms_summary"]["single"]
     assert (unscored["mean_complexity"], unscored["uncertainty_not_measured"]) == (None, None)
-    assert (unscored["tau_u"], unscored["adversarial_entry"]) == (None, None)
+    assert (unscored["tau_u"], unscored["tau_u_source"], unscored["adversarial_entry"]) == (None, None, None)

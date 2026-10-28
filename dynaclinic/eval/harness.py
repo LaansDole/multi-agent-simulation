@@ -261,6 +261,8 @@ def _arm_summary(rows: list[Row], env: Mapping[str, str]) -> dict[str, Any]:
         "mean_uncertainty": _mean(row["uncertainty"] for row in scored if row["uncertainty"] is not None),
         "uncertainty_not_measured": sum(row["uncertainty"] is None for row in scored) if scored else None,
         "tau_u": {form: sorted(values) for form, values in sorted(tau_u.items())} if scored else None,
+        # where tau_u came from (the model's calibrated row, "uncalibrated: fallback ...", configured); pre-f19 rows lack it
+        "tau_u_source": sorted({row["tau_u_source"] for row in scored if row.get("tau_u_source")}) if scored else None,
         "adversarial_entry": ({"uncertainty": by_uncertainty, "conflict": len(adversarial) - by_uncertainty}
                               if scored else None),
         "safety_violations": violations,
@@ -309,8 +311,9 @@ def _num(value: float | None, spec: str = ".3f") -> str:
     return "n/a" if value is None else format(value, spec)
 
 
-def _tau_u_cell(tau_u: dict[str, list[float]]) -> str:
-    return "; ".join(f"{form} {', '.join(f'{value:g}' for value in values)}" for form, values in tau_u.items()) or "n/a"
+def _tau_u_cell(tau_u: dict[str, list[float]], sources: list[str] | None) -> str:
+    cell = "; ".join(f"{form} {', '.join(f'{value:g}' for value in values)}" for form, values in tau_u.items()) or "n/a"
+    return f"{cell} ({'; '.join(sources)})" if sources else cell
 
 
 def _meta_controller_lines(summary: dict[str, Any], arms: Sequence[str]) -> list[str]:
@@ -322,16 +325,17 @@ def _meta_controller_lines(summary: dict[str, Any], arms: Sequence[str]) -> list
         "## Meta-Controller",
         "",
         ("C: Complexity Score, max(LLM tier level, feature density), tau_c 0.5. U: Uncertainty Score, normalised "
-         "entropy of the generalist differential; tau_u per input form (default 0.15 multiple choice, 0.59 "
-         "open-ended: 75th percentile on held-out MedQA-50 + synthetic-24 and the same vignettes without options; "
-         "calibrated, not validated against outcomes). Mode rule: U > tau_u adversarial, else C <= tau_c "
+         "entropy of the generalist differential; tau_u per input form and per model (the model's calibrated row, "
+         "75th percentile of U from dynaclinic.eval.calibrate; a model without one falls back to gpt-6-luna's 0.15 "
+         "multiple choice, 0.59 open-ended; source in brackets; calibrated, not validated against outcomes). "
+         "Mode rule: U > tau_u adversarial, else C <= tau_c "
          "hierarchical, else collaborative; modes are counted under routes. Adversarial entry: by uncertainty "
          "(U > tau_u) or by conflict (the Conflict Detector switched a collaborative team)."),
         "",
         "| arm | mean C | mean U | U not measured | tau_u used | adversarial by U / by conflict |",
         "|---|---|---|---|---|---|",
         *(f"| {arm} | {_num(s['mean_complexity'])} | {_num(s['mean_uncertainty'])} | {s['uncertainty_not_measured']} "
-          f"| {_tau_u_cell(s['tau_u'])} | {s['adversarial_entry']['uncertainty']} / "
+          f"| {_tau_u_cell(s['tau_u'], s.get('tau_u_source'))} | {s['adversarial_entry']['uncertainty']} / "
           f"{s['adversarial_entry']['conflict']} |"
           for arm in scored for s in [summary["arms_summary"][arm]]),
         "",

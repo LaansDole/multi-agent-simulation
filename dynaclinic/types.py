@@ -160,6 +160,7 @@ class RunResult(_Serializable):
     uncertainty: float | None = None
     tau_c: float | None = None
     tau_u: float | None = None
+    tau_u_source: str | None = None  # "calibrated for <model>", "uncalibrated: fallback to ...", "configured", ...
     top_k: int | None = None
     differential: dict[str, float] = field(default_factory=dict)
     mode_reason: str = ""

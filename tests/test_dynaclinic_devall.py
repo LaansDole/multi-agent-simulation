@@ -111,7 +111,7 @@ def test_configs_default_to_the_env_model_chain() -> None:
     assert (config.model, config.fallback_models, config.max_rollbacks) == (None, [], 1)
     assert Node.from_dict({"id": "d", "type": "dc_divergence_gate", "config": {}}, path="n").config.tau == 0.25
     sweep = Node.from_dict({"id": "u", "type": "dc_uncertainty", "config": {}}, path="n").config
-    assert (sweep.tau_u_mcq, sweep.tau_u_open, sweep.tau_u, sweep.k) == (0.15, 0.59, None, 5)
+    assert (sweep.tau_u_mcq, sweep.tau_u_open, sweep.tau_u, sweep.k) == (None, None, None, 5)  # the model's row
 
 
 @pytest.mark.parametrize(
@@ -359,7 +359,7 @@ def test_generalist_sweep_emits_the_mode_then_c_u_rule_and_differential(
     r = h.run_state.result
     assert lines[:4] == [f"MODE: {mode}",
                          (f"Complexity C={r.complexity:.2f} (tau_c 0.5), Uncertainty U={u} (tau_u 0.15 for "
-                          "multiple choice, k 3)"),
+                          "multiple choice, gpt-6-luna's (no model id), k 3)"),
                          f"Rule: {r.mode_reason}", "Differential (generalist sweep):"]
     assert lines[4:] == [f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()]
     assert r.route[-2:] == [f"uncertainty:{u}", f"mode:{mode.lower()}" + (":uncertainty" if tier == "LOW" and
@@ -368,9 +368,9 @@ def test_generalist_sweep_emits_the_mode_then_c_u_rule_and_differential(
 
 @pytest.mark.parametrize(
     ("text", "config", "applied"),
-    [(SEPSIS_TEXT, {}, "tau_u 0.59 for open-ended, k 5"),
-     (SEPSIS_TEXT, {"tau_u_open": 0.4}, "tau_u 0.4 for open-ended, k 5"),
-     (CASE_JSON, {"tau_u": 0.8}, "tau_u 0.8 configured override, k 3")],
+    [(SEPSIS_TEXT, {}, "tau_u 0.59 for open-ended, gpt-6-luna's (no model id), k 5"),
+     (SEPSIS_TEXT, {"tau_u_open": 0.4}, "tau_u 0.4 for open-ended, configured, k 5"),
+     (CASE_JSON, {"tau_u": 0.8}, "tau_u 0.8 for multiple choice, configured override, k 3")],
     ids=["open-ended", "open-configured", "override"],
 )
 def test_generalist_sweep_prints_which_threshold_applied(harness: Build, text: str, config: dict, applied: str) -> None:
@@ -378,6 +378,24 @@ def test_generalist_sweep_prints_which_threshold_applied(harness: Build, text: s
     h.run("dc_triage", text)
     out = h.run("dc_uncertainty", **config)
     assert f"({applied})" in out.splitlines()[1] and h.run_state.result.tau_u == float(applied.split()[1])
+
+
+@pytest.mark.parametrize(
+    ("model", "applied", "warning"),
+    [("gpt-6-luna", "tau_u 0.15 for multiple choice, calibrated for gpt-6-luna, k 3", None),
+     ("qwen-test", "tau_u 0.15 for multiple choice, uncalibrated: fallback to gpt-6-luna's, k 3",
+      "- generalist: tau_u not calibrated for qwen-test; using gpt-6-luna's")],
+    ids=["calibrated", "uncalibrated"],
+)
+def test_generalist_sweep_names_the_model_row_or_the_fallback(
+    harness: Build, model: str, applied: str, warning: str | None
+) -> None:
+    h = harness(generalist=ONE_HOT)
+    h.client.active_model = model  # OpenAIChatClient's attribute; FakeLLM has none
+    h.run("dc_triage", CASE_JSON)
+    out = h.run("dc_uncertainty")
+    assert f"({applied})" in out.splitlines()[1]
+    assert (warning in out.splitlines()) if warning else "not calibrated" not in out
 
 
 def test_malformed_sweep_routes_on_c_and_says_u_was_not_measured(harness: Build) -> None:

@@ -33,7 +33,7 @@ from dynaclinic.plaintext import parse_plain_case
 from dynaclinic.prompts import CONTEXT_POLICIES, DEFAULT_CONTEXT_POLICY
 from dynaclinic.triage import MODERATE_SCORE
 from dynaclinic.types import Case, RunResult
-from dynaclinic.uncertainty import DEFAULT_K, TAU_U_MCQ, TAU_U_OPEN
+from dynaclinic.uncertainty import DEFAULT_K, FALLBACK_MODEL, TAU_U_MCQ, TAU_U_OPEN
 from entity.configs import Node
 from entity.configs.base import (
     BaseConfig,
@@ -163,18 +163,16 @@ class DCTriageConfig(DCNodeConfig):
 class DCUncertaintyConfig(DCNodeConfig):
     """dc_uncertainty: generalist sweep (Uncertainty Score U) and the Meta-Controller's mode rule."""
 
-    tau_u_mcq: float = TAU_U_MCQ
-    tau_u_open: float = TAU_U_OPEN
+    tau_u_mcq: float | None = None
+    tau_u_open: float | None = None
     tau_u: float | None = None
     k: int = DEFAULT_K
 
     @classmethod
     def _parse(cls, mapping: Mapping[str, Any], path: str) -> dict[str, Any]:
-        override = None if mapping.get("tau_u") is None else _number(mapping, "tau_u", 0, path, float)
-        return {**super()._parse(mapping, path), "tau_u": override,
-                "tau_u_mcq": _number(mapping, "tau_u_mcq", TAU_U_MCQ, path, float),
-                "tau_u_open": _number(mapping, "tau_u_open", TAU_U_OPEN, path, float),
-                "k": _number(mapping, "k", DEFAULT_K, path, int)}
+        thresholds = {key: None if mapping.get(key) is None else _number(mapping, key, 0, path, float)
+                      for key in ("tau_u", "tau_u_mcq", "tau_u_open")}
+        return {**super()._parse(mapping, path), **thresholds, "k": _number(mapping, "k", DEFAULT_K, path, int)}
 
     def validate(self) -> None:
         super().validate()
@@ -191,20 +189,18 @@ class DCUncertaintyConfig(DCNodeConfig):
             display_name="Tau U (multiple choice)",
             type_hint="float",
             required=False,
-            default=TAU_U_MCQ,
             description="Multiple-choice cases: uncertainty above which the case goes adversarial regardless of "
-            "complexity. 75th percentile on held-out MedQA-50 + synthetic-24; calibrated, not validated against "
-            "outcomes.",
+            "complexity. Unset: the model's calibrated row (75th percentile of U, dynaclinic.uncertainty."
+            f"TAU_U_BY_MODEL; a model without one falls back to {FALLBACK_MODEL}'s {TAU_U_MCQ:g} with a warning).",
         ),
         "tau_u_open": ConfigFieldSpec(
             name="tau_u_open",
             display_name="Tau U (open-ended)",
             type_hint="float",
             required=False,
-            default=TAU_U_OPEN,
             description="Open-ended cases: uncertainty above which the case goes adversarial regardless of "
-            "complexity. 75th percentile on the same vignettes without options; calibrated, not validated against "
-            "outcomes.",
+            "complexity. Unset: the model's calibrated row (75th percentile of U on the vignettes without options; "
+            f"a model without one falls back to {FALLBACK_MODEL}'s {TAU_U_OPEN:g} with a warning).",
         ),
         "tau_u": ConfigFieldSpec(
             name="tau_u",
@@ -434,8 +430,8 @@ class TriageExecutor(_StageExecutor):
 
 class UncertaintyExecutor(_StageExecutor):
     """dc_uncertainty: one generalist sweep, then the mode rule on C (from dc_triage) and U; emits
-    ``MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL``, then C, U, the thresholds (with the tau_u that applied: the
-    input form's or the configured override), the rule and the differential."""
+    ``MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL``, then C, U, the thresholds (with the tau_u that applied and its
+    source: the model's calibrated row, the fallback row, or the configured value), the rule and the differential."""
 
     config_cls = DCUncertaintyConfig
 
@@ -445,12 +441,12 @@ class UncertaintyExecutor(_StageExecutor):
         run.uncertainty(config.tau_u, config.k, config.tau_u_mcq, config.tau_u_open)
         r = run.result
         u = "n/a" if r.uncertainty is None else f"{r.uncertainty:.2f}"
-        applied = ("configured override" if config.tau_u is not None else
-                   f"for {'open-ended' if run.case.open_ended else 'multiple choice'}")
+        form = "open-ended" if run.case.open_ended else "multiple choice"
         differential = "\n".join(f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()) or "- none"
         return (f"MODE: {r.mode.upper()}\n"
                 f"Complexity C={r.complexity:.2f} (tau_c {r.tau_c:g}), Uncertainty U={u} (tau_u {r.tau_u:g} "
-                f"{applied}, k {r.top_k})\nRule: {r.mode_reason}\nDifferential (generalist sweep):\n{differential}")
+                f"for {form}, {r.tau_u_source}, k {r.top_k})\nRule: {r.mode_reason}\n"
+                f"Differential (generalist sweep):\n{differential}")
 
 
 class PrimaryCareExecutor(_StageExecutor):

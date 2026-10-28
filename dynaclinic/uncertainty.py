@@ -8,21 +8,37 @@ than k count the rest as zero mass, and the kept probabilities are renormalised 
 Mode rule (``select_mode``), with the Complexity Score C of ``triage.complexity``:
 hierarchical if C <= tau_c and U <= tau_u; collaborative if C > tau_c and U <= tau_u; adversarial if U > tau_u.
 
-tau_u depends on the input form (``tau_u_for``), since k and so the scale of U differ: ``TAU_U_MCQ`` = 0.15 (k = the
-options) and ``TAU_U_OPEN`` = 0.59 (k = 5 differentials), each the 75th percentile of U on held-out MedQA-50 +
-synthetic-24 (multiple choice, n = 74) and the same vignettes without options or question (open-ended); calibrated,
-not validated against outcomes, and not tuned on the proposal's examples.
+tau_u depends on the input form (``tau_u_for``), since k and so the scale of U differ, and on the model: U's scale
+is model-specific, so ``TAU_U_BY_MODEL`` holds one row per model (``tau_u_row``). Each value is the 75th percentile
+of U on held-out cases (``python -m dynaclinic.eval.calibrate``); calibrated, not validated against outcomes, and not
+tuned on the proposal's examples. A model without a row falls back to ``FALLBACK_MODEL``'s with a warning.
 """
 
 import math
 import re
 from collections.abc import Sequence
+from typing import NamedTuple
 
 from dynaclinic.parsing import extract_json
 from dynaclinic.types import Case, Mode
 
-TAU_U_MCQ = 0.15  # p75 of U, multiple choice (p50 0.086, p90 0.342)
-TAU_U_OPEN = 0.59  # p75 of U, open-ended, k = 5 (p50 0.385, p90 0.744)
+
+class TauU(NamedTuple):
+    """One model's uncertainty thresholds per input form and where they come from."""
+
+    mcq: float  # multiple choice, k = the options
+    open: float  # open-ended, k = DEFAULT_K differentials
+    provenance: str
+
+
+FALLBACK_MODEL = "gpt-6-luna"
+# Model id as the client sends it -> its thresholds. Add a row per model from `python -m dynaclinic.eval.calibrate`
+# (it prints the row). qwen3.5-4b: pending, its MedQA-50 U quartiles run 0.51 / 0.65 / 0.74, far above gpt-6-luna's.
+TAU_U_BY_MODEL: dict[str, TauU] = {
+    "gpt-6-luna": TauU(0.15, 0.59, "p75 of U on held-out MedQA-50 + synthetic-24 (n = 74; multiple choice p50 0.086, "
+                       "p90 0.342) and the same vignettes without options or question (k = 5; p50 0.385, p90 0.744)"),
+}
+TAU_U_MCQ, TAU_U_OPEN, _ = TAU_U_BY_MODEL[FALLBACK_MODEL]
 DEFAULT_K = 5
 _OPTION = re.compile(r"\(?([A-Z])(?:[.):\s]|$)")
 
@@ -71,6 +87,17 @@ def tau_u_for(case_or_open_ended: Case | bool, tau_u_mcq: float = TAU_U_MCQ, tau
     """The tau_u of a case's input form (or of ``open_ended``): ``tau_u_open`` without options, else ``tau_u_mcq``."""
     open_ended = case_or_open_ended.open_ended if isinstance(case_or_open_ended, Case) else case_or_open_ended
     return tau_u_open if open_ended else tau_u_mcq
+
+
+def tau_u_row(model: str | None) -> tuple[TauU, str, str | None]:
+    """``(row, source, warning)`` for the client's ``model``: its calibrated row, else ``FALLBACK_MODEL``'s with a
+    warning; a client without a model id (``FakeLLM``) gets the fallback row without one."""
+    if model in TAU_U_BY_MODEL:
+        return TAU_U_BY_MODEL[model], f"calibrated for {model}", None
+    row = TAU_U_BY_MODEL[FALLBACK_MODEL]
+    if model is None:
+        return row, f"{FALLBACK_MODEL}'s (no model id)", None
+    return row, f"uncalibrated: fallback to {FALLBACK_MODEL}'s", f"tau_u not calibrated for {model}; using {FALLBACK_MODEL}'s"
 
 
 def select_mode(c: float, u: float, tau_c: float, tau_u: float) -> Mode:

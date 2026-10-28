@@ -102,12 +102,11 @@ from dynaclinic.triage import (
 from dynaclinic.types import BlackboardEntry, Case, RunResult
 from dynaclinic.uncertainty import (
     DEFAULT_K,
-    TAU_U_MCQ,
-    TAU_U_OPEN,
     normalized_entropy,
     parse_sweep,
     select_mode,
     tau_u_for,
+    tau_u_row,
 )
 
 BLOCKED_PREFIX = "BLOCKED FOR MANUAL REVIEW"
@@ -236,18 +235,17 @@ class CaseRun:
         r.route.append(f"triage:{triage.tier}")
 
     def uncertainty(
-        self, tau_u: float | None = None, k: int = DEFAULT_K, tau_u_mcq: float = TAU_U_MCQ,
-        tau_u_open: float = TAU_U_OPEN,
+        self, tau_u: float | None = None, k: int = DEFAULT_K, tau_u_mcq: float | None = None,
+        tau_u_open: float | None = None,
     ) -> None:
         """Meta-Controller mode rule: one generalist sweep gives U (a multiple-choice case's k is its option count),
-        then ``select_mode`` with the triage C and the tau_u of the case's input form (``tau_u_mcq`` or ``tau_u_open``;
-        ``tau_u``, when set, overrides both). A failed or malformed sweep leaves U unmeasured with a warning and the
+        then ``select_mode`` with the triage C and the tau_u of the case's input form: ``tau_u`` when set, else
+        ``tau_u_mcq``/``tau_u_open`` when set, else the client model's row (``tau_u_row``; a model without one falls
+        back with a warning). A failed or malformed sweep leaves U unmeasured with a warning and the
         rule reads U = 0 (C-only routing), so a missing sweep never makes a case adversarial."""
         r = self.result
         if r.complexity is None or r.tau_c is None:
             raise ValueError("the mode rule needs the triage Complexity Score: run triage first")
-        if tau_u is None:
-            tau_u = tau_u_for(self.case, tau_u_mcq, tau_u_open)
         letters = self.case.letters()
         k = len(letters) or k
         try:
@@ -256,6 +254,16 @@ class CaseRun:
             differential, error = parse_sweep(text, letters, k)
         except LLMError as err:
             differential, error = None, f"call failed ({err})"
+        configured = tau_u_open if self.case.open_ended else tau_u_mcq
+        if tau_u is not None:
+            r.tau_u_source = "configured override"
+        elif configured is not None:
+            tau_u, r.tau_u_source = configured, "configured"
+        else:  # read after the sweep: the model that answered it, should the client have fallen back
+            row, r.tau_u_source, warning = tau_u_row(getattr(self.client, "active_model", None))
+            tau_u = tau_u_for(self.case, row.mcq, row.open)
+            if warning:
+                r.warnings.append(f"{GENERALIST}: {warning}")
         if differential is None:
             r.warnings.append(f"{GENERALIST}: {error}; U not measured, routed on C only")
         r.uncertainty = None if differential is None else normalized_entropy(list(differential.values()), k)
@@ -624,9 +632,9 @@ class DynaClinicPipeline(_Pipeline):
     ``max_rollbacks`` bounds safety-gate backtracks (regenerations); the adversarial round runs at most
     once by construction. Only gate-verified answers are cached, and a cache hit is re-gated against
     the new case so a near-duplicate with a different allergy or med list is recomputed. ``tau_semantic``
-    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``. ``tau_u_mcq`` and
-    ``tau_u_open`` (calibrated per input form, ``uncertainty``; ``tau_u`` overrides both) and ``top_k`` (open-ended
-    cases) parametrise the Uncertainty Score.
+    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``. ``tau_u`` (both input
+    forms), ``tau_u_mcq`` and ``tau_u_open`` override the client model's calibrated row (``uncertainty.tau_u_row``);
+    with ``top_k`` (open-ended cases) they parametrise the Uncertainty Score.
     """
 
     arm = "dynamic"
@@ -643,14 +651,14 @@ class DynaClinicPipeline(_Pipeline):
         max_rollbacks: int = 1,
         context_policy: str = DEFAULT_CONTEXT_POLICY,
         tau_u: float | None = None,
-        tau_u_mcq: float = TAU_U_MCQ,
-        tau_u_open: float = TAU_U_OPEN,
+        tau_u_mcq: float | None = None,
+        tau_u_open: float | None = None,
         top_k: int = DEFAULT_K,
     ) -> None:
         if pca_samples < 1 or max_rollbacks < 0:
             raise ValueError(f"need pca_samples >= 1 and max_rollbacks >= 0, got {pca_samples}, {max_rollbacks}")
-        thresholds = {"tau_u": 0.0 if tau_u is None else tau_u, "tau_u_mcq": tau_u_mcq, "tau_u_open": tau_u_open}
-        if not all(0.0 <= value <= 1.0 for value in thresholds.values()) or top_k < 2:
+        thresholds = {"tau_u": tau_u, "tau_u_mcq": tau_u_mcq, "tau_u_open": tau_u_open}
+        if not all(value is None or 0.0 <= value <= 1.0 for value in thresholds.values()) or top_k < 2:
             raise ValueError(f"need 0 <= tau_u, tau_u_mcq, tau_u_open <= 1 and top_k >= 2, got {thresholds}, {top_k}")
         super().__init__(client, context_policy=context_policy)
         self.tau = tau
