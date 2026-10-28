@@ -33,6 +33,8 @@ from tests.test_dynaclinic_metacontroller import DRUG_A, DRUG_Q, FINAL, ONE_HOT,
 from tests.test_dynaclinic_pipeline import (
     CASE,
     FOR_A,
+    OPPONENT,
+    PROPONENT_CASE,
     SCRIPT,
     UNSAFE_ANSWER,
     UNSAFE_CLAIM,
@@ -43,7 +45,7 @@ from utils.schema_exporter import build_schema_response
 
 NODE_TYPES = (
     "dc_triage", "dc_uncertainty", "dc_primary_care", "dc_care_team", "dc_divergence_gate", "dc_mesh_exchange",
-    "dc_critic", "dc_synthesizer", "dc_safety_gate",
+    "dc_proponent", "dc_critic", "dc_synthesizer", "dc_safety_gate",
 )
 CASE_JSON = json.dumps(CASE.to_dict())
 SEPSIS_TEXT = "A 70-year-old man has fever, hypotension and confusion."
@@ -158,18 +160,32 @@ def test_low_path_emits_markers_and_shares_state(harness: Build) -> None:
     assert result.final_answer == "B" and not result.blocked
 
 
-def test_high_disagreeing_team_goes_adversarial_through_critic(harness: Build) -> None:
+def test_high_disagreeing_team_goes_adversarial_through_the_debate(harness: Build) -> None:
     h = harness(triage=_triage("HIGH"), imaging=_specialist(FOR_A, UNSAFE_CLAIM))
     assert first_line_marker(h.run("dc_triage", CASE_JSON), "ROUTE") == "HIGH"
     assert h.run("dc_care_team").splitlines()[0] == "STAGE: care_team"
     assert first_line_marker(h.run("dc_divergence_gate"), "MODE") == "ADVERSARIAL"
+    assert h.run("dc_proponent") == (
+        "STAGE: proponent\nH1 (primary hypothesis; team plurality (2 of 3 specialists)): B. Oral azithromycin\n"
+        f"H2 (strongest alternative): A. Oral amoxicillin\n\n{PROPONENT_CASE}")
     critic = h.run("dc_critic")
-    assert critic.splitlines()[0] == "STAGE: critic" and UNSAFE_CLAIM in critic
-    assert h.run("dc_synthesizer").splitlines()[0] == "STAGE: synthesizer (Conflict Resolver)"
+    assert critic.startswith(f"STAGE: critic (Opponent)\nAgainst H1 (B. Oral azithromycin):\n- {OPPONENT['H1'][0]}\n"
+                             f"Against H2 (A. Oral amoxicillin):\n- {OPPONENT['H2'][0]}\nFlagged claims:\n")
+    assert UNSAFE_CLAIM in critic
+    assert h.run("dc_synthesizer").splitlines()[0] == "STAGE: synthesizer (Mediator (Conflict Resolver))"
     assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
     route = h.run_state.result.route
     assert route[2] == "care_team:imaging,pathology,pharmacology"
-    assert route[3].endswith(":switch") and route[4:] == ["critic", "synthesizer", "safety_gate:pass"]
+    assert route[3].endswith(":switch") and route[4:] == ["proponent", "critic", "synthesizer", "safety_gate:pass"]
+
+
+def test_critic_without_a_debate_keeps_its_classic_output(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"), imaging=_specialist(FOR_A, UNSAFE_CLAIM))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    h.run("dc_divergence_gate")
+    critic = h.run("dc_critic")
+    assert critic.startswith("STAGE: critic\nFlagged claims:\n") and "Against H1" not in critic
 
 
 def test_high_agreeing_team_is_collaborative(harness: Build) -> None:
@@ -266,7 +282,7 @@ def test_open_ended_team_with_fewer_than_two_assertions_goes_adversarial_and_say
 
 @pytest.mark.parametrize(
     ("pharmacology", "mode", "divergence", "synthesizer"),
-    [(PE, "COLLABORATIVE", 0.0, "Consensus Builder"), (ACS, "ADVERSARIAL", 2 / 3, "Conflict Resolver")],
+    [(PE, "COLLABORATIVE", 0.0, "Consensus Builder"), (ACS, "ADVERSARIAL", 2 / 3, "Mediator (Conflict Resolver)")],
 )
 def test_open_ended_team_switches_on_the_semantic_divergence_of_its_leading_diagnoses(
     harness: Build, pharmacology: str, mode: str, divergence: float, synthesizer: str

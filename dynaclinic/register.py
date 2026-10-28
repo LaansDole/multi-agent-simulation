@@ -13,6 +13,7 @@ from dynaclinic.devall_nodes import (
     DivergenceGateExecutor,
     MeshExchangeExecutor,
     PrimaryCareExecutor,
+    ProponentExecutor,
     SafetyGateExecutor,
     SynthesizerExecutor,
     TriageExecutor,
@@ -23,8 +24,7 @@ from runtime.node.registry import NodeCapabilities, register_node_type
 
 _LLM = NodeCapabilities(agent_like=True)
 _DETERMINISTIC = NodeCapabilities()
-# The generalist sweep calls the LLM but is no 3D character: the seven character slots are taken (Triage is the
-# Meta-Controller character) and an eighth agent-like node would push the Synthesizer out of its slot.
+# The generalist sweep calls the LLM but is no 3D character: Triage is the Meta-Controller character.
 _SWEEP = NodeCapabilities()
 # The mesh exchange is the Care Team's specialists talking to each other: their characters belong to dc_care_team,
 # and a second set (characters are keyed by node and sub-agent) would duplicate them.
@@ -48,8 +48,11 @@ NODE_TYPES = {
     "dc_mesh_exchange": (DCNodeConfig, MeshExchangeExecutor, _MESH,
                          ("DynaClinic collaborative mesh: each specialist reads every peer's round-1 entry and posts "
                           "a revised step-2 entry.")),
+    "dc_proponent": (DCNodeConfig, ProponentExecutor, _LLM,
+                     "DynaClinic adversarial Proponent: argues the primary hypothesis H1 against the alternative H2."),
     "dc_critic": (DCNodeConfig, CriticExecutor, _LLM,
-                  "DynaClinic Clinical Critic: atomic claims, hybrid rule/judge score."),
+                  ("DynaClinic Clinical Critic: atomic claims, hybrid rule/judge score; after dc_proponent also the "
+                   "Opponent.")),
     "dc_synthesizer": (DCContextConfig, SynthesizerExecutor, _LLM,
                        "DynaClinic Synthesizer: final answer from the Blackboard."),
     "dc_safety_gate": (DCSafetyGateConfig, SafetyGateExecutor, _DETERMINISTIC,

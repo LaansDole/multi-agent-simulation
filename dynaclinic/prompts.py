@@ -23,6 +23,7 @@ PHARMACOLOGY = "pharmacology"
 CRITIC = "critic"
 CRITIC_JUDGE = "critic_judge"
 SYNTHESIZER = "synthesizer"
+PROPONENT = "proponent"
 SINGLE_AGENT = "single_agent"
 GENERALIST = "generalist"
 SPECIALISTS: tuple[str, ...] = (IMAGING, PATHOLOGY, PHARMACOLOGY)
@@ -147,6 +148,27 @@ Attribute each claim to the agent that made it.
 Respond with JSON only:
 {"claims": [{"text": "<atomic claim>", "agent": "<agent name>"}]}"""
 
+# Adversarial debate (one round): the Proponent argues H1, the Critic (as Opponent) attacks H1 and H2 in its
+# decomposition call, the Synthesizer (as Mediator) adjudicates the transcript.
+_PROPONENT = """You are the Proponent in an adversarial review of a clinical case the care team could not settle.
+Argue for the primary hypothesis H1 as strongly as the evidence allows: cite the supporting findings from the case and
+the specialists' Blackboard entries; never invent findings. State what finding or result would falsify H1, and why H1
+is preferred over the strongest alternative H2. A Clinical Critic will argue against both hypotheses and a Mediator
+will decide; you do not decide.
+Reply with exactly these three headed lines:
+CASE FOR H1: <the supporting evidence>
+WOULD FALSIFY H1: <the finding or result that would refute H1>
+AGAINST H2: <why H1 is preferred over H2>"""
+OPPONENT_SYSTEM = _CRITIC + """
+You are also the Opponent (Red-Team) in a one-round debate: the Proponent argued for the primary hypothesis H1 below.
+Try to falsify both H1 and the alternative H2 with counterevidence from the patient evidence and the Blackboard:
+logical leaps, findings that contradict the hypothesis, contradicting trial evidence, and pharmacological
+contraindications for this patient. Never invent findings. Add your counterarguments to the same JSON object:
+{"claims": [...], "opponent": {"against_h1": ["<counterargument>"], "against_h2": ["<counterargument>"]}}"""
+MEDIATOR = ("As the Mediator, adjudicate this debate on the evidence: weigh the Proponent's case, the Opponent's "
+            "counterevidence and the flagged claims. Begin your reply with one line\n"
+            "SURVIVING HYPOTHESIS: <H1|H2|neither> - <why>\nthen reply in the required format.")
+
 _CRITIC_JUDGE = """You are a factuality judge. For each numbered claim, judge it against the patient evidence only.
 Labels: supported (stated or directly implied by the evidence), unsupported (a plausible inference the evidence
 does not establish), fabrication (asserts facts absent from the evidence), contradiction (conflicts with the
@@ -216,6 +238,7 @@ SYSTEM_PROMPTS: dict[str, str] = {
     CRITIC: _CRITIC,
     CRITIC_JUDGE: _CRITIC_JUDGE,
     SYNTHESIZER: _SYNTHESIZER,
+    PROPONENT: _PROPONENT,
     SINGLE_AGENT: _SINGLE_AGENT,
 }
 # Ledger/script role of a specialist answering the Primary Care hub's CONSULT question (hierarchical mode).
@@ -366,3 +389,24 @@ def mesh_block(own_input: str, own_entry: str, peer_entries: list[str]) -> str:
     peers = "\n".join(peer_entries)
     return (f"{own_input}\n\nYour round-1 entry (independent):\n{own_entry}\n\n"
             f"Your peers' round-1 entries (independent):\n{peers}")
+
+
+def proponent_block(case_text: str, board: str, h1: str, h2: str | None, basis: str) -> str:
+    """The Proponent's input: the case (as the Synthesizer sees it), the Blackboard, H1 with how it was chosen, H2."""
+    return (f"{case_text}\n\nBlackboard:\n{board}\n\nH1 (primary hypothesis; {basis}): {h1}\n"
+            f"H2 (strongest alternative): {h2 or 'none named'}")
+
+
+def debate_block(h1: str, h2: str | None, proponent: str) -> str:
+    """H1, H2 and the Proponent's case, as the Opponent and the Mediator read them."""
+    return (f"H1 (primary hypothesis): {h1}\nH2 (strongest alternative): {h2 or 'none named'}\n\n"
+            f"Proponent's case for H1:\n{proponent}")
+
+
+def mediator_block(debate: str, against: dict[str, list[str]]) -> str:
+    """The one-round transcript the Mediator adjudicates: ``debate_block``, then the Opponent's counterevidence."""
+    parts = [f"Debate transcript (one round):\n{debate}"]
+    for key in ("H1", "H2"):
+        points = "\n".join(f"- {point}" for point in against.get(key, [])) or "- none"
+        parts.append(f"Opponent's counterevidence against {key}:\n{points}")
+    return "\n\n".join(parts)

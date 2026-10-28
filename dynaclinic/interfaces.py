@@ -332,7 +332,7 @@ class GreedyPlanner:
     ) -> PlannerStep:
         """Fixed policy of design spec section 5 with the proposal's mode rule and topologies (cache -> triage ->
         uncertainty -> hierarchical: primary care | collaborative/adversarial: team -> divergence -> collaborative:
-        mesh exchange | adversarial: critic -> synthesizer -> gate)."""
+        mesh exchange | adversarial: proponent -> critic (Opponent) -> synthesizer -> gate)."""
         match last_stage:
             case "start":
                 return PlannerStep("retrieval", "cache_lookup")
@@ -347,7 +347,9 @@ class GreedyPlanner:
             case "care_team":
                 return PlannerStep("agent_call", "divergence")
             case "divergence":
-                return PlannerStep("agent_call", "critic" if mode == "adversarial" else "mesh_exchange")
+                return PlannerStep("agent_call", "proponent" if mode == "adversarial" else "mesh_exchange")
+            case "proponent":
+                return PlannerStep("agent_call", "critic")
             case "critic" | "mesh_exchange":
                 return PlannerStep("agent_call", "synthesizer")
             case "primary_care" | "synthesizer":

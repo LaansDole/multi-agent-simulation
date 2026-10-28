@@ -34,7 +34,8 @@ def dc_mode_collaborative(data: str) -> bool:
 
 
 def dc_mode_adversarial(data: str) -> bool:
-    """The care team diverges (``MODE: ADVERSARIAL``): go to the Clinical Critic."""
+    """The care team diverges, or uncertainty chose adversarial mode (``MODE: ADVERSARIAL``): go to the Proponent,
+    then the Critic (as Opponent), then the Synthesizer (as Mediator)."""
     return first_line_marker(data, "MODE") == "ADVERSARIAL"
 
 

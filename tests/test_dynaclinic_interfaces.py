@@ -233,6 +233,7 @@ def test_planner_team_paths() -> None:
         "agent_call:uncertainty",
         "agent_call:care_team",
         "agent_call:divergence",
+        "agent_call:proponent",
         "agent_call:critic",
         "agent_call:synthesizer",
         "agent_call:safety_gate",

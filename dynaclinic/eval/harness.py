@@ -47,6 +47,7 @@ from dynaclinic.prompts import (
     GENERALIST,
     IMAGING,
     MESH_ROLES,
+    PROPONENT,
     SPECIALISTS,
     TRIAGE,
 )
@@ -96,8 +97,11 @@ def dry_run_reply(role: str, system: str, user: str) -> str:
         rest = [letter for letter in letters if letter != top]
         return json.dumps({"differential": [{"hypothesis": top, "probability": 0.98}]
                            + [{"hypothesis": letter, "probability": 0.02 / len(rest)} for letter in rest]})
-    if role == CRITIC:
-        return json.dumps({"claims": [{"text": "The team's findings are consistent with the case", "agent": IMAGING}]})
+    if role == CRITIC:  # "opponent" is read only after a Proponent (dynamic arm's adversarial debate)
+        return json.dumps({"claims": [{"text": "The team's findings are consistent with the case", "agent": IMAGING}],
+                           "opponent": {"against_h1": ["dry-run counterargument"], "against_h2": ["dry-run"]}})
+    if role == PROPONENT:
+        return "CASE FOR H1: dry run.\nWOULD FALSIFY H1: dry run.\nAGAINST H2: dry run."
     if role == CRITIC_JUDGE:
         logits = {"supported": 1.0, "unsupported": 0.0, "fabrication": 0.0, "contradiction": 0.0}
         return json.dumps({"claims": [{"id": 1, "logits": logits}]})

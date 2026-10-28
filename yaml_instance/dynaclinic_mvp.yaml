@@ -13,8 +13,10 @@ graph:
     consult specialist spokes); else collaborative. Team modes run the Integrated Care Team, whose
     specialists write their independent hypotheses to a shared Blackboard. If they agree (collaborative),
     the specialists form a fully connected mesh: each reads every peer's entry and posts a revised one,
-    and the Consensus Builder integrates both rounds. If they diverge beyond tau (adversarial), the
-    Clinical Critic reviews the claims before the Synthesizer answers. Every answer passes the
+    and the Consensus Builder integrates both rounds. If they diverge beyond tau, or U entered
+    adversarial mode, a one-round debate runs: the Proponent argues the primary hypothesis H1, the
+    Clinical Critic as Opponent attacks H1 and the alternative H2 and flags unsupported claims, and
+    the Synthesizer as Mediator names the surviving hypothesis before answering. Every answer passes the
     Layer-4 safety gates before the report. Routing reads only the first-line markers ROUTE:, MODE: and GATE:
     (functions/edge/dynaclinic_conditions.py). Nodes use DYNACLINIC_MODEL and
     DYNACLINIC_FALLBACK_MODELS unless a node sets model. Research prototype on synthetic cases; not
@@ -90,18 +92,31 @@ graph:
         posts a revised step-2 entry to the Blackboard, concurrently. A failed reply leaves that
         specialist's round-1 entry standing. Not a 3D character (the specialists are the Care Team's).
       config: {}
+    - id: Proponent
+      type: dc_proponent
+      description: >-
+        Adversarial mode, before the Critic. H1 is the team's plurality hypothesis (option letter, or
+        leading diagnosis for an open-ended case); on a tie, the generalist sweep's top differential.
+        H2 is the strongest alternative: the dissenting specialist's hypothesis, else the sweep's next
+        differential. The Proponent argues H1 from the case and the Blackboard, states what would
+        falsify it and why H1 beats H2. Nothing to debate or a failed call: classic Critic review.
+      config: {}
     - id: Critic
       type: dc_critic
       description: >-
         Adversarial mode. Clinical Critic decomposes the Blackboard into atomic claims, scores them
-        with the hybrid rule/LLM-judge estimator and flags unsupported claims for the Synthesizer.
+        with the hybrid rule/LLM-judge estimator and flags unsupported claims for the Synthesizer. In
+        the same call it is the Opponent: it reads H1, H2 and the Proponent's case and lists
+        counterevidence against both (logical leaps, contradicting findings or trial evidence,
+        contraindications for this patient).
       config: {}
     - id: Synthesizer
       type: dc_synthesizer
       description: >-
         Consensus Builder in collaborative mode, integrating the round-1 and mesh step-2 entries into one
-        unified differential; Conflict Resolver (Mediator) in adversarial mode, where
-        it also weighs the Critic's flagged claims. Writes the team answer from the Blackboard, ending
+        unified differential; Mediator (Conflict Resolver) in adversarial mode, where it reads the
+        debate transcript and the Critic's flagged claims and first states SURVIVING HYPOTHESIS:
+        H1|H2|neither and why. Writes the team answer from the Blackboard, ending
         in FINAL ANSWER: <letter>, or for an open-ended case the sectioned write-up ending in
         RECOMMENDATION:. context_policy shared_core adds the full case block; strict: question,
         options and Blackboard only.
@@ -162,11 +177,13 @@ graph:
     - from: MeshExchange
       to: Synthesizer
     - from: DivergenceGate
-      to: Critic
+      to: Proponent
       condition:
         type: function
         config:
           name: dc_mode_adversarial
+    - from: Proponent
+      to: Critic
     - from: Critic
       to: Synthesizer
     - from: Synthesizer

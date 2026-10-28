@@ -174,6 +174,9 @@ class RunResult(_Serializable):
     assertions: dict[str, str] = field(default_factory=dict)
     embedder: str | None = None
     flagged_claims: list[str] = field(default_factory=list)
+    # Adversarial debate (dynamic arm): h1/h2 (option letter or leading diagnosis), basis (how H1 was chosen), the
+    # Proponent's case and the Opponent's counterarguments {"H1": [...], "H2": [...]}; empty without a debate.
+    debate: dict[str, Any] = field(default_factory=dict)
     gate_disagreement: float | None = None
     caution: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)

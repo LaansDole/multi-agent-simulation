@@ -115,6 +115,7 @@ class TestSerializeDesign:
             "CareTeam": True,
             "DivergenceGate": False,
             "MeshExchange": False,  # the Care Team's specialists talking: no second set of characters
+            "Proponent": True,
             "Critic": True,
             "Synthesizer": True,
             "SafetyGate": False,
@@ -127,8 +128,9 @@ class TestSerializeDesign:
             ("CareTeam", "imaging", 3),
             ("CareTeam", "pathology", 4),
             ("CareTeam", "pharmacology", 5),
-            ("Critic", None, 6),
-            ("Synthesizer", None, 7),
+            ("Proponent", None, 6),
+            ("Critic", None, 7),
+            ("Synthesizer", None, 8),
         ]
         assert [a["label"] for a in agents if a["node_id"] == "CareTeam"] == [
             "Diagnostic Imaging",

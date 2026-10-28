@@ -13,6 +13,7 @@ from dynaclinic.prompts import (
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
+    PROPONENT,
     SHARED_CORE,
     SINGLE_AGENT,
     SPECIALISTS,
@@ -55,7 +56,7 @@ OPEN_CASE = replace(CASE, question="", options=[], answer="")
 
 def test_every_role_has_a_system_prompt() -> None:
     assert set(SYSTEM_PROMPTS) == {
-        TRIAGE, PRIMARY_CARE, *SPECIALISTS, CRITIC, CRITIC_JUDGE, SYNTHESIZER, SINGLE_AGENT
+        TRIAGE, PRIMARY_CARE, *SPECIALISTS, PROPONENT, CRITIC, CRITIC_JUDGE, SYNTHESIZER, SINGLE_AGENT
     }
     assert SPECIALISTS == (IMAGING, PATHOLOGY, PHARMACOLOGY)
 

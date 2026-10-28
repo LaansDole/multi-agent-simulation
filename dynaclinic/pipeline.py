@@ -9,8 +9,8 @@ or regeneration failure) go to ``warnings`` and the run continues.
 Route entries are stable identifiers: ``ingest``, ``cache_lookup:off|miss|rejected``, ``cache_hit``,
 ``triage:<TIER>``, ``uncertainty:<U>|n/a``, ``mode:hierarchical|collaborative|adversarial:uncertainty``,
 ``primary_care``, ``hub_consult:<roles>``, ``care_team:<roles>``, ``care_team:failed``,
-``divergence:<d>:switch|stay``, ``mesh_exchange:<roles>|none|skipped``, ``critic``, ``synthesizer``, ``regenerate``,
-``safety_gate:pass|blocked``, ``single_agent``. In the dynamic arm every
+``divergence:<d>:switch|stay``, ``mesh_exchange:<roles>|none|skipped``, ``proponent``, ``critic``, ``synthesizer``,
+``regenerate``, ``safety_gate:pass|blocked``, ``single_agent``. In the dynamic arm every
 stage is chosen by the planner and followed by ``planner:<action>:<reward>``; the run ends with
 ``planner:terminal``.
 
@@ -18,6 +18,7 @@ Stubs: ``GreedyPlanner`` stands in for the L2 MCTS control plane (fixed policy, 
 ingestion and the semantic cache are the in-memory stubs from ``interfaces``.
 """
 
+import re
 import time
 from collections import Counter
 from collections.abc import Callable, Sequence
@@ -57,23 +58,29 @@ from dynaclinic.prompts import (
     DEFAULT_CONTEXT_POLICY,
     GENERALIST,
     IMAGING,
+    MEDIATOR,
     MESH_ROLES,
     MESH_SYNTHESIS,
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
+    PROPONENT,
     SINGLE_AGENT,
     SPECIALISTS,
     STRICT,
     SYNTHESIZER,
+    SYSTEM_PROMPTS,
     answer_system,
     case_block,
     check_context_policy,
     consult_block,
+    debate_block,
     hub_system,
+    mediator_block,
     mesh_block,
     mesh_system,
     modality_data,
+    proponent_block,
     question_block,
     specialist_block,
     specialist_system,
@@ -131,6 +138,35 @@ def _leading_diagnosis(role: str, text: str) -> tuple[str, str | None]:
     if legacy is not None:
         return legacy, f"{role}: no {LEADING_DIAGNOSIS} line; read its {PRIMARY_ASSERTION} line as the diagnosis"
     return ABSTAIN, f"{role}: no {LEADING_DIAGNOSIS} line; counted as abstaining"
+
+
+def _fold(text: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def select_hypotheses(votes: Sequence[str], differential: Sequence[str]) -> tuple[str | None, str | None, str]:
+    """``(H1, H2, basis)`` of the adversarial debate. ``votes``: the non-abstaining specialists' hypotheses (option
+    letter, or leading diagnosis) in role order; ``differential``: the generalist sweep's, most probable first.
+
+    H1 is the team's plurality hypothesis; on a tie or without votes, the sweep's top differential; without a sweep,
+    the first specialist's. H2, the strongest alternative, is the next most voted team hypothesis (a dissenter's),
+    else the sweep's first other differential. ``(None, None, basis)`` when there is nothing to debate.
+    """
+    # ponytail: votes match after case/punctuation folding only; cluster by embedding if paraphrases split the vote.
+    shown: dict[str, str] = {}
+    for vote in votes:
+        shown.setdefault(_fold(vote), vote)
+    ranked = Counter(_fold(vote) for vote in votes).most_common()  # ties keep role order
+    if ranked and (len(ranked) == 1 or ranked[0][1] > ranked[1][1]):
+        h1, basis = shown[ranked[0][0]], f"team plurality ({ranked[0][1]} of {len(votes)} specialists)"
+    elif differential:
+        h1, basis = differential[0], "the generalist sweep's top differential (no team plurality)"
+    elif ranked:
+        h1, basis = shown[ranked[0][0]], "the first specialist's hypothesis (no team plurality, no sweep differential)"
+    else:
+        return None, None, "no specialist hypothesis and no sweep differential"
+    h2 = next((h for h in [*(shown[key] for key, _ in ranked), *differential] if _fold(h) != _fold(h1)), None)
+    return h1, h2, basis
 
 
 def _set_answer(result: RunResult, text: str, letters: list[str], role: str) -> None:
@@ -417,32 +453,76 @@ class CaseRun:
                 posted.append(role)
         r.route.append(f"mesh_exchange:{','.join(posted) or 'none'}")
 
-    def critic(self) -> None:
-        self.result.route.append("critic")
-        try:
-            report = ClinicalCritic(self.client).review(self.case, self.board, self.result.conflict_set)
-        except LLMError as err:
-            self.result.warnings.append(f"critic: call failed ({err}); resolving without flagged claims")
+    def hypothesis_label(self, hypothesis: str | None) -> str | None:
+        """An option letter with its text (``"B. Oral azithromycin"``); a diagnosis as is."""
+        text = {option.letter: option.text for option in self.case.options}.get(hypothesis or "")
+        return f"{hypothesis}. {text}" if text else hypothesis
+
+    def _case_view(self) -> str:
+        """The case as the Synthesizer and the Proponent see it under the context policy."""
+        return question_block(self.case) if self.context_policy == STRICT else case_block(self.case, self.sections)
+
+    def _debate(self) -> str:
+        d = self.result.debate
+        return debate_block(self.hypothesis_label(d["h1"]), self.hypothesis_label(d["h2"]), d["proponent"])
+
+    def proponent(self) -> None:
+        """Adversarial mode (entered by conflict or by uncertainty), before the Critic: choose H1/H2
+        (``select_hypotheses`` over the team's round-1 answers and the sweep's differential) and have the Proponent
+        argue H1 from the case and the Blackboard. The Critic then argues as the Opponent and the Synthesizer mediates.
+        Nothing to debate, or a failed call: no debate, the classic critic review (warning)."""
+        r = self.result
+        r.route.append("proponent")
+        votes = ([text for text in r.assertions.values() if text != ABSTAIN] if self.case.open_ended
+                 else [letter for agent, letter in r.top1.items() if agent not in self.abstainers])
+        h1, h2, basis = select_hypotheses(votes, list(r.differential))
+        if h1 is None:
+            r.warnings.append(f"proponent: {basis}; the critic reviews the claims without a debate")
             return
-        self.result.warnings.extend(f"critic: {error}" for error in report.errors)
-        self.result.flagged_claims = [f"[{c.label}] {c.agent}: {c.text}" for c in report.flagged]
+        user = proponent_block(self._case_view(), self.board.snapshot(), self.hypothesis_label(h1),
+                               self.hypothesis_label(h2), basis)
+        try:
+            text, _ = self.client.complete(PROPONENT, SYSTEM_PROMPTS[PROPONENT], user)
+        except LLMError as err:
+            r.warnings.append(f"proponent: call failed ({err}); the critic reviews the claims without a debate")
+            return
+        r.debate = {"h1": h1, "h2": h2, "basis": basis, "proponent": text.strip()}
+
+    def critic(self) -> None:
+        """Clinical Critic; after the Proponent it is also the Opponent (``ClinicalCritic.review`` with the debate)."""
+        r = self.result
+        r.route.append("critic")
+        try:
+            report = ClinicalCritic(self.client).review(self.case, self.board, r.conflict_set,
+                                                        self._debate() if r.debate else None)
+        except LLMError as err:
+            r.warnings.append(f"critic: call failed ({err}); resolving without flagged claims")
+            return
+        r.warnings.extend(f"critic: {error}" for error in report.errors)
+        r.flagged_claims = [f"[{c.label}] {c.agent}: {c.text}" for c in report.flagged]
+        if r.debate:
+            r.debate["opponent"] = report.opponent
         if report.claims:
             self.conf *= 1 - len(report.flagged) / len(report.claims)
 
     def synthesize(self) -> None:
-        """Synthesizer call; after a blocked gate it is the regeneration, with the violations listed."""
+        """Synthesizer call; after a blocked gate it is the regeneration, with the violations listed. After a debate
+        it is the Mediator: it reads the transcript and names the surviving hypothesis before answering."""
         r = self.result
         regenerate = self.safety is not None and self.safety.blocked
         r.route.append("regenerate" if regenerate else "synthesizer")
-        case = question_block(self.case) if self.context_policy == STRICT else case_block(self.case, self.sections)
-        parts = [case, f"Blackboard:\n{self.board.snapshot()}"]
+        parts = [self._case_view(), f"Blackboard:\n{self.board.snapshot()}"]
         if any(entry.step == 2 for entry in self.board.entries(kind="hypothesis")):
             parts.append(MESH_SYNTHESIS)
         if r.mode == "adversarial":
             parts.append("Adversarial review: test each specialist's leading diagnosis against the case evidence."
                          if self.case.open_ended else f"Conflict set: {', '.join(r.conflict_set) or 'none'}")
+            if r.debate:
+                parts.append(mediator_block(self._debate(), r.debate.get("opponent", {})))
             if r.flagged_claims:
                 parts.append("Flagged claims (do not rely on these):\n" + "\n".join(f"- {c}" for c in r.flagged_claims))
+            if r.debate:
+                parts.append(MEDIATOR)
         if regenerate:
             violations = "\n".join(f"- {g.name}: {v}" for g in self.safety.gates for v in g.violations)
             parts.append(f"Your previous write-up failed the safety gate:\n{violations}\nRevise it without these violations."
@@ -573,6 +653,7 @@ class DynaClinicPipeline(_Pipeline):
             "care_team": lambda: run.care_team(run.team_roles()),
             "divergence": lambda: run.divergence(self.tau, self.tau_semantic),
             "mesh_exchange": run.mesh_exchange,
+            "proponent": run.proponent,
             "critic": run.critic,
             "synthesizer": run.synthesize,
             "safety_gate": run.gate,

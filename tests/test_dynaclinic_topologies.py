@@ -1,15 +1,25 @@
-"""Team topologies per the reviewed proposal: the collaborative mesh exchange (FakeLLM only, no network)."""
+"""Team topologies per the reviewed proposal (FakeLLM only, no network): the collaborative mesh exchange, and the
+adversarial Proponent / Opponent (Clinical Critic) / Mediator (Conflict Resolver) debate."""
 
 import json
 
-from dynaclinic.pipeline import DynaClinicPipeline
+import pytest
+
+from dynaclinic.pipeline import (
+    DynaClinicPipeline,
+    StaticTeamPipeline,
+    select_hypotheses,
+)
 from dynaclinic.prompts import (
+    CRITIC,
     IMAGING,
     MESH_ROLES,
     PATHOLOGY,
     PHARMACOLOGY,
+    PROPONENT,
     SPECIALISTS,
     SYNTHESIZER,
+    SYSTEM_PROMPTS,
 )
 from dynaclinic.types import RunResult
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
@@ -18,9 +28,12 @@ from tests.test_dynaclinic_pipeline import (
     FOR_A,
     FOR_B,
     OPEN_CASE,
+    OPPONENT,
+    PROPONENT_CASE,
     WRITE_UP,
     _asserting,
     _client,
+    _failing,
     _prompts,
     _specialist,
     _stages,
@@ -103,3 +116,86 @@ def test_open_ended_mesh_posts_revised_leading_diagnoses() -> None:
     [system] = [s for r, s, _ in client.prompts if r == MESH_ROLES[IMAGING]]
     assert "LEADING DIAGNOSIS:" in system and '"distribution"' not in system
     assert "  leading diagnosis: COVID-19 pneumonia" in _prompts(client, SYNTHESIZER)[0]
+
+
+@pytest.mark.parametrize(
+    ("votes", "differential", "h1", "h2", "basis"),
+    [
+        (["B", "B", "A"], ["C", "B"], "B", "A", "team plurality (2 of 3 specialists)"),  # H2: the dissenter
+        (["B", "B", "B"], ["B", "C"], "B", "C", "team plurality (3 of 3 specialists)"),  # H2: next differential
+        (["A", "B"], ["C", "A"], "C", "A", "the generalist sweep's top differential (no team plurality)"),
+        (["A", "B"], ["B", "A"], "B", "A", "the generalist sweep's top differential (no team plurality)"),
+        (["A", "B"], [], "A", "B", "the first specialist's hypothesis (no team plurality, no sweep differential)"),
+        ([], ["X", "Y"], "X", "Y", "the generalist sweep's top differential (no team plurality)"),
+        # open-ended: diagnoses vote after case/punctuation folding
+        (["Pulmonary embolism", "pulmonary embolism.", "Acute coronary syndrome"], [], "Pulmonary embolism",
+         "Acute coronary syndrome", "team plurality (2 of 3 specialists)"),
+    ],
+)
+def test_h1_is_the_team_plurality_else_the_sweep_top_and_h2_the_strongest_alternative(
+    votes: list[str], differential: list[str], h1: str, h2: str, basis: str
+) -> None:
+    assert select_hypotheses(votes, differential) == (h1, h2, basis)
+
+
+def test_no_hypothesis_at_all_selects_nothing() -> None:
+    assert select_hypotheses([], [])[:2] == (None, None)
+
+
+def _adversarial(**replies: str) -> tuple[RunResult, object]:
+    """HIGH case, imaging dissents (A) from pathology and pharmacology (B): adversarial by conflict."""
+    client = _client(triage=_triage("HIGH"), imaging=_specialist(FOR_A, "Amoxicillin is first-line"), **replies)
+    return DynaClinicPipeline(client).run(CASE), client
+
+
+def test_adversarial_debate_runs_proponent_then_opponent_then_mediator() -> None:
+    result, client = _adversarial(synthesizer="SURVIVING HYPOTHESIS: H1 - no penicillin exposure.\nFINAL ANSWER: B")
+    stages = _stages(result)
+    assert stages[-5].endswith(":switch") and stages[-4:] == ["proponent", "critic", "synthesizer", "safety_gate:pass"]
+    [proponent] = _prompts(client, PROPONENT)
+    assert "H1 (primary hypothesis; team plurality (2 of 3 specialists)): B. Oral azithromycin" in proponent
+    assert "H2 (strongest alternative): A. Oral amoxicillin" in proponent
+    assert "Amoxicillin is first-line" in proponent and CASE.vignette in proponent  # Blackboard + case (shared_core)
+    [(system, opponent)] = [(s, u) for r, s, u in client.prompts if r == CRITIC]
+    assert system.startswith(SYSTEM_PROMPTS[CRITIC]) and "Opponent" in system and '"against_h1"' in system
+    assert "H1 (primary hypothesis): B. Oral azithromycin" in opponent and "H2 (strongest alternative): A." in opponent
+    assert PROPONENT_CASE in opponent
+    assert result.debate == {"h1": "B", "h2": "A", "basis": "team plurality (2 of 3 specialists)",
+                             "proponent": PROPONENT_CASE, "opponent": OPPONENT}
+    assert result.final_answer == "B"  # the SURVIVING HYPOTHESIS line leaves FINAL ANSWER parsing alone
+
+
+def test_mediator_reads_the_whole_debate_transcript_and_names_the_surviving_hypothesis() -> None:
+    _, client = _adversarial()
+    [user] = _prompts(client, SYNTHESIZER)
+    assert PROPONENT_CASE in user
+    assert all(point in user for points in OPPONENT.values() for point in points)
+    assert "Flagged claims (do not rely on these):" in user
+    assert "SURVIVING HYPOTHESIS: <H1|H2|neither>" in user
+    assert user.index(PROPONENT_CASE) < user.index(OPPONENT["H1"][0]) < user.index("SURVIVING HYPOTHESIS")
+
+
+def test_open_ended_debate_argues_the_leading_diagnoses() -> None:
+    diagnoses = {IMAGING: "Pulmonary embolism", PATHOLOGY: "Pulmonary embolism.", PHARMACOLOGY: "Acute coronary syndrome"}
+    client = _client(triage=_triage("HIGH"), synthesizer=WRITE_UP,
+                     **{role: _asserting(text) for role, text in diagnoses.items()})
+    result = DynaClinicPipeline(client, tau_semantic=0.0).run(OPEN_CASE)
+    assert (result.mode, result.debate["h1"], result.debate["h2"]) == (
+        "adversarial", "Pulmonary embolism", "Acute coronary syndrome")
+    assert "H1 (primary hypothesis; team plurality (2 of 3 specialists)): Pulmonary embolism" in _prompts(
+        client, PROPONENT)[0]
+
+
+def test_a_failed_proponent_leaves_the_classic_critic_review() -> None:
+    client = _failing(PROPONENT, triage=_triage("HIGH"), imaging=_specialist(FOR_A))
+    result = DynaClinicPipeline(client).run(CASE)
+    assert [s for r, s, _ in client.prompts if r == CRITIC] == [SYSTEM_PROMPTS[CRITIC]]
+    assert result.debate == {} and any(w.startswith("proponent: call failed") for w in result.warnings)
+    assert "SURVIVING HYPOTHESIS" not in _prompts(client, SYNTHESIZER)[0]
+
+
+def test_static_team_never_debates() -> None:
+    client = _client(imaging=_specialist(FOR_A))
+    result = StaticTeamPipeline(client).run(CASE)
+    assert PROPONENT not in {r for r, _, _ in client.prompts} and result.debate == {}
+    assert [s for r, s, _ in client.prompts if r == CRITIC] == [SYSTEM_PROMPTS[CRITIC]]

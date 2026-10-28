@@ -527,18 +527,41 @@ class MeshExchangeExecutor(_StageExecutor):
         return "STAGE: mesh_exchange\n" + ("\n".join(lines) or "- no step-2 entry")
 
 
+class ProponentExecutor(_StageExecutor):
+    """dc_proponent: adversarial mode, before the Critic; names H1 (with how it was chosen) and H2, then the
+    Proponent's case for H1. Nothing to debate or a failed call: ``No debate`` (warning) and a classic critic review.
+    Uses the context policy of dc_care_team."""
+
+    def stage(self, run: CaseRun, config: DCNodeConfig) -> str:
+        run.proponent()
+        d = run.result.debate
+        if not d:
+            return "STAGE: proponent\nNo debate; the Critic reviews the claims only."
+        return (f"STAGE: proponent\nH1 (primary hypothesis; {d['basis']}): {run.hypothesis_label(d['h1'])}\n"
+                f"H2 (strongest alternative): {run.hypothesis_label(d['h2']) or 'none named'}\n\n{d['proponent']}")
+
+
 class CriticExecutor(_StageExecutor):
-    """dc_critic: Clinical Critic flags unsupported claims for the synthesizer."""
+    """dc_critic: Clinical Critic flags unsupported claims for the synthesizer; after dc_proponent it is also the
+    Opponent and lists its counterarguments against H1 and H2."""
 
     def stage(self, run: CaseRun, config: DCNodeConfig) -> str:
         run.critic()
-        flagged = "\n".join(f"- {claim}" for claim in run.result.flagged_claims) or "- none"
-        return f"STAGE: critic\nFlagged claims:\n{flagged}"
+        r = run.result
+        flagged = "\n".join(f"- {claim}" for claim in r.flagged_claims) or "- none"
+        if not r.debate:
+            return f"STAGE: critic\nFlagged claims:\n{flagged}"
+        against = "".join(
+            f"Against {key} ({run.hypothesis_label(r.debate[key.lower()]) or 'none named'}):\n"
+            + ("\n".join(f"- {point}" for point in r.debate.get("opponent", {}).get(key, [])) or "- none") + "\n"
+            for key in ("H1", "H2"))
+        return f"STAGE: critic (Opponent)\n{against}Flagged claims:\n{flagged}"
 
 
 class SynthesizerExecutor(_StageExecutor):
     """dc_synthesizer: final answer from the Blackboard, as the Consensus Builder in collaborative mode or
-    the Conflict Resolver (Mediator) weighing the critic's flagged claims in adversarial mode.
+    the Mediator (Conflict Resolver) in adversarial mode, weighing the critic's flagged claims and, after a debate,
+    naming the surviving hypothesis.
 
     Its ``context_policy`` also applies to dc_safety_gate regenerations, which re-run this stage.
     """
@@ -548,7 +571,7 @@ class SynthesizerExecutor(_StageExecutor):
     def stage(self, run: CaseRun, config: DCContextConfig) -> str:
         run.context_policy = config.context_policy
         run.synthesize()
-        role = "Conflict Resolver" if run.result.mode == "adversarial" else "Consensus Builder"
+        role = "Mediator (Conflict Resolver)" if run.result.mode == "adversarial" else "Consensus Builder"
         return f"STAGE: synthesizer ({role})\n{run.result.final_text}"
 
 

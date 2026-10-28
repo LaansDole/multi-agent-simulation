@@ -26,6 +26,7 @@ from dynaclinic.prompts import (
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
+    PROPONENT,
     SHARED_CORE,
     SINGLE_AGENT,
     STRICT,
@@ -58,6 +59,9 @@ FOR_A = {"A": 0.9, "B": 0.05, "C": 0.05}
 UNSAFE_CLAIM = "Oral amoxicillin is first-line therapy"
 SAFE_ANSWER = "Azithromycin avoids penicillin exposure.\nFINAL ANSWER: B"
 UNSAFE_ANSWER = "The first option is standard therapy.\nFINAL ANSWER: A"
+PROPONENT_CASE = ("CASE FOR H1: positive antigen test with penicillin anaphylaxis.\n"
+                  "WOULD FALSIFY H1: a macrolide allergy.\nAGAINST H2: amoxicillin risks anaphylaxis.")
+OPPONENT = {"H1": ["Macrolide resistance is common in streptococci."], "H2": ["Penicillin anaphylaxis history."]}
 
 
 def _triage(tier: str) -> str:
@@ -76,7 +80,9 @@ SCRIPT = {
     PATHOLOGY: _specialist(FOR_B),
     PHARMACOLOGY: _specialist(FOR_B),
     CRITIC: json.dumps({"claims": [{"text": UNSAFE_CLAIM, "agent": IMAGING},
-                                   {"text": "The rapid streptococcal antigen test is positive", "agent": PATHOLOGY}]}),
+                                   {"text": "The rapid streptococcal antigen test is positive", "agent": PATHOLOGY}],
+                        "opponent": {"against_h1": OPPONENT["H1"], "against_h2": OPPONENT["H2"]}}),
+    PROPONENT: PROPONENT_CASE,
     CRITIC_JUDGE: json.dumps({"claims": [{"id": i, "logits": {"supported": 2.0, "unsupported": 0.0,
                                                               "fabrication": 0.0, "contradiction": 0.0}}
                                          for i in (1, 2)]}),
@@ -154,12 +160,12 @@ def test_high_disagreeing_team_switches_to_adversarial_critic() -> None:
     client = _client(triage=_triage("HIGH"), imaging=_specialist(FOR_A, UNSAFE_CLAIM))
     result = DynaClinicPipeline(client).run(CASE)
     assert _roles(result) == Counter(
-        {TRIAGE: 1, GENERALIST: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1, CRITIC: 1, CRITIC_JUDGE: 1,
+        {TRIAGE: 1, GENERALIST: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1, PROPONENT: 1, CRITIC: 1, CRITIC_JUDGE: 1,
          SYNTHESIZER: 1}
     )
     stages = _stages(result)
     assert stages[6].startswith("divergence:") and stages[6].endswith(":switch")
-    assert stages[7:] == ["critic", "synthesizer", "safety_gate:pass"]
+    assert stages[7:] == ["proponent", "critic", "synthesizer", "safety_gate:pass"]
     assert result.mode == "adversarial" and result.switch is True and result.disagreement is True
     assert result.top1 == {IMAGING: "A", PATHOLOGY: "B", PHARMACOLOGY: "B"}
     assert result.conflict_set == ["A", "B"]
@@ -333,7 +339,7 @@ RECOMMENDATIONS = {IMAGING: "Obtain CT pulmonary angiography.",
     ("pharmacology", "stages"),
     [
         ("Pulmonary embolism", ["divergence:0.00:stay", "mesh_exchange:imaging,pathology,pharmacology", "synthesizer"]),
-        ("Acute coronary syndrome", ["divergence:0.67:switch", "critic", "synthesizer"]),
+        ("Acute coronary syndrome", ["divergence:0.67:switch", "proponent", "critic", "synthesizer"]),
     ],
 )
 def test_open_ended_divergence_embeds_the_leading_diagnoses_never_the_recommendations(
@@ -370,9 +376,11 @@ def test_open_ended_specialist_without_a_leading_diagnosis_falls_back_to_its_pri
     [
         ("Septic shock from pneumonia.", 0.5, ["divergence:0.00:stay", "mesh_exchange:imaging,pathology,pharmacology",
                                                "synthesizer", "safety_gate:pass"]),
-        ("Pulmonary embolism.", 0.5, ["divergence:0.67:switch", "critic", "synthesizer", "safety_gate:pass"]),
+        ("Pulmonary embolism.", 0.5, ["divergence:0.67:switch", "proponent", "critic", "synthesizer",
+                                      "safety_gate:pass"]),
         # divergence == tau_semantic switches (safety-biased boundary)
-        ("Septic shock from pneumonia.", 0.0, ["divergence:0.00:switch", "critic", "synthesizer", "safety_gate:pass"]),
+        ("Septic shock from pneumonia.", 0.0, ["divergence:0.00:switch", "proponent", "critic", "synthesizer",
+                                               "safety_gate:pass"]),
     ],
 )
 def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(

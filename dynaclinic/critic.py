@@ -2,6 +2,9 @@
 
 1. Decomposition (role ``critic``): Blackboard + Conflict Set -> ``{"claims": [{"text", "agent"}]}``.
    A malformed or empty reply falls back to the claims the specialists posted on the Blackboard (recorded).
+   In the dynamic arm's adversarial debate the same call is the Opponent's: it also reads the patient evidence, H1, H2
+   and the Proponent's case and adds ``"opponent": {"against_h1": [...], "against_h2": [...]}`` (``CriticReport
+   .opponent``); the claim scoring below is unchanged.
 2. Rule score ``r`` in [0, 1]: 0 if the claim asserts a drug the KB marks ``contraindicated`` for this patient
    (``kb.patient_conflicts``: allergy class, interaction with current meds, condition contraindication);
    otherwise grounding ``|T(claim) & T(evidence)| / |T(claim)|`` over lower-case content tokens (stop-words and
@@ -40,6 +43,7 @@ from dynaclinic.parsing import extract_json
 from dynaclinic.prompts import (
     CRITIC,
     CRITIC_JUDGE,
+    OPPONENT_SYSTEM,
     SYSTEM_PROMPTS,
     case_block,
     question_block,
@@ -72,6 +76,8 @@ class CriticReport:
     lambda_: float
     calls: list[CallRecord] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # The Opponent's counterarguments, {"H1": [...], "H2": [...]}; empty outside a debate.
+    opponent: dict[str, list[str]] = field(default_factory=dict)
 
 
 def _content_tokens(text: str) -> set[str]:
@@ -156,6 +162,17 @@ def _parse_claims(text: str) -> list[tuple[str, str]]:
     return claims
 
 
+def _parse_opponent(text: str) -> dict[str, list[str]]:
+    """``{"H1": [...], "H2": [...]}`` from the reply's ``"opponent"`` object; non-string or empty items dropped."""
+    block = (extract_json(text) or {}).get("opponent")
+    block = block if isinstance(block, dict) else {}
+    against = {}
+    for key in ("H1", "H2"):
+        items = block.get(f"against_{key.lower()}")
+        against[key] = [i.strip() for i in items if isinstance(i, str) and i.strip()] if isinstance(items, list) else []
+    return against
+
+
 class ClinicalCritic:
     """Adversarial-mode critic: decompose the Blackboard into claims, score them, flag the unreliable ones."""
 
@@ -175,8 +192,11 @@ class ClinicalCritic:
         self.v0 = v0
         self.flag_threshold = flag_threshold
 
-    def review(self, case: Case, blackboard: Blackboard, conflict_set: Iterable[str]) -> CriticReport:
-        """Run decomposition + judge calls and return scored, flagged claims (see module docstring)."""
+    def review(
+        self, case: Case, blackboard: Blackboard, conflict_set: Iterable[str], debate: str | None = None
+    ) -> CriticReport:
+        """Run decomposition + judge calls and return scored, flagged claims (see module docstring). ``debate``
+        (``prompts.debate_block``: H1, H2, the Proponent's case) makes the decomposition call the Opponent's too."""
         calls: list[CallRecord] = []
         errors: list[str] = []
         conflicts = ", ".join(conflict_set) or "none"
@@ -184,8 +204,14 @@ class ClinicalCritic:
             f"{question_block(case)}\n\n"
             f"Conflict set: {conflicts}\n\nBlackboard:\n{blackboard.snapshot()}"
         )
-        text, record = self.client.complete(CRITIC, SYSTEM_PROMPTS[CRITIC], user, json_mode=True)
+        system = SYSTEM_PROMPTS[CRITIC]
+        if debate:
+            system, user = OPPONENT_SYSTEM, f"{user}\n\nPatient evidence:\n{_evidence(case)}\n\n{debate}"
+        text, record = self.client.complete(CRITIC, system, user, json_mode=True)
         calls.append(record)
+        opponent = _parse_opponent(text) if debate else {}
+        if debate and not any(opponent.values()):
+            errors.append("the Opponent gave no counterargument against H1 or H2")
         pairs = _parse_claims(text)
         if not pairs:
             pairs = [(entry.agent, claim) for entry in blackboard.entries() for claim in entry.claims]
@@ -194,7 +220,7 @@ class ClinicalCritic:
         rules = [rule_score(claim, case) for _, claim in pairs]
         lambda_ = adaptive_lambda(rules, self.k, self.v0)
         if not pairs:
-            return CriticReport([], [], lambda_, calls, errors)
+            return CriticReport([], [], lambda_, calls, errors, opponent)
 
         numbered = "\n".join(f"{i}. {claim}" for i, (_, claim) in enumerate(pairs, 1))
         user = f"{case_block(case, sections_from_structured(case.structured))}\n\nClaims:\n{numbered}"
@@ -219,4 +245,4 @@ class ClinicalCritic:
             else:
                 label = "unsupported"
             claims.append(Claim(claim, agent, rule, probs, hybrid, label))
-        return CriticReport(claims, [c for c in claims if c.label != "supported"], lambda_, calls, errors)
+        return CriticReport(claims, [c for c in claims if c.label != "supported"], lambda_, calls, errors, opponent)
