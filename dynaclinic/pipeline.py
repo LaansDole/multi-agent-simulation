@@ -183,6 +183,21 @@ def _set_answer(result: RunResult, text: str, letters: list[str], role: str) -> 
         result.warnings.append(f"{role}: no valid FINAL ANSWER in reply")
 
 
+def generalist_sweep(
+    client: LLMClient, case: Case, sections: dict[str, str], k: int = DEFAULT_K
+) -> tuple[int, dict[str, float] | None, float | None, str | None]:
+    """The Meta-Controller's baseline generalist sweep: ``(k, differential, U, error)``; a multiple-choice case's k
+    is its option count. A failed call or malformed reply gives ``differential`` and U None and the reason."""
+    letters = case.letters()
+    k = len(letters) or k
+    try:
+        text, _ = client.complete(GENERALIST, sweep_system(case, k), case_block(case, sections), json_mode=True)
+        differential, error = parse_sweep(text, letters, k)
+    except LLMError as err:
+        differential, error = None, f"call failed ({err})"
+    return k, differential, None if differential is None else normalized_entropy(list(differential.values()), k), error
+
+
 class CaseRun:
     """One case's state and every stage, shared by the pipelines and the DevAll nodes (``devall_nodes``).
 
@@ -246,14 +261,7 @@ class CaseRun:
         r = self.result
         if r.complexity is None or r.tau_c is None:
             raise ValueError("the mode rule needs the triage Complexity Score: run triage first")
-        letters = self.case.letters()
-        k = len(letters) or k
-        try:
-            text, _ = self.client.complete(GENERALIST, sweep_system(self.case, k), case_block(self.case, self.sections),
-                                           json_mode=True)
-            differential, error = parse_sweep(text, letters, k)
-        except LLMError as err:
-            differential, error = None, f"call failed ({err})"
+        k, differential, r.uncertainty, error = generalist_sweep(self.client, self.case, self.sections, k)
         configured = tau_u_open if self.case.open_ended else tau_u_mcq
         if tau_u is not None:
             r.tau_u_source = "configured override"
@@ -266,7 +274,6 @@ class CaseRun:
                 r.warnings.append(f"{GENERALIST}: {warning}")
         if differential is None:
             r.warnings.append(f"{GENERALIST}: {error}; U not measured, routed on C only")
-        r.uncertainty = None if differential is None else normalized_entropy(list(differential.values()), k)
         r.differential, r.tau_u, r.top_k = differential or {}, tau_u, k
         r.mode = select_mode(r.complexity, r.uncertainty or 0.0, r.tau_c, tau_u)
         self.by_uncertainty = r.mode == "adversarial"

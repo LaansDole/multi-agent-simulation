@@ -60,8 +60,13 @@ def test_accepted_temperature_is_unchanged(protocol):
     assert create.call_args.kwargs["temperature"] == 0.7
 
 
-def test_other_bad_requests_are_not_retried():
-    create = Mock(side_effect=_bad_request("This model's maximum context length is 8192 tokens"))
+@pytest.mark.parametrize(
+    "message",
+    ["This model's maximum context length is 8192 tokens", "Invalid 'temperature': decimal above maximum value 2"],
+    ids=["context-length", "temperature-out-of-range"],
+)
+def test_other_bad_requests_are_not_retried(message):
+    create = Mock(side_effect=_bad_request(message))
 
     with pytest.raises(openai.BadRequestError):
         _provider("temp-other-400", "chat").call_model(_client(create), [], [])
