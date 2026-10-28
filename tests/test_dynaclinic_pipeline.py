@@ -351,7 +351,9 @@ def test_open_ended_divergence_embeds_the_leading_diagnoses_never_the_recommenda
               **{role: _asserting(diagnoses[role], RECOMMENDATIONS[role]) for role in diagnoses}}
     client = FakeLLM({**script, **{MESH_ROLES[role]: script[role] for role in diagnoses}}, _one_hot(embedded))
     result = DynaClinicPipeline(client, tau_semantic=0.5).run(OPEN_CASE)
-    assert embedded == list(diagnoses.values())
+    # after a switch the Proponent embeds each distinct wording once more, with the sweep's differential ("B")
+    grouped = [*dict.fromkeys(diagnoses.values()), "B"] if "proponent" in stages else []
+    assert embedded == [*diagnoses.values(), *grouped]
     assert (_stages(result)[6:], result.assertions, result.warnings) == ([*stages, "safety_gate:pass"], diagnoses, [])
     blackboard = _prompts(client, SYNTHESIZER)[0]
     assert [f"domain recommendation: {text}" in blackboard for text in RECOMMENDATIONS.values()] == [True] * 3
@@ -423,6 +425,23 @@ def test_strict_policy_prompts_are_byte_identical_to_the_pre_policy_pipeline(pip
     pipeline_cls(client, context_policy=STRICT).run(PROMPTS_CASE)
     prompts = sorted(prompt for prompt in client.prompts if prompt[0] != GENERALIST)
     assert hashlib.sha256(json.dumps(prompts).encode()).hexdigest() == STRICT_TRANSCRIPTS[pipeline_cls]
+
+
+# sha256 of the sorted prompts of the static and single arms on an open-ended case whose specialists disagree,
+# captured at b04187c before H1/H2 were grouped by meaning: neither arm runs the Proponent, so neither may change.
+OPEN_TRANSCRIPTS = {
+    StaticTeamPipeline: "bad02526b3b89649916c8064347379ab29435df7a88059e79c2da7cded78511d",
+    SingleAgentPipeline: "f79106a493e46e95e2a2266ab5d1ce57b98743919e9da2a19cc7640cadd022ce",
+}
+
+
+@pytest.mark.parametrize("pipeline_cls", list(OPEN_TRANSCRIPTS))
+def test_static_and_single_open_ended_prompts_are_unchanged(pipeline_cls: type) -> None:
+    client = _client(synthesizer=WRITE_UP, single_agent=WRITE_UP, imaging=_asserting("Pulmonary embolism"),
+                     pathology=_asserting("Suspected pulmonary embolism"),
+                     pharmacology=_asserting("Acute coronary syndrome"))
+    pipeline_cls(client).run(OPEN_CASE)
+    assert hashlib.sha256(json.dumps(sorted(client.prompts)).encode()).hexdigest() == OPEN_TRANSCRIPTS[pipeline_cls]
 
 
 @pytest.mark.parametrize("pipeline_cls", [StaticTeamPipeline, DynaClinicPipeline])

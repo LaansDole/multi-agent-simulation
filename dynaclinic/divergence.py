@@ -70,6 +70,19 @@ def semantic_divergence(vectors: Sequence[Sequence[float]]) -> float:
     return sum(pairs) / len(pairs) if pairs else 0.0
 
 
+def semantic_groups(vectors: Sequence[Sequence[float]], tau: float) -> list[int]:
+    """Group index of each vector: it joins the first group whose first member is within ``cosine_distance < tau``
+    (the Conflict Detector's agreement side), else opens the next group. Order-dependent leader clustering."""
+    leaders: list[Sequence[float]] = []
+    groups: list[int] = []
+    for vector in vectors:
+        group = next((n for n, leader in enumerate(leaders) if cosine_distance(leader, vector) < tau), len(leaders))
+        if group == len(leaders):
+            leaders.append(vector)
+        groups.append(group)
+    return groups
+
+
 def semantic_tau(embedder: str, tau: float | None = None) -> float:
     """``tau`` if given, else ``TAU_SEMANTIC[embedder]`` (an unknown embedder gets the hashing value)."""
     return tau if tau is not None else TAU_SEMANTIC.get(embedder, TAU_SEMANTIC[HASHING_EMBEDDER])

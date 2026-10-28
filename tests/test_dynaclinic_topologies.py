@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+from dynaclinic.llm import FakeLLM, LLMError
 from dynaclinic.pipeline import (
     DynaClinicPipeline,
     StaticTeamPipeline,
@@ -12,6 +13,7 @@ from dynaclinic.pipeline import (
 )
 from dynaclinic.prompts import (
     CRITIC,
+    GENERALIST,
     IMAGING,
     MESH_ROLES,
     PATHOLOGY,
@@ -20,6 +22,7 @@ from dynaclinic.prompts import (
     SPECIALISTS,
     SYNTHESIZER,
     SYSTEM_PROMPTS,
+    TRIAGE,
 )
 from dynaclinic.types import RunResult
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
@@ -30,6 +33,7 @@ from tests.test_dynaclinic_pipeline import (
     OPEN_CASE,
     OPPONENT,
     PROPONENT_CASE,
+    SCRIPT,
     WRITE_UP,
     _asserting,
     _client,
@@ -140,6 +144,63 @@ def test_h1_is_the_team_plurality_else_the_sweep_top_and_h2_the_strongest_altern
 
 def test_no_hypothesis_at_all_selects_nothing() -> None:
     assert select_hypotheses([], [])[:2] == (None, None)
+
+
+PE, SUSPECTED_PE, PE_LIKELY = "Pulmonary embolism", "Suspected pulmonary embolism", "Pulmonary embolism, likely"
+ACS, DISSECTION = "Acute coronary syndrome", "Aortic dissection"
+# cosine distances: PE / SUSPECTED_PE ~0.05, PE / PE_LIKELY ~0.02, every other pair >= 0.69 (fake embedder tau 0.595)
+VECTORS = {PE: [1.0, 0.0, 0.0], SUSPECTED_PE: [0.95, 0.31, 0.0], PE_LIKELY: [0.98, 0.2, 0.0],
+           ACS: [0.0, 0.0, 1.0], DISSECTION: [0.0, 1.0, 0.0]}
+
+
+def _open_debate(diagnoses: list[str], differential: list[str], *, fail: bool = False) -> tuple[RunResult, list]:
+    """HIGH open-ended case forced adversarial (tau_semantic 0); returns the result and every embed call's texts."""
+    calls: list[list[str]] = []
+
+    def embed(texts: list[str]) -> list[list[float]]:
+        calls.append(list(texts))
+        if fail:
+            raise LLMError("scripted embedder outage")
+        return [VECTORS[text] for text in texts]
+
+    sweep = json.dumps({"differential": [{"hypothesis": h, "probability": 1 / len(differential)} for h in differential]})
+    script = {**SCRIPT, TRIAGE: _triage("HIGH"), GENERALIST: sweep, SYNTHESIZER: WRITE_UP,
+              **{role: _asserting(text) for role, text in zip(SPECIALISTS, diagnoses, strict=True)}}
+    return DynaClinicPipeline(FakeLLM(script, embed), tau_semantic=0.0).run(OPEN_CASE), calls
+
+
+def _h1_h2_basis(result: RunResult) -> tuple[str, str, str]:
+    return result.debate["h1"], result.debate["h2"], result.debate["basis"]
+
+
+def test_paraphrased_diagnoses_form_one_h1_and_h2_is_a_different_diagnosis() -> None:
+    result, calls = _open_debate([PE, SUSPECTED_PE, ACS], [DISSECTION, ACS])
+    assert _h1_h2_basis(result) == (PE, ACS, "team plurality (2 of 3 specialists, 2 wordings)")
+    assert calls[-1] == [PE, SUSPECTED_PE, ACS, DISSECTION]  # votes and differential in one call, each wording once
+
+
+def test_distinct_diagnoses_are_not_merged() -> None:
+    result, _ = _open_debate([PE, ACS, DISSECTION], [DISSECTION, PE])
+    assert _h1_h2_basis(result) == (DISSECTION, PE, "the generalist sweep's top differential (no team plurality)")
+
+
+def test_a_differential_paraphrasing_h1_is_skipped_for_h2() -> None:
+    result, _ = _open_debate([PE, SUSPECTED_PE, PE], [PE_LIKELY, DISSECTION])
+    assert _h1_h2_basis(result) == (PE, DISSECTION, "team plurality (3 of 3 specialists, 2 wordings)")
+
+
+def test_a_failed_embedder_groups_by_the_hashing_fallback_with_a_warning() -> None:
+    result, calls = _open_debate([PE, SUSPECTED_PE, ACS], [DISSECTION])
+    failed, failed_calls = _open_debate([PE, SUSPECTED_PE, ACS], [DISSECTION], fail=True)
+    assert failed_calls == calls and _h1_h2_basis(failed) == _h1_h2_basis(result)  # hashing: PE / SUSPECTED_PE d 0.18
+    assert any(w.startswith("proponent: embedder fake failed") and w.endswith("used hashing") for w in failed.warnings)
+
+
+def test_multiple_choice_hypotheses_match_exactly_without_an_embed_call() -> None:
+    calls: list[list[str]] = []
+    client = FakeLLM({**SCRIPT, TRIAGE: _triage("HIGH"), IMAGING: _specialist(FOR_A)}, lambda t: calls.append(t) or [])
+    result = DynaClinicPipeline(client).run(CASE)
+    assert (_h1_h2_basis(result), calls) == (("B", "A", "team plurality (2 of 3 specialists)"), [])
 
 
 def _adversarial(**replies: str) -> tuple[RunResult, object]:

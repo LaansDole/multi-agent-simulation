@@ -32,6 +32,7 @@ from dynaclinic.divergence import (
     assess,
     normalize,
     semantic_divergence,
+    semantic_groups,
     semantic_tau,
 )
 from dynaclinic.interfaces import (
@@ -144,29 +145,35 @@ def _fold(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
 
 
-def select_hypotheses(votes: Sequence[str], differential: Sequence[str]) -> tuple[str | None, str | None, str]:
+def select_hypotheses(
+    votes: Sequence[str], differential: Sequence[str], key: Callable[[str], object] = _fold
+) -> tuple[str | None, str | None, str]:
     """``(H1, H2, basis)`` of the adversarial debate. ``votes``: the non-abstaining specialists' hypotheses (option
     letter, or leading diagnosis) in role order; ``differential``: the generalist sweep's, most probable first.
+    ``key`` maps a hypothesis to its group: case/punctuation folding by default (option letters), groups by meaning
+    for diagnoses (``CaseRun.proponent``). A group reads as its first member, votes in role order before the sweep.
 
-    H1 is the team's plurality hypothesis; on a tie or without votes, the sweep's top differential; without a sweep,
-    the first specialist's. H2, the strongest alternative, is the next most voted team hypothesis (a dissenter's),
-    else the sweep's first other differential. ``(None, None, basis)`` when there is nothing to debate.
+    H1 is the team's plurality group; on a tie or without votes, the sweep's top differential; without a sweep,
+    the first specialist's. H2, the strongest alternative, is the next most voted team group (a dissenter's), else
+    the sweep's first differential outside H1's group. ``(None, None, basis)`` when there is nothing to debate.
     """
-    # ponytail: votes match after case/punctuation folding only; cluster by embedding if paraphrases split the vote.
-    shown: dict[str, str] = {}
-    for vote in votes:
-        shown.setdefault(_fold(vote), vote)
-    ranked = Counter(_fold(vote) for vote in votes).most_common()  # ties keep role order
+    shown: dict[object, str] = {}
+    for hypothesis in [*votes, *differential]:
+        shown.setdefault(key(hypothesis), hypothesis)
+    ranked = Counter(key(vote) for vote in votes).most_common()  # ties keep role order
     if ranked and (len(ranked) == 1 or ranked[0][1] > ranked[1][1]):
-        h1, basis = shown[ranked[0][0]], f"team plurality ({ranked[0][1]} of {len(votes)} specialists)"
+        h1 = ranked[0][0]
+        wordings = len({_fold(vote) for vote in votes if key(vote) == h1})
+        grouped = f", {wordings} wordings" if wordings > 1 else ""
+        basis = f"team plurality ({ranked[0][1]} of {len(votes)} specialists{grouped})"
     elif differential:
-        h1, basis = differential[0], "the generalist sweep's top differential (no team plurality)"
+        h1, basis = key(differential[0]), "the generalist sweep's top differential (no team plurality)"
     elif ranked:
-        h1, basis = shown[ranked[0][0]], "the first specialist's hypothesis (no team plurality, no sweep differential)"
+        h1, basis = ranked[0][0], "the first specialist's hypothesis (no team plurality, no sweep differential)"
     else:
         return None, None, "no specialist hypothesis and no sweep differential"
-    h2 = next((h for h in [*(shown[key] for key, _ in ranked), *differential] if _fold(h) != _fold(h1)), None)
-    return h1, h2, basis
+    h2 = next((group for group in [*(group for group, _ in ranked), *map(key, differential)] if group != h1), None)
+    return shown[h1], shown.get(h2), basis
 
 
 def _set_answer(result: RunResult, text: str, letters: list[str], role: str) -> None:
@@ -411,16 +418,29 @@ class CaseRun:
         r.mode = "adversarial" if r.switch else "collaborative"
         r.route.append(f"divergence:{r.divergence:.2f}:{'switch' if r.switch else 'stay'}")
 
-    def _embed(self, texts: list[str]) -> tuple[str, list[Sequence[float]]]:
+    def _embed(self, texts: list[str], stage: str = "divergence") -> tuple[str, list[Sequence[float]]]:
         """``(embedder, vectors)`` from the client's embedder; the hashing stub when it has none or it fails."""
         model = self.client.embedding_model
         if model:
             try:
                 return model, list(self.client.embed(texts))
             except LLMError as err:
-                self.result.warnings.append(f"divergence: embedder {model} failed ({err}); used {HASHING_EMBEDDER}")
+                self.result.warnings.append(f"{stage}: embedder {model} failed ({err}); used {HASHING_EMBEDDER}")
         memory = HashingEmbeddingMemory()
         return HASHING_EMBEDDER, [memory.embed(text) for text in texts]
+
+    def _meaning(self, hypotheses: Sequence[str]) -> Callable[[str], object]:
+        """Group key of open-ended hypotheses: their distinct wordings embedded in one call (the hashing stub on
+        failure, as in the Conflict Detector) and grouped below the embedder's ``TAU_SEMANTIC``."""
+        wordings: dict[str, str] = {}
+        for hypothesis in hypotheses:
+            wordings.setdefault(_fold(hypothesis), hypothesis)
+        if len(wordings) < 2:
+            return _fold
+        embedder, vectors = self._embed(list(wordings.values()), "proponent")
+        # ponytail: the embedder's default tau, not a run's tau_semantic override (that one forces the switch).
+        group = dict(zip(wordings, semantic_groups(vectors, semantic_tau(embedder)), strict=True))
+        return lambda hypothesis: group[_fold(hypothesis)]
 
     def mesh_exchange(self) -> None:
         """Collaborative mode, after the Conflict Detector (which keeps the independent round-1 hypotheses): every
@@ -468,14 +488,16 @@ class CaseRun:
 
     def proponent(self) -> None:
         """Adversarial mode (entered by conflict or by uncertainty), before the Critic: choose H1/H2
-        (``select_hypotheses`` over the team's round-1 answers and the sweep's differential) and have the Proponent
-        argue H1 from the case and the Blackboard. The Critic then argues as the Opponent and the Synthesizer mediates.
+        (``select_hypotheses`` over the team's round-1 answers and the sweep's differential; diagnoses grouped by
+        meaning, option letters exactly) and have the Proponent argue H1 from the case and the Blackboard. The Critic
+        then argues as the Opponent and the Synthesizer mediates.
         Nothing to debate, or a failed call: no debate, the classic critic review (warning)."""
         r = self.result
         r.route.append("proponent")
         votes = ([text for text in r.assertions.values() if text != ABSTAIN] if self.case.open_ended
                  else [letter for agent, letter in r.top1.items() if agent not in self.abstainers])
-        h1, h2, basis = select_hypotheses(votes, list(r.differential))
+        key = self._meaning([*votes, *r.differential]) if self.case.open_ended else _fold
+        h1, h2, basis = select_hypotheses(votes, list(r.differential), key)
         if h1 is None:
             r.warnings.append(f"proponent: {basis}; the critic reviews the claims without a debate")
             return
