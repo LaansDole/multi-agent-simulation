@@ -11,6 +11,12 @@ export interface ChatMessage {
 // ── Store state (pure data + simple setters) ─────────────────
 export type AgentState = 'idle' | 'moving' | 'working' | 'on_hold' | 'talking';
 
+/** Workflow interaction for the 3D scene: EventBridge publishes, SceneManager acts it out. Indices are characters. */
+export type SceneCue =
+  | { kind: 'handoff'; speakers: number[]; listeners: number[]; waves: number[]; text: string }
+  | { kind: 'meeting'; members: number[] }
+  | { kind: 'meeting_end' };
+
 export interface CharacterState {
   isThinking: boolean;
   instanceCount: number;
@@ -29,6 +35,12 @@ export interface CharacterState {
   // Real-time agent statuses for 3D synchronization
   agentStatuses: Record<number, AgentState>;
   setAgentStatus: (index: number, status: AgentState) => void;
+
+  sceneCue: SceneCue | null;
+  setSceneCue: (cue: SceneCue) => void;
+  /** Speech bubble text per character index while it hands off its output. */
+  speech: Record<number, string>;
+  setSpeech: (index: number, text: string | null) => void;
 
   isBYOKOpen: boolean;
   byokError: string | null;

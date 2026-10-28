@@ -12,6 +12,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  testIgnore: ['unit/**'], // node --test suites (npm run test:unit)
   fullyParallel: false,
   workers: 1,
   retries: 0,

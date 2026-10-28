@@ -25,6 +25,16 @@ export const useUiStore = create<CharacterState>()(
       agentStatuses: { ...s.agentStatuses, [index]: status }
     })),
 
+    sceneCue: null,
+    setSceneCue: (cue) => set({ sceneCue: cue }),
+    speech: {},
+    setSpeech: (index, text) => set((s) => {
+      const speech = { ...s.speech };
+      if (text) speech[index] = text;
+      else delete speech[index];
+      return { speech };
+    }),
+
     isBYOKOpen: false,
     byokError: null,
     setBYOKOpen: (open: boolean, error: string | null = null) =>

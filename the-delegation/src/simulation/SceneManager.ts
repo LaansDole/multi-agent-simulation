@@ -7,15 +7,21 @@ import { DriverManager } from './drivers/DriverManager';
 import { CharacterManager } from './entities/CharacterManager';
 import { InputManager } from './input/InputManager';
 import { NavMeshManager } from './pathfinding/NavMeshManager';
-import { BOARDROOM_POI_ID, PoiManager, spawnPoiId } from './world/PoiManager';
+import { AREA_POI_PREFIX, BOARDROOM_POI_ID, PoiManager, spawnPoiId } from './world/PoiManager';
 import { WorldManager } from './world/WorldManager';
 
 import { BackendAgentSimulation } from './core/BackendAgentSimulation';
-import { useCoreStore } from '../integration/store/coreStore';
+import { nearestToCentroid } from '../integration/api/interactionPlanner';
+import { useCoreStore, type Task } from '../integration/store/coreStore';
 import { getActiveAgentSet, useTeamStore } from '../integration/store/teamStore';
 import { useUiStore } from '../integration/store/uiStore';
-import { AgentBehavior, ChatMessage } from '../types';
-import { BUBBLE_Y_OFFSET } from './constants';
+import { AgentBehavior, ChatMessage, PoiDef, SceneCue } from '../types';
+import {
+  AREA_SPOT_RINGS, AREA_SPOT_SPACING, BUBBLE_Y_OFFSET, HANDOFF_TALK_SECONDS, HANDOFF_WALK_TIMEOUT_SECONDS,
+  MEETING_IDLE_SECONDS,
+} from './constants';
+
+type HandOffCue = Extract<SceneCue, { kind: 'handoff' }>;
 
 /**
  * SceneManager — Visual Integration Layer.
@@ -42,6 +48,15 @@ export class SceneManager {
 
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
+
+  // ── Workflow hand-offs (EventBridge scene cues) ──
+  /** Characters taken over by a hand-off, value = hand-off id; the task watcher leaves them alone. */
+  private handOffOf = new Map<number, number>();
+  private handOffSeq = 0;
+  /** Conversation loop members standing together at one area until the loop ends. */
+  private meeting: { members: Set<number>; areaId: string; idleTimer: number | null } | null = null;
+  /** Pending hand-off / meeting timeouts (window.setTimeout ids), cleared on reset and dispose. */
+  private timers = new Set<number>();
   private container: HTMLElement;
   private resizeObserver: ResizeObserver;
 
@@ -69,7 +84,10 @@ export class SceneManager {
   private startWatchingCoreStore() {
     this.unsubs.push(
       useCoreStore.subscribe((state, prevState) => {
-        const agentIndices = Array.from(new Set(state.tasks.flatMap(t => [t.assignedAgentId].filter(id => id !== undefined && id !== 0))));
+        // Characters only: tasks of nodes without one (literal, loop, template, ...) carry index -1, and
+        // sending -1 to setNpcWorking threw inside the store update, aborting EventBridge.onNodeStarted
+        // before it recorded the task, so it stayed in progress forever.
+        const agentIndices = Array.from(new Set(state.tasks.map(t => t.assignedAgentId).filter(id => id > 0)));
 
         agentIndices.forEach(id => {
           const myTasks = state.tasks.filter(t => t.assignedAgentId === id);
@@ -78,7 +96,8 @@ export class SceneManager {
             return !pt || pt.status !== t.status;
           });
           
-          if (!hasChange) return;
+          // A hand-off or conversation meeting owns the character; it resumes its tasks when released.
+          if (!hasChange || this.handOffOf.has(id) || this.meeting?.members.has(id)) return;
 
           const onHold = myTasks.find(t => t.status === 'on_hold');
           const inProgress = myTasks.find(t => t.status === 'in_progress');
@@ -93,6 +112,7 @@ export class SceneManager {
             this.moveNpcToSpawn(id);
           }
         });
+        if (state.tasks !== prevState.tasks) this.checkMeetingIdle(state.tasks);
       })
     );
   }
@@ -134,6 +154,7 @@ export class SceneManager {
 
     this.unsubs.push(useUiStore.subscribe((s, prev) => {
       if (s.instanceCount !== prev.instanceCount) this.controller?.setInstanceCount(s.instanceCount);
+      if (s.sceneCue && s.sceneCue !== prev.sceneCue) this.onSceneCue(s.sceneCue);
       const team = useTeamStore.getState();
       if (team.selectedAgentSetId !== this.lastAgentSetId) {
         this.lastAgentSetId = team.selectedAgentSetId;
@@ -236,6 +257,7 @@ export class SceneManager {
   }
 
   private reinitializeSimulation(activeSet: AgenticSystem) {
+    this.clearInteractions();
     if (this.simulation) this.simulation.dispose();
     this.simulation = new BackendAgentSimulation(activeSet);
     this.setCoreHandler((idx, text) => this.simulation!.handleUserMessage(idx, text));
@@ -260,13 +282,16 @@ export class SceneManager {
 
   /**
    * DESK ASSIGNMENT
-   * Agent N works at desk sit_work-N. The office has 5 desks but MAX_AGENTS is 7, so agents
-   * without a desk take a free chair instead of sharing (and blocking) another agent's desk.
+   * Agent N works at desk sit_work-N. The office has 5 desks but MAX_AGENTS is 13, so agents
+   * without a desk take a free chair, and with no chair free stand in the workspace area,
+   * instead of sharing (and blocking) another agent's desk.
    */
   public setNpcWorking(index: number, working: boolean): void {
     if (!this.controller) return;
     if (working) {
-      const poi = this.poiManager.getPoi(`sit_work-${index}`) ?? this.poiManager.getFreePois('sit_idle', index)[0];
+      const poi = this.poiManager.getPoi(`sit_work-${index}`)
+        ?? this.poiManager.getFreePois('sit_idle', index)[0]
+        ?? this.poiManager.getPoi(`${AREA_POI_PREFIX}workspace`);
       if (poi) this.controller.walkToPoi(index, poi.id);
     }
   }
@@ -287,6 +312,189 @@ export class SceneManager {
     if (!this.controller) return;
     const poi = this.poiManager.expectPoi(BOARDROOM_POI_ID);
     if (poi) this.controller.walkToPoi(index, poi.id);
+  }
+
+  // ── Workflow hand-offs and conversation meetings (EventBridge scene cues) ──
+
+  private onSceneCue(cue: SceneCue): void {
+    if (cue.kind === 'handoff') this.handOff(cue);
+    else if (cue.kind === 'meeting') this.startMeeting(cue.members);
+    else this.endMeeting();
+  }
+
+  /** window.setTimeout tracked in `timers`, so reset and dispose cancel it. */
+  private later(seconds: number, fn: () => void): number {
+    const id = window.setTimeout(() => {
+      this.timers.delete(id);
+      fn();
+    }, seconds * 1000);
+    this.timers.add(id);
+    return id;
+  }
+
+  private cancelTimer(id: number): void {
+    window.clearTimeout(id);
+    this.timers.delete(id);
+  }
+
+  /** Area POI (hub, boardroom, canteen, workspace) nearest to the characters' centre: where they meet. */
+  private meetingArea(indices: number[]): PoiDef | undefined {
+    const points = indices.map((i) => this.controller?.getCPUPosition(i)).filter((p): p is THREE.Vector3 => !!p);
+    const areas = this.poiManager.getPoisByPrefix(AREA_POI_PREFIX).map((poi) => ({ x: poi.position.x, z: poi.position.z, poi }));
+    return nearestToCentroid(areas, points)?.poi;
+  }
+
+  /** True when the character stands (not walks) on one of the spots around `area`. */
+  private isAt(index: number, area: PoiDef): boolean {
+    const p = this.controller?.getCPUPosition(index);
+    return !!p && this.controller!.getState(index) !== 'walk'
+      && Math.hypot(p.x - area.position.x, p.z - area.position.z) <= AREA_SPOT_RINGS * AREA_SPOT_SPACING + 0.2;
+  }
+
+  /** Walks `indices` to `area` (those already there stay); `onAll` once all arrived, or after HANDOFF_WALK_TIMEOUT_SECONDS. */
+  private gather(indices: number[], area: PoiDef, onAll: () => void): void {
+    let pending = indices.length;
+    const timer = this.later(HANDOFF_WALK_TIMEOUT_SECONDS, () => {
+      pending = -1; // late arrivals never reach 0 again
+      onAll();
+    });
+    const arrive = () => {
+      if (--pending !== 0) return;
+      this.cancelTimer(timer);
+      onAll();
+    };
+    for (const i of indices) {
+      if (this.isAt(i, area) || !this.controller?.walkToPoi(i, area.id, arrive)) arrive();
+    }
+  }
+
+  private face(index: number, target: number): void {
+    const from = this.controller?.getCPUPosition(index), to = this.controller?.getCPUPosition(target);
+    if (from && to && (to.x !== from.x || to.z !== from.z)) this.characterManager.setFacing(index, to.x - from.x, to.z - from.z);
+  }
+
+  /**
+   * The speakers hand their node's output to the listeners: everyone walks to the area between them
+   * (or stays in their meeting), they face each other, the first speaker talks with a speech bubble
+   * for HANDOFF_TALK_SECONDS while the listeners listen, then each resumes its tasks (the listener
+   * goes to its desk). Other agents that fed the listener wave from where they are.
+   */
+  private handOff(cue: HandOffCue): void {
+    if (!this.controller) return;
+    const speakers = [...new Set(cue.speakers)];
+    const listeners = [...new Set(cue.listeners)].filter((i) => !speakers.includes(i));
+    if (speakers.length === 0 || listeners.length === 0) return;
+
+    const id = ++this.handOffSeq;
+    const members = [...speakers, ...listeners];
+    const ui = useUiStore.getState();
+    for (const i of members) {
+      this.handOffOf.set(i, id);
+      this.driverManager?.getNpcDriver(i)?.setChatting(true); // no wandering off mid-conversation
+      this.controller.setSpeaking(i, false); // a hand-off this one supersedes may have left it talking
+      ui.setSpeech(i, null);
+    }
+    for (const i of cue.waves) {
+      const state = this.controller.getState(i);
+      if (members.includes(i) || (state !== 'idle' && state !== 'look_around')) continue; // never stand up a working agent
+      this.face(i, listeners[0]);
+      this.controller.play(i, 'wave');
+    }
+
+    const own = () => members.filter((i) => this.handOffOf.get(i) === id);
+    const talk = () => {
+      const present = own();
+      const talkers = speakers.filter((i) => present.includes(i));
+      for (const i of present) {
+        this.face(i, talkers.includes(i) ? listeners[0] : speakers[0]);
+        this.controller?.play(i, talkers.includes(i) ? 'talk' : 'listen');
+      }
+      talkers.forEach((i) => this.controller?.setSpeaking(i, true));
+      if (talkers.length > 0 && cue.text) ui.setSpeech(talkers[0], cue.text);
+      this.later(HANDOFF_TALK_SECONDS, () => {
+        for (const i of own()) {
+          this.controller?.setSpeaking(i, false);
+          useUiStore.getState().setSpeech(i, null);
+          this.handOffOf.delete(i);
+          this.resume(i);
+        }
+      });
+    };
+
+    const inMeeting = this.meeting !== null && members.every((i) => this.meeting!.members.has(i));
+    const area = inMeeting ? this.poiManager.getPoi(this.meeting!.areaId) : this.meetingArea(members);
+    if (area) this.gather(members, area, talk);
+    else talk();
+  }
+
+  /** Back to what the character's tasks ask for, which the task watcher skipped while it was engaged. */
+  private resume(index: number): void {
+    if (!this.controller || this.handOffOf.has(index)) return;
+    if (this.meeting?.members.has(index)) {
+      this.joinMeeting(index);
+      return;
+    }
+    this.driverManager?.getNpcDriver(index)?.setChatting(false);
+    const tasks = useCoreStore.getState().tasks.filter((t) => t.assignedAgentId === index);
+    if (tasks.some((t) => t.status === 'on_hold')) this.moveNpcToBoardroom(index);
+    else if (tasks.some((t) => t.status === 'in_progress')) this.setNpcWorking(index, true);
+    else this.moveNpcToSpawn(index);
+  }
+
+  /** Conversation loop: the members meet at one area and stay there taking turns until the loop ends. */
+  private startMeeting(members: number[]): void {
+    this.endMeeting();
+    const unique = [...new Set(members)];
+    const area = unique.length >= 2 ? this.meetingArea(unique) : undefined;
+    if (!this.controller || !area) return;
+    this.meeting = { members: new Set(unique), areaId: area.id, idleTimer: null };
+    unique.forEach((i) => this.resume(i));
+  }
+
+  /** Walks a meeting member to the meeting area (unless it is there) to listen until its turn. */
+  private joinMeeting(index: number): void {
+    const area = this.meeting && this.poiManager.getPoi(this.meeting.areaId);
+    if (!this.controller || !area) return;
+    this.driverManager?.getNpcDriver(index)?.setChatting(true);
+    const listen = () => { if (!this.handOffOf.has(index)) this.controller?.play(index, 'listen'); };
+    if (this.isAt(index, area) || !this.controller.walkToPoi(index, area.id, listen)) listen();
+  }
+
+  /** The loop ended: members not mid-hand-off go back to their tasks (desk) or spawn. */
+  private endMeeting(): void {
+    const meeting = this.meeting;
+    if (!meeting) return;
+    this.meeting = null;
+    if (meeting.idleTimer !== null) this.cancelTimer(meeting.idleTimer);
+    meeting.members.forEach((i) => this.resume(i));
+  }
+
+  /** A meeting in which no member works breaks up after MEETING_IDLE_SECONDS (the loop is over). */
+  private checkMeetingIdle(tasks: Task[]): void {
+    const meeting = this.meeting;
+    if (!meeting) return;
+    const working = tasks.some((t) => t.status === 'in_progress' && meeting.members.has(t.assignedAgentId));
+    if (working && meeting.idleTimer !== null) {
+      this.cancelTimer(meeting.idleTimer);
+      meeting.idleTimer = null;
+    } else if (!working && meeting.idleTimer === null) {
+      meeting.idleTimer = this.later(MEETING_IDLE_SECONDS, () => {
+        if (this.meeting === meeting) this.endMeeting();
+      });
+    }
+  }
+
+  /** Drops pending hand-offs, the meeting and their timers (new run, team switch, teardown). */
+  private clearInteractions(): void {
+    this.timers.forEach((id) => window.clearTimeout(id));
+    this.timers.clear();
+    for (const i of new Set([...this.handOffOf.keys(), ...(this.meeting?.members ?? [])])) {
+      this.driverManager?.getNpcDriver(i)?.setChatting(false);
+      this.controller?.setSpeaking(i, false);
+    }
+    this.handOffOf.clear();
+    this.meeting = null;
+    useUiStore.setState({ speech: {} });
   }
 
   public moveNpcToSpawn(index: number, onArrival?: () => void): void {
@@ -359,6 +567,7 @@ export class SceneManager {
   }
 
   public resetScene() {
+    this.clearInteractions();
     if (!this.controller) return;
     useUiStore.getState().setChatting(false);
     const set = getActiveAgentSet();
@@ -368,5 +577,5 @@ export class SceneManager {
     this.stage.setChatMode(false, false);
   }
 
-  public dispose() { this.isDisposed = true; this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.engine.dispose(); }
+  public dispose() { this.isDisposed = true; this.clearInteractions(); this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.engine.dispose(); }
 }

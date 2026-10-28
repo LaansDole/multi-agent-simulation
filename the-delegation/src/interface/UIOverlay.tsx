@@ -86,6 +86,7 @@ const UIOverlay: React.FC = () => {
     hoveredPoiLabel,
     hoverPosition,
     npcScreenPositions,
+    speech,
     setSelectedNpc,
   } = useUiStore();
   const [isHelpOpen, setHelpOpen] = useState(false);
@@ -154,6 +155,23 @@ const UIOverlay: React.FC = () => {
             color={alertColor}
             onClick={() => setSelectedNpc(agent.index)}
           />
+        );
+      })}
+
+      {/* Hand-off speech: the agent passing its output on says its first words (SceneManager.handOff) */}
+      {Object.entries(speech).map(([key, text]) => {
+        const pos = npcScreenPositions[Number(key)];
+        if (!pos) return null;
+        return (
+          <div
+            key={`speech-${key}`}
+            className="absolute z-20 pointer-events-none w-max max-w-[240px]"
+            style={{ left: pos.x, top: pos.y, transform: 'translate(-50%, -100%) translateY(-34px)' }}
+          >
+            <div className="bg-white/95 text-darkDelegation text-[11px] leading-snug px-3 py-2 rounded-2xl shadow-xl border border-black/5 animate-in fade-in zoom-in-95 duration-200">
+              {text}
+            </div>
+          </div>
         );
       })}
 

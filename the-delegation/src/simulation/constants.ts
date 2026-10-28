@@ -47,5 +47,13 @@ export const SPAWN_REST_SECONDS = 4;
 /** Random extra rest (0 to this many seconds) so agents finishing together do not leave in lockstep. */
 export const SPAWN_REST_JITTER_SECONDS = 2;
 
+// ── Workflow hand-offs ───────────────────────────────────────
+/** Seconds the agent handing off its output talks (speech bubble) before the receiver goes to work. */
+export const HANDOFF_TALK_SECONDS = 2.5;
+/** Seconds to wait for both sides of a hand-off to reach the meeting area before talking anyway. */
+export const HANDOFF_WALK_TIMEOUT_SECONDS = 8;
+/** A conversation meeting breaks up after this many seconds with no member working. */
+export const MEETING_IDLE_SECONDS = 10;
+
 /** Color de fondo de la escena (Three.js) */
 export const SCENE_BACKGROUND_COLOR = 0xFaFcFb;

@@ -15,6 +15,7 @@ import { useCoreStore } from '../../integration/store/coreStore';
 import { useUiStore } from '../../integration/store/uiStore';
 import { BackendClient } from '../../integration/api/BackendClient';
 import { EventBridge } from '../../integration/api/EventBridge';
+import { exportSystemToYaml } from '../../integration/api/YamlExporter';
 
 export class BackendAgentSimulation {
   private client: BackendClient;
@@ -104,29 +105,30 @@ export class BackendAgentSimulation {
     }
 
     try {
-      if (this.system.sourceYamlFile) {
+      let yamlFile = this.system.sourceYamlFile;
+      if (yamlFile) {
         // Imported workflow: run the ORIGINAL file directly (no export/upload).
-        console.log(`[BackendAgentSimulation] Running imported workflow ${this.system.sourceYamlFile}`);
-        await this.client.executeWorkflow({
-          session_id: sessionId,
-          yaml_file: this.system.sourceYamlFile,
-          task_prompt: brief,
-        });
+        console.log(`[BackendAgentSimulation] Running imported workflow ${yamlFile}`);
       } else {
         // Native the-delegation team: export + upload + run.
-        const yamlFile = `${this.system.id}.yaml`;
-        const { exportSystemToYaml } = await import('../../integration/api/YamlExporter');
+        yamlFile = `${this.system.id}.yaml`;
         const yamlContent = exportSystemToYaml(this.system);
 
         console.log(`[BackendAgentSimulation] Exporting and uploading YAML for ${yamlFile}...`);
         await this.client.uploadWorkflow(yamlFile, yamlContent);
-
-        await this.client.executeWorkflow({
-          session_id: sessionId,
-          yaml_file: yamlFile,
-          task_prompt: brief,
-        });
       }
+
+      // Its edges decide who meets whom on a hand-off; the run still works without it.
+      this.bridge.setGraph(await this.client.fetchWorkflowGraph(yamlFile).catch((error) => {
+        console.warn(`[BackendAgentSimulation] No graph for ${yamlFile}, hand-offs disabled:`, error);
+        return null;
+      }));
+
+      await this.client.executeWorkflow({
+        session_id: sessionId,
+        yaml_file: yamlFile,
+        task_prompt: brief,
+      });
     } catch (error) {
       console.error('[BackendAgentSimulation] Failed to start workflow:', error);
       useCoreStore.getState().addLogEntry({

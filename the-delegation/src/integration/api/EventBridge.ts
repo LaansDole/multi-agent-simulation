@@ -23,9 +23,11 @@ import type {
   NodeCompletedData,
   NodeOutputData,
   NodeStartedData,
+  NormalizedGraph,
   WorkflowCompletedData,
   WorkflowStartedData,
 } from './types';
+import { InteractionTracker, type StartPlan } from './interactionPlanner';
 
 import { useCoreStore } from '../store/coreStore';
 import { useUiStore } from '../store/uiStore';
@@ -37,11 +39,34 @@ import { useUiStore } from '../store/uiStore';
  */
 type NodeAgentMap = Map<string, number[]>;
 
+/** Node types whose output is a fixed marker, not content: a literal end node is shown via its feeder. */
+const MARKER_NODE_TYPES: Record<string, true> = { literal: true, loop_counter: true, loop_timer: true };
+
+/** One node's entry in workflow_completed `results` (workflow/graph.py _collect_all_outputs). */
+interface NodeResult {
+  results?: (
+    | { type: 'text'; payload: string }
+    | { type: 'message'; payload: { content?: string | { text?: string }[] | null } }
+  )[];
+}
+
+/** Full text of a node's last output (node_completed carries only the first 500 characters). */
+function resultText(entry: NodeResult | undefined): string | null {
+  const last = entry?.results?.at(-1);
+  if (!last) return null;
+  if (last.type === 'text') return last.payload;
+  const content = last.payload.content;
+  if (typeof content === 'string') return content;
+  return content?.map((block) => block.text ?? '').filter(Boolean).join('\n') || null;
+}
+
 export class EventBridge {
   private client: BackendClient;
   private unsubEvent: (() => void) | null = null;
   private unsubStatus: (() => void) | null = null;
   private nodeAgentMap: NodeAgentMap = new Map();
+  private graph: NormalizedGraph | null = null;
+  private tracker = new InteractionTracker();
 
   constructor(client: BackendClient) {
     this.client = client;
@@ -71,6 +96,22 @@ export class EventBridge {
    */
   public setNodeAgentMap(map: Record<string, number[]>): void {
     this.nodeAgentMap = new Map(Object.entries(map));
+  }
+
+  /**
+   * The running workflow's graph: its edges drive hand-offs (who meets whom) and its end node
+   * the final output. Without one, characters work at their desks with no hand-offs.
+   */
+  public setGraph(graph: NormalizedGraph | null): void {
+    this.graph = graph;
+    this.resetTracker();
+  }
+
+  private resetTracker(): void {
+    this.tracker = new InteractionTracker(
+      this.graph?.edges ?? [],
+      (nodeId) => (this.nodeAgentMap.get(nodeId) ?? []).some((index) => index >= 1),
+    );
   }
 
   /**
@@ -139,12 +180,13 @@ export class EventBridge {
     const core = useCoreStore.getState();
     core.setUserBrief(data.task_prompt);
     core.setPhase('working');
+    this.resetTracker();
   }
 
   private onWorkflowCompleted(data: WorkflowCompletedData): void {
     const core = useCoreStore.getState();
 
-    const finalText = data.final_text || data.summary;
+    const finalText = this.finalOutput(data);
     if (finalText) {
       core.setFinalOutput(finalText);
     }
@@ -156,12 +198,29 @@ export class EventBridge {
       // the final tally we set it directly if the backend provides it.
     }
 
+    useUiStore.getState().setSceneCue({ kind: 'meeting_end' });
     core.setPhase('done');
     core.setFinalOutputOpen(true);
   }
 
+  /**
+   * The run's final text. A literal end node (e.g. "Hospital simulation ended.") is a marker, so
+   * show the content node that fed it last instead (full text from `results`).
+   */
+  private finalOutput(data: WorkflowCompletedData): string | null {
+    const nodeType = (nodeId: string) => this.graph?.nodes.find((n) => n.id === nodeId)?.type ?? '';
+    const endId = this.graph?.end?.[0];
+    if (endId && nodeType(endId) === 'literal') {
+      const source = this.tracker.latestFeeder(endId, (nodeId) => !MARKER_NODE_TYPES[nodeType(nodeId)]);
+      const text = source && (resultText(data.results?.[`node_${source}`]) ?? this.tracker.outputOf(source));
+      if (text) return text;
+    }
+    return data.final_text || data.summary;
+  }
+
   private onWorkflowCancelled(): void {
     const core = useCoreStore.getState();
+    useUiStore.getState().setSceneCue({ kind: 'meeting_end' });
     core.setPhase('idle');
     core.addLogEntry({
       agentIndex: -1,
@@ -169,9 +228,33 @@ export class EventBridge {
     });
   }
 
+  /**
+   * Publishes a node start as scene cues: a hand-off from the agent whose output it receives, and
+   * conversation meetings forming or breaking up. Runs before the node's task is added, so the
+   * scene takes over the listener before the task watcher would send it to its desk.
+   */
+  private cue(plan: StartPlan): void {
+    const ui = useUiStore.getState();
+    const characters = (nodeIds: string[]) =>
+      nodeIds.flatMap((nodeId) => this.nodeAgentMap.get(nodeId) ?? []).filter((index) => index >= 1);
+    if (plan.meetingEnd) ui.setSceneCue({ kind: 'meeting_end' });
+    if (plan.meetingStart) ui.setSceneCue({ kind: 'meeting', members: characters(plan.meetingStart) });
+    const { handOff } = plan;
+    if (handOff) {
+      ui.setSceneCue({
+        kind: 'handoff',
+        speakers: characters([handOff.from]),
+        listeners: characters([handOff.to]),
+        waves: characters(handOff.also),
+        text: handOff.text,
+      });
+    }
+  }
+
   private onNodeStarted(data: NodeStartedData): void {
     const core = useCoreStore.getState();
     const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
+    this.cue(this.tracker.started(data.node_id));
 
     // One task per character: the 3D scene walks a character to its desk while it has an in_progress task.
     const taskIds = agentIndices.map((agentIndex) => core.addTask({
@@ -213,6 +296,7 @@ export class EventBridge {
     const core = useCoreStore.getState();
     const taskIds = this._nodeTaskMap.get(data.node_id) ?? [];
     const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
+    this.tracker.completed(data.node_id, data.output ?? '');
 
     for (const taskId of taskIds) {
       if (data.output) {

@@ -3,5 +3,7 @@
   "compilerOptions": {
     "types": ["@playwright/test", "node"],
     "noEmit": true
-  }
+  },
+  "include": ["unit/**/*.ts"],
+  "exclude": []
 }
