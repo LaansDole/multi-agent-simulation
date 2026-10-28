@@ -9,8 +9,8 @@ or regeneration failure) go to ``warnings`` and the run continues.
 Route entries are stable identifiers: ``ingest``, ``cache_lookup:off|miss|rejected``, ``cache_hit``,
 ``triage:<TIER>``, ``uncertainty:<U>|n/a``, ``mode:hierarchical|collaborative|adversarial:uncertainty``,
 ``primary_care``, ``hub_consult:<roles>``, ``care_team:<roles>``, ``care_team:failed``,
-``divergence:<d>:switch|stay``, ``critic``, ``synthesizer``, ``regenerate``, ``safety_gate:pass|blocked``,
-``single_agent``. In the dynamic arm every
+``divergence:<d>:switch|stay``, ``mesh_exchange:<roles>|none|skipped``, ``critic``, ``synthesizer``, ``regenerate``,
+``safety_gate:pass|blocked``, ``single_agent``. In the dynamic arm every
 stage is chosen by the planner and followed by ``planner:<action>:<reward>``; the run ends with
 ``planner:terminal``.
 
@@ -57,6 +57,8 @@ from dynaclinic.prompts import (
     DEFAULT_CONTEXT_POLICY,
     GENERALIST,
     IMAGING,
+    MESH_ROLES,
+    MESH_SYNTHESIS,
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
@@ -69,6 +71,8 @@ from dynaclinic.prompts import (
     check_context_policy,
     consult_block,
     hub_system,
+    mesh_block,
+    mesh_system,
     modality_data,
     question_block,
     specialist_block,
@@ -107,6 +111,14 @@ _TRIAGE_FIELDS = ("llm_tier", "deterministic_tier", "score", "features", "escala
 
 def _strings(value: object) -> list[str]:
     return [str(item) for item in value] if isinstance(value, list) else []
+
+
+def _exchange(value: object) -> list[str]:
+    """``"<stance> <peer>: <point>"`` lines of a mesh reply's ``exchange`` list; malformed items are skipped."""
+    items = value if isinstance(value, list) else []
+    keys = ("stance", "peer", "point")
+    return [f"{item['stance'].strip().lower()} {item['peer'].strip()}: {item['point'].strip()}" for item in items
+            if isinstance(item, dict) and all(isinstance(item.get(key), str) and item[key].strip() for key in keys)]
 
 
 def _leading_diagnosis(role: str, text: str) -> tuple[str, str | None]:
@@ -300,22 +312,31 @@ class CaseRun:
         with the patient, or ABSTAIN) and ``DOMAIN RECOMMENDATION:``, instead of a distribution, so the reply is
         not forced into JSON mode. Only the diagnosis feeds the divergence; the recommendation goes on the board."""
         user = specialist_block(role, self.case, self.sections, self.context_policy)
+        system = specialist_system(role, self.context_policy, self.case.open_ended)
+        return self._post(role, role, system, user, step=1, call="", failed="excluded from the team")
+
+    def _post(
+        self, role: str, called: str, system: str, user: str, *, step: int, call: str, failed: str,
+    ) -> tuple[BlackboardEntry | None, str | None]:
+        """Call ``called`` and parse the reply (round-1 format) into ``role``'s Blackboard entry for ``step``, with a
+        mesh reply's ``exchange`` lines; ``(None, warning)`` naming the ``call`` kind and ``failed`` outcome when the
+        call fails or the reply is malformed."""
         open_ended = self.case.open_ended
-        system = specialist_system(role, self.context_policy, open_ended)
         try:
-            text, _ = self.client.complete(role, system, user, json_mode=not open_ended)
+            text, _ = self.client.complete(called, system, user, json_mode=not open_ended)
         except LLMError as err:
-            return None, f"{role}: call failed ({err}); excluded from the team"
+            return None, f"{role}: {call}call failed ({err}); {failed}"
         data = extract_json(text)
         letters = self.case.letters()
         distribution = (data or {}).get("distribution")
         if letters and (not isinstance(distribution, dict) or not distribution):
-            return None, f"{role}: reply has no distribution; excluded from the team"
+            return None, f"{role}: {call}reply has no distribution; {failed}"
         if data is None:
-            return None, f"{role}: reply is not JSON; excluded from the team"
+            return None, f"{role}: {call}reply is not JSON; {failed}"
         findings = "; ".join(_strings(data.get("findings"))) or "(no findings)"
         dist = normalize(distribution, letters) if letters else None
-        entry = BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=1)
+        entry = BlackboardEntry(role, "hypothesis", findings, dist, _strings(data.get("claims")), step=step,
+                                exchange=_exchange(data.get("exchange")))
         if not open_ended:
             return entry, None
         entry.assertion, warning = _leading_diagnosis(role, text)
@@ -365,6 +386,37 @@ class CaseRun:
         memory = HashingEmbeddingMemory()
         return HASHING_EMBEDDER, [memory.embed(text) for text in texts]
 
+    def mesh_exchange(self) -> None:
+        """Collaborative mode, after the Conflict Detector (which keeps the independent round-1 hypotheses): every
+        specialist with a round-1 entry reads every peer's round-1 entry, concurrently, and posts a step-2 entry in the
+        round-1 format plus what it adopts or disputes from each peer. A failed or malformed reply posts nothing
+        (warning); fewer than two round-1 entries leave nobody to exchange with (``mesh_exchange:skipped``)."""
+        r = self.result
+        entries = {entry.agent: entry for entry in self.board.entries(kind="hypothesis") if entry.step == 1}
+        roles = [role for role in SPECIALISTS if role in entries]
+        if len(roles) < 2:
+            r.warnings.append(f"mesh_exchange: {len(roles)} round-1 entry, no peer to exchange with; skipped")
+            r.route.append("mesh_exchange:skipped")
+            return
+        snapshots = {role: self.board.snapshot(agent=role, kind="hypothesis") for role in roles}
+
+        def post(role: str) -> tuple[BlackboardEntry | None, str | None]:
+            own = specialist_block(role, self.case, self.sections, self.context_policy)
+            user = mesh_block(own, snapshots[role], [snapshots[peer] for peer in roles if peer != role])
+            return self._post(role, MESH_ROLES[role], mesh_system(role, self.case.open_ended), user, step=2,
+                              call="mesh ", failed="no step-2 entry, its round-1 entry stands")
+
+        with ThreadPoolExecutor(max_workers=len(roles)) as pool:
+            replies = list(pool.map(post, roles))
+        posted = []
+        for role, (entry, warning) in zip(roles, replies, strict=True):
+            if warning:
+                r.warnings.append(warning)
+            if entry is not None:
+                self.board.write(entry)
+                posted.append(role)
+        r.route.append(f"mesh_exchange:{','.join(posted) or 'none'}")
+
     def critic(self) -> None:
         self.result.route.append("critic")
         try:
@@ -384,6 +436,8 @@ class CaseRun:
         r.route.append("regenerate" if regenerate else "synthesizer")
         case = question_block(self.case) if self.context_policy == STRICT else case_block(self.case, self.sections)
         parts = [case, f"Blackboard:\n{self.board.snapshot()}"]
+        if any(entry.step == 2 for entry in self.board.entries(kind="hypothesis")):
+            parts.append(MESH_SYNTHESIS)
         if r.mode == "adversarial":
             parts.append("Adversarial review: test each specialist's leading diagnosis against the case evidence."
                          if self.case.open_ended else f"Conflict set: {', '.join(r.conflict_set) or 'none'}")
@@ -461,7 +515,8 @@ class _Pipeline:
 
 class DynaClinicPipeline(_Pipeline):
     """Dynamic arm: cache -> triage (C) -> generalist sweep (U) and the mode rule -> hierarchical: primary care hub |
-    collaborative or adversarial: care team -> divergence -> critic? -> synthesizer -> gate.
+    collaborative or adversarial: care team -> divergence -> collaborative: mesh exchange | adversarial: critic ->
+    synthesizer -> gate.
 
     The ``GreedyPlanner`` stub picks every stage and its reward per stage is logged in the route.
     ``max_rollbacks`` bounds safety-gate backtracks (regenerations); the adversarial round runs at most
@@ -517,6 +572,7 @@ class DynaClinicPipeline(_Pipeline):
             "primary_care": lambda: run.primary_care(self.pca_samples),
             "care_team": lambda: run.care_team(run.team_roles()),
             "divergence": lambda: run.divergence(self.tau, self.tau_semantic),
+            "mesh_exchange": run.mesh_exchange,
             "critic": run.critic,
             "synthesizer": run.synthesize,
             "safety_gate": run.gate,

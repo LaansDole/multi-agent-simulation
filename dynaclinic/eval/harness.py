@@ -46,6 +46,7 @@ from dynaclinic.prompts import (
     DEFAULT_CONTEXT_POLICY,
     GENERALIST,
     IMAGING,
+    MESH_ROLES,
     SPECIALISTS,
     TRIAGE,
 )
@@ -85,7 +86,7 @@ def dry_run_reply(role: str, system: str, user: str) -> str:
 
     if role == TRIAGE:
         return json.dumps({"tier": pick(TIERS), "rationale": "dry run", "features": {}})
-    if role in SPECIALISTS:
+    if role in SPECIALISTS or role in MESH_ROLES.values():
         top = pick(letters)
         dist = {letter: 0.8 if letter == top else 0.05 for letter in letters}
         return json.dumps({"findings": ["dry-run finding"], "distribution": dist,

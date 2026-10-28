@@ -114,6 +114,7 @@ class TestSerializeDesign:
             "PrimaryCare": True,
             "CareTeam": True,
             "DivergenceGate": False,
+            "MeshExchange": False,  # the Care Team's specialists talking: no second set of characters
             "Critic": True,
             "Synthesizer": True,
             "SafetyGate": False,

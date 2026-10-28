@@ -54,4 +54,7 @@ class Blackboard:
                 lines.append(f"  leading diagnosis: {entry.assertion}")
             if entry.recommendation:
                 lines.append(f"  domain recommendation: {entry.recommendation}")
+            if entry.exchange:
+                lines.append("  exchange:")
+                lines.extend(f"  - {line}" for line in entry.exchange)
         return "\n".join(lines) or "(blackboard is empty)"

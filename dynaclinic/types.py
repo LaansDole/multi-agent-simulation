@@ -93,6 +93,7 @@ class BlackboardEntry(_Serializable):
 
     ``assertion`` is a specialist's ``LEADING DIAGNOSIS`` on an open-ended case (``ABSTAIN`` or a short phrase; the
     proposal's primary diagnostic assertion) and ``recommendation`` its ``DOMAIN RECOMMENDATION`` (one sentence).
+    ``exchange`` holds a mesh step-2 entry's ``"<adopts|disputes> <peer>: <point>"`` lines.
     """
 
     agent: str
@@ -103,6 +104,7 @@ class BlackboardEntry(_Serializable):
     step: int = 0
     assertion: str | None = None
     recommendation: str | None = None
+    exchange: list[str] = field(default_factory=list)
 
 
 @dataclass

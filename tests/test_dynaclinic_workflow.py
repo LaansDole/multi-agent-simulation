@@ -27,7 +27,7 @@ CASES = {case.id: case for case in load_synthetic()}
 LOW_PATH = ["CaseInput", "Triage", "GeneralistSweep", "PrimaryCare", "SafetyGate", "Report"]
 TEAM = ["CaseInput", "Triage", "GeneralistSweep", "CareTeam", "DivergenceGate"]
 ADVERSARIAL_PATH = [*TEAM, "Critic", "Synthesizer", "SafetyGate", "Report"]
-COLLABORATIVE_PATH = [*TEAM, "Synthesizer", "SafetyGate", "Report"]
+COLLABORATIVE_PATH = [*TEAM, "MeshExchange", "Synthesizer", "SafetyGate", "Report"]
 COVID_PROMPT = "a patient has COVID-19 in a sunny day"
 WRITE_UP = """ASSESSMENT: Probable mild COVID-19. The sunny weather is clinically irrelevant.
 DIFFERENTIAL: Influenza or another viral respiratory infection.

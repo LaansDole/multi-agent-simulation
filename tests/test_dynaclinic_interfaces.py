@@ -238,8 +238,14 @@ def test_planner_team_paths() -> None:
         "agent_call:safety_gate",
         "terminal:done",
     ]
-    collaborative = _walk(GreedyPlanner(), mode="collaborative")
-    assert "agent_call:care_team" in collaborative and "agent_call:critic" not in collaborative
+    assert _walk(GreedyPlanner(), mode="collaborative")[3:] == [
+        "agent_call:care_team",
+        "agent_call:divergence",
+        "agent_call:mesh_exchange",
+        "agent_call:synthesizer",
+        "agent_call:safety_gate",
+        "terminal:done",
+    ]
 
 
 def test_planner_cache_hit_terminates() -> None:

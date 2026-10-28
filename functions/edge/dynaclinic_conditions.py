@@ -29,7 +29,7 @@ def dc_mode_team(data: str) -> bool:
 
 
 def dc_mode_collaborative(data: str) -> bool:
-    """The care team agrees (``MODE: COLLABORATIVE``): go straight to the Synthesizer."""
+    """The care team agrees (``MODE: COLLABORATIVE``): go to the mesh exchange, then the Synthesizer."""
     return first_line_marker(data, "MODE") == "COLLABORATIVE"
 
 

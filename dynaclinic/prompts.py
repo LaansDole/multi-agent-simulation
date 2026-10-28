@@ -116,6 +116,29 @@ _SPECIALIST_TEMPLATES = {
     (STRICT, True): _SPECIALIST_OPEN,
     (SHARED_CORE, True): _SPECIALIST_SHARED_CORE_OPEN,
 }
+# Collaborative mesh exchange, step 2: every specialist reads every peer's round-1 entry and posts a revised entry
+# in the round-1 format plus an "exchange" list (what it adopts or disputes from each named peer).
+_MESH_HEAD = _SPECIALIST_HEAD + """\
+Mesh exchange, step 2: the team is a fully connected mesh. You see the case as in round 1, your own independent
+round-1 entry and every peer's. Read each peer's findings, claims and {answer}. For each peer, by name, state what you
+adopt from it and what you dispute, with the evidence; then post your revised entry, integrating the peers' expertise
+into one unified differential. Keep your {modality} lens and do not assume findings the case does not state.
+"""
+_EXCHANGE = '"exchange": [{{"peer": "<peer name>", "stance": "adopts|disputes", "point": "<what and why>"}}]'
+_MESH = _MESH_HEAD + """Respond with JSON only:
+{{""" + _EXCHANGE + """, "findings": ["<finding>"],
+"distribution": {{"<letter>": <probability>}}, "claims": ["<one atomic, checkable statement>"]}}
+"distribution" must cover every option letter and sum to 1."""
+_MESH_OPEN = _MESH_HEAD + """This is an open-ended clinical scenario with no answer options.
+Respond with one JSON object:
+{{""" + _EXCHANGE + """, "findings": ["<finding>"], "claims": ["<one atomic, checkable statement>"]}}
+then, after the JSON, exactly two final lines:
+LEADING DIAGNOSIS: <your revised single most likely diagnosis, a short noun phrase, or ABSTAIN>
+DOMAIN RECOMMENDATION: <your domain's action from your own lens, one sentence>"""
+MESH_SYNTHESIS = ("Mesh exchange: step 1 entries are the specialists' independent hypotheses, step 2 entries their "
+                  "revisions after reading every peer (what each adopts or disputes). As the Consensus Builder, "
+                  "integrate both rounds into one unified differential diagnosis; where a specialist revised its view, "
+                  "weigh why.")
 
 _CRITIC = """You are the Clinical Critic in adversarial mode. The care team disagrees.
 Decompose the team's Blackboard reasoning into atomic claims: one checkable clinical statement each
@@ -197,6 +220,8 @@ SYSTEM_PROMPTS: dict[str, str] = {
 }
 # Ledger/script role of a specialist answering the Primary Care hub's CONSULT question (hierarchical mode).
 CONSULT_ROLES: dict[str, str] = {role: f"{role}_consult" for role in SPECIALISTS}
+# Ledger/script role of a specialist posting its step-2 entry in the collaborative mesh exchange.
+MESH_ROLES: dict[str, str] = {role: f"{role}_mesh" for role in SPECIALISTS}
 # Answering roles' system prompts for an open-ended case: the clinical write-up instead of a FINAL ANSWER letter.
 OPEN_ENDED_PROMPTS: dict[str, str] = {
     PRIMARY_CARE: _PRIMARY_CARE_OPEN,
@@ -326,3 +351,18 @@ def consult_block(consults: list[dict[str, str]]) -> str:
                       for c in consults)
     return (f"Specialist consults (each answered independently from its own data):\n{lines}\n"
             "Give your final reply now, in the required format, without CONSULT lines.")
+
+
+def mesh_system(role: str, open_ended: bool = False) -> str:
+    """System prompt of specialist ``role`` in the mesh exchange: read every peer, say what it adopts or disputes from
+    each, post a revised entry in the round-1 format (a distribution, or for an open-ended case the two final lines)."""
+    answer = "leading diagnosis" if open_ended else "distribution"
+    return (_MESH_OPEN if open_ended else _MESH).format(answer=answer, **_PERSONAS[role])
+
+
+def mesh_block(own_input: str, own_entry: str, peer_entries: list[str]) -> str:
+    """A mesh specialist's input: its round-1 input (``specialist_block``), its own round-1 entry once, then every
+    peer's round-1 entry."""
+    peers = "\n".join(peer_entries)
+    return (f"{own_input}\n\nYour round-1 entry (independent):\n{own_entry}\n\n"
+            f"Your peers' round-1 entries (independent):\n{peers}")

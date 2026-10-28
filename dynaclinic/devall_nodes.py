@@ -507,6 +507,26 @@ class DivergenceGateExecutor(_StageExecutor):
         return f"MODE: {r.mode.upper()}\n{detail}"
 
 
+class MeshExchangeExecutor(_StageExecutor):
+    """dc_mesh_exchange: collaborative mode after the Conflict Detector; every care-team specialist reads every peer's
+    round-1 entry and posts a revised step-2 entry. Emits ``STAGE: mesh_exchange``, then per specialist which peers it
+    read, what it adopts or disputes from each and its revised answer (open-ended: leading diagnosis). The
+    specialists keep the context policy of dc_care_team."""
+
+    def stage(self, run: CaseRun, config: DCNodeConfig) -> str:
+        run.mesh_exchange()
+        entries = run.board.entries(kind="hypothesis")
+        readers = [entry.agent for entry in entries if entry.step == 1]
+        lines = []
+        for entry in (entry for entry in entries if entry.step == 2):
+            peers = ", ".join(agent for agent in readers if agent != entry.agent)
+            revised = entry.assertion if entry.distribution is None else max(entry.distribution,
+                                                                               key=entry.distribution.__getitem__)
+            lines.append(f"- {entry.agent} reads {peers}; {'; '.join(entry.exchange) or 'no adopt/dispute stated'}; "
+                         f"revised: {revised}")
+        return "STAGE: mesh_exchange\n" + ("\n".join(lines) or "- no step-2 entry")
+
+
 class CriticExecutor(_StageExecutor):
     """dc_critic: Clinical Critic flags unsupported claims for the synthesizer."""
 

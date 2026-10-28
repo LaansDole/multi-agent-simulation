@@ -22,6 +22,7 @@ from dynaclinic.prompts import (
     CRITIC_JUDGE,
     GENERALIST,
     IMAGING,
+    MESH_ROLES,
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
@@ -81,11 +82,15 @@ SCRIPT = {
                                          for i in (1, 2)]}),
     SYNTHESIZER: SAFE_ANSWER,
     SINGLE_AGENT: "FINAL ANSWER: B",
+    **{MESH_ROLES[role]: _specialist(FOR_B) for role in (IMAGING, PATHOLOGY, PHARMACOLOGY)},  # step 2 agrees too
 }
 
 
 def _client(**overrides: str | list[str]) -> FakeLLM:
-    return FakeLLM({**SCRIPT, **overrides})
+    """FakeLLM for ``SCRIPT`` + ``overrides``; a specialist's mesh step-2 reply repeats its round-1 reply unless its
+    ``MESH_ROLES`` entry is scripted too."""
+    mesh = {MESH_ROLES[role]: overrides[role] for role in MESH_ROLES if role in overrides}
+    return FakeLLM({**SCRIPT, **mesh, **overrides})
 
 
 def _failing(role: str, **overrides: str | list[str]) -> FakeLLM:
@@ -134,10 +139,11 @@ def test_high_agreeing_team_is_collaborative_without_critic() -> None:
     client = _client(triage=_triage("HIGH"))
     result = DynaClinicPipeline(client).run(CASE)
     assert _roles(result) == Counter({TRIAGE: 1, GENERALIST: 1, IMAGING: 1, PATHOLOGY: 1, PHARMACOLOGY: 1,
-                                      SYNTHESIZER: 1})
+                                      **dict.fromkeys(MESH_ROLES.values(), 1), SYNTHESIZER: 1})
     assert _stages(result) == [
         "ingest", "cache_lookup:off", "triage:HIGH", "uncertainty:0.00", "mode:collaborative",
-        "care_team:imaging,pathology,pharmacology", "divergence:0.00:stay", "synthesizer", "safety_gate:pass",
+        "care_team:imaging,pathology,pharmacology", "divergence:0.00:stay",
+        "mesh_exchange:imaging,pathology,pharmacology", "synthesizer", "safety_gate:pass",
     ]
     assert result.mode == "collaborative" and result.switch is False and result.divergence < 0.25
     assert set(result.distributions) == {IMAGING, PATHOLOGY, PHARMACOLOGY}
@@ -326,7 +332,7 @@ RECOMMENDATIONS = {IMAGING: "Obtain CT pulmonary angiography.",
 @pytest.mark.parametrize(
     ("pharmacology", "stages"),
     [
-        ("Pulmonary embolism", ["divergence:0.00:stay", "synthesizer"]),
+        ("Pulmonary embolism", ["divergence:0.00:stay", "mesh_exchange:imaging,pathology,pharmacology", "synthesizer"]),
         ("Acute coronary syndrome", ["divergence:0.67:switch", "critic", "synthesizer"]),
     ],
 )
@@ -337,7 +343,7 @@ def test_open_ended_divergence_embeds_the_leading_diagnoses_never_the_recommenda
     diagnoses = {IMAGING: "Pulmonary embolism", PATHOLOGY: "Pulmonary embolism", PHARMACOLOGY: pharmacology}
     script = {**SCRIPT, TRIAGE: _triage("HIGH"), SYNTHESIZER: WRITE_UP,
               **{role: _asserting(diagnoses[role], RECOMMENDATIONS[role]) for role in diagnoses}}
-    client = FakeLLM(script, _one_hot(embedded))
+    client = FakeLLM({**script, **{MESH_ROLES[role]: script[role] for role in diagnoses}}, _one_hot(embedded))
     result = DynaClinicPipeline(client, tau_semantic=0.5).run(OPEN_CASE)
     assert embedded == list(diagnoses.values())
     assert (_stages(result)[6:], result.assertions, result.warnings) == ([*stages, "safety_gate:pass"], diagnoses, [])
@@ -351,7 +357,8 @@ def test_open_ended_specialist_without_a_leading_diagnosis_falls_back_to_its_pri
     script = {**SCRIPT, TRIAGE: _triage("HIGH"), SYNTHESIZER: WRITE_UP, IMAGING: legacy,
               # a LEADING DIAGNOSIS line wins over a stray PRIMARY ASSERTION line, wherever it stands
               PATHOLOGY: _asserting("Pulmonary embolism") + "\nPRIMARY ASSERTION: Obtain serial troponins.",
-              PHARMACOLOGY: _asserting("ABSTAIN - no drug data", "None.")}
+              PHARMACOLOGY: _asserting("ABSTAIN - no drug data", "None."),
+              **dict.fromkeys(MESH_ROLES.values(), _asserting("Pulmonary embolism"))}
     result = DynaClinicPipeline(FakeLLM(script, _one_hot(embedded)), tau_semantic=0.5).run(OPEN_CASE)
     assert result.assertions == {IMAGING: "Pulmonary embolism", PATHOLOGY: "Pulmonary embolism", PHARMACOLOGY: ABSTAIN}
     assert result.warnings == ["imaging: no LEADING DIAGNOSIS line; read its PRIMARY ASSERTION line as the diagnosis"]
@@ -361,7 +368,8 @@ def test_open_ended_specialist_without_a_leading_diagnosis_falls_back_to_its_pri
 @pytest.mark.parametrize(
     ("pharmacology", "tau_semantic", "stages"),
     [
-        ("Septic shock from pneumonia.", 0.5, ["divergence:0.00:stay", "synthesizer", "safety_gate:pass"]),
+        ("Septic shock from pneumonia.", 0.5, ["divergence:0.00:stay", "mesh_exchange:imaging,pathology,pharmacology",
+                                               "synthesizer", "safety_gate:pass"]),
         ("Pulmonary embolism.", 0.5, ["divergence:0.67:switch", "critic", "synthesizer", "safety_gate:pass"]),
         # divergence == tau_semantic switches (safety-biased boundary)
         ("Septic shock from pneumonia.", 0.0, ["divergence:0.00:switch", "critic", "synthesizer", "safety_gate:pass"]),
@@ -375,6 +383,7 @@ def test_open_ended_team_routes_on_the_semantic_divergence_of_its_assertions(
 
     script = {**SCRIPT, "triage": _triage("HIGH"), "synthesizer": WRITE_UP, "imaging": _asserting("Septic shock."),
               "pathology": _asserting("Septic shock, likely pulmonary source."), "pharmacology": _asserting(pharmacology)}
+    script |= {MESH_ROLES[role]: script[role] for role in MESH_ROLES}
     result = DynaClinicPipeline(FakeLLM(script, by_keyword), tau_semantic=tau_semantic).run(OPEN_CASE)
     assert _stages(result)[6:] == stages
     assert (result.embedder, result.final_text, result.warnings) == ("fake", WRITE_UP, [])
@@ -390,12 +399,13 @@ def test_moderate_open_ended_team_follows_the_narrative_slices_under_shared_core
     assert f"care_team:{team}" in _stages(result)
 
 
-# sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE, captured
-# at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte. The dynamic arm's
-# generalist sweep (f14) is new and excluded; the dry run routes this case to the team, so no other prompt changed.
+# sha256 of the sorted (role, system, user) prompts of a dry-run on tests.test_dynaclinic_prompts.CASE. The static
+# arm's was captured at 1b01dc2 before context_policy existed: the strict policy must keep every prompt byte-for-byte.
+# The dynamic arm's was re-captured at f15 (its generalist sweep, f14, stays excluded): the dry run routes this case to
+# a collaborative team, whose mesh exchange adds step-2 prompts that the Consensus Builder then reads.
 STRICT_TRANSCRIPTS = {
     StaticTeamPipeline: "b86e0bc0c7991668f698b283533c3a27072486d54fece18e69613747ca4e458b",
-    DynaClinicPipeline: "8f443582d89005f75911f4a92cff3c6ed986b57f8c0dede0428f25b2a6280583",
+    DynaClinicPipeline: "c6e126d706513f42cd7c829eafac8eedef23a6dfe8fe79ad57cbaf51b7b32387",
 }
 
 
@@ -418,6 +428,8 @@ def test_context_policy_decides_whether_team_and_synthesizer_see_the_vignette(
     expected = dict.fromkeys((IMAGING, PATHOLOGY, PHARMACOLOGY, SYNTHESIZER), sees_case)
     if pipeline_cls is StaticTeamPipeline:  # decomposition reads the Blackboard; the judge always has the full case
         expected |= {CRITIC: False, CRITIC_JUDGE: True}
+    else:  # the mesh step 2 repeats each specialist's round-1 view of the case
+        expected |= dict.fromkeys(MESH_ROLES.values(), sees_case)
     assert seen == expected
     assert all("Blackboard:" in user for role, _, user in client.prompts if role == SYNTHESIZER)
 

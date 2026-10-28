@@ -11,8 +11,10 @@ graph:
     Uncertainty U (GeneralistSweep, normalised entropy of one generalist differential) and applies the
     mode rule: U > tau_u -> adversarial; else C <= tau_c -> hierarchical (Primary Care hub, which may
     consult specialist spokes); else collaborative. Team modes run the Integrated Care Team, whose
-    specialists write to a shared Blackboard; if their answers diverge beyond tau the Clinical Critic
-    reviews the claims before the Synthesizer answers (adversarial mode). Every answer passes the
+    specialists write their independent hypotheses to a shared Blackboard. If they agree (collaborative),
+    the specialists form a fully connected mesh: each reads every peer's entry and posts a revised one,
+    and the Consensus Builder integrates both rounds. If they diverge beyond tau (adversarial), the
+    Clinical Critic reviews the claims before the Synthesizer answers. Every answer passes the
     Layer-4 safety gates before the report. Routing reads only the first-line markers ROUTE:, MODE: and GATE:
     (functions/edge/dynaclinic_conditions.py). Nodes use DYNACLINIC_MODEL and
     DYNACLINIC_FALLBACK_MODELS unless a node sets model. Research prototype on synthetic cases; not
@@ -79,6 +81,15 @@ graph:
         uncertainty stays ADVERSARIAL; the divergence is only reported. No LLM call.
       config:
         tau: 0.25
+    - id: MeshExchange
+      type: dc_mesh_exchange
+      description: >-
+        Collaborative mode, after the Conflict Detector compared the independent round-1 hypotheses.
+        Fully connected mesh: each care-team specialist reads every peer's round-1 entry (findings,
+        claims, distribution or leading diagnosis), states what it adopts or disputes from each, and
+        posts a revised step-2 entry to the Blackboard, concurrently. A failed reply leaves that
+        specialist's round-1 entry standing. Not a 3D character (the specialists are the Care Team's).
+      config: {}
     - id: Critic
       type: dc_critic
       description: >-
@@ -88,7 +99,8 @@ graph:
     - id: Synthesizer
       type: dc_synthesizer
       description: >-
-        Consensus Builder in collaborative mode, Conflict Resolver (Mediator) in adversarial mode, where
+        Consensus Builder in collaborative mode, integrating the round-1 and mesh step-2 entries into one
+        unified differential; Conflict Resolver (Mediator) in adversarial mode, where
         it also weighs the Critic's flagged claims. Writes the team answer from the Blackboard, ending
         in FINAL ANSWER: <letter>, or for an open-ended case the sectioned write-up ending in
         RECOMMENDATION:. context_policy shared_core adds the full case block; strict: question,
@@ -142,11 +154,13 @@ graph:
     - from: CareTeam
       to: DivergenceGate
     - from: DivergenceGate
-      to: Synthesizer
+      to: MeshExchange
       condition:
         type: function
         config:
           name: dc_mode_collaborative
+    - from: MeshExchange
+      to: Synthesizer
     - from: DivergenceGate
       to: Critic
       condition:

@@ -15,6 +15,7 @@ from dynaclinic.prompts import (
     CONSULT_ROLES,
     CRITIC,
     IMAGING,
+    MESH_ROLES,
     PATHOLOGY,
     PHARMACOLOGY,
     PRIMARY_CARE,
@@ -41,8 +42,8 @@ from tests.test_dynaclinic_pipeline import (
 from utils.schema_exporter import build_schema_response
 
 NODE_TYPES = (
-    "dc_triage", "dc_uncertainty", "dc_primary_care", "dc_care_team", "dc_divergence_gate", "dc_critic",
-    "dc_synthesizer", "dc_safety_gate",
+    "dc_triage", "dc_uncertainty", "dc_primary_care", "dc_care_team", "dc_divergence_gate", "dc_mesh_exchange",
+    "dc_critic", "dc_synthesizer", "dc_safety_gate",
 )
 CASE_JSON = json.dumps(CASE.to_dict())
 SEPSIS_TEXT = "A 70-year-old man has fever, hypotension and confusion."
@@ -87,7 +88,7 @@ def harness() -> Iterator[Build]:
     set_client_factory(None)
 
 
-def test_registry_and_schema_export_include_the_eight_node_types() -> None:
+def test_registry_and_schema_export_include_every_node_type() -> None:
     ensure_schema_registry_populated()
     assert set(NODE_TYPES) <= iter_node_registrations().keys()
     crumbs = [{"node": "DesignConfig", "field": "graph"}, {"node": "GraphDefinition", "field": "nodes"}]
@@ -394,3 +395,21 @@ def test_primary_care_hub_lists_its_consults_before_the_answer(harness: Build) -
     h.run("dc_triage", CASE_JSON)
     assert h.run("dc_primary_care") == (f"STAGE: primary_care\nHub consults (each specialist answered independently):\n"
                                         f"- pharmacology: {DRUG_Q} -> {DRUG_A}\n\n{FINAL}")
+
+
+def test_mesh_exchange_summarises_what_each_specialist_reads_adopts_and_disputes(harness: Build) -> None:
+    exchange = [{"peer": PATHOLOGY, "stance": "adopts", "point": "the positive antigen test"},
+                {"peer": PHARMACOLOGY, "stance": "Disputes", "point": "macrolide risk"}]
+    imaging = json.dumps({"exchange": exchange, "findings": ["f"], "distribution": FOR_A, "claims": []})
+    h = harness(triage=_triage("HIGH"), **{MESH_ROLES[IMAGING]: imaging, MESH_ROLES[PATHOLOGY]: "not json"})
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    assert h.run("dc_divergence_gate").startswith("MODE: COLLABORATIVE\n")
+    assert h.run("dc_mesh_exchange") == (
+        "STAGE: mesh_exchange\n"
+        "- imaging reads pathology, pharmacology; adopts pathology: the positive antigen test; "
+        "disputes pharmacology: macrolide risk; revised: A\n"
+        "- pharmacology reads imaging, pathology; no adopt/dispute stated; revised: B\n\n"
+        "Warnings:\n- pathology: mesh reply has no distribution; no step-2 entry, its round-1 entry stands")
+    assert h.run("dc_synthesizer").startswith("STAGE: synthesizer (Consensus Builder)\n")
+    assert "[step 2] imaging (hypothesis)" in next(u for r, _, u in h.client.prompts if r == SYNTHESIZER)
