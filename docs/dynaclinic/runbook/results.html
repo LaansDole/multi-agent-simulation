@@ -46,7 +46,7 @@
 <main>
   <div class="panel">
     <h2>Bottom line</h2>
-    <p class="verdict">gpt-6-luna is close to its ceiling on both benchmarks, so neither one separates single-agent from multi-agent yet. With the proposal's three modes (since f15) the adversarial debate runs on a third of MedQA, but accuracy stays within the intervals and the dynamic arm now uses more calls than the old always-on team (6.94 vs 6.00 per MedQA question). Before f14, dynamic switching matched the full team with about 36% fewer calls.</p>
+    <p class="verdict">gpt-6-luna is close to its ceiling on both benchmarks, so neither one separates single-agent from multi-agent yet. With the proposal's three modes (since f15) the adversarial debate runs on a third of MedQA, but accuracy stays within the intervals and the dynamic arm now uses more calls than the old always-on team (6.94 vs 6.00 per MedQA question). Before f14, dynamic switching matched the full team with about 36% fewer calls. With a weaker model (qwen3.5-4b) there is headroom, but single (68%) still leads dynamic (60%) and static (62%).</p>
   </div>
 
   <div class="panel">
@@ -64,6 +64,23 @@
       <li><b>The mesh is often empty on MedQA:</b> in 11 of 20 collaborative questions every specialist abstained in round 1 (no data for their modality), so the Consensus Builder answered alone.</li>
     </ol>
     <p class="note">Raw output: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna">results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna</a>, <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna">results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna</a>; f14 baselines in the matching 2026-10-27-f14 folders. The tables below are the earlier three-arm runs (code 3203fa4 and 9ef6d86), before the new modes.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Weaker base model: qwen3.5-4b, three arms, MedQA-50 (2026-10-28)</h2>
+    <p>gpt-6-luna is near its ceiling, so the same 50 questions were run with a 4B local model (LM Studio, qwen3-4b-2507) to give the team room to help. Code with the three modes (2cf1567), one run per arm.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Arm</th><th>Accuracy</th><th>95% CI</th><th>Calls per question</th><th>Latency mean</th><th>Modes</th></tr>
+      <tr><td class="nw"><b>single</b></td><td class="num">68% (34/50)</td><td class="num">54.2 to 79.2</td><td class="num">0.98</td><td class="num">21.0 s</td><td>single agent on all 50</td></tr>
+      <tr><td class="nw"><b>dynamic</b></td><td class="num">60% (30/50)</td><td class="num">46.2 to 72.4</td><td class="num">8.32</td><td class="num">76.5 s</td><td>49 adversarial, 1 hierarchical</td></tr>
+      <tr><td class="nw"><b>static</b></td><td class="num">62% (31/50)</td><td class="num">48.2 to 74.1</td><td class="num">6.00</td><td class="num">48.0 s</td><td>full team plus Critic on all 50</td></tr>
+    </table></div>
+    <ol>
+      <li><b>Headroom, but the team does not use it.</b> Paired: single beats dynamic on 6 questions and loses on 2 (exact McNemar p = 0.29); single vs static 5 to 2 (p = 0.45). Not significant at n = 50, and the direction favours the single agent.</li>
+      <li><b>The uncertainty threshold does not transfer across models.</b> The 4B generalist is far less confident (median U 0.65), so 49 of 50 questions pass tau_u 0.15, calibrated on gpt-6-luna, and go adversarial: dynamic becomes the static team plus a Proponent and a sweep, at 8.32 calls per question.</li>
+      <li>2 errors on one question (LM Studio timeouts), counted as wrong. The Mediator skipped its verdict line in 11 of 49 debates.</li>
+    </ol>
+    <p class="note">Raw output: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/results/2026-10-28-qwen3.5-4b-medqa50-three-arms">results/2026-10-28-qwen3.5-4b-medqa50-three-arms</a>.</p>
   </div>
 
   <div class="panel">

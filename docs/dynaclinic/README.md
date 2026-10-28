@@ -244,6 +244,21 @@ Runs `2026-10-27-f14-*-dynamic-gpt-6-luna` (code be596a7, tau_u 0.8) and `2026-1
 - syn-high-02: round 1's plurality was correct (C); after the mesh exchange the Consensus Builder answered D, the safety gate blocked it twice, and the case ended without an answer.
 - Accuracy changes are within the intervals; calls per case rose about 40-50%. Proposal-example runs and their caveats: `proposal-alignment.md`.
 
+### Weaker base model: qwen3.5-4b, three arms (2026-10-28)
+
+Run `2026-10-28-qwen3.5-4b-medqa50-three-arms` (code 2cf1567 for the DynaClinic paths, local LM Studio `qwen3.5-4b` = qwen3-4b-2507 served through the OpenAI-compatible API via `OPENAI_BASE_URL` / `DYNACLINIC_MODEL`, concurrency 3, shared_core, cache off). Chosen to give the team headroom: gpt-6-luna is near ceiling.
+
+| arm | accuracy [95% CI] | calls/case | latency mean (s) | modes |
+|---|---|---|---|---|
+| single | 68% (34/50) [54.2, 79.2] | 0.98 | 21.0 | single 50 |
+| dynamic | 60% (30/50) [46.2, 72.4] | 8.32 | 76.5 | adversarial 49, hierarchical 1 |
+| static | 62% (31/50) [48.2, 74.1] | 6.00 | 48.0 | adversarial 50 |
+
+- Headroom exists now (single 68%), but the multi-agent arms do not use it: single beats dynamic on 6 questions and loses on 2 (exact McNemar p = 0.29); single vs static 5 / 2 (p = 0.45); dynamic vs static 5 / 6 (p = 1.0). No difference is significant at n = 50, and the direction favours the single agent.
+- tau_u does not transfer across models: qwen's generalist is far less confident (U quartiles 0.09 / 0.51 / 0.65 / 0.74 / 0.94, mean 0.61), so 49 of 50 cases exceed the gpt-6-luna-calibrated tau_u 0.15 and go adversarial. The dynamic arm is then the static arm plus the Proponent and a generalist sweep, at 8.32 calls per question.
+- Mediator verdicts: H1 28, H2 7, neither 4, no verdict line 11 (the 4B model often skips the required line).
+- 2 errors (medqa-test-0730, single and static): LM Studio request timeout; counted as wrong.
+
 ### MedQA sample (harder benchmark)
 
 `data/dynaclinic/medqa_sample.jsonl`: 50 questions drawn with `random.Random(2026).sample` from the 1,273-question test split of MedQA-USMLE 4-option (Jin et al. 2021; Hugging Face `GBaker/MedQA-USMLE-4-options`, file `phrases_no_exclude_test.jsonl`, CC-BY-4.0). Ids are `medqa-test-<row index>`; 26 Step 1, 24 Step 2&3. The records have no structured patient data and no `unsafe_options`, so A_SAD/T_SAD have little to check and the safety columns are not meaningful for this set.
