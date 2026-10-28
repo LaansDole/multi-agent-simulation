@@ -32,9 +32,9 @@ graph:
             "admission_date": "2024-01-15"
           }
           Generate varied patient data for each request.
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {temperature: 1}
         tooling: null
         thinking: null
         memories: []
@@ -48,9 +48,9 @@ graph:
         name: ${MODEL_NAME}
         provider: openai
         role: You received a patient admission report. Acknowledge it briefly.
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {temperature: 1}
         tooling: null
         thinking: null
         memories: []
@@ -71,9 +71,9 @@ graph:
             {"name": "Carol Davis", "priority": "low", "wait_time": 45}
           ]
           Output ONLY valid JSON. Vary the patient data for each request.
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {temperature: 1}
         tooling: null
         thinking: null
         memories: []
@@ -87,9 +87,9 @@ graph:
         name: ${MODEL_NAME}
         provider: openai
         role: You received a triage status report. Acknowledge it briefly.
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {temperature: 1}
         tooling: null
         thinking: null
         memories: []
@@ -110,9 +110,9 @@ graph:
           2. A one-sentence overall assessment
 
           Keep it concise (2-3 sentences total).
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {temperature: 1}
         tooling: null
         thinking: null
         memories:
@@ -138,9 +138,9 @@ graph:
 
           Keep the report professional but concise (5-8 sentences total).
           Begin with "HOSPITAL SIMULATION - FINAL REPORT" header.
-        base_url: ${BASE_URL}
-        api_key: ${API_KEY}
-        params: {}
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {temperature: 1}
         tooling: null
         thinking: null
         memories:
@@ -318,14 +318,17 @@ graph:
         memory_path: "{{run_dir}}/daily_summaries.json"
         embedding:
           provider: openai
-          model: ${MODEL_NAME}
-          api_key: ${API_KEY}
-          base_url: ${BASE_URL}
+          model: ${EMBEDDING_MODEL}
+          api_key: ${OPENAI_API_KEY}
+          base_url: ${OPENAI_BASE_URL}
           params: {}
   initial_instruction: ''
   start:
     - DayStart
   end:
     - FinalReport
+# Agents and the memory embedder call OpenAI (OPENAI_BASE_URL / OPENAI_API_KEY from .env).
+# temperature: 1 because gpt-6-luna rejects any other value and the openai provider sends 0.7 when unset.
 vars:
-  MODEL_NAME: qwen3.5-4b
+  MODEL_NAME: gpt-6-luna
+  EMBEDDING_MODEL: text-embedding-3-small
