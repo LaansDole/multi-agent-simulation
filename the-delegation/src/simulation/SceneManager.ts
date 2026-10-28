@@ -11,7 +11,7 @@ import { AREA_POI_PREFIX, BOARDROOM_POI_ID, PoiManager, spawnPoiId } from './wor
 import { WorldManager } from './world/WorldManager';
 
 import { BackendAgentSimulation } from './core/BackendAgentSimulation';
-import { nearestToCentroid } from '../integration/api/interactionPlanner';
+import { pickMeetingArea } from '../integration/api/interactionPlanner';
 import { useCoreStore, type Task } from '../integration/store/coreStore';
 import { getActiveAgentSet, useTeamStore } from '../integration/store/teamStore';
 import { useUiStore } from '../integration/store/uiStore';
@@ -337,18 +337,24 @@ export class SceneManager {
     this.timers.delete(id);
   }
 
-  /** Area POI (hub, boardroom, canteen, workspace) nearest to the characters' centre: where they meet. */
+  /**
+   * Area POI (hub, boardroom, canteen, workspace) nearest to the characters' centre that has a free
+   * spot for each of them (else the roomiest): where they meet.
+   */
   private meetingArea(indices: number[]): PoiDef | undefined {
     const points = indices.map((i) => this.controller?.getCPUPosition(i)).filter((p): p is THREE.Vector3 => !!p);
-    const areas = this.poiManager.getPoisByPrefix(AREA_POI_PREFIX).map((poi) => ({ x: poi.position.x, z: poi.position.z, poi }));
-    return nearestToCentroid(areas, points)?.poi;
+    const areas = this.poiManager.getPoisByPrefix(AREA_POI_PREFIX).map((poi) => ({
+      x: poi.position.x, z: poi.position.z, poi, room: this.controller?.freeAreaSpotCount(poi.position, indices) ?? 0,
+    }));
+    return pickMeetingArea(areas, points, indices.length)?.poi;
   }
 
-  /** True when the character stands (not walks) on one of the spots around `area`. */
+  /** True when the character stands (not walks) on its own spot around `area`: held spots never overlap. */
   private isAt(index: number, area: PoiDef): boolean {
-    const p = this.controller?.getCPUPosition(index);
-    return !!p && this.controller!.getState(index) !== 'walk'
-      && Math.hypot(p.x - area.position.x, p.z - area.position.z) <= AREA_SPOT_RINGS * AREA_SPOT_SPACING + 0.2;
+    const p = this.controller?.getCPUPosition(index), spot = this.controller?.getAreaSpot(index);
+    return !!p && !!spot && this.controller!.getState(index) !== 'walk'
+      && Math.hypot(p.x - spot.x, p.z - spot.z) < AREA_SPOT_SPACING / 2
+      && Math.hypot(spot.x - area.position.x, spot.z - area.position.z) <= AREA_SPOT_RINGS * AREA_SPOT_SPACING + 0.01;
   }
 
   /** Walks `indices` to `area` (those already there stay); `onAll` once all arrived, or after HANDOFF_WALK_TIMEOUT_SECONDS. */

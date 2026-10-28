@@ -140,24 +140,35 @@ export function speechSnippet(text: string, max: number = SPEECH_CHARS): string 
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
 }
 
-/** Candidate nearest to the centroid of `points` (meeting spot for a group), or undefined. */
-export function nearestToCentroid<T extends { x: number; z: number }>(
+/**
+ * Meeting place for a group at `points`: the candidate nearest to their centroid with `room` for
+ * `need` of them, else the one with the most room (nearest on ties). Undefined without points.
+ */
+export function pickMeetingArea<T extends { x: number; z: number; room: number }>(
   candidates: readonly T[],
   points: readonly { x: number; z: number }[],
+  need: number,
 ): T | undefined {
   if (points.length === 0) return undefined;
   const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
   const cz = points.reduce((sum, p) => sum + p.z, 0) / points.length;
-  let best: T | undefined;
-  let bestDist = Infinity;
-  for (const c of candidates) {
-    const dist = (c.x - cx) ** 2 + (c.z - cz) ** 2;
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = c;
-    }
-  }
-  return best;
+  const byDistance = [...candidates].sort((a, b) => ((a.x - cx) ** 2 + (a.z - cz) ** 2) - ((b.x - cx) ** 2 + (b.z - cz) ** 2));
+  return byDistance.find((c) => c.room >= need)
+    ?? byDistance.reduce<T | undefined>((best, c) => (!best || c.room > best.room ? c : best), undefined);
+}
+
+/**
+ * The `spots` no agent outside `members` holds: a spot closer than `gap` to a `held` one is taken.
+ * Members' own spots stay free for them, so a group never needs two agents on one spot.
+ */
+export function freeSpots<T extends { x: number; z: number }>(
+  spots: readonly T[],
+  held: Iterable<readonly [number, { x: number; z: number }]>,
+  members: readonly number[],
+  gap: number,
+): T[] {
+  const others = [...held].filter(([i]) => !members.includes(i)).map(([, p]) => p);
+  return spots.filter((s) => others.every((p) => Math.hypot(p.x - s.x, p.z - s.z) >= gap));
 }
 
 /**

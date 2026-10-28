@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { freeSpots } from '../integration/api/interactionPlanner';
 import { getActiveAgentSet } from '../integration/store/teamStore';
 import { AgentBehavior, AnimationName, CharacterStateKey, ExpressionKey, ICharacterDriver } from '../types';
 
@@ -215,21 +216,35 @@ export class CharacterController implements ICharacterDriver {
     return true;
   }
 
-  /**
-   * First walkable spot on rings around `centre` (radius and arc spacing AREA_SPOT_SPACING) that no
-   * other agent holds, so agents sharing an area never stand on top of each other.
-   */
-  private _freeAreaSpot(index: number, centre: THREE.Vector3): THREE.Vector3 | null {
+  /** Walkable standing spots on rings around `centre` (radius and arc spacing AREA_SPOT_SPACING). */
+  private _areaSpotsAround(centre: THREE.Vector3): THREE.Vector3[] {
+    const spots: THREE.Vector3[] = [];
     for (let ring = 1; ring <= AREA_SPOT_RINGS; ring++) {
       const radius = ring * AREA_SPOT_SPACING;
       const slots = Math.floor((2 * Math.PI * radius) / AREA_SPOT_SPACING);
       for (let slot = 0; slot < slots; slot++) {
         const angle = (slot / slots) * 2 * Math.PI;
         const spot = new THREE.Vector3(centre.x + Math.cos(angle) * radius, centre.y, centre.z + Math.sin(angle) * radius);
-        const taken = [...this.areaSpots].some(([i, held]) => i !== index && held.distanceTo(spot) < AREA_SPOT_SPACING / 2);
-        if (!taken && this.navMesh.isWalkable(spot)) return spot;
+        if (this.navMesh.isWalkable(spot)) spots.push(spot);
       }
     }
+    return spots;
+  }
+
+  /** Spots around `centre` free for `members`: walkable and held by no agent outside the group. */
+  public freeAreaSpotCount(centre: THREE.Vector3, members: readonly number[]): number {
+    return freeSpots(this._areaSpotsAround(centre), this.areaSpots, members, AREA_SPOT_SPACING / 2).length;
+  }
+
+  /** The area standing spot `index` holds (walking to or standing on), if any. */
+  public getAreaSpot(index: number): THREE.Vector3 | undefined {
+    return this.areaSpots.get(index);
+  }
+
+  /** First free spot around `centre` for `index`, so agents sharing an area never stand on top of each other. */
+  private _freeAreaSpot(index: number, centre: THREE.Vector3): THREE.Vector3 | null {
+    const spot = freeSpots(this._areaSpotsAround(centre), this.areaSpots, [index], AREA_SPOT_SPACING / 2)[0];
+    if (spot) return spot;
     console.warn(`[CharacterController] agent ${index}: no free standing spot around (${centre.x.toFixed(2)}, ${centre.z.toFixed(2)})`);
     return null;
   }

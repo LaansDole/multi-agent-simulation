@@ -6,7 +6,8 @@ import {
   conversationLoop,
   feedingAgents,
   InteractionTracker,
-  nearestToCentroid,
+  freeSpots,
+  pickMeetingArea,
   speechSnippet,
   type GraphEdge,
 } from '../../src/integration/api/interactionPlanner.ts';
@@ -124,14 +125,36 @@ test('a hand-off from an agent with blank output has no speech text, not its pre
   assert.deepEqual(tracker.started('Next').handOff, { from: 'Saver', to: 'Next', also: [], text: '' });
 });
 
-test('speechSnippet and nearestToCentroid', () => {
+test('speechSnippet keeps plain text on one line', () => {
   assert.equal(speechSnippet('  two\n\nlines  '), 'two lines');
   const long = speechSnippet('x'.repeat(200));
   assert.equal(long.length, 80);
   assert.ok(long.endsWith('…'));
-  const areas = [{ id: 'hub', x: -2, z: 2 }, { id: 'boardroom', x: 1.3, z: 3.5 }];
-  assert.equal(nearestToCentroid(areas, [{ x: 0, z: 4 }, { x: 3, z: 3 }])?.id, 'boardroom');
-  assert.equal(nearestToCentroid(areas, []), undefined);
+});
+
+test('meetings go to the nearest area with a free spot per member, else the roomiest', () => {
+  const pair = [{ x: 0, z: 4 }, { x: 3, z: 3 }];
+  const areas = [{ id: 'hub', x: -2, z: 2, room: 6 }, { id: 'boardroom', x: 1.3, z: 3.5, room: 2 }, { id: 'canteen', x: 6, z: 6, room: 9 }];
+  assert.equal(pickMeetingArea(areas, pair, 2)?.id, 'boardroom');
+  // Boardroom full of agents outside the meeting: next-nearest area with room.
+  assert.equal(pickMeetingArea(areas, pair, 3)?.id, 'hub');
+  assert.equal(pickMeetingArea(areas, pair, 7)?.id, 'canteen');
+  // Nowhere has room for everyone: the roomiest, nearest on ties.
+  assert.equal(pickMeetingArea(areas, pair, 12)?.id, 'canteen');
+  assert.equal(pickMeetingArea(areas.map((a) => ({ ...a, room: 0 })), pair, 2)?.id, 'boardroom');
+  assert.equal(pickMeetingArea(areas, [], 2), undefined);
+});
+
+test('freeSpots: spots held outside the meeting are taken, members keep theirs', () => {
+  const spots = [{ x: 0.8, z: 0 }, { x: -0.8, z: 0 }, { x: 0, z: 0.8 }, { x: 0, z: -0.8 }];
+  const held: [number, { x: number; z: number }][] = [[1, { x: 0.8, z: 0 }], [2, { x: -0.75, z: 0.05 }], [3, { x: 5, z: 5 }]];
+  assert.deepEqual(freeSpots(spots, held, [], 0.4), [spots[2], spots[3]]);
+  assert.deepEqual(freeSpots(spots, held, [1, 2], 0.4), spots);
+  // Allocating one by one (as gather does) never puts two agents on one spot.
+  const taken = new Map(held);
+  for (const agent of [4, 5]) taken.set(agent, freeSpots(spots, taken, [agent], 0.4)[0]);
+  assert.deepEqual([taken.get(4), taken.get(5)], [spots[2], spots[3]]);
+  assert.deepEqual(freeSpots(spots, taken, [6], 0.4), []);
 });
 
 test('speechSnippet reads JSON and Markdown output', () => {
