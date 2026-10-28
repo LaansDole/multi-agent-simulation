@@ -81,22 +81,23 @@ edges:
 
 ## How to Play With `demo_rlm_memory.yaml`
 
-The demo defaults to `memory_path: WareHouse/{{project_name}}/rlm_test_memory.json`. For a **warm start** (recommended for first-time runs), copy the seed data into that path before running so pass 1 returns items immediately.
+The demo defaults to `memory_path: "{{run_dir}}/rlm_test_memory.json"`. `{{run_dir}}` is the run's own output folder (`WareHouse/<session>_<timestamp>/`, see the memory module docs), so every run starts with an empty store and accumulates entries only across its own passes. For a **warm start**, point `memory_path` at a fixed file that holds a copy of the seed data.
 
 ### Pre-seeded Store Setup (warm start)
 
-`WareHouse/rlm_demo_seed/` ships with seed entries (stub embeddings) for both the standard and tiered demos. Copy them into the project path **before** the first run:
+`WareHouse/rlm_demo_seed/` ships with seed entries (stub embeddings) for both the standard and tiered demos. Copy them to a fixed path and set `memory_path` in the YAML to that path:
 
 ```bash
-cp WareHouse/rlm_demo_seed/rlm_test_memory.json \
-   "WareHouse/{{project_name}}/rlm_test_memory.json"
+mkdir -p WareHouse/rlm_demo_warm
+cp WareHouse/rlm_demo_seed/rlm_test_memory.json WareHouse/rlm_demo_warm/rlm_test_memory.json
+# then in demo_rlm_memory.yaml: memory_path: WareHouse/rlm_demo_warm/rlm_test_memory.json
 ```
 
-> **Do not use `rlm_demo_seed/` as `memory_path` directly.** Agent write-back appends run output to the same file, which pollutes the seed store with operational entries ("No memories found" reports, etc.). Always copy seed → project path, then run.
+> **Do not use `rlm_demo_seed/` as `memory_path` directly.** Agent write-back appends run output to the same file, which pollutes the seed store with operational entries ("No memories found" reports, etc.). Always copy the seed to a fixed path, then run.
 
 ### Step 1: Warm-start pass (seeded project store)
 
-1. Run the seed-copy command above (one-time setup).
+1. Run the seed-copy command above and set `memory_path` to the copy (one-time setup).
 2. Run the workflow with the baseline prompt:
    - `SeedQuery`: `Summarize what memory currently stores about RLM behavior.`
    - `RLMMemoryRetriever.query`: `rlm memory behavior`
@@ -109,16 +110,16 @@ cp WareHouse/rlm_demo_seed/rlm_test_memory.json \
 
 If you want to reproduce the cold-start scenario intentionally:
 
-1. Delete or empty the project memory file (set contents to `[]`).
+1. Keep the default `{{run_dir}}` path (every run is cold), or empty your fixed memory file (set contents to `[]`).
 2. Run the workflow.
 3. Expected behavior:
    - `RLMMemoryRetriever` returns `No memories found in store 'test_store' for query: 'rlm memory behavior'`.
    - **This is expected on pass 1 — it is not an error.** `AgentWithRLM` still produces a response and writes the turn to memory at `finished`.
-   - Run 2 on the same path should retrieve the entries written in run 1.
+   - With a fixed `memory_path`, run 2 retrieves the entries written in run 1; with `{{run_dir}}` each run starts empty again.
 
 ### Step 3: Warm-store pass (same store, second run)
 
-1. Run the same workflow again without changing the memory store path.
+1. Run the same workflow again with the same fixed `memory_path` (the default `{{run_dir}}` path gives every run a new, empty store).
 2. Expected behavior:
    - Retrieval returns one or more memories (up to `limit`).
    - Agent output references prior run content, not only an empty-store explanation.
@@ -149,7 +150,7 @@ Related loop docs:
 Expected output pattern for looped runs:
 - Passes 1-4: `AgentWithRLM` continues retrieval/writeback loop and memory entries accumulate.
 - Pass 5: LoopGate emits the termination message and `Finalizer` produces terminal output.
-- Memory artifact: `WareHouse/{{project_name}}/rlm_test_memory.json` contains multiple entries created in one run.
+- Memory artifact: `<run folder>/rlm_test_memory.json` contains multiple entries created in one run.
 
 ### Auto Tier-Rotating Variant
 
@@ -166,7 +167,7 @@ Run example:
 Expected pattern:
 - Five tiered retrieval/analysis passes in one run (recall, grouping, contradiction, trend, recursive follow-up).
 - Terminal output: `RLM tiered demo completed after five prompt tiers.`
-- Memory artifact: `WareHouse/{{project_name}}/rlm_test_memory_tiered.json` accumulates entries from that single run.
+- Memory artifact: `<run folder>/rlm_test_memory_tiered.json` accumulates entries from that single run.
 
 ## Prompt Ladder (Progressive RLM Testing)
 
@@ -196,8 +197,8 @@ Check both output text and logs.
 | Scenario | Expected retrieval output | `item_count` in logs |
 |---|---|---|
 | Pre-seeded `rlm_demo_seed` path, pass 1 | Memory-aware synthesis from seed entries | ≥ 1 |
-| `{{project_name}}` path, run 1 (cold-start) | `No memories found in store 'test_store' ...` | 0 |
-| `{{project_name}}` path, run 2+ (warm) | Memory-aware synthesis referencing prior run | ≥ 1 |
+| Default `{{run_dir}}` path, pass 1 of any run (cold-start) | `No memories found in store 'test_store' ...` | 0 |
+| Fixed path, run 2+ (warm) | Memory-aware synthesis referencing prior run | ≥ 1 |
 | Deeper tiers | Grouped themes, conflicts, or trend language | ≥ 2 |
 
 > **Note — "No memories found" is informational, not a crash.** When the store is empty (cold-start), this message indicates the expected state for pass 1. If you see it on passes 2–5 within the same run, check whether the agent write stage completed (see Troubleshooting).
