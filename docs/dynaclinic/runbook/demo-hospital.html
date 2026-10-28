@@ -44,14 +44,14 @@
   <div class="panel">
     <h2>The run, end to end</h2>
     <video controls preload="metadata" poster="hospital-01-team.png" src="demo-hospital-3d.mp4"></video>
-    <p class="note">One continuous headless-Chrome screencast (2:44): fresh browser profile, import demo_hospital.yaml, chat with the lead, run to the final report. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged. Backend on code 1739f5c (f16 to f19).</p>
+    <p class="note">One continuous headless-Chrome screencast (2:38): fresh browser profile, import demo_hospital.yaml, chat with the lead, run to the final report. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged. Code be54e5a (f16 to f23), recorded 2026-10-28.</p>
   </div>
 
   <div class="grid2">
     <figure class="panel"><img src="hospital-01-team.png" alt="3D office after importing demo_hospital.yaml: six characters, header shows OpenAI gpt-6-luna"><figcaption>1. Imported: one character per agent; the header shows the model the YAML resolves to (OpenAI gpt-6-luna).</figcaption></figure>
-    <figure class="panel"><img src="hospital-02-handoff.png" alt="Characters gathered in the office while PatientDataGenerator is working; kanban shows 15 done"><figcaption>2. A hand-off: the receiving agents gather with the one that produced their input; the kanban moves each node to Done as it finishes, loop and literal nodes included.</figcaption></figure>
-    <figure class="panel"><img src="hospital-03-speech.png" alt="Speech bubble over TriageReport: Acknowledged. Ethan Brooks is flagged for fast-track"><figcaption>3. Talking: the speaker's first words in a bubble ("Acknowledged. Ethan Brooks is flagged for fast-track..."), taken from the real model output.</figcaption></figure>
-    <figure class="panel"><img src="hospital-04-final.png" alt="Final text deliverable modal with the six-day hospital simulation final report"><figcaption>4. The final report modal shows the FinalReport agent's text, generated from six days of summaries in this run's own memory file.</figcaption></figure>
+    <figure class="panel"><img src="hospital-02-handoff.png" alt="Speech bubble: Acknowledged: Maya Patel is high priority and should be fast-tracked. Sofia Ngu..."><figcaption>2. Talking on a hand-off: the speaker's first words in a bubble ("Acknowledged: Maya Patel is high priority and should be fast-tracked..."), from the real model output. JSON and Markdown output are shown as readable text.</figcaption></figure>
+    <figure class="panel"><img src="hospital-03-speech.png" alt="Characters standing on separate spots in two areas while TriageDataGenerator works; kanban 17 done"><figcaption>3. Meetings spread out: each hand-off takes free spots in the nearest area with room, so the loop's repeated meetings do not stack characters on one spot.</figcaption></figure>
+    <figure class="panel"><img src="hospital-04-final.png" alt="Final text deliverable modal with the five-day hospital simulation final report"><figcaption>4. The final report modal shows the FinalReport agent's text, generated from the five daily summaries in this run's own memory file.</figcaption></figure>
   </div>
 
   <div class="grid2">
@@ -59,16 +59,16 @@
       <h2>What the run did (from its own output)</h2>
       <table>
         <tr><th>Node</th><th>Runs</th><th>First output</th></tr>
-        <tr><td>DayStart (literal)</td><td class="num">6</td><td>Starting hospital operations</td></tr>
-        <tr><td>PatientDataGenerator</td><td class="num">6</td><td>JSON patient, e.g. Maya Chen, 42, acute appendicitis</td></tr>
-        <tr><td>AdmissionReport</td><td class="num">6</td><td>Acknowledged: Maya Chen, 42, admitted with acute appendicitis...</td></tr>
-        <tr><td>TriageDataGenerator</td><td class="num">6</td><td>JSON triage queue</td></tr>
-        <tr><td>TriageReport</td><td class="num">6</td><td>Triage status received. Ethan Brooks is flagged for fast-track.</td></tr>
-        <tr><td>DailySummary</td><td class="num">6</td><td>...flagged for fast-track... with no admissions noted.</td></tr>
-        <tr><td>LoopGate (loop timer, 60 s)</td><td class="num">6</td><td>releases after the time limit</td></tr>
-        <tr><td>FinalReport</td><td class="num">1</td><td>HOSPITAL SIMULATION - FINAL REPORT (six days)</td></tr>
+        <tr><td>DayStart (literal)</td><td class="num">5</td><td>Starting hospital operations</td></tr>
+        <tr><td>PatientDataGenerator</td><td class="num">5</td><td>JSON patient: Maya Patel, 42, acute appendicitis</td></tr>
+        <tr><td>AdmissionReport</td><td class="num">5</td><td>Maya Patel, 42, was admitted with acute appendicitis.</td></tr>
+        <tr><td>TriageDataGenerator</td><td class="num">5</td><td>JSON triage queue</td></tr>
+        <tr><td>TriageReport</td><td class="num">5</td><td>Acknowledged: Maya Patel is high priority and should be fast-tracked. Sofia Nguyen has an extended wait time of 42 minutes.</td></tr>
+        <tr><td>DailySummary</td><td class="num">5</td><td>Maya Patel, 42, was admitted with acute appendicitis; triage marked her high priority...</td></tr>
+        <tr><td>LoopGate (loop timer, 60 s)</td><td class="num">5</td><td>releases after the time limit</td></tr>
+        <tr><td>FinalReport</td><td class="num">1</td><td>HOSPITAL SIMULATION - FINAL REPORT (five days)</td></tr>
       </table>
-      <p class="note">31 model calls, 3,673 input + 3,706 output tokens, all gpt-6-luna. Run folder <code>WareHouse/session_802a4923-...</code>.</p>
+      <p class="note">26 model calls, 3,631 input + 3,653 output tokens, all gpt-6-luna. Memory <code>daily_summaries.json</code>: 5 entries, one per day, all written by DailySummary. Run folder <code>WareHouse/session_1f7f0534-...</code>.</p>
     </div>
     <div class="panel">
       <h2>What was fixed to get here</h2>
@@ -78,6 +78,8 @@
         <li><b>Each run has its own memory.</b> <code>{{run_dir}}</code> in <code>memory_path</code> resolves to the run folder; before, every run read and wrote one shared file, so a second run's report quoted the first run's days (f17).</li>
         <li><b>Real embeddings.</b> Memory retrieval asked the chat model for embeddings and failed on every lookup; demo_hospital now uses OpenAI gpt-6-luna and text-embedding-3-small (f18).</li>
         <li><b>gpt-6-luna works in any DevAll workflow.</b> The provider sent a default temperature the model rejects; it now retries once without it and remembers (f19).</li>
+        <li><b>Admissions reach the report.</b> DailySummary only received the triage report, so every summary said "no admissions noted"; a data edge (<code>trigger: false</code>) now also hands it that day's admission, AdmissionReport always restates name, age and condition, and FinalReport only reads the memory instead of writing its own report into it (f21, f23).</li>
+        <li><b>Readable bubbles, spread-out meetings</b> in the 3D office (f22).</li>
       </ol>
     </div>
   </div>
@@ -86,15 +88,8 @@
     <h2>The final report, verbatim</h2>
     <pre>HOSPITAL SIMULATION - FINAL REPORT
 
-Executive Summary: The six-day operation cycle focused primarily on triage prioritization, with multiple patients flagged for fast-track evaluation.
-Day-by-Day Breakdown: Day 1: Ethan Brooks was flagged for fast-track; no admissions were noted.
-Day 2: Ethan Brooks was again flagged for fast-tracking.
-Day 3: James Patel was flagged for fast-tracking; no admission information was provided.
-Day 4: Ethan Brooks was flagged for fast-track, Nina Patel had waited 24 minutes, and Maria Chen had just arrived.
-Day 5: James Carter was designated high priority for fast-track; no admissions were reported.
-Day 6: James Carter remained flagged for fast-tracking; no admissions were reported.
-Overall Assessment: Triage updates consistently identified patients requiring prompt attention, while the available summaries document no admissions on Days 1, 5, and 6.</pre>
-    <p class="note"><b>Known limitation, visible in this report:</b> "no admissions noted" is a property of the workflow's wiring, not of the model. DailySummary receives only TriageReport's output (a DevAll edge carries its source node's output), so the admissions that AdmissionReport acknowledged every day (e.g. Maya Chen) never reach the daily summary or the memory the final report reads. Fix: a data edge from AdmissionReport to DailySummary.</p>
+The five-day simulation recorded admissions for acute appendicitis and pneumonia, alongside recurring triage prioritization and wait-time concerns. Day 1: Maya Patel, 42, was admitted with acute appendicitis and flagged for fast-track care; Sofia Nguyen had a 42-minute wait. Day 2: Maria Chen, 54, was admitted with pneumonia and flagged for fast-tracking, while Priya Patel received an extended-wait warning. Day 3: Maria Chen was again recorded as admitted with pneumonia and high priority; James Patel was low priority with a 25-minute wait, and Sofia Martinez was medium priority with a 12-minute wait. Day 4: Amara Patel, 54, was admitted with pneumonia and flagged for fast-track; Sofia Martinez received an extended-wait warning. Day 5: Maria Chen was recorded as admitted with pneumonia; Ethan Brooks was flagged for fast-tracking, and Nina Patel for an extended wait. Overall, the operation cycle was completed with urgent cases identified for prioritization, while repeated extended-wait warnings indicate that queue management remained an important area for attention.</pre>
+    <p class="note">The patients are synthetic and invented by the PatientDataGenerator agent each day; repeated names (Maria Chen on days 2, 3 and 5) are the model's choice, not a memory leak (each day's summary is written once; the memory holds exactly five entries).</p>
   </div>
 
   <div class="panel">
