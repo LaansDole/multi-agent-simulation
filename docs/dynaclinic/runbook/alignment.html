@@ -32,7 +32,7 @@
 </head>
 <body>
 <header><h1>DynaClinic vs the reviewed proposal (DynamiClinic)</h1></header>
-<nav><a href="index.html">3D runbook demo</a><a href="results.html">Benchmark results</a><a href="slides.html">Slides</a></nav>
+<nav><a href="index.html">3D runbook demo</a><a href="results.html">Benchmark results</a><a href="slides.html">Slides</a><a href="demo-hospital.html">demo_hospital in 3D</a></nav>
 <main>
 <p>The implementation was built from an extended draft of the proposal (5 layers: FHIR/Neo4j ingestion, MCTS control plane, Blackboard, A_SAD/S_NAP/T_SAD safety gates, BioBERT/Qdrant memory). This page checks it against the <strong>reviewed</strong> proposal, <em>"DynamiClinic: A Dynamic Architecture Switching Multi-Agent Framework in Healthcare Settings"</em> (Do Le Long An; reviewed by A/Prof. Arthur Tang and Dr. Linh Tran), which is shorter and defines the system differently: layers L0 to L4, three communication modes, a complexity score and an uncertainty score, and a Conflict Detector between two hypotheses.</p>
 <p>Checked on 2026-10-27 against the code at commit 7c83807 and with real runs on OpenAI gpt-6-luna, then re-checked after the fixes it led to (f11 to f13, commits ac19ad6 to 302f550), and again on 2026-10-28 after the Meta-Controller and the three modes were aligned with the proposal (f14 and f15, commits 9ace5a6 to 2cf1567). The repo keeps the name DynaClinic; the reviewed proposal spells it DynamiClinic.</p>

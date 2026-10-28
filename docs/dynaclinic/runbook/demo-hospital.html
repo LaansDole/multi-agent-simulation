@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DevAll in 3D: demo_hospital</title>
+<link rel="canonical" href="https://laansdole.github.io/multi-agent-simulation/demo-hospital.html">
+<style>
+  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  header { padding:28px 36px 8px; }
+  nav { padding:0 36px; font-size:14px; }
+  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 10px; }
+  .sub { color:var(--muted); }
+  main { padding:20px 36px 40px; display:grid; gap:24px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; }
+  video, figure img { width:100%; height:auto; border-radius:8px; border:1px solid var(--line); background:#000; display:block; }
+  figure { margin:0; } figcaption { color:var(--muted); font-size:13px; margin-top:6px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; }
+  td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; max-width:100%; white-space:pre-wrap; }
+  code { background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
+  a { color:#8ab4ff; }
+  ol, ul { margin:6px 0 0; padding-left:22px; } li { margin:5px 0; }
+  .note { color:var(--muted); font-size:13px; }
+  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
+  @media (max-width: 1100px) { .grid2 { grid-template-columns:1fr; } }
+  @media (max-width: 600px) { header, nav, main, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>DevAll in 3D: demo_hospital</h1>
+  <div class="sub">One real run of the generic DevAll workflow <code>yaml_instance/demo_hospital.yaml</code> in the three.js office, on OpenAI gpt-6-luna, 2026-10-28. Six agents loop over hospital days (admit a patient, triage the queue, summarise the day) until a 60 s loop timer releases, then a final report reads every day's summary back from memory. When one agent's output is handed to the next, both characters meet, face each other, and the speaker's first words show in a bubble.</div>
+</header>
+<nav><a href="index.html">DynaClinic 3D runbook demo</a> &nbsp; <a href="results.html">Benchmark results</a> &nbsp; <a href="alignment.html">Fact check against the proposal</a> &nbsp; <a href="slides.html">Slides</a></nav>
+
+<main>
+  <div class="panel">
+    <h2>The run, end to end</h2>
+    <video controls preload="metadata" poster="hospital-01-team.png" src="demo-hospital-3d.mp4"></video>
+    <p class="note">One continuous headless-Chrome screencast (2:44): fresh browser profile, import demo_hospital.yaml, chat with the lead, run to the final report. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged. Backend on code 1739f5c (f16 to f19).</p>
+  </div>
+
+  <div class="grid2">
+    <figure class="panel"><img src="hospital-01-team.png" alt="3D office after importing demo_hospital.yaml: six characters, header shows OpenAI gpt-6-luna"><figcaption>1. Imported: one character per agent; the header shows the model the YAML resolves to (OpenAI gpt-6-luna).</figcaption></figure>
+    <figure class="panel"><img src="hospital-02-handoff.png" alt="Characters gathered in the office while PatientDataGenerator is working; kanban shows 15 done"><figcaption>2. A hand-off: the receiving agents gather with the one that produced their input; the kanban moves each node to Done as it finishes, loop and literal nodes included.</figcaption></figure>
+    <figure class="panel"><img src="hospital-03-speech.png" alt="Speech bubble over TriageReport: Acknowledged. Ethan Brooks is flagged for fast-track"><figcaption>3. Talking: the speaker's first words in a bubble ("Acknowledged. Ethan Brooks is flagged for fast-track..."), taken from the real model output.</figcaption></figure>
+    <figure class="panel"><img src="hospital-04-final.png" alt="Final text deliverable modal with the six-day hospital simulation final report"><figcaption>4. The final report modal shows the FinalReport agent's text, generated from six days of summaries in this run's own memory file.</figcaption></figure>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>What the run did (from its own output)</h2>
+      <table>
+        <tr><th>Node</th><th>Runs</th><th>First output</th></tr>
+        <tr><td>DayStart (literal)</td><td class="num">6</td><td>Starting hospital operations</td></tr>
+        <tr><td>PatientDataGenerator</td><td class="num">6</td><td>JSON patient, e.g. Maya Chen, 42, acute appendicitis</td></tr>
+        <tr><td>AdmissionReport</td><td class="num">6</td><td>Acknowledged: Maya Chen, 42, admitted with acute appendicitis...</td></tr>
+        <tr><td>TriageDataGenerator</td><td class="num">6</td><td>JSON triage queue</td></tr>
+        <tr><td>TriageReport</td><td class="num">6</td><td>Triage status received. Ethan Brooks is flagged for fast-track.</td></tr>
+        <tr><td>DailySummary</td><td class="num">6</td><td>...flagged for fast-track... with no admissions noted.</td></tr>
+        <tr><td>LoopGate (loop timer, 60 s)</td><td class="num">6</td><td>releases after the time limit</td></tr>
+        <tr><td>FinalReport</td><td class="num">1</td><td>HOSPITAL SIMULATION - FINAL REPORT (six days)</td></tr>
+      </table>
+      <p class="note">31 model calls, 3,673 input + 3,706 output tokens, all gpt-6-luna. Run folder <code>WareHouse/session_802a4923-...</code>.</p>
+    </div>
+    <div class="panel">
+      <h2>What was fixed to get here</h2>
+      <ol>
+        <li><b>Characters meet and talk on hand-offs</b>; up to 13 characters; final output and kanban for non-agent nodes (f16).</li>
+        <li><b>Edge processors actually run.</b> The YAML used <code>processor:</code>, which the engine ignored, so the patient and triage templates and the day counter never ran; the key is now <code>process:</code> and the old one is a load error (f17).</li>
+        <li><b>Each run has its own memory.</b> <code>{{run_dir}}</code> in <code>memory_path</code> resolves to the run folder; before, every run read and wrote one shared file, so a second run's report quoted the first run's days (f17).</li>
+        <li><b>Real embeddings.</b> Memory retrieval asked the chat model for embeddings and failed on every lookup; demo_hospital now uses OpenAI gpt-6-luna and text-embedding-3-small (f18).</li>
+        <li><b>gpt-6-luna works in any DevAll workflow.</b> The provider sent a default temperature the model rejects; it now retries once without it and remembers (f19).</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>The final report, verbatim</h2>
+    <pre>HOSPITAL SIMULATION - FINAL REPORT
+
+Executive Summary: The six-day operation cycle focused primarily on triage prioritization, with multiple patients flagged for fast-track evaluation.
+Day-by-Day Breakdown: Day 1: Ethan Brooks was flagged for fast-track; no admissions were noted.
+Day 2: Ethan Brooks was again flagged for fast-tracking.
+Day 3: James Patel was flagged for fast-tracking; no admission information was provided.
+Day 4: Ethan Brooks was flagged for fast-track, Nina Patel had waited 24 minutes, and Maria Chen had just arrived.
+Day 5: James Carter was designated high priority for fast-track; no admissions were reported.
+Day 6: James Carter remained flagged for fast-tracking; no admissions were reported.
+Overall Assessment: Triage updates consistently identified patients requiring prompt attention, while the available summaries document no admissions on Days 1, 5, and 6.</pre>
+    <p class="note"><b>Known limitation, visible in this report:</b> "no admissions noted" is a property of the workflow's wiring, not of the model. DailySummary receives only TriageReport's output (a DevAll edge carries its source node's output), so the admissions that AdmissionReport acknowledged every day (e.g. Maya Chen) never reach the daily summary or the memory the final report reads. Fix: a data edge from AdmissionReport to DailySummary.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Run it yourself</h2>
+    <pre><code># repo root; .env needs OPENAI_API_KEY and OPENAI_BASE_URL
+env -u PYTHONPATH -u VIRTUAL_ENV uv run python server_main.py --port 6400
+cd the-delegation &amp;&amp; npx vite --port=3100 --host=127.0.0.1 --strictPort
+# open localhost:3100/the-delegation/ -> Browse Workflows -> demo_hospital.yaml -> reload -> Start: chat with the lead</code></pre>
+    <p class="note">Headless, without the 3D office: <code>echo "Run the hospital simulation." | uv run python run.py --path yaml_instance/demo_hospital.yaml --name demo</code>.</p>
+  </div>
+</main>
+
+<footer>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall">LaansDole/multi-agent-simulation</a>, branch threejs-devall. Research prototype; synthetic hospital data. Not clinical advice.</footer>
+</body>
+</html>
