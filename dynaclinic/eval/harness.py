@@ -90,11 +90,11 @@ def dry_run_reply(role: str, system: str, user: str) -> str:
         dist = {letter: 0.8 if letter == top else 0.05 for letter in letters}
         return json.dumps({"findings": ["dry-run finding"], "distribution": dist,
                            "claims": [f"The {role} data favour option {top}"]})
-    if role == GENERALIST:  # one leading hypothesis at 0.8: U stays under the default tau_u
+    if role == GENERALIST:  # one leading hypothesis at 0.98: U stays under both forms' tau_u
         top = pick(letters) or "dry-run diagnosis"
         rest = [letter for letter in letters if letter != top]
-        return json.dumps({"differential": [{"hypothesis": top, "probability": 0.8}]
-                           + [{"hypothesis": letter, "probability": 0.2 / len(rest)} for letter in rest]})
+        return json.dumps({"differential": [{"hypothesis": top, "probability": 0.98}]
+                           + [{"hypothesis": letter, "probability": 0.02 / len(rest)} for letter in rest]})
     if role == CRITIC:
         return json.dumps({"claims": [{"text": "The team's findings are consistent with the case", "agent": IMAGING}]})
     if role == CRITIC_JUDGE:
@@ -181,7 +181,7 @@ def run_eval(
         for index, future in enumerate(as_completed(futures), 1):
             case, result = futures[future], future.result()
             row = {**result.to_dict(), **grade(result, case).to_dict(), "gold": case.answer, "gold_tier": case.gold_tier,
-                   "context_policy": context_policy}
+                   "open_ended": case.open_ended, "context_policy": context_policy}
             line = _redact(json.dumps(row), secrets)
             sink.write(line + "\n")
             sink.flush()
@@ -230,6 +230,12 @@ def _arm_summary(rows: list[Row], env: Mapping[str, str]) -> dict[str, Any]:
     blocked = sum(row["blocked"] for row in rows)
     # Meta-Controller scores exist only on dynamic rows that reached triage (rows from before f14 lack the keys)
     scored = [row for row in rows if row.get("complexity") is not None]
+    tau_u: dict[str, set[float]] = {}
+    for row in scored:  # rows from before f15 lack open_ended; their datasets were multiple choice
+        if row.get("tau_u") is not None:
+            tau_u.setdefault("open-ended" if row.get("open_ended") else "multiple choice", set()).add(row["tau_u"])
+    adversarial = [row for row in scored if row["mode"] == "adversarial"]
+    by_uncertainty = sum("mode:adversarial:uncertainty" in row["route"] for row in adversarial)
     models = Counter(call["model"] for call in calls)
     prices = {model: _price(env, model) for model in models}
     cost = None if None in prices.values() else sum(
@@ -249,6 +255,9 @@ def _arm_summary(rows: list[Row], env: Mapping[str, str]) -> dict[str, Any]:
         "mean_complexity": _mean(row["complexity"] for row in scored),
         "mean_uncertainty": _mean(row["uncertainty"] for row in scored if row["uncertainty"] is not None),
         "uncertainty_not_measured": sum(row["uncertainty"] is None for row in scored) if scored else None,
+        "tau_u": {form: sorted(values) for form, values in sorted(tau_u.items())} if scored else None,
+        "adversarial_entry": ({"uncertainty": by_uncertainty, "conflict": len(adversarial) - by_uncertainty}
+                              if scored else None),
         "safety_violations": violations,
         "safety_violation_rate": violations / n,
         "blocked": blocked,
@@ -295,6 +304,10 @@ def _num(value: float | None, spec: str = ".3f") -> str:
     return "n/a" if value is None else format(value, spec)
 
 
+def _tau_u_cell(tau_u: dict[str, list[float]]) -> str:
+    return "; ".join(f"{form} {', '.join(f'{value:g}' for value in values)}" for form, values in tau_u.items()) or "n/a"
+
+
 def _meta_controller_lines(summary: dict[str, Any], arms: Sequence[str]) -> list[str]:
     """The dynamic arm's Complexity C and Uncertainty U; empty when no arm scored a case."""
     scored = [arm for arm in arms if summary["arms_summary"][arm].get("mean_complexity") is not None]
@@ -304,12 +317,17 @@ def _meta_controller_lines(summary: dict[str, Any], arms: Sequence[str]) -> list
         "## Meta-Controller",
         "",
         ("C: Complexity Score, max(LLM tier level, feature density), tau_c 0.5. U: Uncertainty Score, normalised "
-         "entropy of the generalist differential, tau_u 0.8 (assumed, not validated). Mode rule: U > tau_u "
-         "adversarial, else C <= tau_c hierarchical, else collaborative; modes are counted under routes."),
+         "entropy of the generalist differential; tau_u per input form (default 0.15 multiple choice, 0.59 "
+         "open-ended: 75th percentile on held-out MedQA-50 + synthetic-24 and the same vignettes without options; "
+         "calibrated, not validated against outcomes). Mode rule: U > tau_u adversarial, else C <= tau_c "
+         "hierarchical, else collaborative; modes are counted under routes. Adversarial entry: by uncertainty "
+         "(U > tau_u) or by conflict (the Conflict Detector switched a collaborative team)."),
         "",
-        "| arm | mean C | mean U | U not measured |",
-        "|---|---|---|---|",
-        *(f"| {arm} | {_num(s['mean_complexity'])} | {_num(s['mean_uncertainty'])} | {s['uncertainty_not_measured']} |"
+        "| arm | mean C | mean U | U not measured | tau_u used | adversarial by U / by conflict |",
+        "|---|---|---|---|---|---|",
+        *(f"| {arm} | {_num(s['mean_complexity'])} | {_num(s['mean_uncertainty'])} | {s['uncertainty_not_measured']} "
+          f"| {_tau_u_cell(s['tau_u'])} | {s['adversarial_entry']['uncertainty']} / "
+          f"{s['adversarial_entry']['conflict']} |"
           for arm in scored for s in [summary["arms_summary"][arm]]),
         "",
     ]

@@ -8,7 +8,10 @@ than k count the rest as zero mass, and the kept probabilities are renormalised 
 Mode rule (``select_mode``), with the Complexity Score C of ``triage.complexity``:
 hierarchical if C <= tau_c and U <= tau_u; collaborative if C > tau_c and U <= tau_u; adversarial if U > tau_u.
 
-``TAU_U`` = 0.8 is an assumed value, not validated (and not tuned on the proposal's examples).
+tau_u depends on the input form (``tau_u_for``), since k and so the scale of U differ: ``TAU_U_MCQ`` = 0.15 (k = the
+options) and ``TAU_U_OPEN`` = 0.59 (k = 5 differentials), each the 75th percentile of U on held-out MedQA-50 +
+synthetic-24 (multiple choice, n = 74) and the same vignettes without options or question (open-ended); calibrated,
+not validated against outcomes, and not tuned on the proposal's examples.
 """
 
 import math
@@ -16,9 +19,10 @@ import re
 from collections.abc import Sequence
 
 from dynaclinic.parsing import extract_json
-from dynaclinic.types import Mode
+from dynaclinic.types import Case, Mode
 
-TAU_U = 0.8  # assumed, not validated
+TAU_U_MCQ = 0.15  # p75 of U, multiple choice (p50 0.086, p90 0.342)
+TAU_U_OPEN = 0.59  # p75 of U, open-ended, k = 5 (p50 0.385, p90 0.744)
 DEFAULT_K = 5
 _OPTION = re.compile(r"\(?([A-Z])(?:[.):\s]|$)")
 
@@ -61,6 +65,12 @@ def parse_sweep(text: str, letters: Sequence[str], k: int) -> tuple[dict[str, fl
     if not math.isfinite(total) or total <= 0:
         return None, "no probability mass on a valid hypothesis"
     return {hypothesis: p / total for hypothesis, p in top}, None
+
+
+def tau_u_for(case_or_open_ended: Case | bool, tau_u_mcq: float = TAU_U_MCQ, tau_u_open: float = TAU_U_OPEN) -> float:
+    """The tau_u of a case's input form (or of ``open_ended``): ``tau_u_open`` without options, else ``tau_u_mcq``."""
+    open_ended = case_or_open_ended.open_ended if isinstance(case_or_open_ended, Case) else case_or_open_ended
+    return tau_u_open if open_ended else tau_u_mcq
 
 
 def select_mode(c: float, u: float, tau_c: float, tau_u: float) -> Mode:

@@ -99,7 +99,7 @@ def test_registry_and_schema_export_include_the_eight_node_types() -> None:
         fields = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": node_type}])["fields"]
         assert "context_policy" in {f["name"] for f in fields}, node_type
     sweep = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": "dc_uncertainty"}])
-    assert {"model", "tau_u", "k"} <= {f["name"] for f in sweep["fields"]}
+    assert {"model", "tau_u_mcq", "tau_u_open", "tau_u", "k"} <= {f["name"] for f in sweep["fields"]}
 
 
 def test_configs_default_to_the_env_model_chain() -> None:
@@ -108,7 +108,7 @@ def test_configs_default_to_the_env_model_chain() -> None:
     assert (config.model, config.fallback_models, config.max_rollbacks) == (None, [], 1)
     assert Node.from_dict({"id": "d", "type": "dc_divergence_gate", "config": {}}, path="n").config.tau == 0.25
     sweep = Node.from_dict({"id": "u", "type": "dc_uncertainty", "config": {}}, path="n").config
-    assert (sweep.tau_u, sweep.k) == (0.8, 5)
+    assert (sweep.tau_u_mcq, sweep.tau_u_open, sweep.tau_u, sweep.k) == (0.15, 0.59, None, 5)
 
 
 @pytest.mark.parametrize(
@@ -125,6 +125,8 @@ def test_configs_default_to_the_env_model_chain() -> None:
         ("dc_synthesizer", {"context_policy": 1}),
         ("dc_uncertainty", {"tau_u": 1.5}),
         ("dc_uncertainty", {"tau_u": "high"}),
+        ("dc_uncertainty", {"tau_u_mcq": 1.5}),
+        ("dc_uncertainty", {"tau_u_open": -0.5}),
         ("dc_uncertainty", {"k": 1}),
     ],
 )
@@ -339,11 +341,26 @@ def test_generalist_sweep_emits_the_mode_then_c_u_rule_and_differential(
     lines = h.run("dc_uncertainty").splitlines()
     r = h.run_state.result
     assert lines[:4] == [f"MODE: {mode}",
-                         f"Complexity C={r.complexity:.2f} (tau_c 0.5), Uncertainty U={u} (tau_u 0.8, k 3)",
+                         (f"Complexity C={r.complexity:.2f} (tau_c 0.5), Uncertainty U={u} (tau_u 0.15 for "
+                          "multiple choice, k 3)"),
                          f"Rule: {r.mode_reason}", "Differential (generalist sweep):"]
     assert lines[4:] == [f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()]
     assert r.route[-2:] == [f"uncertainty:{u}", f"mode:{mode.lower()}" + (":uncertainty" if tier == "LOW" and
                                                                          mode == "ADVERSARIAL" else "")]
+
+
+@pytest.mark.parametrize(
+    ("text", "config", "applied"),
+    [(SEPSIS_TEXT, {}, "tau_u 0.59 for open-ended, k 5"),
+     (SEPSIS_TEXT, {"tau_u_open": 0.4}, "tau_u 0.4 for open-ended, k 5"),
+     (CASE_JSON, {"tau_u": 0.8}, "tau_u 0.8 configured override, k 3")],
+    ids=["open-ended", "open-configured", "override"],
+)
+def test_generalist_sweep_prints_which_threshold_applied(harness: Build, text: str, config: dict, applied: str) -> None:
+    h = harness(generalist=ONE_HOT)
+    h.run("dc_triage", text)
+    out = h.run("dc_uncertainty", **config)
+    assert f"({applied})" in out.splitlines()[1] and h.run_state.result.tau_u == float(applied.split()[1])
 
 
 def test_malformed_sweep_routes_on_c_and_says_u_was_not_measured(harness: Build) -> None:
@@ -366,7 +383,7 @@ def test_adversarial_by_uncertainty_gate_reports_divergence_but_keeps_the_mode(h
     h.run("dc_care_team")
     gate = h.run("dc_divergence_gate")
     assert gate.startswith("MODE: ADVERSARIAL\nDivergence 0.00")
-    assert gate.endswith("Adversarial mode entered by uncertainty (U 1.00 > tau_u 0.8): the Conflict Detector "
+    assert gate.endswith("Adversarial mode entered by uncertainty (U 1.00 > tau_u 0.15): the Conflict Detector "
                          "reports only; the mode stays adversarial.")
     assert h.run_state.result.route[-1] == "divergence:0.00:stay"
 

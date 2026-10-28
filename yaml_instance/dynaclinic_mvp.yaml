@@ -41,9 +41,12 @@ graph:
       description: >-
         Meta-Controller, Uncertainty U and mode rule. One generalist call lists a probability-weighted
         differential (top-k, or one entry per option); U is its normalised entropy. Emits
-        MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL. tau_u 0.8 is assumed, not validated.
+        MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL. tau_u per input form: 0.15 multiple choice, 0.59
+        open-ended, each the 75th percentile of U on held-out MedQA-50 + synthetic-24 (and the same
+        vignettes without options); calibrated, not validated against outcomes. tau_u overrides both.
       config:
-        tau_u: 0.8
+        tau_u_mcq: 0.15
+        tau_u_open: 0.59
         k: 5
     - id: PrimaryCare
       type: dc_primary_care

@@ -21,7 +21,14 @@ from dynaclinic.prompts import (
 )
 from dynaclinic.triage import MODERATE_SCORE, TAU_C
 from dynaclinic.types import RunResult
-from dynaclinic.uncertainty import TAU_U, normalized_entropy, parse_sweep, select_mode
+from dynaclinic.uncertainty import (
+    TAU_U_MCQ,
+    TAU_U_OPEN,
+    normalized_entropy,
+    parse_sweep,
+    select_mode,
+    tau_u_for,
+)
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
 from tests.test_dynaclinic_pipeline import (
     CASE,
@@ -125,17 +132,17 @@ def test_unmeasured_uncertainty_warns_and_routes_on_complexity_only(triage: str,
 @pytest.mark.parametrize(
     ("c", "u", "mode"),
     [
-        (TAU_C, TAU_U, "hierarchical"),  # equalities go to the <= side
+        (TAU_C, TAU_U_MCQ, "hierarchical"),  # equalities go to the <= side
         (0.0, 0.0, "hierarchical"),
-        (TAU_C + 1e-9, TAU_U, "collaborative"),
+        (TAU_C + 1e-9, TAU_U_MCQ, "collaborative"),
         (1.0, 0.0, "collaborative"),
-        (TAU_C, TAU_U + 1e-9, "adversarial"),
+        (TAU_C, TAU_U_MCQ + 1e-9, "adversarial"),
         (1.0, 1.0, "adversarial"),  # regardless of C
         (0.0, 1.0, "adversarial"),
     ],
 )
 def test_select_mode_boundaries(c: float, u: float, mode: str) -> None:
-    assert select_mode(c, u, TAU_C, TAU_U) == mode
+    assert select_mode(c, u, TAU_C, TAU_U_MCQ) == mode
 
 
 def test_select_mode_reads_the_given_thresholds() -> None:
@@ -144,30 +151,59 @@ def test_select_mode_reads_the_given_thresholds() -> None:
     assert select_mode(0.3, 0.3, tau_c=0.2, tau_u=0.35) == "collaborative"
 
 
-# U(0.6, 0.2, 0.2) over 3 options = 0.865 > 0.8; U(0.7, 0.15, 0.15) = 0.745 <= 0.8.
-SPREAD = sweep(("A", 0.6), ("B", 0.2), ("C", 0.2))
-FOCUSED = sweep(("A", 0.7), ("B", 0.15), ("C", 0.15))
+# Multiple choice (CASE, k = 3): U(0.97, 0.015, 0.015) = 0.142 <= 0.15 < U(0.96, 0.02, 0.02) = 0.178.
+# Open-ended (k = 5): U(0.6, 0.25, 0.15) = 0.583 <= 0.59 < U(0.5, 0.3, 0.2) = 0.640.
+FOCUSED = sweep(("A", 0.97), ("B", 0.015), ("C", 0.015))
+SPREAD = sweep(("A", 0.96), ("B", 0.02), ("C", 0.02))
+OPEN_FOCUSED = sweep(("COVID-19", 0.6), ("influenza", 0.25), ("bacterial pneumonia", 0.15))
+OPEN_SPREAD = sweep(("COVID-19", 0.5), ("influenza", 0.3), ("bacterial pneumonia", 0.2))
+
+
+def test_tau_u_for_reads_the_input_form_of_a_case_or_a_flag() -> None:
+    assert (TAU_U_MCQ, TAU_U_OPEN) == (0.15, 0.59)
+    assert tau_u_for(CASE) == tau_u_for(False) == TAU_U_MCQ
+    assert tau_u_for(OPEN_CASE) == tau_u_for(True) == TAU_U_OPEN
+    assert (tau_u_for(CASE, tau_u_mcq=0.3, tau_u_open=0.7), tau_u_for(OPEN_CASE, tau_u_mcq=0.3, tau_u_open=0.7)) == (
+        0.3, 0.7)
 
 
 @pytest.mark.parametrize(
-    ("reply", "kwargs", "mode"),
-    [(SPREAD, {}, "adversarial"), (FOCUSED, {}, "hierarchical"), (SPREAD, {"tau_u": 0.9}, "hierarchical")],
-    ids=["above-default", "below-default", "configured"],
+    ("case", "reply", "kwargs", "mode", "tau_u"),
+    [
+        (CASE, FOCUSED, {}, "hierarchical", 0.15),
+        (CASE, SPREAD, {}, "adversarial", 0.15),
+        (OPEN_CASE, OPEN_FOCUSED, {}, "hierarchical", 0.59),  # 0.58 is far above the multiple-choice 0.15
+        (OPEN_CASE, OPEN_SPREAD, {}, "adversarial", 0.59),
+        (CASE, SPREAD, {"tau_u_mcq": 0.2}, "hierarchical", 0.2),
+        (OPEN_CASE, OPEN_SPREAD, {"tau_u_open": 0.7}, "hierarchical", 0.7),
+        (CASE, FOCUSED, {"tau_u": 0.1}, "adversarial", 0.1),  # the single override wins for both forms
+        (OPEN_CASE, OPEN_SPREAD, {"tau_u": 0.9, "tau_u_open": 0.1}, "hierarchical", 0.9),
+    ],
+    ids=["mcq-below", "mcq-above", "open-below", "open-above", "mcq-configured", "open-configured",
+         "override-mcq", "override-open"],
 )
-def test_pipeline_tau_u_defaults_to_0_8_and_is_configurable(reply: str, kwargs: dict, mode: str) -> None:
-    result = DynaClinicPipeline(_client(generalist=reply), **kwargs).run(CASE)
-    assert result.mode == mode
-    assert (result.tau_u, result.top_k) == (kwargs.get("tau_u", 0.8), 3)
+def test_pipeline_tau_u_is_calibrated_per_input_form_and_overridable(
+    case: object, reply: str, kwargs: dict, mode: str, tau_u: float
+) -> None:
+    result = DynaClinicPipeline(_client(generalist=reply, primary_care=WRITE_UP if case is OPEN_CASE else FINAL),
+                                **kwargs).run(case)
+    assert (result.mode, result.tau_u, result.top_k) == (mode, tau_u, 5 if case is OPEN_CASE else 3)
+
+
+@pytest.mark.parametrize("kwargs", [{"tau_u": 1.5}, {"tau_u_mcq": -0.1}, {"tau_u_open": 2.0}])
+def test_pipeline_rejects_a_tau_u_outside_the_unit_interval(kwargs: dict) -> None:
+    with pytest.raises(ValueError, match="tau_u"):
+        DynaClinicPipeline(_client(), **kwargs)
 
 
 def test_dynamic_arm_records_the_rule_inputs_and_the_planner_stage() -> None:
     result = DynaClinicPipeline(_client(generalist=FOCUSED)).run(CASE)
     stages = _stages(result)
-    assert stages[:6] == ["ingest", "cache_lookup:off", "triage:LOW", "uncertainty:0.75", "mode:hierarchical",
+    assert stages[:6] == ["ingest", "cache_lookup:off", "triage:LOW", "uncertainty:0.14", "mode:hierarchical",
                           "primary_care"]
-    assert result.complexity <= result.tau_c == TAU_C and result.uncertainty == pytest.approx(0.745, abs=1e-3)
-    assert result.differential == pytest.approx({"A": 0.7, "B": 0.15, "C": 0.15})
-    assert result.mode_reason == f"C {result.complexity:.2f} <= tau_c 0.5 and U 0.75 <= tau_u 0.8: hierarchical"
+    assert result.complexity <= result.tau_c == TAU_C and result.uncertainty == pytest.approx(0.1416, abs=1e-4)
+    assert result.differential == pytest.approx({"A": 0.97, "B": 0.015, "C": 0.015})
+    assert result.mode_reason == f"C {result.complexity:.2f} <= tau_c 0.5 and U 0.14 <= tau_u 0.15: hierarchical"
     assert [call.role for call in result.calls] == [TRIAGE, GENERALIST, PRIMARY_CARE]
 
 

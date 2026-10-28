@@ -90,10 +90,12 @@ from dynaclinic.triage import (
 from dynaclinic.types import BlackboardEntry, Case, RunResult
 from dynaclinic.uncertainty import (
     DEFAULT_K,
-    TAU_U,
+    TAU_U_MCQ,
+    TAU_U_OPEN,
     normalized_entropy,
     parse_sweep,
     select_mode,
+    tau_u_for,
 )
 
 BLOCKED_PREFIX = "BLOCKED FOR MANUAL REVIEW"
@@ -178,13 +180,19 @@ class CaseRun:
             r.warnings.append(f"triage: {triage.error}")
         r.route.append(f"triage:{triage.tier}")
 
-    def uncertainty(self, tau_u: float = TAU_U, k: int = DEFAULT_K) -> None:
+    def uncertainty(
+        self, tau_u: float | None = None, k: int = DEFAULT_K, tau_u_mcq: float = TAU_U_MCQ,
+        tau_u_open: float = TAU_U_OPEN,
+    ) -> None:
         """Meta-Controller mode rule: one generalist sweep gives U (a multiple-choice case's k is its option count),
-        then ``select_mode`` with the triage C. A failed or malformed sweep leaves U unmeasured with a warning and the
+        then ``select_mode`` with the triage C and the tau_u of the case's input form (``tau_u_mcq`` or ``tau_u_open``;
+        ``tau_u``, when set, overrides both). A failed or malformed sweep leaves U unmeasured with a warning and the
         rule reads U = 0 (C-only routing), so a missing sweep never makes a case adversarial."""
         r = self.result
         if r.complexity is None or r.tau_c is None:
             raise ValueError("the mode rule needs the triage Complexity Score: run triage first")
+        if tau_u is None:
+            tau_u = tau_u_for(self.case, tau_u_mcq, tau_u_open)
         letters = self.case.letters()
         k = len(letters) or k
         try:
@@ -459,8 +467,9 @@ class DynaClinicPipeline(_Pipeline):
     ``max_rollbacks`` bounds safety-gate backtracks (regenerations); the adversarial round runs at most
     once by construction. Only gate-verified answers are cached, and a cache hit is re-gated against
     the new case so a near-duplicate with a different allergy or med list is recomputed. ``tau_semantic``
-    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``. ``tau_u`` (assumed,
-    not validated) and ``top_k`` (open-ended cases) parametrise the Uncertainty Score.
+    is the open-ended switch threshold; None uses the embedder's ``divergence.TAU_SEMANTIC``. ``tau_u_mcq`` and
+    ``tau_u_open`` (calibrated per input form, ``uncertainty``; ``tau_u`` overrides both) and ``top_k`` (open-ended
+    cases) parametrise the Uncertainty Score.
     """
 
     arm = "dynamic"
@@ -476,13 +485,16 @@ class DynaClinicPipeline(_Pipeline):
         pca_samples: int = 1,
         max_rollbacks: int = 1,
         context_policy: str = DEFAULT_CONTEXT_POLICY,
-        tau_u: float = TAU_U,
+        tau_u: float | None = None,
+        tau_u_mcq: float = TAU_U_MCQ,
+        tau_u_open: float = TAU_U_OPEN,
         top_k: int = DEFAULT_K,
     ) -> None:
         if pca_samples < 1 or max_rollbacks < 0:
             raise ValueError(f"need pca_samples >= 1 and max_rollbacks >= 0, got {pca_samples}, {max_rollbacks}")
-        if not 0.0 <= tau_u <= 1.0 or top_k < 2:
-            raise ValueError(f"need 0 <= tau_u <= 1 and top_k >= 2, got {tau_u}, {top_k}")
+        thresholds = {"tau_u": 0.0 if tau_u is None else tau_u, "tau_u_mcq": tau_u_mcq, "tau_u_open": tau_u_open}
+        if not all(0.0 <= value <= 1.0 for value in thresholds.values()) or top_k < 2:
+            raise ValueError(f"need 0 <= tau_u, tau_u_mcq, tau_u_open <= 1 and top_k >= 2, got {thresholds}, {top_k}")
         super().__init__(client, context_policy=context_policy)
         self.tau = tau
         self.tau_semantic = tau_semantic
@@ -490,7 +502,7 @@ class DynaClinicPipeline(_Pipeline):
         self.cache = cache
         self.pca_samples = pca_samples
         self.max_rollbacks = max_rollbacks
-        self.tau_u = tau_u
+        self.tau_u, self.tau_u_mcq, self.tau_u_open = tau_u, tau_u_mcq, tau_u_open
         self.top_k = top_k
         self.ingestor = FHIRLiteIngestor()
 
@@ -501,7 +513,7 @@ class DynaClinicPipeline(_Pipeline):
         stages: dict[str, Callable[[], None]] = {
             "cache_lookup": lambda: self._cache_lookup(run, key),
             "triage": lambda: run.triage(self.escalate_threshold),
-            "uncertainty": lambda: run.uncertainty(self.tau_u, self.top_k),
+            "uncertainty": lambda: run.uncertainty(self.tau_u, self.top_k, self.tau_u_mcq, self.tau_u_open),
             "primary_care": lambda: run.primary_care(self.pca_samples),
             "care_team": lambda: run.care_team(run.team_roles()),
             "divergence": lambda: run.divergence(self.tau, self.tau_semantic),
