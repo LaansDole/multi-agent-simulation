@@ -268,6 +268,8 @@ Run `2026-10-28-qwen3.5-4b-medqa50-three-arms` (code 2cf1567 for the DynaClinic 
 - Mediator verdicts: H1 28, H2 7, neither 4, no verdict line 11 (the 4B model often skips the required line).
 - 2 errors (medqa-test-0730, single and static): LM Studio request timeout; counted as wrong.
 
+With a per-model tau_u (f19/f20: qwen3.5-4b calibrated on synthetic-24 only, 0.81 multiple choice / 0.77 open-ended; MedQA-50 held out), dynamic arm re-run `2026-10-28-qwen3.5-4b-medqa50-dynamic-calibrated` (code 852fb83): 60% (30/50) [46.2, 72.4], modes adversarial 22 (10 by uncertainty, 12 by the Conflict Detector), collaborative 21, hierarchical 7; 7.44 calls per question (was 8.32); 0 errors. Accuracy is unchanged (paired vs the uncalibrated dynamic arm 3 / 3); single still leads, 7 questions to 3 (exact McNemar p = 0.34). Per mode: hierarchical 4/7, collaborative 15/21, adversarial 11/22. Calibration fixed the routing (one mode no longer takes every case) but not the accuracy gap.
+
 ### MedQA sample (harder benchmark)
 
 `data/dynaclinic/medqa_sample.jsonl`: 50 questions drawn with `random.Random(2026).sample` from the 1,273-question test split of MedQA-USMLE 4-option (Jin et al. 2021; Hugging Face `GBaker/MedQA-USMLE-4-options`, file `phrases_no_exclude_test.jsonl`, CC-BY-4.0). Ids are `medqa-test-<row index>`; 26 Step 1, 24 Step 2&3. The records have no structured patient data and no `unsafe_options`, so A_SAD/T_SAD have little to check and the safety columns are not meaningful for this set.
