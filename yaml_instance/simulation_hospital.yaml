@@ -12,7 +12,7 @@ vars:
   # Number of interactions between doctor and patient
   NUMBER_OF_INTERACTIONS: 2
   MAX_TOKENS: 6000
-  MEMORY_PATH_PREFIX: WareHouse/hospital_simulation
+  MEMORY_PATH_PREFIX: "{{run_dir}}"
   COMMON_PROMPT: |
     You are an intelligent agent participating in a high-fidelity hospital simulation.
 
@@ -926,7 +926,7 @@ graph:
       carry_data: true
       clear_context: true
       clear_kept_context: true
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -987,25 +987,6 @@ graph:
             pattern: (?s)\{.*?\}
         config:
           max_parallel: 10
-      processor:
-        type: template
-        config:
-          template: |
-            
-            PATIENT PERSONA BRIEFING
-            
-            {% set patient = input | fromjson %}
-            
-            Identity: {{ patient.name }}
-            Symptoms: {{ patient.symptoms }}
-            Context: {{ patient.context }}
-            Personality: {{ patient.personality }}
-            Backstory: {{ patient.environment_link }}
-            
-            You are {{ patient.name }}. You are currently standing at the hospital reception.
-            Approach Nurse Jackie and explain what's wrong.
-            
-            Don't use any "Action:" prefixes. Just speak naturally as this patient would.
     - from: PatientAgent
       to: Nurse
       trigger: true
@@ -1019,27 +1000,21 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: template
-        template: |
-          {% set env = environment.output | fromjson %}
-          CURRENT HOSPITAL CONDITIONS
-          {{ env.atmospheric_description }}
-          
-          Urgency: {{ env.urgency_level }}
-          Atmosphere: {{ env.emotional_atmosphere }}
+        config:
+          template: |
+            Patient says: "{{input}}"
 
-          Patient says: "{{input}}"
+            Respond as Nurse Jackie. 
 
-          Respond as Nurse Jackie. 
+            REQUIREMENTS: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the current hospital conditions.
+            - Match your stress level to the urgency
+            - Show visible effects of the atmosphere
+            - You MUST NOT ask any questions to the patient
+            - Patient basic information is mandatory before referral to the doctor
 
-          REQUIREMENTS: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the hospital conditions above.
-          - Match your stress level to the urgency
-          - Show visible effects of the atmosphere
-          - You MUST NOT ask any questions to the patient
-          - Patient basic information is mandatory before referral to the doctor
-
-          Then refer them to Dr. House for diagnosis.
+            Then refer them to Dr. House for diagnosis.
     - from: Nurse
       to: DoctorIntake
       trigger: true
@@ -1053,16 +1028,10 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: template
         config:
           template: |
-            {% set env = environment.output | fromjson %}
-            
-            Hospital Conditions:
-            - Urgency: {{ env.urgency_level | upper }}
-            - Atmosphere: {{ env.emotional_atmosphere }}
-            - Situation: {{ env.atmospheric_description }}
             
             Nurse Assessment:
             {{ input }}
@@ -1088,7 +1057,7 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -1115,12 +1084,13 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: template
-        template: |
-          UNDERSTOOD
-          
-          Doctor has completed interview. Finalize patient notes.
+        config:
+          template: |
+            UNDERSTOOD
+            
+            Doctor has completed interview. Finalize patient notes.
     - from: PatientInteraction
       to: DoctorNotes
       trigger: true
@@ -1130,10 +1100,11 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: template
-        template: |
-          Patient Answer: "{{input}}"
+        config:
+          template: |
+            Patient Answer: "{{input}}"
     
     # DoctorNotes routes to loop counter if NOT finalization (not an array, not UNDERSTOOD/LOOP ENDED)
     - from: DoctorNotes
@@ -1155,13 +1126,13 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: regex_extract
         config:
           pattern: '["""]history["""]\s*:\s*["""](?P<history>(?:[^"""\\]|\\.)*)["""]'
           group: history
           template: |
-            Clinical Notes: {{history}}
+            Clinical Notes: {match}
 
             Review the history and determine if you need more information.
           dotall: true
@@ -1185,12 +1156,11 @@ graph:
             json_path: ''
         config:
           max_parallel: 10
-      processor:
+      process:
         type: regex_extract
         config:
-          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\\s*(\\[[\\s\\S]*\\])'
+          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\s*(\[[\s\S]*\])'
           group: 1
-          template: '{{extracted}}'
           dotall: true
     
     # Loop counter routes back to DoctorIntake (if under max iterations)
@@ -1228,12 +1198,13 @@ graph:
           type: message
         config:
           max_parallel: 10
-      processor:
+      process:
         type: template
-        template: |
-          LOOP ENDED.
-          
-          Maximum iterations reached. Finalize all patient notes.
+        config:
+          template: |
+            LOOP ENDED.
+            
+            Maximum iterations reached. Finalize all patient notes.
     
     - from: DoctorDiagnosis
       to: Discharge
@@ -1257,7 +1228,6 @@ graph:
             json_path: ''
         config:
           max_parallel: 10
-      processor: null
     - from: DoctorDiagnosis
       to: ERTransfer
       trigger: true
@@ -1279,13 +1249,12 @@ graph:
             json_path: ''
         config:
           max_parallel: 10
-      processor: null
 
     - from: Discharge
       to: ScenarioEvolver
       trigger: true
       carry_data: true
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -1298,7 +1267,7 @@ graph:
       to: ScenarioEvolver
       trigger: true
       carry_data: true
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -1322,7 +1291,7 @@ graph:
           none:
             - ALL ROUNDS COMPLETED.
           case_sensitive: true
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -1359,13 +1328,12 @@ graph:
       to: FinalReportFormatter
       trigger: true
       carry_data: true
-      processor: null
 
     - from: FinalReportFormatter
       to: ReportSaver
       trigger: true
       carry_data: true
-      processor:
+      process:
         type: template
         config:
           template: '{{input}}'

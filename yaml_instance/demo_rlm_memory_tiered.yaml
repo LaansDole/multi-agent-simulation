@@ -149,18 +149,12 @@ graph:
     - name: test_store
       type: simple
       config:
-        # Warm-start demo: pre-populate from the seed store BEFORE the first run
-        # so the tiered ladder starts with retrievable content:
-        #
-        #   cp WareHouse/rlm_demo_seed/rlm_test_memory_tiered.json \
-        #      "WareHouse/{{project_name}}/rlm_test_memory_tiered.json"
-        #
-        # The seed file (rlm_demo_seed/) must NOT be used as memory_path directly
-        # — agent write-back would pollute it with run output.
-        #
-        # To reproduce a cold-start, delete or empty this file (set contents
-        # to []) before running.  "No memories found" on pass 1 is expected.
-        memory_path: WareHouse/{{project_name}}/rlm_test_memory_tiered.json
+        # Per-run store: {{run_dir}} is this run's output folder, so every run
+        # starts cold ("No memories found" on pass 1 is expected, not an error).
+        # For a warm start, point memory_path at a copy of
+        # WareHouse/rlm_demo_seed/rlm_test_memory_tiered.json, never at the seed
+        # itself: agent write-back would pollute it.
+        memory_path: "{{run_dir}}/rlm_test_memory_tiered.json"
         embedding:
           provider: openai
           model: text-embedding-bge-reranker-v2-m3

@@ -4,7 +4,6 @@
 # - Edges carry only the previous node's output: the specialists see the triage verdict, not the case.
 # - Routing is a case-sensitive substring `keyword` match over the whole output:
 #   "COMPLEXITY: HIGH ... not LOW" fires both the PrimaryCareAgent and the specialist branches.
-# - Edges set `processor: null`, but the edge key is `process`; an unknown `processor:` is silently ignored.
 # - Two tiers (LOW/HIGH) instead of three, and the team passes messages instead of sharing a Blackboard.
 version: 0.0.0
 graph:
@@ -239,7 +238,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: MetaController
       to: PrimaryCareAgent
       trigger: true
@@ -252,7 +250,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: MetaController
       to: ImagingAgent
       trigger: true
@@ -265,7 +262,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: MetaController
       to: PathologyAgent
       trigger: true
@@ -278,7 +274,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: MetaController
       to: PharmacologyAgent
       trigger: true
@@ -291,7 +286,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ImagingAgent
       to: ConsensusBuilder
       trigger: true
@@ -300,7 +294,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: PathologyAgent
       to: ConsensusBuilder
       trigger: true
@@ -309,7 +302,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: PharmacologyAgent
       to: ConsensusBuilder
       trigger: true
@@ -318,7 +310,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: PrimaryCareAgent
       to: FinalDiagnosis
       trigger: true
@@ -327,7 +318,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ConsensusBuilder
       to: FinalDiagnosis
       trigger: true
@@ -336,7 +326,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
   memory: []
   initial_instruction: >-
     Enter a clinical case description. Examples:

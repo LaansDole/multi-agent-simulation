@@ -96,7 +96,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
 
     - from: LoopGate
       to: RLMMemoryRetriever
@@ -110,7 +109,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
 
     - from: RLMMemoryRetriever
       to: AgentWithRLM
@@ -120,7 +118,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
 
     - from: AgentWithRLM
       to: LoopGate
@@ -130,7 +127,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
 
     - from: LoopGate
       to: Finalizer
@@ -144,26 +140,17 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
 
   memory:
     - name: test_store
       type: simple
       config:
-        # Warm-start demo: this file should be pre-populated from the seed store
-        # BEFORE the first run, so pass 1 returns items immediately:
-        #
-        #   cp WareHouse/rlm_demo_seed/rlm_test_memory.json \
-        #      "WareHouse/{{project_name}}/rlm_test_memory.json"
-        #
-        # The seed file (rlm_demo_seed/) ships with stub-embedded entries and
-        # must NOT be used as memory_path directly — agent write-back would
-        # pollute it with run output.
-        #
-        # To reproduce a cold-start instead, delete or empty this file (set
-        # contents to []) before running.  "No memories found" on pass 1 is
-        # expected in cold-start mode and is NOT an error.
-        memory_path: WareHouse/{{project_name}}/rlm_test_memory.json
+        # Per-run store: {{run_dir}} is this run's output folder, so every run
+        # starts cold ("No memories found" on pass 1 is expected, not an error)
+        # and accumulates entries across its own passes. For a warm start, point
+        # memory_path at a copy of WareHouse/rlm_demo_seed/rlm_test_memory.json,
+        # never at the seed itself: agent write-back would pollute it.
+        memory_path: "{{run_dir}}/rlm_test_memory.json"
         embedding:
           provider: openai
           model: text-embedding-bge-reranker-v2-m3

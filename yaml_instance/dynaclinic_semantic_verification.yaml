@@ -6,7 +6,6 @@
 # - Routing is a case-sensitive substring `keyword` match over the whole output (PASS/FAIL anywhere fires).
 # - Dead revision loop: LoopGate (loop_counter, standard mode) emits nothing before its 2nd hit and is the
 #   only way back to the generator, so the first FAIL ends the run with no final output.
-# - Edges set `processor: null`, but the edge key is `process`; an unknown `processor:` is silently ignored.
 version: 0.0.0
 graph:
   id: dynaclinic_semantic_verification
@@ -258,7 +257,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ClinicalPlanGenerator
       to: A_SAD_Validator
       trigger: true
@@ -267,7 +265,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: A_SAD_Validator
       to: S_NAP_Predictor
       trigger: true
@@ -280,7 +277,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: A_SAD_Validator
       to: PlanReviser
       trigger: true
@@ -293,7 +289,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: S_NAP_Predictor
       to: T_SAD_Reviewer
       trigger: true
@@ -306,7 +301,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: S_NAP_Predictor
       to: PlanReviser
       trigger: true
@@ -319,7 +313,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: T_SAD_Reviewer
       to: VerifiedPlanOutput
       trigger: true
@@ -332,7 +325,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: T_SAD_Reviewer
       to: PlanReviser
       trigger: true
@@ -345,7 +337,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: PlanReviser
       to: LoopGate
       trigger: true
@@ -354,7 +345,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: LoopGate
       to: ClinicalPlanGenerator
       trigger: true
@@ -367,7 +357,6 @@ graph:
       keep_message: false
       clear_context: true
       clear_kept_context: true
-      processor: null
     - from: LoopGate
       to: VerifiedPlanOutput
       trigger: true
@@ -380,7 +369,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
   memory: []
   initial_instruction: >-
     Enter a clinical case for treatment plan generation and verification. Example:

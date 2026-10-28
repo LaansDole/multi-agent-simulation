@@ -173,7 +173,7 @@ graph:
       keep_message: true
       clear_context: false
       clear_kept_context: false
-      processor:
+      process:
         type: function
         config:
           name: inject_day_to_message
@@ -186,7 +186,7 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -226,7 +226,7 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor:
+      process:
         type: function
         config:
           name: inject_day_to_message
@@ -239,7 +239,7 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor:
+      process:
         type: template
         config:
           template: |
@@ -268,7 +268,7 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor:
+      process:
         type: function
         config:
           name: inject_day_to_message
@@ -281,7 +281,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     # LoopGate → DayStart (loop back if timer not expired)
     - from: LoopGate
       to: DayStart
@@ -291,11 +290,11 @@ graph:
         config:
           none:
             - Hospital operation cycle completed
-      carry_data: false
+      carry_data: true
       keep_message: false
       clear_context: true
       clear_kept_context: true
-      processor:
+      process:
         type: function
         config:
           name: increment_day_counter
@@ -312,12 +311,11 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
   memory:
     - name: daily_summaries
       type: simple
       config:
-        memory_path: WareHouse/{{project_name}}/daily_summaries.json
+        memory_path: "{{run_dir}}/daily_summaries.json"
         embedding:
           provider: openai
           model: ${MODEL_NAME}

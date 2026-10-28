@@ -4,7 +4,6 @@
 # - Edges carry only the previous node's output: each agent sees only its predecessor's text, not the case.
 # - Routing is a case-sensitive substring `keyword` match over the whole output:
 #   "VERDICT: CONSENSUS ... no CONFLICT" still runs ClinicalCritic and ConflictResolver.
-# - Edges set `processor: null`, but the edge key is `process`; an unknown `processor:` is silently ignored.
 # - The "tau" step is an LLM judgement; there is no numeric divergence.
 version: 0.0.0
 graph:
@@ -219,7 +218,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: CaseInput
       to: DiagnosticAgent_B
       trigger: true
@@ -228,7 +226,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: DiagnosticAgent_A
       to: ConflictDetector
       trigger: true
@@ -237,7 +234,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: DiagnosticAgent_B
       to: ConflictDetector
       trigger: true
@@ -246,7 +242,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ConflictDetector
       to: DiagnosisSummary
       trigger: true
@@ -259,7 +254,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ConflictDetector
       to: ClinicalCritic
       trigger: true
@@ -272,7 +266,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ClinicalCritic
       to: ConflictResolver
       trigger: true
@@ -281,7 +274,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
     - from: ConflictResolver
       to: DiagnosisSummary
       trigger: true
@@ -290,7 +282,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      processor: null
   memory: []
   initial_instruction: >-
     Enter a clinical case for parallel diagnostic evaluation. Examples:
