@@ -194,7 +194,7 @@ Behaviour:
 
 - **Thresholds are not validated.** The triage cut-offs (`MODERATE_SCORE` / `HIGH_SCORE`) were chosen by inspecting the same 24 synthetic vignettes the eval uses, so triage accuracy on that set is in-sample. tau and the critic constants are the proposal's or hand-picked values and have not been tuned or validated on held-out data. The two tau_u values are the 75th percentile of U on the eval's own 74 vignettes (and their open-ended copies), so routing on those sets is in-sample, and no outcome (accuracy, safety) informed them.
 - **U rests on self-reported probabilities.** The generalist's probabilities are not calibrated, and one sample is taken; a model that is over-confident by habit will rarely exceed tau_u. The tau_u percentiles come from one sweep per vignette with one model.
-- **Mesh and debate are one round and FakeLLM-tested only.** No real run has exercised `mesh_exchange` or the Proponent / Opponent / Mediator yet. H1/H2 votes match after case and punctuation folding only: paraphrased diagnoses split the vote, and the sweep's top differential then decides. The Opponent shares the Critic's decomposition call, so a reply without the `opponent` object leaves the Mediator only the Proponent's case (warning). The `SURVIVING HYPOTHESIS` line is neither parsed nor graded.
+- **Mesh and debate are one round.** Real runs (2026-10-28, see Results) exercised both: adversarial on 17 of 50 MedQA questions and on all four proposal examples; in 11 of 20 collaborative MedQA cases every specialist abstained in round 1, so the mesh had nothing to exchange. H1/H2 votes match after case and punctuation folding only: paraphrased diagnoses split the vote, and the sweep's top differential then decides. The Opponent shares the Critic's decomposition call, so a reply without the `opponent` object leaves the Mediator only the Proponent's case (warning). The `SURVIVING HYPOTHESIS` line is neither parsed nor graded.
 - **Small datasets.** The synthetic set is 24 hand-authored textbook vignettes (8 per tier), and the MedQA sample is 50 questions (see Results), so confidence intervals are wide.
 - **The KB is illustrative.** `kb.py` is a small, hand-written list of drug classes, interactions, contraindications and precedence rules. T_SAD and A_SAD catch only what it lists.
 - **Negation handling is heuristic.** Regex patterns ("no", "not", "avoid", "instead of") decide whether a drug is asserted. Unusual phrasing can produce false gate blocks or misses.
@@ -230,6 +230,19 @@ What they do NOT support:
 - The single-agent baseline scores 100% at 1 call/case on this set: the synthetic vignettes are textbook-level and too easy to show any accuracy benefit from multi-agent collaboration (ceiling effect). A harder benchmark is needed before any accuracy claim; the 50-question MedQA sample below did not separate the arms either.
 - One run per configuration and n = 24: differences of 1-2 cases are within the Wilson 95% intervals in each summary.md and within run-to-run model variance (triage agreement moved 62.5% -> 79.2% -> 70.8% across runs; triage code and prompts did not change between the last two).
 - Costs are reported as token counts only (no prices configured).
+
+### After f14 and f15 (uncertainty score, three modes; dynamic arm only)
+
+Runs `2026-10-27-f14-*-dynamic-gpt-6-luna` (code be596a7, tau_u 0.8) and `2026-10-28-f15-*-dynamic-gpt-6-luna` (code 2cf1567, tau_u 0.15 / 0.59). Single and static arms are unchanged by f14/f15 (identical prompt hashes) and were not re-run.
+
+| set | f14 dynamic | f15 dynamic [95% CI] | f15 modes | calls/case f14 -> f15 | latency mean f14 -> f15 |
+|---|---|---|---|---|---|
+| MedQA-50 | 94% (47/50) | 96% (48/50) [86.5, 98.9] | adversarial 17, collaborative 20, hierarchical 13 | 4.66 -> 6.94 | 14.9 -> 32.0 s |
+| synthetic-24 | 100% | 95.8% (23/24) [79.8, 99.3] | adversarial 1, collaborative 18, hierarchical 5 | 5.04 -> 7.12 | 15.0 -> 24.9 s |
+
+- All adversarial entries came from uncertainty (U > tau_u), none from the Conflict Detector. On MedQA 15 of 17 adversarial cases were correct, and both misses are adversarial; the Mediator kept H1 in 16 and answered "neither" once.
+- syn-high-02: round 1's plurality was correct (C); after the mesh exchange the Consensus Builder answered D, the safety gate blocked it twice, and the case ended without an answer.
+- Accuracy changes are within the intervals; calls per case rose about 40-50%. Proposal-example runs and their caveats: `proposal-alignment.md`.
 
 ### MedQA sample (harder benchmark)
 

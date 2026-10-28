@@ -35,7 +35,7 @@
 <nav><a href="index.html">3D runbook demo</a><a href="results.html">Benchmark results</a><a href="slides.html">Slides</a></nav>
 <main>
 <p>The implementation was built from an extended draft of the proposal (5 layers: FHIR/Neo4j ingestion, MCTS control plane, Blackboard, A_SAD/S_NAP/T_SAD safety gates, BioBERT/Qdrant memory). This page checks it against the <strong>reviewed</strong> proposal, <em>"DynamiClinic: A Dynamic Architecture Switching Multi-Agent Framework in Healthcare Settings"</em> (Do Le Long An; reviewed by A/Prof. Arthur Tang and Dr. Linh Tran), which is shorter and defines the system differently: layers L0 to L4, three communication modes, a complexity score and an uncertainty score, and a Conflict Detector between two hypotheses.</p>
-<p>Checked on 2026-10-27 against the code at commit 7c83807 and with real runs on OpenAI gpt-6-luna, then re-checked after the fixes it led to (f11 to f13, commits ac19ad6 to 302f550). The repo keeps the name DynaClinic; the reviewed proposal spells it DynamiClinic.</p>
+<p>Checked on 2026-10-27 against the code at commit 7c83807 and with real runs on OpenAI gpt-6-luna, then re-checked after the fixes it led to (f11 to f13, commits ac19ad6 to 302f550), and again on 2026-10-28 after the Meta-Controller and the three modes were aligned with the proposal (f14 and f15, commits 9ace5a6 to 2cf1567). The repo keeps the name DynaClinic; the reviewed proposal spells it DynamiClinic.</p>
 <p>Status key: <strong>matches</strong>: the code does what the proposal says. <strong>partial</strong>: the idea is there but the mechanism differs. <strong>differs</strong>: the code does something else. <strong>missing</strong>: not in the code. <strong>extra</strong>: in the code, not in the reviewed proposal.</p>
 <h2>Architecture layers (proposal Table 1)</h2>
 <div class="table-wrap"><table>
@@ -57,19 +57,19 @@
 <tr>
 <td>L1 Meta-Controller Orchestration</td>
 <td>Meta-Controller, Complexity Score, Uncertainty Score, Triage</td>
-<td><code>dynaclinic/triage.py</code>: LLM tier plus a deterministic feature score (comorbidities, medications, abnormal labs, red flags), escalate-only</td>
-<td><span class="tag part">partial</span>: complexity yes, uncertainty no (below)</td>
+<td><code>dynaclinic/triage.py</code> (LLM tier plus a deterministic feature score) gives the Complexity Score C; <code>dynaclinic/uncertainty.py</code> and the <code>GeneralistSweep</code> node give the Uncertainty Score U; one rule over both picks the mode</td>
+<td><span class="tag ok">matches</span>; LOW / MODERATE / HIGH tiers kept as an extension (below)</td>
 </tr>
 <tr>
 <td>L2 Dynamic Communication Topology</td>
 <td>Hierarchical (hub-spoke), Collaborative (mesh), Adversarial (proponent/opponent/mediator)</td>
-<td>Routes <code>single</code>, <code>collaborative</code>, <code>adversarial</code></td>
-<td><span class="tag part">partial</span> (below)</td>
+<td>Modes <code>hierarchical</code> (Primary Care hub, up to 2 consulted specialists), <code>collaborative</code> (care team + one mesh exchange round), <code>adversarial</code> (Proponent, Clinical Critic as Opponent, Synthesizer as Mediator)</td>
+<td><span class="tag ok">matches</span>, one round each (below)</td>
 </tr>
 <tr>
 <td>L3 Agent Execution and Processing</td>
 <td>Primary Care Agent; ICT (Imaging, Pathology, Pharmacology); Conflict Detector; Consensus Builder; Clinical Critic; Conflict Resolver</td>
-<td><code>dc_primary_care</code>; <code>dc_care_team</code> (3 specialists); <code>dc_divergence_gate</code>; <code>dc_synthesizer</code>; <code>dc_critic</code>; the synthesizer again after the critic</td>
+<td><code>dc_primary_care</code>; <code>dc_care_team</code> (3 specialists); <code>dc_divergence_gate</code>; <code>dc_mesh_exchange</code>; <code>dc_proponent</code>; <code>dc_critic</code> (Opponent); <code>dc_synthesizer</code> (Consensus Builder, or Mediator / Conflict Resolver in adversarial mode)</td>
 <td><span class="tag ok">matches</span>, with one node playing both Consensus Builder and Conflict Resolver</td>
 </tr>
 <tr>
@@ -124,26 +124,26 @@
 <tr>
 <td>Uncertainty score U (2)</td>
 <td>Normalized entropy of the initial distribution over top-k differentials from a baseline generalist sweep</td>
-<td>Not computed at triage. Normalized entropy is used only later, to mark a specialist as abstaining (&gt;= 0.95)</td>
-<td><span class="tag miss">missing</span></td>
+<td><code>GeneralistSweep</code>: one generalist call returns a top-k differential with probabilities (k = number of options for multiple choice, 5 for open-ended); U is its normalized entropy. tau_u per input form: 0.15 multiple choice, 0.59 open-ended, each the 75th percentile of U on MedQA-50 + synthetic-24 (and the same vignettes without options)</td>
+<td><span class="tag ok">matches</span>; thresholds calibrated in-sample, not validated against outcomes</td>
 </tr>
 <tr>
 <td>Piecewise mode selection from C and U (2)</td>
 <td>One rule over both scores chooses Hierarchical / Collaborative / Adversarial</td>
-<td>Two separate steps: triage on C chooses single vs team; after the team answers, divergence chooses collaborative vs adversarial</td>
-<td><span class="tag part">differs</span></td>
+<td><code>select_mode</code>: U &gt; tau_u adversarial; else C &lt;= tau_c (0.5) hierarchical; else collaborative. The Conflict Detector can still switch a collaborative team to adversarial afterwards</td>
+<td><span class="tag ok">matches</span>, plus the detector as a second entry point</td>
 </tr>
 <tr>
 <td>Hierarchical mode (1)</td>
 <td>Meta-Controller as hub querying subordinate specialists, no inter-agent talk</td>
-<td>The care team works this way: specialists answer independently and never see each other's Blackboard entries; the synthesizer is the hub</td>
-<td>present, but labelled "collaborative"</td>
+<td>Primary Care is the hub; it may name up to 2 <code>CONSULT:</code> specialists, who answer independently and never see each other</td>
+<td><span class="tag ok">matches</span> (Primary Care, not the Meta-Controller, is the hub)</td>
 </tr>
 <tr>
 <td>Collaborative mode (1)</td>
 <td>Fully connected mesh; agents share intermediate reasoning</td>
-<td>Not implemented: no agent reads another's reasoning before answering</td>
-<td><span class="tag miss">missing</span></td>
+<td>After an independent round 1 (which the Conflict Detector measures), <code>MeshExchange</code> gives every specialist all peers' round-1 entries; each states what it adopts or disputes from each named peer and posts a revised entry. The Consensus Builder integrates both rounds</td>
+<td><span class="tag ok">matches</span>, one exchange round</td>
 </tr>
 <tr>
 <td>Conflict Detector (4)</td>
@@ -154,8 +154,8 @@
 <tr>
 <td>Adversarial mode (1, 4)</td>
 <td>Proponent team vs Opponent team, Mediator adjudicates; Clinical Critic does destructive, evidence-grounded testing of both hypotheses, Conflict Resolver synthesizes</td>
-<td>Clinical Critic splits the Blackboard into atomic claims and scores each with a rule/KB check plus an LLM judge; flagged claims go to the synthesizer, labelled Conflict Resolver in this mode (Consensus Builder otherwise). No separate proponent/opponent teams, one round</td>
-<td><span class="tag part">partial</span></td>
+<td>H1 = the team's plurality hypothesis (else the sweep's top differential), H2 = the strongest alternative. <code>Proponent</code> argues for H1 and states what would falsify it; the Clinical Critic, as Opponent, keeps its atomic-claim scoring and adds counterevidence against H1 and H2; the Synthesizer, as Mediator, reads the transcript and states the SURVIVING HYPOTHESIS before answering</td>
+<td><span class="tag ok">matches</span>, one agent per role and one round (the proposal says teams)</td>
 </tr>
 <tr>
 <td>Input form (2, 3, Figures 2-3)</td>
@@ -229,6 +229,100 @@
 </table></div>
 <p>Triage matched the proposal on every run. Before the fixes, conflict routing never measured anything on these queries and reports ended in meaningless letters. Two intermediate states were also run and rejected (<code>WareHouse/after*</code>, <code>f12run*</code>): first every specialist abstained because its structured data section was empty (fixed in f12: specialists read the narrative), then the distance compared each specialist's own next step ("order CT", "check troponin", "avoid NSAIDs") and crossed tau although all three agreed on the diagnosis (fixed in f13: the distance uses only the LEADING DIAGNOSIS line, as the proposal specifies).</p>
 <p>After the fixes the detector measures what the proposal defines, and on these examples gpt-6-luna's specialists agree, so the "likely conflict" example stays collaborative. That is a property of the model and the example, not a fallback; nothing was tuned to change it. tau_semantic 0.35 for text-embedding-3-small is an assumed value, not validated.</p>
+<h3>After f14 and f15 (uncertainty score, mode rule, mesh, debate)</h3>
+<p>Same five queries, twice each, on gpt-6-luna: f14 (commit be596a7, tau_u 0.8 assumed, <code>WareHouse/f14run1_*</code>, <code>f14run2_*</code>) and f15 (commit 2cf1567, tau_u 0.59 for open-ended input, <code>WareHouse/f15run1_*</code>, <code>f15run2_*</code>). Cells: route / mode (U).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Example</th>
+<th>Proposal expects</th>
+<th>f14 run 1, run 2</th>
+<th>f15 run 1, run 2</th>
+<th>f15 Mediator verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sore throat and mild fever</td>
+<td>LOW</td>
+<td>LOW / hierarchical (0.60), hierarchical (0.65)</td>
+<td>LOW / adversarial (0.71), adversarial (0.65)</td>
+<td>H1 acute pharyngitis, both runs</td>
+</tr>
+<tr>
+<td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td>
+<td>HIGH</td>
+<td>HIGH / adversarial (0.93), adversarial (0.92)</td>
+<td>HIGH / adversarial (0.94), adversarial (0.92)</td>
+<td>H1 suspected ACS, both runs</td>
+</tr>
+<tr>
+<td>Young adult, fever, sore throat, cervical lymphadenopathy</td>
+<td>likely CONSENSUS</td>
+<td>LOW / adversarial (0.88), hierarchical (0.78)</td>
+<td>LOW / adversarial (0.91), adversarial (0.84)</td>
+<td>H1 acute pharyngitis; run 2 "neither" (cause undetermined)</td>
+</tr>
+<tr>
+<td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td>
+<td>likely CONFLICT</td>
+<td>HIGH / adversarial (0.94), adversarial (0.92)</td>
+<td>HIGH / adversarial (0.91), adversarial (0.94)</td>
+<td>H2, both runs: H1 and H2 were both pulmonary embolism, worded differently</td>
+</tr>
+<tr>
+<td>"a patient has COVID-19 in a sunny day"</td>
+<td>(open-ended)</td>
+<td>LOW / hierarchical, hierarchical</td>
+<td>LOW / hierarchical (0.04), adversarial (0.63)</td>
+<td>run 2: H1 COVID-19</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>Complexity triage still matches the proposal on every run. The Uncertainty Score does not: on these short queries the generalist spreads probability over several differentials, so U is high (0.6 to 0.94) and every proposal example, including the LOW and "likely consensus" ones, goes adversarial under tau_u 0.59. This was predicted from the calibration (the sore-throat example sat above the open-ended p75) and nothing was tuned to avoid it.</li>
+<li>U is noisy on very short queries: the COVID example gave U 0.04 in one run and 0.63 in the other.</li>
+<li>The debate ran for real. In the D-dimer example the team plurality (H1) and the alternative (H2) were the same diagnosis in different words, because H1/H2 votes match only after case and punctuation folding; the Mediator said so and picked H2. Paraphrase-aware matching is needed.</li>
+<li>Safety gates passed on all 10 f15 runs.</li>
+</ul>
+<h3>Benchmarks after f15 (dynamic arm only, gpt-6-luna)</h3>
+<p>Results in <code>results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna/</code> and <code>results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna/</code>; f14 baselines in the matching <code>2026-10-27-f14-*</code> folders. The single and static arms did not change (identical prompt hashes before and after f15) and were not re-run.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Set</th>
+<th>f14 accuracy</th>
+<th>f15 accuracy [95% CI]</th>
+<th>f15 modes</th>
+<th>calls / case (f14 -&gt; f15)</th>
+<th>mean latency (f14 -&gt; f15)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MedQA-50</td>
+<td>94% (47/50)</td>
+<td>96% (48/50) [86.5, 98.9]</td>
+<td>adversarial 17, collaborative 20, hierarchical 13</td>
+<td>4.66 -&gt; 6.94</td>
+<td>14.9 s -&gt; 32.0 s</td>
+</tr>
+<tr>
+<td>Synthetic-24</td>
+<td>100% (24/24)</td>
+<td>95.8% (23/24) [79.8, 99.3]</td>
+<td>adversarial 1, collaborative 18, hierarchical 5</td>
+<td>5.04 -&gt; 7.12</td>
+<td>15.0 s -&gt; 24.9 s</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>MedQA now exercises the adversarial path (17 of 50, was 0), all entered by uncertainty, none by the Conflict Detector. 15 of the 17 were answered correctly; both misses (medqa-test-0243, 0755) are adversarial cases. The Mediator kept H1 in 16 and answered "neither" once.</li>
+<li>The +1 question on MedQA and the -1 case on synthetic are inside the intervals and within run-to-run variance; they are not evidence for or against the new modes.</li>
+<li>The synthetic miss, syn-high-02, is a collaborative case where round 1's plurality was the correct answer (C); after the mesh exchange the Consensus Builder answered D, the safety gate blocked it twice and the case ended with no answer.</li>
+<li>In 11 of the 20 collaborative MedQA cases every specialist abstained in round 1 (uniform distribution; MedQA vignettes have no structured data for the specialists' modalities), so the mesh had nothing to exchange and the Consensus Builder answered alone.</li>
+</ul>
 <h2>Citations checked (web, 2026-10-27)</h2>
 <ul>
 <li>MDAgents [3]: NeurIPS 2024; best on 7 of 10 benchmarks, up to +4.2% over prior best (arXiv 2404.15155). Matches the proposal's description.</li>
@@ -237,9 +331,11 @@
 </ul>
 <h2>What follows for the research</h2>
 <ul>
-<li>The two gaps that matter most for the proposal's thesis are the <strong>uncertainty score</strong> at triage and a <strong>real mesh collaborative mode</strong>: today the system switches between one agent and a parallel team, and between a consensus and a critic round, but not between three topologies chosen by one rule over C and U.</li>
-<li>The MedQA and synthetic benchmarks do not exercise conflict routing (adversarial switch 0% on MedQA), and neither did the proposal's own conflict example after the fixes: a benchmark with real expert disagreement, or a weaker base model, is needed before claiming the adversarial mode helps.</li>
-<li>tau_semantic needs validating on labelled agree/disagree diagnosis pairs embedded with the production embedder.</li>
+<li>The two gaps named before f14 (uncertainty score at triage, mesh collaborative mode) are closed, and the proposal's single rule over C and U now chooses all three modes. Each mode is one round with one agent per role; the proposal's Proponent and Opponent <em>teams</em> and multi-round debate are not built.</li>
+<li>tau_u is calibrated in-sample (75th percentile on the eval's own vignettes) and sends every proposal example to adversarial. It needs validating against outcomes on a held-out set, and U itself needs more than one generalist sample to be stable on short queries.</li>
+<li>The adversarial mode now runs on a third of MedQA, but accuracy did not move outside the confidence interval while calls per case rose about 50%. A harder benchmark with real expert disagreement, or a weaker base model, is still needed to show whether the debate helps.</li>
+<li>H1/H2 selection needs paraphrase-aware matching (the D-dimer example split one diagnosis into two hypotheses).</li>
+<li>tau_semantic still needs validating on labelled agree/disagree diagnosis pairs embedded with the production embedder.</li>
 </ul>
 </main>
 <footer>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/proposal-alignment.md">docs/dynaclinic/proposal-alignment.md</a> on branch threejs-devall.</footer>

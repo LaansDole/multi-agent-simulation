@@ -481,30 +481,30 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
 <section class="slide" data-title="Results">
   <div class="chrome"><span><b>04</b> / results</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">Cheaper than an always-on team. <em>Not more accurate</em> than one agent, yet.</h2>
+    <h2 class="reveal" style="--d:1">The three modes now run. <em>Not more accurate</em> than one agent, yet.</h2>
     <div class="res">
       <div class="card reveal" style="--d:2">
         <h3>MedQA-USMLE, 50 random test questions</h3>
-        <p style="font-size:20px">Accuracy with 95% interval. gpt-6-luna, one run per arm.</p>
+        <p style="font-size:20px">Accuracy with 95% interval. gpt-6-luna, one run per arm; "dynamic now" is after f15.</p>
         <div class="bars">
           <!-- Bars span 75% to 100%: left = (x - 75) / 25 -->
           <div class="bar-row"><span class="lab">single</span><div class="bar-track"><div class="bar-fill" style="width:76%"></div><div class="bar-ci" style="left:35.2%;width:56.4%"></div></div><span class="val">94%</span></div>
-          <div class="bar-row"><span class="lab">dynamic</span><div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--red)"></div><div class="bar-ci" style="left:24.8%;width:62.4%"></div></div><span class="val">92%</span></div>
+          <div class="bar-row"><span class="lab">dynamic now</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--red)"></div><div class="bar-ci" style="left:46%;width:49.6%"></div></div><span class="val">96%</span></div>
           <div class="bar-row"><span class="lab">static</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--ink-soft)"></div><div class="bar-ci" style="left:14.4%;width:68.4%"></div></div><span class="val">90%</span></div>
           <div class="axis"><div></div><div><span>75%</span><span>80%</span><span>85%</span><span>90%</span><span>95%</span><span>100%</span></div><div></div></div>
         </div>
       </div>
       <div class="reveal" style="--d:3">
         <table class="t">
-          <tr><th></th><th class="n">single</th><th class="n">dynamic</th><th class="n">static</th></tr>
-          <tr><td>MedQA calls / question</td><td class="n">1.00</td><td class="n">3.68</td><td class="n">6.00</td></tr>
-          <tr><td>MedQA latency, mean</td><td class="n">5.3 s</td><td class="n">19.9 s</td><td class="n">29.9 s</td></tr>
-          <tr><td>MedQA adversarial switch</td><td class="n">n/a</td><td class="n">0%</td><td class="n">always</td></tr>
-          <tr><td>Synthetic 24 accuracy</td><td class="n">100%</td><td class="n">100%</td><td class="n">100%</td></tr>
-          <tr><td>Synthetic calls / case</td><td class="n">1.00</td><td class="n">3.92</td><td class="n">6.08</td></tr>
+          <tr><th></th><th class="n">single</th><th class="n">dynamic now</th><th class="n">static</th></tr>
+          <tr><td>MedQA calls / question</td><td class="n">1.00</td><td class="n">6.94</td><td class="n">6.00</td></tr>
+          <tr><td>MedQA latency, mean</td><td class="n">5.3 s</td><td class="n">32.0 s</td><td class="n">29.9 s</td></tr>
+          <tr><td>MedQA adversarial mode</td><td class="n">n/a</td><td class="n">34%</td><td class="n">always</td></tr>
+          <tr><td>Synthetic 24 accuracy</td><td class="n">100%</td><td class="n">95.8%</td><td class="n">100%</td></tr>
+          <tr><td>Synthetic calls / case</td><td class="n">1.00</td><td class="n">7.12</td><td class="n">6.08</td></tr>
           <tr><td>Unsafe answers (synthetic)</td><td class="n">0</td><td class="n">0</td><td class="n">0</td></tr>
         </table>
-        <div class="verdict"><b>Dynamic matches the full team with 36 to 39% fewer calls.</b> The intervals overlap almost completely, and 3 of the 4 dynamic misses were the same wrong answer in every arm: a model-knowledge ceiling, not an orchestration effect.</div>
+        <div class="verdict"><b>Adversarial now runs on 17 of 50 MedQA questions (was 0)</b>, but the mesh and debate rounds cost more calls than the old always-on team, and every interval still overlaps. Before f14, dynamic used 36 to 39% fewer calls at 92%.</div>
       </div>
     </div>
   </div>
@@ -517,30 +517,29 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
 <section class="slide" data-title="Fact check">
   <div class="chrome"><span><b>05</b> / checked against the reviewed proposal</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">The pipeline matches; the <em>uncertainty score</em> and <em>mesh mode</em> are still missing</h2>
+    <h2 class="reveal" style="--d:1">The pipeline and <em>all three modes</em> now match; the <em>thresholds</em> are not validated</h2>
     <div class="fc">
       <div class="card ok reveal" style="--d:2"><h3><span class="tag t-green">matches</span></h3><ul>
-        <li>LOW cases go to one Primary Care Agent</li>
-        <li>HIGH cases go to Imaging, Pathology and Pharmacology in parallel, then a Consensus Builder</li>
-        <li>Any scenario, not only quiz questions: assessment, plan, red flags, missing information</li>
+        <li><b>Uncertainty score</b> (entropy of a generalist sweep) and <b>one rule</b> over C and U</li>
+        <li>Hierarchical hub, <b>mesh exchange</b>, <b>Proponent / Opponent / Mediator</b></li>
+        <li>Any scenario, not only quiz questions</li>
         <li>Runs on DevAll, as the proposal's Figure 1 shows</li></ul></div>
       <div class="card part reveal" style="--d:3"><h3><span class="tag t-amber">partial</span></h3><ul>
-        <li>Complexity score: rule-based, cut-offs not validated</li>
-        <li>Conflict Detector: semantic distance between leading diagnoses, as specified; threshold not validated</li>
-        <li>Adversarial: one critic round, not proponent and opponent teams</li>
-        <li>Today's "collaborative" team is really hub-and-spoke</li></ul></div>
+        <li>tau_u calibrated in-sample (p75), not against outcomes</li>
+        <li>Conflict Detector threshold not validated</li>
+        <li>One round per mode, one agent per role</li>
+        <li>H1 / H2 match exact wording, not paraphrases</li></ul></div>
       <div class="card miss reveal" style="--d:4"><h3><span class="tag t-red">missing</span></h3><ul>
-        <li><b>Uncertainty score</b> at triage (entropy of a first generalist pass)</li>
-        <li><b>Mesh collaboration</b>: agents never read each other's reasoning</li>
         <li>Counterfactual grounding loss</li>
-        <li>One rule over complexity and uncertainty choosing all three modes</li></ul></div>
+        <li>Proponent and Opponent <b>teams</b>, multi-round debate</li>
+        <li>Process models and institutional protocols (L4)</li></ul></div>
     </div>
     <div class="examples reveal" style="--d:5">
       <table class="t" id="pdfExamples">
-        <tr><th>Proposal's own example (Figures 2, 3)</th><th>expects</th><th>route, 2 runs</th><th>before the fixes</th><th>after: specialists' diagnoses</th></tr>
-        <tr><td>Sore throat and mild fever for 2 days</td><td>LOW</td><td class="mono">LOW, LOW</td><td>-</td><td>not reached</td></tr>
-        <tr><td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td><td>HIGH</td><td class="mono">HIGH, HIGH</td><td>fallback, letter answers</td><td>all: acute coronary syndrome (0.11, 0.12)</td></tr>
-        <tr><td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td><td>CONFLICT</td><td class="mono">MOD, HIGH</td><td>fallback, letter answers</td><td>all: pulmonary embolism (0.05, 0.14): they agree</td></tr>
+        <tr><th>Proposal's own example (Figures 2, 3)</th><th>expects</th><th>route, 2 runs</th><th>mode now (U)</th><th>Mediator verdict</th></tr>
+        <tr><td>Sore throat and mild fever for 2 days</td><td>LOW</td><td class="mono">LOW, LOW</td><td>adversarial (0.71, 0.65)</td><td>H1 acute pharyngitis</td></tr>
+        <tr><td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td><td>HIGH</td><td class="mono">HIGH, HIGH</td><td>adversarial (0.94, 0.92)</td><td>H1 suspected ACS</td></tr>
+        <tr><td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td><td>CONFLICT</td><td class="mono">HIGH, HIGH</td><td>adversarial (0.91, 0.94)</td><td>pulmonary embolism (H1 = H2 reworded)</td></tr>
       </table>
     </div>
   </div>
@@ -557,7 +556,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
     <div class="next">
       <div class="card reveal" style="--d:2"><span class="n">1</span><div><h3>A harder benchmark</h3><p>MedXpertQA (ICML 2025): 4,460 expert-level questions in 17 specialties, filtered to be harder than MedQA. Larger samples to narrow the intervals.</p></div></div>
       <div class="card reveal" style="--d:3"><span class="n">2</span><div><h3>Headroom for the team</h3><p>Repeat with a weaker base model, where a single agent is far from the ceiling and specialists can add value.</p></div></div>
-      <div class="card reveal" style="--d:4"><span class="n">3</span><div><h3>Finish the controller</h3><p>Add the uncertainty score and one rule over complexity and uncertainty; build a true mesh mode where agents read each other's reasoning.</p></div></div>
+      <div class="card reveal" style="--d:4"><span class="n">3</span><div><h3>Validate the controller</h3><p>tau_u sends every proposal example to adversarial: validate it against outcomes, average several generalist sweeps, match paraphrased hypotheses.</p></div></div>
       <div class="card reveal" style="--d:5"><span class="n">4</span><div><h3>Safety and validity</h3><p>Cases with structured data and known unsafe options; thresholds tuned on held-out data; repeated runs; clinician review of the critic's verdicts.</p></div></div>
     </div>
   </div>
@@ -574,8 +573,8 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
     <div class="close-grid">
       <div class="take">
         <div class="reveal" style="--d:2"><span class="n">1</span><p>Switching per case <b>works end to end</b> on quiz questions and on any scenario in plain words: triage, team, conflict detection, critic and safety gates run live, and you can watch them in 3D.</p></div>
-        <div class="reveal" style="--d:3"><span class="n">2</span><p>It <b>saves compute</b>: the same accuracy as an always-on team with about a third fewer calls.</p></div>
-        <div class="reveal" style="--d:4"><span class="n">3</span><p>It does <b>not yet beat one strong model</b>, and the adversarial mode is rarely reached: even the proposal's own conflict example produced agreement. The next benchmark has to create disagreement.</p></div>
+        <div class="reveal" style="--d:3"><span class="n">2</span><p>The proposal's <b>three modes and one switching rule</b> now run live; adversarial fires on a third of MedQA, but costs more calls than the old always-on team.</p></div>
+        <div class="reveal" style="--d:4"><span class="n">3</span><p>It does <b>not yet beat one strong model</b>, and the uncertainty threshold is calibrated, not validated. The next benchmark has to create real disagreement.</p></div>
       </div>
       <div class="links">
         <div class="card reveal" style="--d:3"><span class="mono">laansdole.github.io/multi-agent-simulation</span><p>Runbook demo: the full journey on video, step by step</p></div>

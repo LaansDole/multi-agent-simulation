@@ -50,7 +50,24 @@
   </div>
 
   <div class="panel">
-    <h2>MedQA-USMLE sample: 50 questions</h2>
+    <h2>Update 2026-10-28: uncertainty score and the proposal's three modes (dynamic arm)</h2>
+    <p>Since f14 and f15 the Meta-Controller computes a Complexity Score C and an Uncertainty Score U (normalised entropy of a generalist's top-k differential) and picks the mode with one rule: U above tau_u is adversarial (Proponent, Clinical Critic as Opponent, Mediator); otherwise C at most 0.5 is hierarchical (Primary Care hub with up to 2 consults); otherwise collaborative (care team plus one mesh exchange round). tau_u is 0.15 for multiple choice and 0.59 for open-ended input, each the 75th percentile on these same vignettes: calibrated, not validated. Only the dynamic arm changed (single and static keep identical prompts), so only it was re-run.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Set</th><th>Before (f14)</th><th>Now (f15)</th><th>95% CI</th><th>Modes now</th><th>Calls per case</th><th>Latency mean</th></tr>
+      <tr><td class="nw"><b>MedQA-50</b></td><td class="num">94% (47/50)</td><td class="num">96% (48/50)</td><td class="num">86.5 to 98.9</td><td>17 adversarial, 20 collaborative, 13 hierarchical</td><td class="num">4.66 to 6.94</td><td class="num">14.9 s to 32.0 s</td></tr>
+      <tr><td class="nw"><b>Synthetic-24</b></td><td class="num">100% (24/24)</td><td class="num">95.8% (23/24)</td><td class="num">79.8 to 99.3</td><td>1 adversarial, 18 collaborative, 5 hierarchical</td><td class="num">5.04 to 7.12</td><td class="num">15.0 s to 24.9 s</td></tr>
+    </table></div>
+    <ol>
+      <li><b>The adversarial path now runs on real cases:</b> 17 of 50 MedQA questions (was 0), all entered by uncertainty, none by the Conflict Detector. 15 of the 17 were right; both MedQA misses (0243, 0755) are adversarial cases. The Mediator kept the primary hypothesis in 16 and answered "neither" once.</li>
+      <li><b>No accuracy effect yet:</b> +1 question on MedQA and -1 case on synthetic are inside the intervals, while calls per case rose by about half.</li>
+      <li><b>The mesh can talk a team out of a right answer:</b> on syn-high-02 round 1's plurality was correct (C); after the exchange the Consensus Builder answered D, the safety gate blocked it twice, and the case ended with no answer.</li>
+      <li><b>The mesh is often empty on MedQA:</b> in 11 of 20 collaborative questions every specialist abstained in round 1 (no data for their modality), so the Consensus Builder answered alone.</li>
+    </ol>
+    <p class="note">Raw output: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna">results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna</a>, <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna">results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna</a>; f14 baselines in the matching 2026-10-27-f14 folders. The tables below are the earlier three-arm runs (code 3203fa4 and 9ef6d86), before the new modes.</p>
+  </div>
+
+  <div class="panel">
+    <h2>MedQA-USMLE sample: 50 questions (three arms, before f14)</h2>
     <p>50 questions drawn at random (seed 2026) from the 1,273-question test split of MedQA-USMLE, 4-option version (Jin et al. 2021; Hugging Face <code>GBaker/MedQA-USMLE-4-options</code>, CC-BY-4.0): 26 Step 1 and 24 Step 2&amp;3. Saved as <code>data/dynaclinic/medqa_sample.jsonl</code> (commit a00ab8a); the repo's existing MedQA loader read it unchanged. Run on code 3203fa4, context policy shared_core, concurrency 4, cache off, no fallback calls, no errors.</p>
     <div class="table-wrap"><table>
       <tr><th>Arm</th><th>Accuracy</th><th>95% CI</th><th>Calls per question</th><th>Latency mean / p50</th><th>Routes taken</th></tr>
