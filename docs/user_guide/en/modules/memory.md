@@ -32,6 +32,9 @@ memory:
         model: text-embedding-3-small
 ```
 
+### Per-run Memory Paths
+A literal `memory_path` or `index_path` (as above) is shared by every run of the workflow, so a later run reads what earlier runs wrote. To give each run its own store, put `{{run_dir}}` in the path, e.g. `memory_path: "{{run_dir}}/simple.json"` (quote it: unquoted `{{` is a YAML mapping). When the run starts, `MemoryFactory.create_memory` (`runtime/node/agent/memory/builtin_stores.py`) replaces it with that run's output directory (`WareHouse/<session>_<timestamp>/`). This works for every store with one of those fields (`simple`, `file`, `blackboard`); `mem0` has no local path. Paths without the placeholder are used as written.
+
 ### Mem0 Memory Config
 ```yaml
 memory:

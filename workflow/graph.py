@@ -176,7 +176,7 @@ class GraphExecutor:
                 simple_cfg.memory_path = str(path)
 
             try:
-                memory_instance = MemoryFactory.create_memory(store)
+                memory_instance = MemoryFactory.create_memory(store, run_dir=self.graph.directory)
                 self.global_memories[store.name] = memory_instance
                 memory_instance.load()
                 self.log_manager.info(
