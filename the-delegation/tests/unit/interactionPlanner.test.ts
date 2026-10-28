@@ -133,3 +133,31 @@ test('speechSnippet and nearestToCentroid', () => {
   assert.equal(nearestToCentroid(areas, [{ x: 0, z: 4 }, { x: 3, z: 3 }])?.id, 'boardroom');
   assert.equal(nearestToCentroid(areas, []), undefined);
 });
+
+test('speechSnippet reads JSON and Markdown output', () => {
+  // demo_hospital PatientDataGenerator
+  const patient = '{\n  "patient_name": "Maya Chen",\n  "age": 42,\n  "condition": "Influenza",\n  "severity": "high",\n'
+    + '  "admission_date": "2024-01-15",\n  "allergies": null,\n  "vitals": {"hr": 96, "bp": "130/85"},\n  "meds": ["oseltamivir", "paracetamol"]\n}';
+  assert.equal(
+    speechSnippet(patient, 500),
+    'patient name: Maya Chen, age: 42, condition: Influenza, severity: high, admission date: 2024-01-15, '
+      + 'allergies: none, vitals: 2 fields, meds: 2 items',
+  );
+  assert.equal(speechSnippet(patient), 'patient name: Maya Chen, age: 42, condition: Influenza, severity: high, admissi…');
+  // demo_hospital TriageDataGenerator
+  const queue = '[\n  {"name": "Alice Johnson", "priority": "high", "wait_time": 5},\n'
+    + '  {"name": "Bob Williams", "priority": "medium", "wait_time": 20}\n]';
+  assert.equal(speechSnippet(queue), '2 items: name: Alice Johnson, priority: high, wait time: 5');
+  // Fenced JSON after a preface sentence; camelCase keys.
+  const fenced = 'Here is the assessment for today:\n```json\n{"chiefComplaint": "chest pain", "riskScore": 0.7, "flags": []}\n```';
+  assert.equal(speechSnippet(fenced), 'chief complaint: chest pain, risk score: 0.7, flags: 0 items');
+  // DynaClinic-style Markdown
+  const markdown = '## Assessment\n**Likely ACS**, see [HEART score](https://example.org/heart) and _troponin_.\n\n'
+    + '- Start `aspirin`\n1. Repeat ECG\n---';
+  assert.equal(speechSnippet(markdown), 'Assessment Likely ACS, see HEART score and troponin. Start aspirin Repeat ECG');
+  // Malformed JSON falls back to the plain line; plain text and snake_case words stay as they are.
+  assert.equal(speechSnippet('{"patient_name": "Maya", "age": 4'), '{"patient_name": "Maya", "age": 4');
+  assert.equal(speechSnippet('Dose 5 * 3 mg; see [1] and patient_name_x.'), 'Dose 5 * 3 mg; see [1] and patient_name_x.');
+  assert.equal(speechSnippet(''), '');
+  assert.equal(speechSnippet('{}'), '{}');
+});

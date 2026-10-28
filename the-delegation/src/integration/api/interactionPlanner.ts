@@ -85,9 +85,58 @@ export function conversationLoop(
   return null;
 }
 
-/** First `max` characters of `text` on one line, with an ellipsis when cut. */
+/** `patient_name` / `chiefComplaint` -> `patient name` / `chief complaint`. */
+function readableKey(key: string): string {
+  return key.replace(/[_-]+/g, ' ').replace(/([a-z\d])([A-Z])/g, (_, a: string, b: string) => `${a} ${b.toLowerCase()}`).trim();
+}
+
+const count = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+/** A JSON value in a few words: `key: value` pairs at the top, nested arrays/objects as counts. */
+function summarise(value: unknown, top: boolean): string {
+  if (Array.isArray(value)) {
+    if (!top || value.length === 0) return count(value.length, 'item');
+    return `${count(value.length, 'item')}: ${summarise(value[0], !Array.isArray(value[0]))}`;
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (!top) return count(entries.length, 'field');
+    return entries.map(([key, v]) => `${readableKey(key)}: ${summarise(v, false)}`).join(', ');
+  }
+  return value === null ? 'none' : String(value);
+}
+
+/**
+ * `text` without its markup: a JSON payload (bare, fenced or after a preface; at least half of the
+ * text) as `key: value` pairs, Markdown without headings, emphasis, list markers, fences and link
+ * targets. Anything else comes back unchanged.
+ */
+function readable(text: string): string {
+  const start = text.search(/[{[]/);
+  const end = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
+  if (start >= 0 && end > start && 2 * (end - start + 1) >= text.trim().length) {
+    try {
+      const summary = summarise(JSON.parse(text.slice(start, end + 1)), true);
+      if (summary) return summary;
+    } catch {
+      // Not JSON: read it as Markdown / plain text.
+    }
+  }
+  return text
+    .replace(/^[ \t]*```.*$/gm, '') // code fences
+    .replace(/^[ \t]*(?:[-*_][ \t]*){3,}$/gm, '') // horizontal rules
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '') // headings
+    .replace(/^[ \t]*>[ \t]?/gm, '') // block quotes
+    .replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/gm, '') // list markers
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // links and images: keep the text
+    .replace(/(\*\*|__|~~)(.+?)\1/g, '$2') // bold, strikethrough
+    .replace(/(?<!\w)([*_])(?!\s)(.+?)(?<!\s)\1(?!\w)/g, '$2') // italics
+    .replace(/`([^`]*)`/g, '$1'); // inline code
+}
+
+/** Readable first `max` characters of `text` on one line, with an ellipsis when cut. */
 export function speechSnippet(text: string, max: number = SPEECH_CHARS): string {
-  const line = text.replace(/\s+/g, ' ').trim();
+  const line = readable(text).replace(/\s+/g, ' ').trim();
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
 }
 
