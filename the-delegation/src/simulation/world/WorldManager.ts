@@ -2,7 +2,7 @@
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as THREE from 'three/webgpu';
-import { getAgentSet } from '../../data/agents';
+import { getAgentSet, MAX_AGENTS } from '../../data/agents';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { DRACO_LIB_PATH } from '../constants';
 import { NavMeshManager } from '../pathfinding/NavMeshManager';
@@ -32,6 +32,7 @@ export class WorldManager {
     const themeColor = new THREE.Color(activeSet.color);
 
     // Extract NavMesh and setup
+    let floor: THREE.Box3 | null = null;
     this.office.traverse((child) => {
       if ((child as any).isMesh) {
         const mesh = child as THREE.Mesh;
@@ -39,6 +40,7 @@ export class WorldManager {
 
         if (name.includes('navmesh')) {
           this.navMesh.loadFromGeometry(mesh.geometry);
+          floor = new THREE.Box3().setFromBufferAttribute(mesh.geometry.attributes.position as THREE.BufferAttribute);
           mesh.visible = false;
         } else {
           mesh.receiveShadow = true;
@@ -65,14 +67,38 @@ export class WorldManager {
     // Extract Points of Interest
     this.poiManager.loadFromGlb(this.office);
 
-    // office.glb ships spawn POIs for agents 1-5 only, but MAX_AGENTS is 7.
-    // ponytail: hand-placed on open navmesh floor (>= 1.8 m from every other POI and the
-    // user's origin spawn); bake poi-idle-spawn-6/7 into office.glb and drop this on re-export.
-    for (const [id, x, z] of [[spawnPoiId(6), -1.2, 4.1], [spawnPoiId(7), -0.1, -2.8]] as const) {
+    if (floor) this.addMissingSpawns(floor);
+  }
+
+  /**
+   * office.glb ships spawn POIs for agents 1-5 only. Each missing spawn (up to MAX_AGENTS) goes on the
+   * walkable floor spot farthest from every POI and the user's origin, facing the room centre.
+   * ponytail: greedy farthest-point over a SPAWN_GRID_STEP grid; bake poi-idle-spawn-N into office.glb to drop it.
+   */
+  private addMissingSpawns(floor: THREE.Box3): void {
+    const SPAWN_GRID_STEP = 0.25;
+    const candidates: THREE.Vector3[] = [];
+    for (let x = floor.min.x; x <= floor.max.x; x += SPAWN_GRID_STEP) {
+      for (let z = floor.min.z; z <= floor.max.z; z += SPAWN_GRID_STEP) {
+        const spot = new THREE.Vector3(x, 0, z);
+        if (this.navMesh.isWalkable(spot)) candidates.push(spot);
+      }
+    }
+    const taken = [new THREE.Vector3(), ...this.poiManager.getAllPois().map((poi) => poi.position)];
+    for (let index = 1; index <= MAX_AGENTS; index++) {
+      const id = spawnPoiId(index);
       if (this.poiManager.getPoi(id)) continue;
-      // Face the room centre; characters look down +Z at yaw 0.
-      const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-x, -z));
-      this.poiManager.addPoi({ id, position: new THREE.Vector3(x, 0, z), quaternion, arrivalState: 'idle', occupiedBy: null });
+      let best: THREE.Vector3 | null = null;
+      let bestGap = 0;
+      for (const spot of candidates) {
+        const gap = Math.min(...taken.map((t) => (t.x - spot.x) ** 2 + (t.z - spot.z) ** 2));
+        if (gap > bestGap) [best, bestGap] = [spot, gap];
+      }
+      if (!best) return;
+      taken.push(best);
+      // Characters look down +Z at yaw 0.
+      const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-best.x, -best.z));
+      this.poiManager.addPoi({ id, position: best.clone(), quaternion, arrivalState: 'idle', occupiedBy: null });
     }
   }
 

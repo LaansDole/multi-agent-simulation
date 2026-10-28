@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from check.check import load_config
-from server.services.workflow_graph_serializer import serialize_design
+from server.services.workflow_graph_serializer import MAX_AGENT_SLOTS, serialize_design
 
 DYNACLINIC_MVP = Path(__file__).resolve().parents[1] / "yaml_instance" / "dynaclinic_mvp.yaml"
 
@@ -110,7 +110,7 @@ class TestSerializeDesign:
         assert {n["id"]: n["is_agent"] for n in result["nodes"]} == {
             "CaseInput": False,
             "Triage": True,
-            "GeneralistSweep": False,  # LLM call, but no 3D character: the seven slots are taken
+            "GeneralistSweep": False,  # LLM call, but not agent_like: no 3D character
             "PrimaryCare": True,
             "CareTeam": True,
             "DivergenceGate": False,
@@ -135,24 +135,24 @@ class TestSerializeDesign:
             "Pharmacology",
         ]
 
-    def test_eighth_agent_gets_null_slot(self, tmp_path):
+    def test_agent_past_the_cap_gets_null_slot(self, tmp_path):
         nodes_yaml = "\n".join(
             f"    - id: agent_{i}\n      type: agent\n      config:\n"
             f"        provider: openai\n        name: m{i}\n        role: r{i}\n"
             f"        base_url: http://localhost\n        api_key: sk-test\n"
             f"        params: {{}}\n        tooling: null\n        thinking: null\n        memories: []\n"
-            for i in range(8)
+            for i in range(MAX_AGENT_SLOTS + 1)
         )
         many_yaml = (
             "version: 0.0.0\nvars: {}\ngraph:\n  id: many\n  is_majority_voting: false\n"
-            f"  nodes:\n{nodes_yaml}\n  start:\n    - agent_0\n  end:\n    - agent_7\n"
+            f"  nodes:\n{nodes_yaml}\n  start:\n    - agent_0\n  end:\n    - agent_{MAX_AGENT_SLOTS}\n"
         )
         p = tmp_path / "many.yaml"
         p.write_text(many_yaml, encoding="utf-8")
         many_design = load_config(p)
         result = serialize_design(many_design, filename="many.yaml")
         slots = [a["proposed_slot"] for a in result["agent_nodes"]]
-        assert slots == [1, 2, 3, 4, 5, 6, 7, None]
+        assert slots == [*range(1, MAX_AGENT_SLOTS + 1), None]
 
     def test_edges_serialized(self, design):
         result = serialize_design(design, filename="minimal.yaml")

@@ -16,7 +16,10 @@ import { MAX_AGENTS } from '../../data/agents';
 import { DEFAULT_MODELS } from '../../core/llm/constants';
 
 /** One distinct colour per character slot (index = slot - 1); length must be MAX_AGENTS. */
-export const SLOT_COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#64748B', '#A142F4', '#12B5CB'];
+export const SLOT_COLORS = [
+  '#4285F4', '#34A853', '#FBBC05', '#EA4335', '#64748B', '#A142F4', '#12B5CB',
+  '#F06292', '#8D6E63', '#7CB342', '#FF7043', '#5C6BC0', '#26A69A',
+];
 
 export interface ImportResult {
   system: AgenticSystem;

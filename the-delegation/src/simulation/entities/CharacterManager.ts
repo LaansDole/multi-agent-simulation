@@ -14,7 +14,7 @@ import { AgentBehavior, AnimationName, ExpressionKey } from '../../types';
 import { AgentStateBuffer } from '../behavior/AgentStateBuffer';
 import { ExpressionBuffer } from '../behavior/ExpressionBuffer';
 import { DRACO_LIB_PATH } from '../constants';
-import { PoiManager, SPAWN_POI_PREFIX } from '../world/PoiManager';
+import { PoiManager, SPAWN_POI_PREFIX, spawnPoiId } from '../world/PoiManager';
 
 export class CharacterManager {
   private instanceCount = getAllAgents(getActiveAgentSet()).length + 1;
@@ -247,7 +247,9 @@ export class CharacterManager {
         posArray[i * 4 + 2] = 0;
         agentsBuffer[i] = null;
       } else {
-        const poi = spawnPois[spawnIndex % spawnPois.length];
+        // Own spawn first (moveNpcToSpawn returns there); Map order is not index order.
+        const own = this.poiManager?.getPoi(spawnPoiId(i));
+        const poi = own?.occupiedBy === null ? own : spawnPois[spawnIndex % spawnPois.length];
         if (poi) {
           this.poiManager?.occupy(poi.id, i);
           posArray[i * 4 + 0] = poi.position.x;

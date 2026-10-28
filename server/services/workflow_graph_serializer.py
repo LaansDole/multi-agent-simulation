@@ -9,7 +9,7 @@ from utils.strs import titleize
 
 # Max agent characters (the user is not counted). Keep in sync with MAX_AGENTS in
 # the-delegation/src/data/agents.ts, which caps how many slots the 3D scene renders.
-MAX_AGENT_SLOTS = 7
+MAX_AGENT_SLOTS = 13
 _ROLE_TRUNCATE = 200
 
 
