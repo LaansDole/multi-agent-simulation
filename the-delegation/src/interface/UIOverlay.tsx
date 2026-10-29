@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getAgentSet, getAllAgents, getAllCharacters } from '../data/agents';
 import { useUiStore } from '../integration/store/uiStore';
 import InfoModal from './InfoModal';
@@ -8,7 +8,7 @@ import { MessageSquareWarning, PartyPopper, Siren, Loader2 } from 'lucide-react'
 import { Task, useCoreStore } from '../integration/store/coreStore';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../theme/brand';
-import { placeNameplates } from './nameplateLayout';
+import { placeNameplates, type Rect } from './nameplateLayout';
 
 /** Gap (px) between a character's head and its nameplate, without / with an alert bubble in between. */
 const PLATE_GAP = 6;
@@ -26,6 +26,28 @@ function textWidth(text: string, style: string): number {
   const width = measureContext.measureText(text).width;
   if (document.fonts.status === 'loaded') textWidths.set(key, width);
   return width;
+}
+
+/**
+ * Hover/selection pill rectangle, sized like its markup: px-3 + border, 8 px dot, gap-2, gap-1.5 between the uppercase
+ * tracking-widest (0.1em) 10px spans (measured at the heaviest weight, 900), 15 px line + py-1.5 + border, 10 px above the head.
+ */
+function pillRect(pos: { x: number; y: number }, spans: string[]): Rect {
+  const text = spans.reduce((sum, span) => sum + textWidth(span.toUpperCase(), '900 10px') + span.length, 6 * (spans.length - 1));
+  const w = Math.ceil(text) + 42;
+  return [pos.x - w / 2, pos.y - 39, pos.x + w / 2, pos.y - 10];
+}
+
+/**
+ * Speech bubble rectangle, sized like its markup: 11px text in leading-snug lines, px-3 py-2 + border, max-w-[240px],
+ * 34 px above the head. ponytail: lines from text width over 200 of the 214 px (slack for word wrap); measure the DOM
+ * if plates still touch bubbles.
+ */
+function speechRect(pos: { x: number; y: number }, text: string): Rect {
+  const width = textWidth(text, '11px');
+  const w = Math.min(240, Math.ceil(width) + 26);
+  const h = Math.ceil(width / 200) * 15.125 + 18;
+  return [pos.x - w / 2, pos.y - 34 - h, pos.x + w / 2, pos.y - 34];
 }
 
 interface AlertBubbleProps {
@@ -108,6 +130,15 @@ const UIOverlay: React.FC = () => {
     setSelectedNpc,
   } = useUiStore();
   const [isHelpOpen, setHelpOpen] = useState(false);
+  // The 3D view's size: plates stay inside it.
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const overlay = overlayRef.current!;
+    const observer = new ResizeObserver(() => setView({ w: overlay.clientWidth, h: overlay.clientHeight }));
+    observer.observe(overlay);
+    return () => observer.disconnect();
+  }, []);
   const {
     tasks,
     phase,
@@ -133,19 +164,33 @@ const UIOverlay: React.FC = () => {
     if (tasks.some(t => t.status === 'on_hold' && t.assignedAgentId === index)) return { icon: <MessageSquareWarning size={18} />, color: USER_COLOR };
     return null;
   };
+  // Hover/selection pill: the selected agent's (priority 1), else the hovered one's; its spans as rendered below.
+  const pill = selectedAgent && selectedPosition ? { agent: selectedAgent, pos: selectedPosition }
+    : hoveredAgent && hoverPosition && hoveredNpcIndex !== selectedNpcIndex ? { agent: hoveredAgent, pos: hoverPosition } : null;
+  const pillLabel = pill && getAgentPhaseLabel(pill.agent.index, system.leadAgent.index, tasks, phase, isGeneratingAsset, '');
+  const pillIsUser = pill?.agent.index === system.user.index;
+  const pillReady = pill?.agent.index === system.leadAgent.index && phase === 'done';
+  const pillSpans = !pill || !pillLabel ? [] : pillIsUser ? [`${pill.agent.name} (You)`] : pillReady ? [pillLabel.text]
+    : pillLabel.text ? [pill.agent.name, '·', pillLabel.text] : [pill.agent.name];
+  // Plates give way to the pill and the speech bubbles.
+  const obstacles: Rect[] = Object.entries(speech).flatMap(([key, text]) => {
+    const pos = npcScreenPositions[Number(key)];
+    return pos ? [speechRect(pos, text)] : [];
+  });
+  if (pill) obstacles.push(pillRect(pill.pos, pillSpans));
   // Plates actually drawn (a speaking character shows its bubble, a hovered/selected one the pill), sized like the
   // markup below: text plus px-1.5 padding (+1 px rounding), capped by max-w-[180px]; one line 18 px, two lines 31 px.
-  const plateLift = placeNameplates(npcAgents.flatMap((agent) => {
+  const plateRects = placeNameplates(npcAgents.flatMap((agent) => {
     const pos = npcScreenPositions[agent.index];
     if (!pos || speech[agent.index] || hoveredNpcIndex === agent.index || selectedNpcIndex === agent.index) return [];
     const role = roleOf(agent);
     const text = Math.max(textWidth(agent.name, 'bold 11px'), role ? textWidth(role, '10px') : 0);
     const gap = alertOf(agent.index) ? ALERT_PLATE_GAP : PLATE_GAP;
     return [{ index: agent.index, x: pos.x, y: pos.y, gap, w: Math.min(180, Math.ceil(text) + 13), h: role ? 31 : 18 }];
-  }));
+  }), view, obstacles);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden select-none">
+    <div ref={overlayRef} className="absolute inset-0 pointer-events-none z-10 overflow-hidden select-none">
       {/* 1. Nameplates (name + role) and parallel alert bubbles; both give way to the hover/selection pill */}
       {npcAgents.map((agent) => {
         const pos = npcScreenPositions[agent.index];
@@ -157,18 +202,18 @@ const UIOverlay: React.FC = () => {
 
         const alert = alertOf(agent.index);
         const role = roleOf(agent);
-        const lift = plateLift[agent.index]; // undefined: no room, hidden
+        const rect = plateRects[agent.index]; // undefined: no room, hidden
 
         return (
           <React.Fragment key={`agent-${agent.index}`}>
-            {lift !== undefined && (
+            {rect && (
               <div
                 className="absolute pointer-events-none max-w-[180px] flex flex-col items-center text-center leading-tight bg-darkDelegation/70 rounded-md px-1.5 py-0.5 transition-opacity duration-300"
                 style={{
-                  left: pos.x,
-                  top: pos.y,
-                  // Above the alert icon when there is one and above the plates in front; faded with an overlapping character.
-                  transform: `translate(-50%, -100%) translateY(${-(alert ? ALERT_PLATE_GAP : PLATE_GAP) - lift}px)`,
+                  // Placed above the alert icon, the plates in front and the pill, inside the view; faded with an overlapping character.
+                  left: (rect[0] + rect[2]) / 2,
+                  top: rect[3],
+                  transform: 'translate(-50%, -100%)',
                   opacity: pos.alpha < 0.9 ? 0.2 : 1,
                 }}
               >
@@ -207,105 +252,46 @@ const UIOverlay: React.FC = () => {
       })}
 
       {/* 2. Selection/Hover/Project Ready Bubble (Detailed) */}
-      {(() => {
-        // Priority 1: Selected Agent
-        if (selectedAgent && selectedPosition) {
-          const isLeadAgentProjectReady = selectedAgent.index === system.leadAgent.index && phase === 'done';
-          const label = getAgentPhaseLabel(selectedAgent.index, system.leadAgent.index, tasks, phase, isGeneratingAsset, '');
-
-          return (
+      {pill && pillLabel && (
+        <div
+          className="absolute z-25 pointer-events-none transition-all duration-75 ease-out"
+          style={{
+            left: pill.pos.x,
+            top: pill.pos.y,
+            transform: 'translate(-50%, -100%) translateY(-10px)'
+          }}
+        >
+          <div className="bg-darkDelegation/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
             <div
-              className="absolute z-25 pointer-events-none transition-all duration-75 ease-out"
-              style={{
-                left: selectedPosition.x,
-                top: selectedPosition.y,
-                transform: 'translate(-50%, -100%) translateY(-10px)'
-              }}
-            >
-              <div className="bg-darkDelegation/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: selectedAgent.color }}
-                />
-                <div className="flex items-center gap-1.5">
-                  {selectedAgent.index === system.user.index ? (
-
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">{selectedAgent.name} (You)</span>
-                  ) : isLeadAgentProjectReady ? (
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${label.className}`}>
-                      {label.text}
-                    </span>
-                  ) : (
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: pill.agent.color }}
+            />
+            <div className="flex items-center gap-1.5">
+              {pillIsUser ? (
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">{pill.agent.name} (You)</span>
+              ) : pillReady ? (
+                <span className={`text-[10px] font-black uppercase tracking-widest ${pillLabel.className}`}>
+                  {pillLabel.text}
+                </span>
+              ) : (
+                <>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                    {pill.agent.name}
+                  </span>
+                  {pillLabel.text && (
                     <>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white">
-                        {selectedAgent.name}
+                      <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">·</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${pillLabel.className}`}>
+                        {pillLabel.text}
                       </span>
-                      {label.text && (
-                        <>
-                          <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">·</span>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${label.className}`}>
-                            {label.text}
-                          </span>
-                        </>
-                      )}
                     </>
                   )}
-                </div>
-              </div>
+                </>
+              )}
             </div>
-          );
-        }
-
-        // Priority 2: Hovered Agent with dynamic phase label (only if not selected)
-        if (hoveredAgent && hoverPosition && hoveredNpcIndex !== selectedNpcIndex) {
-          const isLeadAgentProjectReady = hoveredAgent.index === system.leadAgent.index && phase === 'done';
-          const label = getAgentPhaseLabel(hoveredAgent.index, system.leadAgent.index, tasks, phase, isGeneratingAsset, '');
-
-          return (
-            <div
-              className="absolute z-25 pointer-events-none transition-all duration-75 ease-out"
-              style={{
-                left: hoverPosition.x,
-                top: hoverPosition.y,
-                transform: 'translate(-50%, -100%) translateY(-10px)'
-              }}
-            >
-              <div className="bg-darkDelegation/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: hoveredAgent.color }}
-                />
-                <div className="flex items-center gap-1.5">
-                  {hoveredAgent.index === system.user.index ? (
-
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">{hoveredAgent.name} (You)</span>
-                  ) : isLeadAgentProjectReady ? (
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${label.className}`}>
-                      {label.text}
-                    </span>
-                  ) : (
-                    <>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white">
-                        {hoveredAgent.name}
-                      </span>
-                      {label.text && (
-                        <>
-                          <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">·</span>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${label.className}`}>
-                            {label.text}
-                          </span>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        return null;
-      })()}
+          </div>
+        </div>
+      )}
 
       {/* POI Hover Bubble */}
       {hoveredPoiLabel && hoverPosition && (
