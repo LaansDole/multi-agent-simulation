@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DynamiClinic: dynamic architecture switching, proof of concept</title>
+<title>DynamiClinic: from a scoping review to a working prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -329,6 +329,98 @@ table.t th.n { text-align: right; }
 .links .card .mono { font-size: 21px; color: var(--teal); word-break: break-all; }
 .links .card p { font-size: 20px; margin-top: 6px; }
 
+
+/* ===========================================
+   SCOPING REVIEW SLIDES (2-5)
+   =========================================== */
+.big { font-size: 34px; line-height: 1.38; color: var(--ink); }
+.sr-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 44px; margin-top: 34px; }
+.sr-grid .card p { font-size: 27px; line-height: 1.42; }
+.sr-grid .card li { font-size: 26px; }
+.qs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.qs span { font-family: var(--font-mono); font-size: 19px; padding: 8px 14px; border-radius: 99px; background: var(--teal-soft); color: var(--teal); font-weight: 600; }
+
+.prisma { position: relative; margin-top: 22px; height: 760px; }
+.prisma svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.prisma svg path { fill: none; stroke: var(--ink); stroke-width: 2.4; }
+.pbox { position: absolute; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 12px; background: #fffdf8; padding: 14px 20px; font-size: 24px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; }
+.pbox .n { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 1.05; }
+.pbox.ex { border-color: var(--red); border-style: dashed; color: var(--ink-soft); font-size: 22px; }
+.pbox.ex .n { color: var(--red); font-size: 32px; }
+.pbox.inc { background: var(--teal-soft); border-color: var(--teal); }
+.pbox.inc .n { color: var(--teal); font-size: 52px; }
+.stage-lab { position: absolute; left: 0; width: 210px; font-family: var(--font-mono); font-size: 19px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal); font-weight: 600; display: flex; align-items: center; }
+.recon { position: absolute; font-family: var(--font-mono); font-size: 18px; color: var(--muted); line-height: 1.6; }
+
+.find { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 30px; }
+.find .card { display: grid; grid-template-columns: 250px 1fr; gap: 22px; align-items: center; padding: 26px 30px; }
+.find .k { font-family: var(--font-display); font-size: 62px; font-weight: 800; line-height: 1; color: var(--teal); }
+.find .card.risk .k { color: var(--red); }
+.find h3 { font-size: 31px; margin-bottom: 6px; }
+.find p { font-size: 23px; line-height: 1.4; color: var(--ink-soft); }
+
+.g2p { margin-top: 26px; display: grid; gap: 14px; }
+.g2p .row { display: grid; grid-template-columns: 1fr 64px 1fr 64px 1fr; align-items: center; }
+.g2p .head { font-family: var(--font-mono); font-size: 17px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.g2p .cell { background: rgba(255,253,248,0.92); border: 1.5px solid var(--rule); border-radius: 12px; padding: 14px 20px; font-size: 23px; line-height: 1.32; min-height: 92px; display: flex; align-items: center; }
+.g2p .cell.f { border-left: 6px solid var(--muted); }
+.g2p .cell.r { border-left: 6px solid var(--amber); }
+.g2p .cell.d { border-left: 6px solid var(--teal); font-weight: 600; color: var(--ink); }
+.g2p .arr { text-align: center; font-family: var(--font-display); font-size: 40px; color: var(--teal); }
+
+.prop { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 44px; margin-top: 30px; }
+.rule { background: #16171a; color: #f6f2ea; border-radius: 16px; padding: 30px 34px; }
+.rule h3 { font-size: 30px; color: #f6f2ea; margin-bottom: 14px; }
+.rule .sc { font-size: 24px; line-height: 1.45; color: #d9d2c4; margin-bottom: 14px; }
+.rule .sc b { color: #fff; }
+.rule .ln { font-family: var(--font-mono); font-size: 23px; line-height: 1.7; }
+.rule .ln .a { color: #f08a7a; } .rule .ln .h { color: #8fd3a5; } .rule .ln .c { color: #7fd0c6; }
+.rule .note { font-size: 19px; color: #b9b2a5; margin-top: 14px; line-height: 1.45; }
+.prop .mode { grid-template-columns: 268px 1fr; }
+.prop .mode p { font-size: 23px; }
+.prop .mode .name small { display: block; font-family: var(--font-mono); font-size: 16px; font-weight: 400; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
+
+.demo { display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; margin-top: 26px; }
+.demo .next { grid-template-columns: 1fr; gap: 18px; margin-top: 0; }
+.demo .next .card { padding: 20px 24px; grid-template-columns: 62px 1fr; }
+.demo .next .n { font-size: 52px; }
+.demo .next h3 { font-size: 27px; }
+.demo .next p { font-size: 21px; }
+.cases { display: grid; gap: 10px; margin-top: 14px; }
+.cases div { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; font-size: 22px; }
+.cases .l { font-family: var(--font-display); font-weight: 800; font-size: 28px; color: var(--teal); }
+
+
+/* speaker-led sizing for slides 4, 6, 9 */
+.find { gap: 30px; margin-top: 40px; }
+.find .card { padding: 44px 36px; grid-template-columns: 270px 1fr; }
+.find .k { font-size: 84px; }
+.find h3 { font-size: 36px; }
+.find p { font-size: 27px; }
+.rule { padding: 38px 40px; }
+.rule h3 { font-size: 38px; }
+.rule .sc { font-size: 28px; }
+.rule .ln { font-size: 31px; }
+.rule .note { font-size: 22px; }
+.prop .mode { padding: 30px 28px; }
+.prop .mode .name { font-size: 38px; }
+.prop .mode p { font-size: 26px; }
+.prop .modes { gap: 22px; }
+.demo .next .card { align-content: center; }
+.demo .next h3 { font-size: 30px; }
+.demo .next p { font-size: 24px; }
+
+
+section[data-title="Results"] .res { margin-top: 40px; }
+section[data-title="Results"] .card { padding: 36px 34px; }
+section[data-title="Results"] .bars { gap: 40px; margin-top: 30px; }
+section[data-title="Results"] .bar-track { height: 64px; }
+section[data-title="Results"] .bar-row .lab { font-size: 24px; }
+section[data-title="Results"] .bar-row .val { font-size: 44px; }
+section[data-title="Results"] table.t td { font-size: 26px; padding: 14px 10px; }
+section[data-title="Results"] table.t th { font-size: 17px; }
+section[data-title="Results"] .verdict { font-size: 29px; margin-top: 34px; padding: 28px 30px; }
+
 /* ===========================================
    DECK CHROME (outside slide design): progress + counter
    =========================================== */
@@ -358,10 +450,10 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
      SLIDE 1: TITLE
      ========================================================= -->
 <section class="slide active" data-title="Title">
-  <div class="chrome"><span><b>DynamiClinic</b> / research proposal, proof of concept</span><span>27 October 2026</span></div>
+  <div class="chrome"><span><b>DynamiClinic</b> / from scoping review to prototype</span><span>29 October 2026</span></div>
   <div class="title-wrap">
     <h1 class="reveal" style="--d:1">Dynami<span>Clinic</span></h1>
-    <p class="sub reveal" style="--d:2">Switching a multi-agent system's architecture per clinical case: what the prototype does, what it shows, and what it does not yet show.</p>
+    <p class="sub reveal" style="--d:2">From a scoping review of 81 multi-agent studies to a system that switches its architecture per clinical case.</p>
   </div>
   <svg class="ecg" viewBox="0 0 1920 220" preserveAspectRatio="none" aria-hidden="true">
     <path class="trace" d="M0,150 L260,150 L290,150 L305,128 L320,150 L360,150 L372,170 L392,40 L414,190 L430,150 L520,150 L545,135 L575,150
@@ -378,39 +470,130 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
 </section>
 
 <!-- =========================================================
-     SLIDE 2: PROBLEM AND IDEA
+     SLIDE 2: THE SCOPING REVIEW
      ========================================================= -->
-<section class="slide" data-title="Problem">
-  <div class="chrome"><span><b>01</b> / the problem</span><span>DynamiClinic</span></div>
+<section class="slide" data-title="Scoping review">
+  <div class="chrome"><span><b>01</b> / the scoping review</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">Clinical multi-agent systems commit to <em>one architecture</em> before they see the case</h2>
-    <div class="two">
-      <div class="prior">
-        <div class="card reveal" style="--d:2"><h3>MedAgents <span class="mono">Findings of ACL 2024</span></h3><p>Multi-round expert consensus on every question: the same heavy pipeline for an easy case and a hard one.</p></div>
-        <div class="card reveal" style="--d:3"><h3>MDAgents <span class="mono">NeurIPS 2024</span></h3><p>Picks solo or team once, by complexity. Best on 7 of 10 benchmarks (up to +4.2%), but the structure cannot change mid-case.</p></div>
-        <div class="card reveal" style="--d:4"><h3>Dialectic-Med <span class="mono">Findings of ACL 2026</span></h3><p>Proponent, opponent and mediator falsify a hypothesis; fewer hallucinations on medical image QA.</p></div>
+    <h2 class="reveal" style="--d:1">Starting point: how do <em>teams of LLM agents</em> work in healthcare?</h2>
+    <div class="sr-grid">
+      <div style="display:grid;gap:24px;align-content:start">
+        <div class="card reveal" style="--d:2"><h3>Question</h3><p>How are systems of <b>two or more LLM agents</b> that critique, debate or reach consensus <b>built and evaluated</b> in healthcare?</p>
+          <div class="qs"><span>Where</span><span>Which architecture</span><span>Which models</span><span>How evaluated</span><span>At what cost</span></div></div>
+        <div class="card reveal" style="--d:3"><h3>Inclusion rule</h3><p><b>Genuine inter-agent conditioning</b>: one agent's output is revised in response to another's. Not single-LLM tools, not fixed role chains without feedback.</p></div>
       </div>
-      <div>
-        <p class="kicker reveal" style="--d:2">The proposal: make the topology a variable</p>
-        <div class="modes">
-          <div class="mode h reveal" style="--d:3"><span class="name">Hierarchical</span><p>Routine, low-acuity cases. A hub queries specialists, who do not talk to each other.</p></div>
-          <div class="mode c reveal" style="--d:4"><span class="name">Collaborative</span><p>Multi-system cases. Specialists share reasoning and build one differential.</p></div>
-          <div class="mode a reveal" style="--d:5"><span class="name">Adversarial</span><p>Uncertain or conflicting evidence. A critic attacks the consensus; a mediator resolves.</p></div>
-        </div>
-        <p class="switch-note reveal" style="--d:6">A <b>Meta-Controller</b> scores complexity and uncertainty and switches mode, so heavy compute is spent <b>only where the case needs it</b>.</p>
-      </div>
+      <div class="card reveal" style="--d:4"><h3>Method</h3><ul>
+        <li><b>5 databases</b>: PubMed, Scopus, CINAHL, Cochrane Library, IEEE Xplore</li>
+        <li>Searched June 2026, records from 2022 to 2026</li>
+        <li><b>Arksey and O'Malley</b> five stages, reported per <b>PRISMA-ScR</b></li>
+        <li>Screening and full-text review in <b>Covidence</b></li>
+        <li>Every charted value backed by a <b>verbatim quote</b> from the source</li></ul></div>
     </div>
   </div>
-  <div class="foot"><span>Sources: ACL Anthology 2024.findings-acl.33; arXiv 2404.15155; ACL Anthology 2026.findings-acl.1837</span><span>2 / 8</span></div>
+  <div class="foot"><span>Do Le Long An. LLM-driven multi-agent collaboration in healthcare settings: a scoping review. 2026.</span><span>2 / 9</span></div>
 </section>
 
 <!-- =========================================================
-     SLIDE 3: WHAT WAS BUILT
+     SLIDE 3: PRISMA-ScR FLOW DIAGRAM
      ========================================================= -->
-<section class="slide" data-title="Built">
-  <div class="chrome"><span><b>02</b> / what was built</span><span>DynamiClinic</span></div>
+<section class="slide" data-title="PRISMA-ScR">
+  <div class="chrome"><span><b>02</b> / study selection, PRISMA-ScR</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">A working pipeline on the DevAll multi-agent platform</h2>
+    <h2 class="reveal" style="--d:1"><em>529</em> records in, <em>81</em> studies out</h2>
+    <div class="prisma reveal" style="--d:2">
+      <svg viewBox="0 0 1728 760" preserveAspectRatio="none" aria-hidden="true">
+        <defs><marker id="pah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16171a"/></marker></defs>
+        <path d="M560,110 L560,176" marker-end="url(#pah)"/>
+        <path d="M560,290 L560,356" marker-end="url(#pah)"/>
+        <path d="M560,470 L560,596" marker-end="url(#pah)"/>
+        <path d="M860,55 L976,55" marker-end="url(#pah)"/>
+        <path d="M860,235 L976,235" marker-end="url(#pah)"/>
+        <path d="M860,415 L976,415" marker-end="url(#pah)"/>
+      </svg>
+      <div class="stage-lab" style="top:0;height:110px">Identification</div>
+      <div class="stage-lab" style="top:180px;height:110px">Screening</div>
+      <div class="stage-lab" style="top:360px;height:110px">Eligibility</div>
+      <div class="stage-lab" style="top:600px;height:130px">Included</div>
+      <div class="pbox" style="left:260px;top:0;width:600px;height:110px"><span class="n">529</span>records from database searching</div>
+      <div class="pbox ex" style="left:980px;top:0;width:620px;height:110px"><span class="n">72</span>duplicates removed: 63 by Covidence, 9 manually</div>
+      <div class="pbox" style="left:260px;top:180px;width:600px;height:110px"><span class="n">457</span>screened on title and abstract</div>
+      <div class="pbox ex" style="left:980px;top:180px;width:620px;height:110px"><span class="n">308</span>excluded as irrelevant</div>
+      <div class="pbox" style="left:260px;top:360px;width:600px;height:110px"><span class="n">149</span>full texts assessed for eligibility</div>
+      <div class="pbox ex" style="left:980px;top:330px;width:620px;height:170px"><span class="n">67</span>full texts excluded: wrong concept 58, wrong context 5, wrong study design 2, not retrievable 2</div>
+      <div class="pbox inc" style="left:260px;top:600px;width:600px;height:130px"><span class="n">81</span>studies included (82 records: one paper indexed twice, deduplicated)</div>
+      <div class="recon" style="left:980px;top:610px;width:620px">529 - 72 = 457<br>457 - 308 = 149<br>149 - 67 = 82 records = 81 unique studies</div>
+    </div>
+  </div>
+  <div class="foot"><span>PRISMA-ScR flow diagram, Fig. 1 of the scoping review</span><span>3 / 9</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 4: WHAT THE MAP SHOWS
+     ========================================================= -->
+<section class="slide" data-title="Findings">
+  <div class="chrome"><span><b>03</b> / what the 81 studies show</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">Architecture is the <em>design variable</em>; cost and safety lag behind</h2>
+    <div class="find">
+      <div class="card reveal" style="--d:2"><span class="k">6</span><div><h3>architecture families</h3><p>Debate and consensus 35, hierarchical coordinators 30, dynamic team assembly only 11. Families overlap.</p></div></div>
+      <div class="card risk reveal" style="--d:3"><span class="k">4-12x</span><div><h3>the cost of collaboration</h3><p>4-12x longer than single-modality tools (Wan 2025); 3.6x the tokens and time of baselines (Mandal 2025).</p></div></div>
+      <div class="card risk reveal" style="--d:4"><span class="k" style="font-size:58px">between agents</span><div><h3>where failure lives</h3><p>Collusion, unsafe content spreading across agents, and false consensus that silences a correct minority.</p></div></div>
+      <div class="card reveal" style="--d:5"><span class="k">7 / 81</span><div><h3>tested with people</h3><p>Benchmarks (35) and retrospective data (22) dominate; no randomized trial. Call: compare against strong single-model baselines.</p></div></div>
+    </div>
+  </div>
+  <div class="foot"><span>Scoping review, sections 3 and 4. Counts are per study and overlap.</span><span>4 / 9</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 5: FROM GAPS TO THE PROPOSAL
+     ========================================================= -->
+<section class="slide" data-title="Gaps to proposal">
+  <div class="chrome"><span><b>04</b> / from the review to the proposal</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">Each finding became a <em>design requirement</em></h2>
+    <div class="g2p">
+      <div class="row head reveal" style="--d:2"><span>Review finding</span><span></span><span>Requirement</span><span></span><span>DynamiClinic</span></div>
+      <div class="row reveal" style="--d:3"><div class="cell f">Only 11 of 81 assemble the team per case; MDAgents picks solo or team at the start</div><span class="arr">&rarr;</span><div class="cell r">Choose the architecture per case</div><span class="arr">&rarr;</span><div class="cell d">Meta-Controller with three modes</div></div>
+      <div class="row reveal" style="--d:4"><div class="cell f">Collaboration takes 4-12x longer; 3.6x the tokens</div><span class="arr">&rarr;</span><div class="cell r">Spend the team only where needed</div><span class="arr">&rarr;</span><div class="cell d">Hierarchical: one agent for simple, certain cases</div></div>
+      <div class="row reveal" style="--d:5"><div class="cell f">False consensus and collusion between agents</div><span class="arr">&rarr;</span><div class="cell r">Engineer disagreement and checks</div><span class="arr">&rarr;</span><div class="cell d">Adversarial debate + safety gates</div></div>
+      <div class="row reveal" style="--d:6"><div class="cell f">Few head-to-head comparisons with a single model</div><span class="arr">&rarr;</span><div class="cell r">Always measure against one agent</div><span class="arr">&rarr;</span><div class="cell d">Three arms: single, static team, dynamic</div></div>
+      <div class="row reveal" style="--d:7"><div class="cell f">Interaction transcripts are the multi-agent model cards</div><span class="arr">&rarr;</span><div class="cell r">Make every hand-off inspectable</div><span class="arr">&rarr;</span><div class="cell d">Shared Blackboard + 3D office</div></div>
+    </div>
+  </div>
+  <div class="foot"><span>Findings: scoping review sections 3-4 (future directions 4.3). Requirements and design: DynaClinic research proposal.</span><span>5 / 9</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 6: THE PROPOSAL
+     ========================================================= -->
+<section class="slide" data-title="Proposal">
+  <div class="chrome"><span><b>05</b> / the proposal</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">A Meta-Controller makes the <em>topology a variable</em></h2>
+    <div class="prop">
+      <div class="rule reveal" style="--d:2">
+        <h3>Two scores, one rule</h3>
+        <p class="sc"><b>Complexity C</b>: how dense the case is (comorbidities, drugs, conflicting labs).<br><b>Uncertainty U</b>: entropy of a generalist's first differential.</p>
+        <div class="ln"><span class="a">U &gt; tau_u</span> &rarr; adversarial<br><span class="h">C &lt;= tau_c</span> &rarr; hierarchical<br><span class="c">otherwise</span> &rarr; collaborative</div>
+        <p class="note">A Conflict Detector escalates collaborative to adversarial when the specialists diverge. tau_u is calibrated per model (gpt-6-luna: 0.15 multiple choice, 0.59 open-ended).</p>
+      </div>
+      <div class="modes">
+        <div class="mode h reveal" style="--d:3"><span class="name">Hierarchical<small>speed</small></span><p>Primary Care Agent as the hub; specialists only on request.</p></div>
+        <div class="mode c reveal" style="--d:4"><span class="name">Collaborative<small>breadth</small></span><p>Imaging, Pathology/Lab, Pharmacology on a shared Blackboard; mesh exchange; Consensus Builder.</p></div>
+        <div class="mode a reveal" style="--d:5"><span class="name">Adversarial<small>depth</small></span><p>Proponent defends H1, Opponent (Clinical Critic) attacks, Mediator decides.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Reviewed proposal, layers L0-L4: input gateway, Meta-Controller, communication topology, agent execution, data and infrastructure</span><span>6 / 9</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 7: IMPLEMENTATION
+     ========================================================= -->
+<section class="slide" data-title="Implementation">
+  <div class="chrome"><span><b>06</b> / implementation</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2 class="reveal" style="--d:1">Built as one workflow on the <em>DevAll</em> multi-agent platform</h2>
     <div class="flow reveal" style="--d:2">
       <svg class="wires" viewBox="0 0 1728 560" preserveAspectRatio="none" aria-hidden="true">
         <defs>
@@ -423,179 +606,94 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
         <path d="M530,300 L616,300" marker-end="url(#ah)"/>
         <path d="M860,300 L946,300" marker-end="url(#ah)"/>
         <path class="g" d="M1170,300 L1256,300" marker-end="url(#ahg)"/>
-        <path class="r" d="M1060,382 C1060,470 1150,480 1256,480" marker-end="url(#ahr)"/>
-        <path class="r" d="M1370,420 L1370,388" marker-end="url(#ahr)"/>
+        <path class="r" d="M1060,388 C1060,470 1150,480 1256,480" marker-end="url(#ahr)"/>
+        <path class="r" d="M1480,480 C1632,480 1632,470 1632,372" marker-end="url(#ahr)"/>
         <path d="M1480,300 L1536,300" marker-end="url(#ah)"/>
         <path class="g" d="M860,85 L1590,85 C1632,85 1632,110 1632,206" marker-end="url(#ahg)"/>
-        <text class="g" x="548" y="150">LOW</text>
-        <text class="g" x="1180" y="284">agree</text>
-        <text class="r" x="1080" y="500">disagree</text>
+                <text class="g" x="1180" y="284">agree</text>
+        <text class="r" x="800" y="452">diverge or U high</text>
       </svg>
-      <div class="node" style="left:0;top:200px;width:200px"><b>Any case</b>A quiz question, or any scenario in plain words</div>
-      <div class="node teal" style="left:290px;top:200px;width:240px"><b>Meta-Controller</b>LLM tier + rule-based complexity score</div>
-      <div class="node green" style="left:620px;top:30px;width:240px"><b>Primary Care</b>LOW: one agent, one call</div>
+      <div class="node" style="left:0;top:200px;width:200px"><b>Any case</b>A quiz question, or a scenario in plain words</div>
+      <div class="node teal" style="left:290px;top:200px;width:240px"><b style="font-size:24px">Meta-Controller</b>Triage (C) + generalist sweep (U), mode rule</div>
+      <div class="node green" style="left:620px;top:30px;width:240px"><b>Primary Care</b>Hierarchical: one agent</div>
       <div class="node teal" style="left:620px;top:220px;width:240px"><b>Care Team</b>Imaging, Pathology/Lab, Pharmacology; Blackboard</div>
-      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Distance between the specialists' diagnoses vs tau</div>
-      <div class="node green" style="left:1260px;top:220px;width:220px"><b>Synthesizer</b>Consensus Builder or Conflict Resolver</div>
-      <div class="node red" style="left:1260px;top:420px;width:220px"><b>Clinical Critic</b>Scores each claim: rules, KB, LLM judge</div>
-      <div class="node" style="left:1540px;top:210px;width:188px"><b>Safety gates</b>Allergy, interaction, order checks; report</div>
+      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Divergence of the specialists vs tau</div>
+      <div class="node green" style="left:1260px;top:210px;width:220px"><b>Consensus Builder</b>Collaborative, after a mesh exchange</div>
+      <div class="node red" style="left:1260px;top:400px;width:220px"><b>Debate</b>Adversarial: Proponent, Opponent, Mediator</div>
+      <div class="node" style="left:1540px;top:210px;width:188px"><b>Safety gates</b>Allergy, interaction, order checks</div>
     </div>
     <div class="built-strip">
-      <div class="card reveal" style="--d:3"><div class="num">7</div><p>custom node types in one YAML workflow</p></div>
-      <div class="card reveal" style="--d:4"><div class="num">3</div><p>arms evaluated: single, dynamic, static (always full team + Critic)</p></div>
-      <div class="card reveal" style="--d:5"><div class="num">3D</div><p>office view: each agent is a character that walks to work</p></div>
-      <div class="card reveal" style="--d:6"><div class="num" id="testsNum">866</div><p>automated tests, no model calls needed</p></div>
+      <div class="card reveal" style="--d:3"><div class="num">10</div><p>custom node types in one YAML workflow</p></div>
+      <div class="card reveal" style="--d:4"><div class="num">3</div><p>evaluation arms: single, static team, dynamic</p></div>
+      <div class="card reveal" style="--d:5"><div class="num">3D</div><p>office: every agent a character showing its live role</p></div>
+      <div class="card reveal" style="--d:6"><div class="num">1,030</div><p>automated tests, no model calls needed</p></div>
     </div>
   </div>
-  <div class="foot"><span>yaml_instance/dynaclinic_mvp.yaml / dynaclinic/ / the-delegation/ (React + Three.js)</span><span>3 / 8</span></div>
+  <div class="foot"><span>yaml_instance/dynaclinic_mvp.yaml / dynaclinic/ / the-delegation/ (React + Three.js). Stubs: FHIR/Neo4j, MCTS planner, BioBERT/Qdrant memory.</span><span>7 / 9</span></div>
 </section>
 
 <!-- =========================================================
-     SLIDE 4: THE 3D VIEW
-     ========================================================= -->
-<section class="slide" data-title="3D">
-  <div class="chrome"><span><b>03</b> / watching it switch</span><span>DynamiClinic</span></div>
-  <div class="body">
-    <h2 class="reveal" style="--d:1">The care team disagrees, and the <em>Critic</em> is called in</h2>
-    <div class="shots">
-      <div class="reveal" style="--d:2">
-        <div class="shot"><img src="slides-critic.png" alt="3D office during the adversarial switch: the activity log shows the Critic starting after the divergence gate; Triage's chat shows ROUTE: HIGH"></div>
-        <p class="shot-cap">Real run, OpenAI gpt-6-luna. Log: DivergenceGate, then Critic started. Chat: ROUTE: HIGH.</p>
-      </div>
-      <div class="timeline">
-        <p class="kicker reveal" style="--d:2">Mock patient: 30 weeks pregnant, suspected clot</p>
-        <div class="step reveal" style="--d:3"><span class="dot">1</span><p><b>Triage</b> calls the case HIGH; all three specialists are consulted.</p></div>
-        <div class="step reveal" style="--d:4"><span class="dot">2</span><p><b>Imaging</b> picks B (0.75), <b>Pharmacology</b> picks C (0.82), Pathology abstains.</p></div>
-        <div class="step alert reveal" style="--d:5"><span class="dot">3</span><p><b>Divergence 0.59 &gt; 0.25</b>: adversarial mode, the Clinical Critic reviews every claim.</p></div>
-        <div class="step reveal" style="--d:6"><span class="dot">4</span><p>The Synthesizer resolves B vs C and answers <b>C, correct</b>; safety gates pass.</p></div>
-        <div class="card reveal" style="--d:7;padding:18px 22px"><p style="font-size:21px">The switch fired in <b>4 of 9</b> real runs of this case: all 3 runs triaged HIGH, and 1 of 6 triaged MODERATE. Reported, not forced.</p></div>
-      </div>
-    </div>
-  </div>
-  <div class="foot"><span>Live demo with video: laansdole.github.io/multi-agent-simulation</span><span>4 / 8</span></div>
-</section>
-
-<!-- =========================================================
-     SLIDE 5: RESULTS
+     SLIDE 8: RESULTS
      ========================================================= -->
 <section class="slide" data-title="Results">
-  <div class="chrome"><span><b>04</b> / results</span><span>DynamiClinic</span></div>
+  <div class="chrome"><span><b>07</b> / results</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">The three modes now run. <em>Not more accurate</em> than one agent, yet.</h2>
+    <h2 class="reveal" style="--d:1">Works end to end; <em>not yet better</em> than one agent</h2>
     <div class="res">
       <div class="card reveal" style="--d:2">
-        <h3>MedQA-USMLE, 50 random test questions</h3>
-        <p style="font-size:20px">Accuracy with 95% interval. gpt-6-luna, one run per arm; "dynamic now" is after f15.</p>
+        <h3>MedQA-USMLE, 50 test questions, gpt-6-luna</h3>
+        <p style="font-size:20px">Accuracy with 95% interval, one run per arm.</p>
         <div class="bars">
           <!-- Bars span 75% to 100%: left = (x - 75) / 25 -->
           <div class="bar-row"><span class="lab">single</span><div class="bar-track"><div class="bar-fill" style="width:76%"></div><div class="bar-ci" style="left:35.2%;width:56.4%"></div></div><span class="val">94%</span></div>
-          <div class="bar-row"><span class="lab">dynamic now</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--red)"></div><div class="bar-ci" style="left:46%;width:49.6%"></div></div><span class="val">96%</span></div>
+          <div class="bar-row"><span class="lab">dynamic</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--red)"></div><div class="bar-ci" style="left:46%;width:49.6%"></div></div><span class="val">96%</span></div>
           <div class="bar-row"><span class="lab">static</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--ink-soft)"></div><div class="bar-ci" style="left:14.4%;width:68.4%"></div></div><span class="val">90%</span></div>
           <div class="axis"><div></div><div><span>75%</span><span>80%</span><span>85%</span><span>90%</span><span>95%</span><span>100%</span></div><div></div></div>
         </div>
       </div>
       <div class="reveal" style="--d:3">
         <table class="t">
-          <tr><th></th><th class="n">single</th><th class="n">dynamic now</th><th class="n">static</th></tr>
-          <tr><td>MedQA calls / question</td><td class="n">1.00</td><td class="n">6.94</td><td class="n">6.00</td></tr>
-          <tr><td>MedQA latency, mean</td><td class="n">5.3 s</td><td class="n">32.0 s</td><td class="n">29.9 s</td></tr>
-          <tr><td>MedQA adversarial mode</td><td class="n">n/a</td><td class="n">34%</td><td class="n">always</td></tr>
-          <tr><td>Synthetic 24 accuracy</td><td class="n">100%</td><td class="n">95.8%</td><td class="n">100%</td></tr>
-          <tr><td>Synthetic calls / case</td><td class="n">1.00</td><td class="n">7.12</td><td class="n">6.08</td></tr>
-          <tr><td>Unsafe answers (synthetic)</td><td class="n">0</td><td class="n">0</td><td class="n">0</td></tr>
+          <tr><th></th><th class="n">single</th><th class="n">dynamic</th><th class="n">static</th></tr>
+          <tr><td>gpt-6-luna calls / question</td><td class="n">1.00</td><td class="n">6.94</td><td class="n">6.00</td></tr>
+          <tr><td>gpt-6-luna mean latency</td><td class="n">5.3 s</td><td class="n">32.0 s</td><td class="n">29.9 s</td></tr>
+          <tr><td>qwen3.5-4b accuracy (local)</td><td class="n">68%</td><td class="n">60%</td><td class="n">62%</td></tr>
         </table>
-        <div class="verdict"><b>Adversarial now runs on 17 of 50 MedQA questions (was 0)</b>, but the mesh and debate rounds cost more calls than the old always-on team, and every interval still overlaps. Before f14, dynamic used 36 to 39% fewer calls at 92%.</div>
+        <div class="verdict">The team's answer follows the Meta-Controller's <b>first look</b> (gpt-6-luna 47 of 50, qwen 31 of 50); on exam questions the specialists add little. All intervals overlap: exactly the <b>single-model comparison</b> the review asks for.</div>
       </div>
     </div>
   </div>
-  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. Full tables: laansdole.github.io/multi-agent-simulation/results.html</span><span>5 / 8</span></div>
+  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. qwen: dynamic with its own calibrated tau_u; single vs dynamic p = 0.34.</span><span>8 / 9</span></div>
 </section>
 
 <!-- =========================================================
-     SLIDE 6: FACT CHECK VS PROPOSAL
+     SLIDE 9: NEXT + LIVE DEMO
      ========================================================= -->
-<section class="slide" data-title="Fact check">
-  <div class="chrome"><span><b>05</b> / checked against the reviewed proposal</span><span>DynamiClinic</span></div>
+<section class="slide" data-title="Next and demo">
+  <div class="chrome"><span><b>08</b> / next, then the live demo</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">The pipeline and <em>all three modes</em> now match; the <em>thresholds</em> are not validated</h2>
-    <div class="fc">
-      <div class="card ok reveal" style="--d:2"><h3><span class="tag t-green">matches</span></h3><ul>
-        <li><b>Uncertainty score</b> (entropy of a generalist sweep) and <b>one rule</b> over C and U</li>
-        <li>Hierarchical hub, <b>mesh exchange</b>, <b>Proponent / Opponent / Mediator</b></li>
-        <li>Any scenario, not only quiz questions</li>
-        <li>Runs on DevAll, as the proposal's Figure 1 shows</li></ul></div>
-      <div class="card part reveal" style="--d:3"><h3><span class="tag t-amber">partial</span></h3><ul>
-        <li>tau_u calibrated in-sample (p75), not against outcomes</li>
-        <li>Conflict Detector threshold not validated</li>
-        <li>One round per mode, one agent per role</li>
-        <li>H1 / H2 match exact wording, not paraphrases</li></ul></div>
-      <div class="card miss reveal" style="--d:4"><h3><span class="tag t-red">missing</span></h3><ul>
-        <li>Counterfactual grounding loss</li>
-        <li>Proponent and Opponent <b>teams</b>, multi-round debate</li>
-        <li>Process models and institutional protocols (L4)</li></ul></div>
-    </div>
-    <div class="examples reveal" style="--d:5">
-      <table class="t" id="pdfExamples">
-        <tr><th>Proposal's own example (Figures 2, 3)</th><th>expects</th><th>route, 2 runs</th><th>mode now (U)</th><th>Mediator verdict</th></tr>
-        <tr><td>Sore throat and mild fever for 2 days</td><td>LOW</td><td class="mono">LOW, LOW</td><td>adversarial (0.71, 0.65)</td><td>H1 acute pharyngitis</td></tr>
-        <tr><td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td><td>HIGH</td><td class="mono">HIGH, HIGH</td><td>adversarial (0.94, 0.92)</td><td>H1 suspected ACS</td></tr>
-        <tr><td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td><td>CONFLICT</td><td class="mono">HIGH, HIGH</td><td>adversarial (0.91, 0.94)</td><td>pulmonary embolism (H1 = H2 reworded)</td></tr>
-      </table>
-    </div>
-  </div>
-  <div class="foot"><span>Details and run folders: laansdole.github.io/multi-agent-simulation/alignment.html</span><span>6 / 8</span></div>
-</section>
-
-<!-- =========================================================
-     SLIDE 7: NEXT STEPS
-     ========================================================= -->
-<section class="slide" data-title="Next">
-  <div class="chrome"><span><b>06</b> / next</span><span>DynamiClinic</span></div>
-  <div class="body">
-    <h2 class="reveal" style="--d:1">To test the thesis, the benchmark must make the agents <em>disagree</em></h2>
-    <div class="next">
-      <div class="card reveal" style="--d:2"><span class="n">1</span><div><h3>A harder benchmark</h3><p>MedXpertQA (ICML 2025): 4,460 expert-level questions in 17 specialties, filtered to be harder than MedQA. Larger samples to narrow the intervals.</p></div></div>
-      <div class="card reveal" style="--d:3"><span class="n">2</span><div><h3>Headroom for the team</h3><p>Repeat with a weaker base model, where a single agent is far from the ceiling and specialists can add value.</p></div></div>
-      <div class="card reveal" style="--d:4"><span class="n">3</span><div><h3>Validate the controller</h3><p>tau_u sends every proposal example to adversarial: validate it against outcomes, average several generalist sweeps, match paraphrased hypotheses.</p></div></div>
-      <div class="card reveal" style="--d:5"><span class="n">4</span><div><h3>Safety and validity</h3><p>Cases with structured data and known unsafe options; thresholds tuned on held-out data; repeated runs; clinician review of the critic's verdicts.</p></div></div>
-    </div>
-  </div>
-  <div class="foot"><span>MedXpertQA: arXiv 2501.18362, PMLR v267</span><span>7 / 8</span></div>
-</section>
-
-<!-- =========================================================
-     SLIDE 8: SUMMARY
-     ========================================================= -->
-<section class="slide" data-title="Summary">
-  <div class="chrome"><span><b>07</b> / summary</span><span>DynamiClinic</span></div>
-  <div class="body">
-    <h2 class="reveal" style="--d:1">What the evidence supports today</h2>
-    <div class="close-grid">
-      <div class="take">
-        <div class="reveal" style="--d:2"><span class="n">1</span><p>Switching per case <b>works end to end</b> on quiz questions and on any scenario in plain words: triage, team, conflict detection, critic and safety gates run live, and you can watch them in 3D.</p></div>
-        <div class="reveal" style="--d:3"><span class="n">2</span><p>The proposal's <b>three modes and one switching rule</b> now run live; adversarial fires on a third of MedQA, but costs more calls than the old always-on team.</p></div>
-        <div class="reveal" style="--d:4"><span class="n">3</span><p>It does <b>not yet beat one strong model</b>, nor a weak one: with qwen3.5-4b the single agent leads (68% vs 60% dynamic, 62% static), also with a threshold calibrated for qwen.</p></div>
+    <h2 class="reveal" style="--d:1">Next: make the team <em>earn its cost</em></h2>
+    <div class="demo">
+      <div class="next">
+        <div class="card reveal" style="--d:2"><span class="n">1</span><div><h3>Harder cases, mechanism by mechanism</h3><p>A benchmark where one agent fails (MedXpertQA); ablate mesh, debate and gates one at a time.</p></div></div>
+        <div class="card reveal" style="--d:3"><span class="n">2</span><div><h3>A better controller</h3><p>Validate tau against outcomes; give the first look a vote; a Mediator that weighs evidence, not plurality.</p></div></div>
+        <div class="card reveal" style="--d:4"><span class="n">3</span><div><h3>Toward clinical validation</h3><p>Clinician review of debate transcripts, then the prospective studies the review found missing.</p></div></div>
       </div>
-      <div class="links">
-        <div class="card reveal" style="--d:3"><span class="mono">laansdole.github.io/multi-agent-simulation</span><p>Runbook demo: the full journey on video, step by step</p></div>
-        <div class="card reveal" style="--d:4"><span class="mono">.../results.html and .../alignment.html</span><p>MedQA and synthetic results; the proposal fact check</p></div>
-        <div class="card reveal" style="--d:5"><span class="mono">github.com/LaansDole/multi-agent-simulation</span><p>Code, eval harness and data, branch threejs-devall</p></div>
+      <div class="reveal" style="--d:3">
+        <div class="shot"><img src="slides-live-mediator.png" alt="3D office after an adversarial run: the Synthesizer's nameplate reads Mediator (Conflict Resolver), Proponent and the care team are nearby"></div>
+        <p class="kicker" style="margin-top:18px">Live demo: one case per mode</p>
+        <div class="cases">
+          <div><span class="l">A</span><span>Cellulitis, sulfonamide allergy</span><span class="tag t-green">hierarchical</span></div>
+          <div><span class="l">B</span><span>Renal colic on phenelzine</span><span class="tag t-teal">collaborative</span></div>
+          <div><span class="l">C</span><span>30 weeks pregnant, chest pain</span><span class="tag t-red">adversarial</span></div>
+        </div>
       </div>
     </div>
   </div>
-  <svg class="ecg" style="top:760px" viewBox="0 0 1920 220" preserveAspectRatio="none" aria-hidden="true">
-    <path class="trace" d="M0,150 L260,150 L290,150 L305,128 L320,150 L360,150 L372,170 L392,40 L414,190 L430,150 L520,150 L545,135 L575,150
-      L760,150 L790,150 L805,128 L820,150 L860,150 L872,170 L892,40 L914,190 L930,150 L1020,150 L1045,135 L1075,150
-      L1260,150 L1290,150 L1305,128 L1320,150 L1350,150 L1362,175 L1380,18 L1394,205 L1406,60 L1420,200 L1436,150 L1520,150 L1545,135 L1575,150 L1920,150"/>
-    <text x="440" y="70">Hierarchical</text><text class="small" x="440" y="96">speed</text>
-    <text x="940" y="70">Collaborative</text><text class="small" x="940" y="96">breadth</text>
-    <text x="1450" y="70">Adversarial</text><text class="small" x="1450" y="96">depth</text>
-  </svg>
-  <div class="foot"><span>Research prototype on synthetic and exam cases. Not clinical advice.</span><span>8 / 8</span></div>
+  <div class="foot"><span>laansdole.github.io/multi-agent-simulation. Research prototype on synthetic and exam cases; not clinical advice.</span><span>9 / 9</span></div>
 </section>
 
 </main>
-<div class="deck-controls"><span class="counter" id="counter">1 / 8</span></div>
+<div class="deck-controls"><span class="counter" id="counter">1 / 9</span></div>
 </div>
 
 <script>
