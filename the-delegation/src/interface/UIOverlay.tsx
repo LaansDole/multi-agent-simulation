@@ -8,10 +8,26 @@ import { MessageSquareWarning, PartyPopper, Siren, Loader2 } from 'lucide-react'
 import { Task, useCoreStore } from '../integration/store/coreStore';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../theme/brand';
+import { placeNameplates } from './nameplateLayout';
 
+/** Gap (px) between a character's head and its nameplate, without / with an alert bubble in between. */
+const PLATE_GAP = 6;
+const ALERT_PLATE_GAP = 46;
 
-/** Height of a two-line nameplate (px); a covered plate is lifted by this much. */
-const PLATE_ROW = 30;
+let measureContext: CanvasRenderingContext2D | undefined;
+const textWidths = new Map<string, number>();
+/** Rendered width (px) of `text` in the page font at `style` (e.g. 'bold 11px'); cached once web fonts have loaded. */
+function textWidth(text: string, style: string): number {
+  const key = `${style}|${text}`;
+  const cached = textWidths.get(key);
+  if (cached !== undefined) return cached;
+  measureContext ??= document.createElement('canvas').getContext('2d')!;
+  measureContext.font = `${style} ${getComputedStyle(document.body).fontFamily}`;
+  const width = measureContext.measureText(text).width;
+  if (document.fonts.status === 'loaded') textWidths.set(key, width);
+  return width;
+}
+
 interface AlertBubbleProps {
   icon: React.ReactNode;
   position: { x: number; y: number };
@@ -103,21 +119,30 @@ const UIOverlay: React.FC = () => {
 
   const selectedAgent = selectedNpcIndex != null ? allPossibleAgents.find(a => a.index === selectedNpcIndex) as any ?? null : null;
   const hoveredAgent = hoveredNpcIndex != null ? allPossibleAgents.find(a => a.index === hoveredNpcIndex) as any ?? null : null;
-  // Nameplates, nearest the camera (lowest on screen) first: a plate that would cover one already placed is
-  // lifted a row (up to two), else hidden (hover still names it). ponytail: O(n^2) over <= 13 characters per frame.
-  const plateLift: Record<number, number> = {}; // px above the head; no entry = hidden
-  const placedPlates: { x: number; y: number; w: number }[] = [];
-  for (const agent of [...npcAgents].sort((a, b) => (npcScreenPositions[b.index]?.y ?? 0) - (npcScreenPositions[a.index]?.y ?? 0))) {
+  // A DynaClinic stage may declare its role for this run (e.g. the Synthesizer as Mediator).
+  const roleOf = (agent: (typeof npcAgents)[number]): string | undefined => {
+    const role = liveRoles[agent.index] ?? agent.role;
+    return role && role !== agent.name ? role : undefined;
+  };
+  const alertOf = (index: number): { icon: React.ReactNode; color: string } | null => {
+    const isLead = index === system.leadAgent.index;
+    if (isLead && isGeneratingAsset) return { icon: <Loader2 size={18} className="animate-spin" />, color: '#818cf8' };
+    if (isLead && phase === 'idle') return { icon: <Siren size={18} />, color: '#ffffff' };
+    if (isLead && phase === 'done') return { icon: <PartyPopper size={18} />, color: '#facc15' };
+    // Waiting for the user's approval.
+    if (tasks.some(t => t.status === 'on_hold' && t.assignedAgentId === index)) return { icon: <MessageSquareWarning size={18} />, color: USER_COLOR };
+    return null;
+  };
+  // Plates actually drawn (a speaking character shows its bubble, a hovered/selected one the pill), sized like the
+  // markup below: text plus px-1.5 padding (+1 px rounding), capped by max-w-[180px]; one line 18 px, two lines 31 px.
+  const plateLift = placeNameplates(npcAgents.flatMap((agent) => {
     const pos = npcScreenPositions[agent.index];
-    if (!pos) continue;
-    // ~5.5 px per character at 10-11 px plus padding, capped like the plate's max-w-[180px].
-    const w = Math.min(180, 12 + 5.5 * Math.max(agent.name.length, (liveRoles[agent.index] ?? agent.role ?? '').length));
-    let lift = 0;
-    while (lift <= 2 * PLATE_ROW && placedPlates.some((p) => 2 * Math.abs(p.x - pos.x) < p.w + w && Math.abs(p.y - (pos.y - lift)) < PLATE_ROW)) lift += PLATE_ROW;
-    if (lift > 2 * PLATE_ROW) continue;
-    plateLift[agent.index] = lift;
-    placedPlates.push({ x: pos.x, y: pos.y - lift, w });
-  }
+    if (!pos || speech[agent.index] || hoveredNpcIndex === agent.index || selectedNpcIndex === agent.index) return [];
+    const role = roleOf(agent);
+    const text = Math.max(textWidth(agent.name, 'bold 11px'), role ? textWidth(role, '10px') : 0);
+    const gap = alertOf(agent.index) ? ALERT_PLATE_GAP : PLATE_GAP;
+    return [{ index: agent.index, x: pos.x, y: pos.y, gap, w: Math.min(180, Math.ceil(text) + 13), h: role ? 31 : 18 }];
+  }));
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden select-none">
@@ -130,64 +155,33 @@ const UIOverlay: React.FC = () => {
         const isCurrentlyHovered = hoveredNpcIndex === agent.index || selectedNpcIndex === agent.index;
         if (isCurrentlyHovered) return null;
 
-        let alertIcon: React.ReactNode = null;
-        let alertColor = '#facc15'; // Default yellow
-
-        // Check specific conditions
-        // - Lead Agent (index 1) idle: siren
-        if (agent.index === system.leadAgent.index && isGeneratingAsset) {
-          alertIcon = <Loader2 size={18} className="animate-spin" />;
-          alertColor = '#818cf8'; // Indigo-400
-        }
-        else if (agent.index === system.leadAgent.index && phase === 'idle') {
-          alertIcon = <Siren size={18} />;
-          alertColor = '#ffffff'; // White for siren
-        }
-        // - Lead Agent (index 1) project finished: party-popper
-        else if (agent.index === system.leadAgent.index && phase === 'done') {
-          alertIcon = <PartyPopper size={18} />;
-          alertColor = '#facc15'; // Yellow
-        }
-        // - Any agent waiting for USER approval (target 0): message-square-warning
-        else {
-          const pendingTask = tasks.find(t => 
-            t.status === 'on_hold' && 
-            t.assignedAgentId === agent.index
-          );
-          if (pendingTask) {
-            alertIcon = <MessageSquareWarning size={18} />;
-            alertColor = USER_COLOR;
-          }
-        }
-
-        // A DynaClinic stage may declare its role for this run (e.g. the Synthesizer as Mediator).
-        const role = liveRoles[agent.index] ?? agent.role;
+        const alert = alertOf(agent.index);
+        const role = roleOf(agent);
+        const lift = plateLift[agent.index]; // undefined: no room, hidden
 
         return (
           <React.Fragment key={`agent-${agent.index}`}>
-            {!speech[agent.index] && (
+            {lift !== undefined && (
               <div
                 className="absolute pointer-events-none max-w-[180px] flex flex-col items-center text-center leading-tight bg-darkDelegation/70 rounded-md px-1.5 py-0.5 transition-opacity duration-300"
                 style={{
                   left: pos.x,
                   top: pos.y,
                   // Above the alert icon when there is one and above the plates in front; faded with an overlapping character.
-                  transform: `translate(-50%, -100%) translateY(${-(alertIcon ? 46 : 6) - (plateLift[agent.index] ?? 0)}px)`,
-                  opacity: plateLift[agent.index] === undefined ? 0 : pos.alpha < 0.9 ? 0.2 : 1,
+                  transform: `translate(-50%, -100%) translateY(${-(alert ? ALERT_PLATE_GAP : PLATE_GAP) - lift}px)`,
+                  opacity: pos.alpha < 0.9 ? 0.2 : 1,
                 }}
               >
                 <span className="max-w-full truncate text-[11px] font-bold text-white">{agent.name}</span>
-                {role && role !== agent.name && (
-                  <span className="max-w-full truncate text-[10px] text-white/75">{role}</span>
-                )}
+                {role && <span className="max-w-full truncate text-[10px] text-white/75">{role}</span>}
               </div>
             )}
-            {alertIcon && (
+            {alert && (
               <AlertBubble
-                icon={alertIcon}
+                icon={alert.icon}
                 position={pos}
                 visible={true}
-                color={alertColor}
+                color={alert.color}
                 onClick={() => setSelectedNpc(agent.index)}
               />
             )}
