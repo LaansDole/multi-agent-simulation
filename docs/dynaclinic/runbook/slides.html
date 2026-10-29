@@ -613,14 +613,36 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
   <div class="chrome"><span><b>05</b> / implementation</span><span>DynamiClinic</span></div>
   <div class="body">
     <h2>Built as one workflow on the <em>DevAll</em> platform</h2>
-    <div class="graphshot"><img src="slides-devall-graph.png" alt="DevAll workflow editor rendering dynaclinic_mvp.yaml: CaseInput, Triage, GeneralistSweep, then PrimaryCare or CareTeam; CareTeam to DivergenceGate, then MeshExchange or Proponent and Critic; Synthesizer, SafetyGate, Report"></div>
-    <div class="paths">
-      <div class="h"><b>Hierarchical</b><span class="mono">GeneralistSweep &rarr; PrimaryCare</span></div>
-      <div class="c"><b>Collaborative</b><span class="mono">CareTeam &rarr; DivergenceGate &rarr; MeshExchange</span></div>
-      <div class="a"><b>Adversarial</b><span class="mono">DivergenceGate &rarr; Proponent &rarr; Critic</span></div>
+    <div class="flow" style="margin-top:80px">
+      <svg class="wires" viewBox="0 0 1728 560" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16171a"/></marker>
+          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7a4b"/></marker>
+          <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8392a"/></marker>
+        </defs>
+        <path d="M200,290 L286,290" marker-end="url(#ah)"/>
+        <path class="g" d="M530,250 C575,250 575,85 616,85" marker-end="url(#ahg)"/>
+        <path d="M530,300 L616,300" marker-end="url(#ah)"/>
+        <path d="M860,300 L946,300" marker-end="url(#ah)"/>
+        <path class="g" d="M1170,300 L1256,300" marker-end="url(#ahg)"/>
+        <path class="r" d="M1060,388 C1060,500 1150,530 1256,530" marker-end="url(#ahr)"/>
+        <path class="r" d="M1480,530 C1632,530 1632,500 1632,372" marker-end="url(#ahr)"/>
+        <path d="M1480,300 L1536,300" marker-end="url(#ah)"/>
+        <path class="g" d="M860,85 L1590,85 C1632,85 1632,110 1632,206" marker-end="url(#ahg)"/>
+                <text class="g" x="1180" y="284">agree</text>
+        <text class="r" x="820" y="470">diverge or U high</text>
+      </svg>
+      <div class="node" style="left:0;top:200px;width:200px"><b>Any case</b>A quiz question, or a scenario in plain words</div>
+      <div class="node teal" style="left:290px;top:200px;width:240px"><b style="font-size:24px">Meta-Controller</b>Triage (C) + generalist sweep (U), mode rule</div>
+      <div class="node green" style="left:620px;top:30px;width:240px"><b>Primary Care</b>Hierarchical: one agent</div>
+      <div class="node teal" style="left:620px;top:220px;width:240px"><b>Care Team</b>Imaging, Pathology/Lab, Pharmacology; Blackboard</div>
+      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Divergence of the specialists vs tau</div>
+      <div class="node green" style="left:1260px;top:210px;width:220px"><b>Consensus Builder</b>Collaborative, after a mesh exchange</div>
+      <div class="node red" style="left:1260px;top:450px;width:220px"><b>Debate</b>Adversarial: Proponent, Opponent, Mediator</div>
+      <div class="node" style="left:1540px;top:210px;width:188px"><b>Safety gates</b>Allergy, interaction, order checks</div>
     </div>
   </div>
-  <div class="foot"><span>Rendered by DevAll's workflow editor from yaml_instance/dynaclinic_mvp.yaml. All paths end in Synthesizer, SafetyGate, Report.</span><span>6 / 9</span></div>
+  <div class="foot"><span>yaml_instance/dynaclinic_mvp.yaml on DevAll. What the numbers behind it mean: next slide.</span><span>6 / 9</span></div>
 </section>
 
 <!-- =========================================================
