@@ -34,6 +34,7 @@ export const useUiStore = create<CharacterState>()(
       else delete speech[index];
       return { speech };
     }),
+    liveRoles: {},
 
     isBYOKOpen: false,
     byokError: null,

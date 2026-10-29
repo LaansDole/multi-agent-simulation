@@ -27,7 +27,7 @@ import type {
   WorkflowCompletedData,
   WorkflowStartedData,
 } from './types';
-import { InteractionTracker, type StartPlan } from './interactionPlanner';
+import { InteractionTracker, stageRole, type StartPlan } from './interactionPlanner';
 
 import { useCoreStore } from '../store/coreStore';
 import { useUiStore } from '../store/uiStore';
@@ -180,6 +180,7 @@ export class EventBridge {
     const core = useCoreStore.getState();
     core.setUserBrief(data.task_prompt);
     core.setPhase('working');
+    useUiStore.setState({ liveRoles: {} }); // a new run starts from the YAML roles
     this.resetTracker();
   }
 
@@ -307,10 +308,11 @@ export class EventBridge {
       }
       core.updateTaskStatus(taskId, 'done');
     }
-
+    const liveRole = stageRole(data.output ?? '');
     for (const agentIndex of agentIndices) {
       if (agentIndex < 1) continue;
       useUiStore.getState().setAgentStatus(agentIndex, 'idle');
+      if (liveRole) useUiStore.setState((s) => ({ liveRoles: { ...s.liveRoles, [agentIndex]: liveRole } }));
       if (data.output) {
         core.setAgentHistory(agentIndex, [
           ...(core.agentHistories[agentIndex] ?? []),

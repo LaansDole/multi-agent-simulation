@@ -134,9 +134,17 @@ function readable(text: string): string {
     .replace(/`([^`]*)`/g, '$1'); // inline code
 }
 
-/** Readable first `max` characters of `text` on one line, with an ellipsis when cut. */
+/** Leading `STAGE: <name>` or `STAGE: <name> (<role>)` line of a DynaClinic stage output (dynaclinic/devall_nodes.py). */
+const STAGE_HEADER = /^STAGE:[^\n(]*(?:\((.*)\))?[ \t]*(?:\n|$)/;
+
+/** The role in a DynaClinic stage header, e.g. "Mediator (Conflict Resolver)"; null without one. */
+export function stageRole(output: string): string | null {
+  return STAGE_HEADER.exec(output)?.[1]?.trim() || null;
+}
+
+/** Readable first `max` characters of `text` on one line, with an ellipsis when cut; no stage header (the nameplate shows the role). */
 export function speechSnippet(text: string, max: number = SPEECH_CHARS): string {
-  const line = readable(text).replace(/\s+/g, ' ').trim();
+  const line = readable(text.replace(STAGE_HEADER, '')).replace(/\s+/g, ' ').trim();
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
 }
 

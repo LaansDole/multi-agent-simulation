@@ -9,6 +9,7 @@ import {
   freeSpots,
   pickMeetingArea,
   speechSnippet,
+  stageRole,
   type GraphEdge,
 } from '../../src/integration/api/interactionPlanner.ts';
 
@@ -183,4 +184,22 @@ test('speechSnippet reads JSON and Markdown output', () => {
   assert.equal(speechSnippet('Dose 5 * 3 mg; see [1] and patient_name_x.'), 'Dose 5 * 3 mg; see [1] and patient_name_x.');
   assert.equal(speechSnippet(''), '');
   assert.equal(speechSnippet('{}'), '{}');
+});
+
+// dynaclinic/devall_nodes.py: every DynaClinic stage output starts with `STAGE: <name>` or `STAGE: <name> (<role>)`.
+test('stageRole reads the role of a DynaClinic stage header', () => {
+  assert.equal(stageRole('STAGE: synthesizer (Mediator (Conflict Resolver))\nSURVIVING HYPOTHESIS: H1'), 'Mediator (Conflict Resolver)');
+  assert.equal(stageRole('STAGE: synthesizer (Consensus Builder)\nFINAL ANSWER: B'), 'Consensus Builder');
+  assert.equal(stageRole('STAGE: critic (Opponent)'), 'Opponent');
+  assert.equal(stageRole('STAGE: critic\nFlagged claims (2):'), null);
+  assert.equal(stageRole('Plain answer (B)\nSTAGE: critic (Opponent)'), null);
+  assert.equal(stageRole(''), null);
+});
+
+test('speechSnippet drops a leading DynaClinic stage header', () => {
+  assert.equal(speechSnippet('STAGE: proponent\nH1 (primary hypothesis; plurality): B'), 'H1 (primary hypothesis; plurality): B');
+  assert.equal(speechSnippet('STAGE: synthesizer (Mediator (Conflict Resolver))\nSURVIVING HYPOTHESIS: H1'), 'SURVIVING HYPOTHESIS: H1');
+  assert.equal(speechSnippet('STAGE: care_team'), '');
+  // Other routing markers stay, and so does a STAGE line that does not lead the output.
+  assert.equal(speechSnippet('MODE: ADVERSARIAL\nSTAGE: critic'), 'MODE: ADVERSARIAL STAGE: critic');
 });

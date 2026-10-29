@@ -205,6 +205,7 @@ export interface AgentNodeSlot {
   label: string;
   proposed_slot: number | null; // 1-MAX_AGENTS, or null for overflow agents
   sub_agent?: string; // set when one node hosts several characters (they share node_id)
+  role_label?: string; // short role for the character's nameplate (serializer role_label)
 }
 
 export interface NormalizedGraph {

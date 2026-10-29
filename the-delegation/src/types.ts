@@ -26,7 +26,8 @@ export interface CharacterState {
   hoveredPoiId: string | null;
   hoveredPoiLabel: string | null;
   hoverPosition: { x: number; y: number } | null;
-  npcScreenPositions: Record<number, { x: number; y: number }>;
+  /** Per-frame screen position of each character's head; alpha < 1 while it is faded for overlapping another. */
+  npcScreenPositions: Record<number, { x: number; y: number; alpha: number }>;
   isChatting: boolean;
   isTyping: boolean;
   chatMessages: ChatMessage[];
@@ -41,6 +42,8 @@ export interface CharacterState {
   /** Speech bubble text per character index while it hands off its output. */
   speech: Record<number, string>;
   setSpeech: (index: number, text: string | null) => void;
+  /** Role a character's latest output declared this run (DynaClinic `STAGE: <name> (<role>)`), shown on its nameplate. */
+  liveRoles: Record<number, string>;
 
   isBYOKOpen: boolean;
   byokError: string | null;

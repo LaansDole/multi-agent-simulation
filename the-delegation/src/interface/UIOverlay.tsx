@@ -10,7 +10,8 @@ import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../theme/brand';
 
 
-
+/** Height of a two-line nameplate (px); a covered plate is lifted by this much. */
+const PLATE_ROW = 30;
 interface AlertBubbleProps {
   icon: React.ReactNode;
   position: { x: number; y: number };
@@ -87,6 +88,7 @@ const UIOverlay: React.FC = () => {
     hoverPosition,
     npcScreenPositions,
     speech,
+    liveRoles,
     setSelectedNpc,
   } = useUiStore();
   const [isHelpOpen, setHelpOpen] = useState(false);
@@ -101,16 +103,30 @@ const UIOverlay: React.FC = () => {
 
   const selectedAgent = selectedNpcIndex != null ? allPossibleAgents.find(a => a.index === selectedNpcIndex) as any ?? null : null;
   const hoveredAgent = hoveredNpcIndex != null ? allPossibleAgents.find(a => a.index === hoveredNpcIndex) as any ?? null : null;
-
+  // Nameplates, nearest the camera (lowest on screen) first: a plate that would cover one already placed is
+  // lifted a row (up to two), else hidden (hover still names it). ponytail: O(n^2) over <= 13 characters per frame.
+  const plateLift: Record<number, number> = {}; // px above the head; no entry = hidden
+  const placedPlates: { x: number; y: number; w: number }[] = [];
+  for (const agent of [...npcAgents].sort((a, b) => (npcScreenPositions[b.index]?.y ?? 0) - (npcScreenPositions[a.index]?.y ?? 0))) {
+    const pos = npcScreenPositions[agent.index];
+    if (!pos) continue;
+    // ~5.5 px per character at 10-11 px plus padding, capped like the plate's max-w-[180px].
+    const w = Math.min(180, 12 + 5.5 * Math.max(agent.name.length, (liveRoles[agent.index] ?? agent.role ?? '').length));
+    let lift = 0;
+    while (lift <= 2 * PLATE_ROW && placedPlates.some((p) => 2 * Math.abs(p.x - pos.x) < p.w + w && Math.abs(p.y - (pos.y - lift)) < PLATE_ROW)) lift += PLATE_ROW;
+    if (lift > 2 * PLATE_ROW) continue;
+    plateLift[agent.index] = lift;
+    placedPlates.push({ x: pos.x, y: pos.y - lift, w });
+  }
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden select-none">
-      {/* 1. Parallel Alert Bubbles System */}
+      {/* 1. Nameplates (name + role) and parallel alert bubbles; both give way to the hover/selection pill */}
       {npcAgents.map((agent) => {
         const pos = npcScreenPositions[agent.index];
         if (!pos) return null;
 
-        // Condition: Alert disappears when hovered
+        // Condition: Alert and nameplate disappear when hovered or selected (the pill shows the name)
         const isCurrentlyHovered = hoveredNpcIndex === agent.index || selectedNpcIndex === agent.index;
         if (isCurrentlyHovered) return null;
 
@@ -144,17 +160,38 @@ const UIOverlay: React.FC = () => {
           }
         }
 
-        if (!alertIcon) return null;
+        // A DynaClinic stage may declare its role for this run (e.g. the Synthesizer as Mediator).
+        const role = liveRoles[agent.index] ?? agent.role;
 
         return (
-          <AlertBubble
-            key={`alert-${agent.index}`}
-            icon={alertIcon}
-            position={pos}
-            visible={true}
-            color={alertColor}
-            onClick={() => setSelectedNpc(agent.index)}
-          />
+          <React.Fragment key={`agent-${agent.index}`}>
+            {!speech[agent.index] && (
+              <div
+                className="absolute pointer-events-none max-w-[180px] flex flex-col items-center text-center leading-tight bg-darkDelegation/70 rounded-md px-1.5 py-0.5 transition-opacity duration-300"
+                style={{
+                  left: pos.x,
+                  top: pos.y,
+                  // Above the alert icon when there is one and above the plates in front; faded with an overlapping character.
+                  transform: `translate(-50%, -100%) translateY(${-(alertIcon ? 46 : 6) - (plateLift[agent.index] ?? 0)}px)`,
+                  opacity: plateLift[agent.index] === undefined ? 0 : pos.alpha < 0.9 ? 0.2 : 1,
+                }}
+              >
+                <span className="max-w-full truncate text-[11px] font-bold text-white">{agent.name}</span>
+                {role && role !== agent.name && (
+                  <span className="max-w-full truncate text-[10px] text-white/75">{role}</span>
+                )}
+              </div>
+            )}
+            {alertIcon && (
+              <AlertBubble
+                icon={alertIcon}
+                position={pos}
+                visible={true}
+                color={alertColor}
+                onClick={() => setSelectedNpc(agent.index)}
+              />
+            )}
+          </React.Fragment>
         );
       })}
 

@@ -14,6 +14,7 @@ export interface AgentNode {
   index: number;
   name: string;
   description: string;
+  role?: string; // short role on the character's 3D nameplate (imported from the backend's role_label)
   color: string;
   model: string;
   provider?: string;

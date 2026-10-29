@@ -44,6 +44,7 @@ export function importWorkflow(graph: NormalizedGraph): ImportResult {
       index,
       name: slot.label,
       description: summary?.role || fullNode?.description || 'Imported agent node',
+      role: slot.role_label,
       color: SLOT_COLORS[index - 1] ?? SLOT_COLORS[0],
       model: summary?.model || DEFAULT_MODELS.text,
       provider: summary?.provider,

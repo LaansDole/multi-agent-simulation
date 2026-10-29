@@ -537,14 +537,15 @@ export class SceneManager {
     const player = getActiveAgentSet().user.index;
     this.stage.setFollowTarget(this.controller?.getCPUPosition(this.selectedIndex ?? player) ?? null);
     const { selectedNpcIndex, setSelectedPosition, selectedPosition } = useUiStore.getState();
-    const npcScreenPositions: Record<number, { x: number; y: number }> = {};
+    const npcScreenPositions: Record<number, { x: number; y: number; alpha: number }> = {};
     const rect = this.container.getBoundingClientRect();
     if (this.controller) {
+      const alphas = this.controller.getAgentStateBuffer();
       for (let i = 0; i < this.controller.getCount(); i++) {
         const p = this.controller.getCPUPosition(i);
         if (p) {
           const s = p.clone(); s.y += BUBBLE_Y_OFFSET; s.project(this.stage.camera);
-          npcScreenPositions[i] = { x: (s.x * 0.5 + 0.5) * rect.width, y: (s.y * -0.5 + 0.5) * rect.height };
+          npcScreenPositions[i] = { x: (s.x * 0.5 + 0.5) * rect.width, y: (s.y * -0.5 + 0.5) * rect.height, alpha: alphas?.getAlpha(i) ?? 1 };
         }
       }
       useUiStore.setState({ npcScreenPositions });
