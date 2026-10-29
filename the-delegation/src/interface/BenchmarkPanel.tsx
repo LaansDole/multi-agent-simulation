@@ -3,6 +3,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getAllAgents } from '../data/agents';
 import { BACKEND_URL, BackendClient } from '../integration/api/BackendClient';
 import {
+  ARM_LABEL,
+  ARM_TITLE,
+  ARMS,
   matchesFilter,
   QUESTION_MS,
   replayEvents,
@@ -34,7 +37,7 @@ const FILTERS: [Filter, string][] = [
   ['all', 'All'],
   ['disagree', 'Arms disagree'],
   ['adversarial', 'Adversarial'],
-  ['dynamicWrong', 'Dynamic wrong'],
+  ['dynamicWrong', `${ARM_LABEL.dynamic} wrong`],
 ];
 
 const pct = (value: number | undefined) => (value === undefined ? '-' : `${Math.round(value * 100)}%`);
@@ -220,7 +223,7 @@ const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({ isOpen, onClose }) => {
           <option value="">Choose a recorded run...</option>
           {runs.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.label} - {r.arms.map((arm) => `${arm} ${pct(r.accuracy[arm])}`).join(' / ')}
+              {r.label} - {r.arms.map((arm) => `${ARM_LABEL[arm]} ${pct(r.accuracy[arm])}`).join(' / ')}
             </option>
           ))}
         </select>
@@ -231,7 +234,7 @@ const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({ isOpen, onClose }) => {
             <div className="grid grid-cols-3 gap-2 mt-3" data-testid="running-accuracy">
               {arms.map((arm) => (
                 <div key={arm} className="px-3 py-2 bg-zinc-50 rounded-2xl">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{arm}</p>
+                  <p className="text-[10px] font-black tracking-wider text-zinc-400">{ARM_LABEL[arm]}</p>
                   <p className="text-xl font-black text-darkDelegation" data-arm={arm}>
                     {totals[arm].n ? pct(totals[arm].accuracy) : '-'}
                   </p>
@@ -275,7 +278,7 @@ const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({ isOpen, onClose }) => {
               <tr>
                 <th className="text-left py-2">#</th>
                 <th className="text-left">Key</th>
-                {(['single', 'dynamic', 'static'] as const).map((arm) => <th key={arm} className="text-left">{arm}</th>)}
+                {ARMS.map((arm) => <th key={arm} className="text-left" title={ARM_TITLE[arm]}>{ARM_LABEL[arm]}</th>)}
                 <th className="text-left">Mode</th>
                 <th className="text-right">U</th>
                 <th className="text-right">Calls</th>
@@ -293,7 +296,7 @@ const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({ isOpen, onClose }) => {
                   >
                     <td className="py-1.5 text-zinc-400">{i + 1}</td>
                     <td className="font-bold text-darkDelegation">{q.gold}</td>
-                    {(['single', 'dynamic', 'static'] as const).map((arm) => {
+                    {ARMS.map((arm) => {
                       const result = q.arms[arm];
                       return (
                         <td key={arm} className={result && shown ? (result.correct ? 'text-green-700' : 'text-red-600') : 'text-zinc-300'}>
@@ -328,7 +331,7 @@ const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({ isOpen, onClose }) => {
           </ul>
           {detail.arms.dynamic && (
             <>
-              <p className="mb-1"><span className="font-bold">Dynamic:</span> {detail.arms.dynamic.mode_reason ?? 'no mode reason recorded'}</p>
+              <p className="mb-1"><span className="font-bold">{ARM_LABEL.dynamic}:</span> {detail.arms.dynamic.mode_reason ?? 'no mode reason recorded'}</p>
               <p className="text-zinc-500"><span className="font-bold text-zinc-600">Path:</span> {detail.arms.dynamic.steps.join(' -> ') || '-'}</p>
             </>
           )}

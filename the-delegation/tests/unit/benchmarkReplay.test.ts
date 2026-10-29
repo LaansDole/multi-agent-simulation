@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  ARM_LABEL,
+  ARM_TITLE,
+  ARMS,
   matchesFilter,
   nodeFor,
   questionMs,
@@ -37,6 +40,12 @@ const QUESTIONS: Question[] = [
   { case_id: 'q2', question: '', options: {}, gold: 'B', arms: { single: arm('A', false), dynamic: arm('B', true, { mode: 'collaborative' }), static: arm('B', true) } },
   { case_id: 'q3', question: '', options: {}, gold: 'C', arms: { single: arm('C', true), dynamic: arm('A', false, { mode: 'adversarial' }) } },
 ];
+
+test('every arm has a display label; the dynamic arm is shown as DynamiClinic', () => {
+  assert.deepEqual(ARMS.map((a) => ARM_LABEL[a]), ['Single', 'DynamiClinic', 'Static']);
+  assert.equal(ARM_TITLE.single, 'One model call');
+  assert.equal(ARM_TITLE.static, 'Full care team and critic on every question, no Meta-Controller');
+});
 
 test('runningTotals counts only the replayed questions and only arms that answered', () => {
   assert.deepEqual(runningTotals(QUESTIONS, ['single', 'dynamic', 'static'], 0).single, { n: 0, correct: 0, accuracy: 0 });

@@ -7,6 +7,19 @@
 export const ARMS = ['single', 'dynamic', 'static'] as const;
 export type Arm = (typeof ARMS)[number];
 
+/** User-visible arm names; the data keys stay `single` / `dynamic` / `static`. */
+export const ARM_LABEL: Record<Arm, string> = {
+  single: 'Single',
+  dynamic: 'DynamiClinic',
+  static: 'Static',
+};
+
+/** Header tooltips for the baseline arms. */
+export const ARM_TITLE: Partial<Record<Arm, string>> = {
+  single: 'One model call',
+  static: 'Full care team and critic on every question, no Meta-Controller',
+};
+
 /** One arm's recorded answer to one question (server/routes/benchmarks.py). */
 export interface ArmResult {
   answer: string | null;
