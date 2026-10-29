@@ -443,6 +443,22 @@ section[data-title="Results"] .verdict { font-size: 29px; margin-top: 34px; padd
 .sr-grid .card li { font-size: 32px; margin: 16px 0; padding-left: 28px; }
 .sr-grid .card li::before { top: 17px; width: 11px; height: 11px; }
 
+
+/* Covidence-style PRISMA */
+.cv { position: relative; width: 1500px; height: 712px; margin: 40px auto 0; }
+.cv .b { position: absolute; box-sizing: border-box; background: #fff; border: 1px solid #e2e2e6; box-shadow: 0 3px 0 #e2e2e6; border-radius: 4px; display: flex; align-items: center; gap: 22px; padding: 0 30px; font-size: 30px; color: #2b2f36; }
+.cv .b b { font-weight: 700; color: #1d2128; }
+.cv .b.x { box-shadow: none; border: 2px dashed #bfc0c6; padding-left: 70px; display: block; padding-top: 0; }
+.cv .b.x > div { line-height: 1.5; }
+.cv .b.x { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 6px; }
+.cv .doc { width: 26px; height: 34px; flex: none; background: #f3a42b; border-radius: 3px; position: relative; }
+.cv .doc::after { content: ""; position: absolute; left: 6px; right: 6px; top: 12px; height: 12px; background: repeating-linear-gradient(#fff 0 2px, transparent 2px 5px); }
+.cv .src { font-family: var(--font-body); font-size: 22px; color: #4a4f57; line-height: 1.45; margin-top: 8px; }
+.cv .down { position: absolute; width: 14px; background: #6b6b6b; }
+.cv .down::after { content: ""; position: absolute; left: -12px; bottom: -22px; border-left: 19px solid transparent; border-right: 19px solid transparent; border-top: 24px solid #6b6b6b; }
+.cv .right { position: absolute; height: 6px; width: 34px; background: #6b6b6b; }
+.cv .right::after { content: ""; position: absolute; right: -14px; top: -6px; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 14px solid #6b6b6b; }
+
 /* ===========================================
    DECK CHROME (outside slide design): progress + counter
    =========================================== */
@@ -508,30 +524,23 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
 <section class="slide" data-title="PRISMA-ScR">
   <div class="chrome"><span><b>02</b> / study selection, PRISMA-ScR</span><span>DynamiClinic</span></div>
   <div class="body">
-    <div class="prisma" style="margin-top:40px">
-      <svg viewBox="0 0 1728 760" preserveAspectRatio="none" aria-hidden="true">
-        <defs><marker id="pah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16171a"/></marker></defs>
-        <path d="M560,110 L560,176" marker-end="url(#pah)"/>
-        <path d="M560,290 L560,356" marker-end="url(#pah)"/>
-        <path d="M560,470 L560,596" marker-end="url(#pah)"/>
-        <path d="M860,55 L976,55" marker-end="url(#pah)"/>
-        <path d="M860,235 L976,235" marker-end="url(#pah)"/>
-        <path d="M860,415 L976,415" marker-end="url(#pah)"/>
-      </svg>
-      <div class="stage-lab" style="top:0;height:110px">Identification</div>
-      <div class="stage-lab" style="top:180px;height:110px">Screening</div>
-      <div class="stage-lab" style="top:360px;height:110px">Eligibility</div>
-      <div class="stage-lab" style="top:600px;height:130px">Included</div>
-      <div class="pbox" style="left:260px;top:0;width:600px;height:110px"><span class="n">529</span>records from database searching</div>
-      <div class="pbox ex" style="left:980px;top:0;width:620px;height:110px"><span class="n">72</span>duplicates removed: 63 by Covidence, 9 manually</div>
-      <div class="pbox" style="left:260px;top:180px;width:600px;height:110px"><span class="n">457</span>screened on title and abstract</div>
-      <div class="pbox ex" style="left:980px;top:180px;width:620px;height:110px"><span class="n">308</span>excluded as irrelevant</div>
-      <div class="pbox" style="left:260px;top:360px;width:600px;height:110px"><span class="n">149</span>full texts assessed for eligibility</div>
-      <div class="pbox ex" style="left:980px;top:330px;width:620px;height:170px"><span class="n">67</span>full texts excluded: wrong concept 58, wrong context 5, wrong study design 2, not retrievable 2</div>
-      <div class="pbox inc" style="left:260px;top:600px;width:600px;height:130px"><span class="n">81</span>studies included (82 records: one paper indexed twice, deduplicated)</div>
+    <div class="cv">
+      <div class="b" style="left:0;top:0;width:720px;height:150px"><span class="doc"></span><div><b>529</b> records imported for screening<div class="src">PubMed, Scopus, CINAHL, Cochrane Library, IEEE Xplore</div></div></div>
+      <div class="right" style="left:752px;top:72px"></div>
+      <div class="b x" style="left:820px;top:15px;width:680px;height:120px"><div><b>9</b> duplicates identified manually</div><div><b>63</b> duplicates identified by Covidence</div></div>
+      <div class="down" style="left:353px;top:164px;height:40px"></div>
+      <div class="b" style="left:0;top:228px;width:720px;height:96px"><span class="doc"></span><div><b>457</b> studies screened</div></div>
+      <div class="right" style="left:752px;top:273px"></div>
+      <div class="b x" style="left:820px;top:228px;width:680px;height:96px"><div><b>308</b> studies irrelevant</div></div>
+      <div class="down" style="left:353px;top:338px;height:40px"></div>
+      <div class="b" style="left:0;top:402px;width:720px;height:96px"><span class="doc"></span><div><b>149</b> full-text studies assessed for eligibility</div></div>
+      <div class="right" style="left:752px;top:447px"></div>
+      <div class="b x" style="left:820px;top:385px;width:680px;height:180px"><div><b>67</b> studies excluded</div><div class="src">58 wrong intervention (concept), 5 wrong setting (context), 2 wrong study design, 2 full text not retrievable</div></div>
+      <div class="down" style="left:353px;top:512px;height:80px"></div>
+      <div class="b" style="left:0;top:616px;width:720px;height:96px"><span class="doc"></span><div><b>81</b> studies included</div></div>
     </div>
   </div>
-  <div class="foot"><span>PRISMA-ScR flow diagram, Fig. 1 of the scoping review</span><span>3 / 8</span></div>
+  <div class="foot"><span>PRISMA-ScR flow, Fig. 1 of the scoping review</span><span>3 / 8</span></div>
 </section>
 <!-- =========================================================
      SLIDE 4: THEMES -> GAP -> PROPOSAL
