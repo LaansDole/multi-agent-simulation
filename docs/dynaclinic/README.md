@@ -164,6 +164,25 @@ Behaviour:
 - **Concurrency:** each worker thread owns its own client, because `run()` resets the client's call ledger.
 - **Cost:** reported only when `DYNACLINIC_PRICE_<MODEL>_IN` and `DYNACLINIC_PRICE_<MODEL>_OUT` (USD per 1M tokens) are set for every model used. For example, `DYNACLINIC_PRICE_GPT_6_LUNA_IN` (non-alphanumerics become `_`). Otherwise cost is `n/a`.
 
+## DynaClinic in the hospital simulation
+
+`yaml_instance/dynaclinic_hospital.yaml` is `demo_hospital.yaml` with one DynaClinic consult per simulated day. PatientDataGenerator admits one patient as a symptom-level presentation (complaint, present illness, vitals, past history, medications, allergies, exam, labs, imaging); its prompt forbids naming a diagnosis. An edge template turns the presentation into a plain-text open-ended case, and `DynaClinicConsult`, a `subgraph` node (`path: dynaclinic_mvp.yaml`, resolved against `yaml_instance/`), runs `dynaclinic_mvp.yaml` unchanged on it. Each consult is a fresh `GraphExecutor` with its own `global_state`, and `dc_triage` starts a new case, so no day sees another day's case. The consult report reaches DailySummary on a data edge. DailySummary writes patient, mode (C, U), leading diagnosis, plan, gate and triage status to memory, and FinalReport lists one line per day. The triage-queue part is unchanged.
+
+```bash
+echo "Run a 2-day hospital simulation" | env -u PYTHONPATH -u VIRTUAL_ENV uv run python run.py --path yaml_instance/dynaclinic_hospital.yaml --name dc_hospital
+```
+
+The hospital agents use `MODEL_NAME` (gpt-6-luna) through `OPENAI_BASE_URL`/`OPENAI_API_KEY`; the consult nodes use `DYNACLINIC_MODEL`. Two 2-day runs on gpt-6-luna (2026-10-29) took 116 s and 175 s, with 20-75 s per consult. Offline test: `tests/test_dynaclinic_hospital.py`.
+
+Limits:
+
+- The subgraph returns only its Report node. For the mode to reach the hospital, `dc_safety_gate` appends `Meta-Controller: MODE <mode>, C=<c>, U=<u>` after the gate list, so every `dynaclinic_mvp.yaml` report now shows that line between the gates and the answer.
+- The day count is `LoopGate` (`loop_counter`, `max_iterations: 2`), not demo_hospital's 60 s timer, because a single consult can outlast 60 s and the timer would end the run after day 1.
+- The memory store is `blackboard`, not `simple`. A `simple` store keeps only the first 500 characters of the "Input: ... Output: ..." record, the consult report fills them, and FinalReport then sees no summaries.
+- DevAll token usage counts only the hospital agents; the consult's calls stay in its own ledger. Every consult writes to `WareHouse/<name>_DynaClinicConsult_subgraph_<parent timestamp>/`, so the last day overwrites the earlier ones there. The parent run's `execution_logs.json` keeps every day's report.
+- 3D office: the serializer marks `DynaClinicConsult` `is_agent: false`, so it gets no character and its events show only in the log and Kanban. The inner `dc_*` nodes are not serialized, and the subgraph runs without the parent's session, so the office does not see them.
+- The patients are LLM-generated and synthetic. Nothing checks that a presentation names no diagnosis. Not clinical advice.
+
 ## Context policy
 
 `context_policy` sets how much of the case the Integrated Care Team and the Synthesizer see. It is a `DynaClinicPipeline` / `StaticTeamPipeline` argument, the harness flag `--context-policy`, and an optional `context_policy` field on the `dc_care_team` and `dc_synthesizer` nodes (the `dc_synthesizer` value also applies to `dc_safety_gate` regenerations).
