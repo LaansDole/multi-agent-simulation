@@ -589,4 +589,8 @@ class SafetyGateExecutor(_StageExecutor):
             for g in r.gates
         )
         body = f"Assessment and plan:\n{r.final_text}" if run.case.open_ended else r.final_text
-        return f"GATE: {'BLOCKED' if r.blocked else 'PASS'}\n{body}\n\nSafety gates:\n{gates}"
+        # The mode that ran, shown in the Report: a subgraph caller (dynaclinic_hospital.yaml) sees only the Report.
+        u = "n/a" if r.uncertainty is None else f"{r.uncertainty:.2f}"
+        mode = (f"\n\nMeta-Controller: MODE {r.mode.upper()}, C={r.complexity:.2f}, U={u}"
+                if r.mode and r.complexity is not None else "")
+        return f"GATE: {'BLOCKED' if r.blocked else 'PASS'}\n{body}\n\nSafety gates:\n{gates}{mode}"
