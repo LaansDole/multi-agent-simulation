@@ -408,7 +408,8 @@ section[data-title="Results"] .res { margin-top: 40px; }
 section[data-title="Results"] .card { padding: 36px 34px; }
 section[data-title="Results"] .bars { gap: 40px; margin-top: 30px; }
 section[data-title="Results"] .bar-track { height: 64px; }
-section[data-title="Results"] .bar-row .lab { font-size: 24px; }
+section[data-title="Results"] .bar-row .lab { font-size: 22px; }
+section[data-title="Results"] .bar-row, section[data-title="Results"] .axis { grid-template-columns: 185px 1fr 110px; }
 section[data-title="Results"] .bar-row .val { font-size: 44px; }
 section[data-title="Results"] table.t td { font-size: 26px; padding: 14px 10px; }
 section[data-title="Results"] table.t th { font-size: 17px; }
@@ -654,7 +655,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
     <h2>Four pieces behind the graph</h2>
     <div class="bx">
       <div class="card"><span class="num">10</span><div><h3>Custom node types</h3><p>Every DynaClinic step in the graph is a new DevAll node written in Python: triage, uncertainty sweep, primary care, care team, divergence gate, mesh, proponent, critic, synthesizer, safety gate. One YAML file wires them.</p></div></div>
-      <div class="card"><span class="num">3</span><div><h3>Evaluation arms</h3><p><b>Single</b>: one model call answers. <b>Static team</b>: the full team and critic every time. <b>Dynamic</b>: DynamiClinic picks the mode. Same questions, same model.</p></div></div>
+      <div class="card"><span class="num">3</span><div><h3>Evaluation arms</h3><p><b>Single</b>: one model call answers. <b>Static</b>: the full care team and critic on every question, no Meta-Controller. <b>DynamiClinic</b>: the Meta-Controller picks the mode per question. Same questions, same model.</p></div></div>
       <div class="card"><span class="num">3D</span><div><h3>Office view</h3><p>Imports any DevAll workflow; each agent is a character. On a hand-off the agents meet and talk, and each nameplate shows the agent's current role.</p></div></div>
       <div class="card"><span class="num">1,030</span><div><h3>Automated tests</h3><p>Run offline with a fake model, no API calls: mode rule, thresholds, safety gates, engine fixes. Real runs are kept separate.</p></div></div>
     </div>
@@ -675,14 +676,14 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
         <div class="bars">
           <!-- Bars span 75% to 100%: left = (x - 75) / 25 -->
           <div class="bar-row"><span class="lab">single</span><div class="bar-track"><div class="bar-fill" style="width:76%"></div><div class="bar-ci" style="left:35.2%;width:56.4%"></div></div><span class="val">94%</span></div>
-          <div class="bar-row"><span class="lab">dynamic</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--red)"></div><div class="bar-ci" style="left:46%;width:49.6%"></div></div><span class="val">96%</span></div>
+          <div class="bar-row"><span class="lab">DynamiClinic</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--red)"></div><div class="bar-ci" style="left:46%;width:49.6%"></div></div><span class="val">96%</span></div>
           <div class="bar-row"><span class="lab">static</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--ink-soft)"></div><div class="bar-ci" style="left:14.4%;width:68.4%"></div></div><span class="val">90%</span></div>
           <div class="axis"><div></div><div><span>75%</span><span>80%</span><span>85%</span><span>90%</span><span>95%</span><span>100%</span></div><div></div></div>
         </div>
       </div>
       <div class="reveal" style="--d:3">
         <table class="t">
-          <tr><th></th><th class="n">single</th><th class="n">dynamic</th><th class="n">static</th></tr>
+          <tr><th></th><th class="n">single</th><th class="n">DynamiClinic</th><th class="n">static</th></tr>
           <tr><td>gpt-6-luna calls / question</td><td class="n">1.00</td><td class="n">6.94</td><td class="n">6.00</td></tr>
           <tr><td>gpt-6-luna mean latency</td><td class="n">5.3 s</td><td class="n">32.0 s</td><td class="n">29.9 s</td></tr>
           <tr><td>qwen3.5-4b accuracy (local)</td><td class="n">68%</td><td class="n">60%</td><td class="n">62%</td></tr>
@@ -691,7 +692,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       </div>
     </div>
   </div>
-  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. qwen: dynamic with its own calibrated tau_u; single vs dynamic p = 0.34.</span><span>8 / 9</span></div>
+  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. qwen: DynamiClinic with its own calibrated tau_u; single vs DynamiClinic p = 0.34.</span><span>8 / 9</span></div>
 </section>
 <!-- =========================================================
      SLIDE 9: NEXT + LIVE DEMO
