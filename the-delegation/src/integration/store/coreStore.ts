@@ -6,6 +6,7 @@ import { calculateCost } from '../../core/llm/pricing';
 import { useTeamStore } from './teamStore';
 import { useUiStore } from './uiStore';
 import { BackendConnectionStatus, ModelInfo } from '../api/types';
+import { BACKEND_URL } from '../api/BackendClient';
 
 export type TaskStatus = 'scheduled' | 'on_hold' | 'in_progress' | 'done'
 
@@ -232,8 +233,7 @@ export const useCoreStore = create<CoreState>()(
 
       fetchModelsFromBackend: async () => {
         try {
-          const apiUrl = `http://${window.location.hostname}:6400`;
-          const response = await fetch(`${apiUrl}/api/models`, {
+          const response = await fetch(`${BACKEND_URL}/api/models`, {
             signal: AbortSignal.timeout(5000)
           });
           if (!response.ok) return;

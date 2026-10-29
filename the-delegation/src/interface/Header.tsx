@@ -1,13 +1,15 @@
-import { Maximize2, Settings } from 'lucide-react';
-import React from 'react';
+import { BarChart3, Maximize2, Settings } from 'lucide-react';
+import React, { useState } from 'react';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useUiStore } from '../integration/store/uiStore';
 import WorkflowBrowser from './WorkflowBrowser';
+import BenchmarkPanel from './BenchmarkPanel';
 
 const Header: React.FC = () => {
   const { backendStatus, setViewMode } = useCoreStore();
   const isWorkflowBrowserOpen = useUiStore((s) => s.isWorkflowBrowserOpen);
   const setWorkflowBrowserOpen = useUiStore((s) => s.setWorkflowBrowserOpen);
+  const [isBenchmarkOpen, setBenchmarkOpen] = useState(false);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -39,6 +41,15 @@ const Header: React.FC = () => {
           title="Browse and import YAML workflows"
         >
           <span className="text-[10px] font-black uppercase tracking-wider">Browse Workflows</span>
+        </button>
+
+        <button
+          onClick={() => setBenchmarkOpen(!isBenchmarkOpen)}
+          className="flex items-center gap-2 px-3 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg transition-all active:scale-95 cursor-pointer h-9 shrink-0"
+          title="Replay a recorded MedQA benchmark run"
+        >
+          <BarChart3 size={14} />
+          <span className="text-[10px] font-black uppercase tracking-wider">Benchmark</span>
         </button>
 
         <div className="w-px h-4 bg-zinc-200" />
@@ -96,6 +107,7 @@ const Header: React.FC = () => {
         </div>
       </div>
       <WorkflowBrowser isOpen={isWorkflowBrowserOpen} onClose={() => setWorkflowBrowserOpen(false)} />
+      <BenchmarkPanel isOpen={isBenchmarkOpen} onClose={() => setBenchmarkOpen(false)} />
     </header>
   );
 };

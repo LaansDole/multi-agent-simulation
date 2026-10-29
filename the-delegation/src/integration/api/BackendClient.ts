@@ -21,8 +21,10 @@ import type {
 
 type EventCallback = (event: BackendEvent) => void;
 
-const DEFAULT_WS_URL = `ws://${window.location.hostname}:6400/ws`;
-const DEFAULT_API_URL = `http://${window.location.hostname}:6400`;
+/** Backend origin; VITE_BACKEND_URL overrides the default (same host, port 6400). */
+export const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:6400`;
+const DEFAULT_WS_URL = `${BACKEND_URL.replace(/^http/, 'ws')}/ws`;
+const DEFAULT_API_URL = BACKEND_URL;
 
 // Reconnection tuning
 const RECONNECT_BASE_MS = 1000;
@@ -280,6 +282,11 @@ export class BackendClient {
   public onStatusChange(callback: (status: BackendConnectionStatus) => void): () => void {
     this.statusListeners.add(callback);
     return () => this.statusListeners.delete(callback);
+  }
+
+  /** Hands a locally built event to the listeners as if it had arrived (benchmark replay); nothing is sent. */
+  public inject(event: BackendEvent): void {
+    this.emit(event);
   }
 
   private emit(event: BackendEvent): void {

@@ -16,6 +16,7 @@ import { useUiStore } from '../../integration/store/uiStore';
 import { BackendClient } from '../../integration/api/BackendClient';
 import { EventBridge } from '../../integration/api/EventBridge';
 import { exportSystemToYaml } from '../../integration/api/YamlExporter';
+import type { NormalizedGraph } from '../../integration/api/types';
 
 export class BackendAgentSimulation {
   private client: BackendClient;
@@ -26,11 +27,7 @@ export class BackendAgentSimulation {
   constructor(system: AgenticSystem) {
     this.system = system;
 
-    // Initialize backend client with Vite proxy URLs (relative)
-    this.client = new BackendClient(
-      `ws://${window.location.hostname}:6400/ws`,
-      `http://${window.location.hostname}:6400`,
-    );
+    this.client = new BackendClient();
     this.bridge = new EventBridge(this.client);
 
     // Build node -> agent index mapping from the team config
@@ -173,6 +170,11 @@ export class BackendAgentSimulation {
   /** Get the backend client for direct access (e.g., REST calls). */
   public getClient(): BackendClient {
     return this.client;
+  }
+
+  /** Benchmark replay: start a fresh replayed run on `graph` (hand-offs) without contacting the backend. */
+  public setReplayGraph(graph: NormalizedGraph | null): void {
+    this.bridge.setGraph(graph);
   }
 
   /** Alias maintained for SceneManager compatibility. */

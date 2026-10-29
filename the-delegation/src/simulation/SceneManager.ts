@@ -280,6 +280,11 @@ export class SceneManager {
     return null;
   }
 
+  /** The backend-event simulation of the active team (rebuilt when the team changes). */
+  public getSimulation(): BackendAgentSimulation | null {
+    return this.simulation;
+  }
+
   /**
    * DESK ASSIGNMENT
    * Agent N works at desk sit_work-N. The office has 5 desks but MAX_AGENTS is 13, so agents

@@ -36,6 +36,8 @@ npm run dev
 
 3. **Open the app:** Navigate to the local URL shown in your terminal (usually `http://localhost:3000/the-delegation`).
 
+The app talks to the DevAll backend at port 6400 on the page's host; set `VITE_BACKEND_URL` (e.g. `VITE_BACKEND_URL=http://localhost:6500 npm run dev`) to point it elsewhere.
+
 ## Features
 
 ### Agentic AI System (v0.2.0)
@@ -62,6 +64,7 @@ npm run dev
 - **Real-time 3D Overlay:** Status indicators and interaction menus projected from 3D space into a polished UI.
 - **Agent Inspector:** Select any agent to view their "thoughts", mission, and history.
 - **Kanban & Action Logs:** Complete transparency into the agency's progress and tool-level interactions.
+- **Benchmark replay:** The **Benchmark** header button opens a panel that replays a recorded MedQA benchmark run from `docs/dynaclinic/results/` (served by `GET /api/benchmarks`). Pick a run: the `slide8-gpt-6-luna` preset combines the single and static arms of the shared-core run with the F15 dynamic run (94 / 96 / 90%); other entries are the raw run folders. Play, step, 1x/4x and skip to end fill a scoreboard of each arm's answer against the key with running accuracy, and filters narrow the table (arms disagree, adversarial, dynamic wrong); click a row for the question, options, mode reason and the path taken. With `dynaclinic_mvp` loaded (Play loads it), the characters act out the dynamic arm's recorded path through the same event path as a live run. It only replays recorded JSON: no workflow run, no model calls.
 
 ## Tech Stack Deep Dive
 
