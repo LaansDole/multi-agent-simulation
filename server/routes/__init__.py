@@ -2,6 +2,7 @@
 
 from . import (
     artifacts,
+    benchmarks,
     execute,
     execute_sync,
     health,
@@ -30,6 +31,7 @@ ALL_ROUTERS = [
     tools.router,
     websocket.router,
     spatial_configs.router,
+    benchmarks.router,
 ]
 
 __all__ = ["ALL_ROUTERS"]
