@@ -459,6 +459,21 @@ section[data-title="Results"] .verdict { font-size: 29px; margin-top: 34px; padd
 .cv .right { position: absolute; height: 6px; width: 34px; background: #6b6b6b; }
 .cv .right::after { content: ""; position: absolute; right: -14px; top: -6px; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 14px solid #6b6b6b; }
 
+
+/* DevAll graph + built explained */
+.graphshot { margin-top: 26px; border-radius: 14px; overflow: hidden; border: 1.5px solid var(--rule); }
+.graphshot img { display: block; width: 100%; height: auto; max-height: none; }
+.paths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 22px; }
+.paths div { font-size: 22px; line-height: 1.4; padding: 14px 20px; border-radius: 10px; border: 1.5px solid var(--rule); }
+.paths b { display: block; font-size: 24px; margin-bottom: 2px; }
+.paths .h { border-left: 6px solid var(--green); } .paths .c { border-left: 6px solid var(--teal); } .paths .a { border-left: 6px solid var(--red); }
+.paths .mono { font-size: 18px; color: var(--ink-soft); }
+.bx { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 40px; }
+.bx .card { display: grid; grid-template-columns: 190px 1fr; gap: 24px; align-items: center; padding: 34px 34px; }
+.bx .num { font-size: 72px; font-weight: 800; color: var(--teal); line-height: 1; letter-spacing: -0.02em; }
+.bx h3 { font-size: 32px; margin-bottom: 8px; }
+.bx p { font-size: 25px; line-height: 1.42; color: var(--ink-soft); }
+
 /* ===========================================
    DECK CHROME (outside slide design): progress + counter
    =========================================== */
@@ -516,7 +531,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
         <li>Screened in Covidence</li></ul></div>
     </div>
   </div>
-  <div class="foot"><span>Do Le Long An. LLM-driven multi-agent collaboration in healthcare settings: a scoping review. 2026.</span><span>2 / 8</span></div>
+  <div class="foot"><span>Do Le Long An. LLM-driven multi-agent collaboration in healthcare settings: a scoping review. 2026.</span><span>2 / 9</span></div>
 </section>
 <!-- =========================================================
      SLIDE 3: PRISMA-ScR FLOW DIAGRAM
@@ -540,7 +555,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       <div class="b" style="left:0;top:616px;width:720px;height:96px"><span class="doc"></span><div><b>81</b> studies included</div></div>
     </div>
   </div>
-  <div class="foot"><span>PRISMA-ScR flow, Fig. 1 of the scoping review</span><span>3 / 8</span></div>
+  <div class="foot"><span>PRISMA-ScR flow, Fig. 1 of the scoping review</span><span>3 / 9</span></div>
 </section>
 <!-- =========================================================
      SLIDE 4: THEMES -> GAP -> PROPOSAL
@@ -566,7 +581,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
         <li class="m">Meta-Controller switches per case</li></ul></div>
     </div>
   </div>
-  <div class="foot"><span>Themes: scoping review, sections 3 and 4. Gap as identified for the DynaClinic proposal.</span><span>4 / 8</span></div>
+  <div class="foot"><span>Themes: scoping review, sections 3 and 4. Gap as identified for the DynaClinic proposal.</span><span>4 / 9</span></div>
 </section>
 <!-- =========================================================
      SLIDE 6: THE PROPOSAL
@@ -589,57 +604,46 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       </div>
     </div>
   </div>
-  <div class="foot"><span>Reviewed proposal, layers L0-L4: input gateway, Meta-Controller, communication topology, agent execution, data and infrastructure</span><span>5 / 8</span></div>
+  <div class="foot"><span>Reviewed proposal, layers L0-L4: input gateway, Meta-Controller, communication topology, agent execution, data and infrastructure</span><span>5 / 9</span></div>
 </section>
 <!-- =========================================================
-     SLIDE 7: IMPLEMENTATION
+     SLIDE 6: IMPLEMENTATION (DevAll graph)
      ========================================================= -->
 <section class="slide" data-title="Implementation">
   <div class="chrome"><span><b>05</b> / implementation</span><span>DynamiClinic</span></div>
   <div class="body">
-    <h2 class="reveal" style="--d:1">Built as one workflow on the <em>DevAll</em> multi-agent platform</h2>
-    <div class="flow reveal" style="--d:2">
-      <svg class="wires" viewBox="0 0 1728 560" preserveAspectRatio="none" aria-hidden="true">
-        <defs>
-          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16171a"/></marker>
-          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7a4b"/></marker>
-          <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8392a"/></marker>
-        </defs>
-        <path d="M200,290 L286,290" marker-end="url(#ah)"/>
-        <path class="g" d="M530,250 C575,250 575,85 616,85" marker-end="url(#ahg)"/>
-        <path d="M530,300 L616,300" marker-end="url(#ah)"/>
-        <path d="M860,300 L946,300" marker-end="url(#ah)"/>
-        <path class="g" d="M1170,300 L1256,300" marker-end="url(#ahg)"/>
-        <path class="r" d="M1060,388 C1060,470 1150,480 1256,480" marker-end="url(#ahr)"/>
-        <path class="r" d="M1480,480 C1632,480 1632,470 1632,372" marker-end="url(#ahr)"/>
-        <path d="M1480,300 L1536,300" marker-end="url(#ah)"/>
-        <path class="g" d="M860,85 L1590,85 C1632,85 1632,110 1632,206" marker-end="url(#ahg)"/>
-                <text class="g" x="1180" y="284">agree</text>
-        <text class="r" x="800" y="452">diverge or U high</text>
-      </svg>
-      <div class="node" style="left:0;top:200px;width:200px"><b>Any case</b>A quiz question, or a scenario in plain words</div>
-      <div class="node teal" style="left:290px;top:200px;width:240px"><b style="font-size:24px">Meta-Controller</b>Triage (C) + generalist sweep (U), mode rule</div>
-      <div class="node green" style="left:620px;top:30px;width:240px"><b>Primary Care</b>Hierarchical: one agent</div>
-      <div class="node teal" style="left:620px;top:220px;width:240px"><b>Care Team</b>Imaging, Pathology/Lab, Pharmacology; Blackboard</div>
-      <div class="node teal" style="left:950px;top:220px;width:220px"><b>Conflict Detector</b>Divergence of the specialists vs tau</div>
-      <div class="node green" style="left:1260px;top:210px;width:220px"><b>Consensus Builder</b>Collaborative, after a mesh exchange</div>
-      <div class="node red" style="left:1260px;top:400px;width:220px"><b>Debate</b>Adversarial: Proponent, Opponent, Mediator</div>
-      <div class="node" style="left:1540px;top:210px;width:188px"><b>Safety gates</b>Allergy, interaction, order checks</div>
-    </div>
-    <div class="built-strip">
-      <div class="card reveal" style="--d:3"><div class="num">10</div><p>custom node types in one YAML workflow</p></div>
-      <div class="card reveal" style="--d:4"><div class="num">3</div><p>evaluation arms: single, static team, dynamic</p></div>
-      <div class="card reveal" style="--d:5"><div class="num">3D</div><p>office: every agent a character showing its live role</p></div>
-      <div class="card reveal" style="--d:6"><div class="num">1,030</div><p>automated tests, no model calls needed</p></div>
+    <h2>Built as one workflow on the <em>DevAll</em> platform</h2>
+    <div class="graphshot"><img src="slides-devall-graph.png" alt="DevAll workflow editor rendering dynaclinic_mvp.yaml: CaseInput, Triage, GeneralistSweep, then PrimaryCare or CareTeam; CareTeam to DivergenceGate, then MeshExchange or Proponent and Critic; Synthesizer, SafetyGate, Report"></div>
+    <div class="paths">
+      <div class="h"><b>Hierarchical</b><span class="mono">GeneralistSweep &rarr; PrimaryCare</span></div>
+      <div class="c"><b>Collaborative</b><span class="mono">CareTeam &rarr; DivergenceGate &rarr; MeshExchange</span></div>
+      <div class="a"><b>Adversarial</b><span class="mono">DivergenceGate &rarr; Proponent &rarr; Critic</span></div>
     </div>
   </div>
-  <div class="foot"><span>yaml_instance/dynaclinic_mvp.yaml / dynaclinic/ / the-delegation/ (React + Three.js). Stubs: FHIR/Neo4j, MCTS planner, BioBERT/Qdrant memory.</span><span>6 / 8</span></div>
+  <div class="foot"><span>Rendered by DevAll's workflow editor from yaml_instance/dynaclinic_mvp.yaml. All paths end in Synthesizer, SafetyGate, Report.</span><span>6 / 9</span></div>
+</section>
+
+<!-- =========================================================
+     SLIDE 7: WHAT WAS BUILT, EXPLAINED
+     ========================================================= -->
+<section class="slide" data-title="Built">
+  <div class="chrome"><span><b>06</b> / what was built</span><span>DynamiClinic</span></div>
+  <div class="body">
+    <h2>Four pieces behind the graph</h2>
+    <div class="bx">
+      <div class="card"><span class="num">10</span><div><h3>Custom node types</h3><p>Every DynaClinic step in the graph is a new DevAll node written in Python: triage, uncertainty sweep, primary care, care team, divergence gate, mesh, proponent, critic, synthesizer, safety gate. One YAML file wires them.</p></div></div>
+      <div class="card"><span class="num">3</span><div><h3>Evaluation arms</h3><p><b>Single</b>: one model call answers. <b>Static team</b>: the full team and critic every time. <b>Dynamic</b>: DynamiClinic picks the mode. Same questions, same model.</p></div></div>
+      <div class="card"><span class="num">3D</span><div><h3>Office view</h3><p>Imports any DevAll workflow; each agent is a character. On a hand-off the agents meet and talk, and each nameplate shows the agent's current role.</p></div></div>
+      <div class="card"><span class="num">1,030</span><div><h3>Automated tests</h3><p>Run offline with a fake model, no API calls: mode rule, thresholds, safety gates, engine fixes. Real runs are kept separate.</p></div></div>
+    </div>
+  </div>
+  <div class="foot"><span>dynaclinic/ (Python), yaml_instance/dynaclinic_mvp.yaml, the-delegation/ (React + Three.js). Stubs: FHIR/Neo4j, MCTS planner, BioBERT/Qdrant memory.</span><span>7 / 9</span></div>
 </section>
 <!-- =========================================================
      SLIDE 8: RESULTS
      ========================================================= -->
 <section class="slide" data-title="Results">
-  <div class="chrome"><span><b>06</b> / results</span><span>DynamiClinic</span></div>
+  <div class="chrome"><span><b>07</b> / results</span><span>DynamiClinic</span></div>
   <div class="body">
     <h2 class="reveal" style="--d:1">Works end to end; <em>not yet better</em> than one agent</h2>
     <div class="res">
@@ -665,13 +669,13 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       </div>
     </div>
   </div>
-  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. qwen: dynamic with its own calibrated tau_u; single vs dynamic p = 0.34.</span><span>7 / 8</span></div>
+  <div class="foot"><span>MedQA: Jin et al. 2021, 4-option test split, seed 2026 sample. qwen: dynamic with its own calibrated tau_u; single vs dynamic p = 0.34.</span><span>8 / 9</span></div>
 </section>
 <!-- =========================================================
      SLIDE 9: NEXT + LIVE DEMO
      ========================================================= -->
 <section class="slide" data-title="Next and demo">
-  <div class="chrome"><span><b>07</b> / next, then the live demo</span><span>DynamiClinic</span></div>
+  <div class="chrome"><span><b>08</b> / next, then the live demo</span><span>DynamiClinic</span></div>
   <div class="body">
     <h2 class="reveal" style="--d:1">Next: make the team <em>earn its cost</em></h2>
     <div class="demo">
@@ -691,11 +695,11 @@ body.editing [contenteditable="true"] { outline: 2px dashed rgba(184, 57, 42, 0.
       </div>
     </div>
   </div>
-  <div class="foot"><span>laansdole.github.io/multi-agent-simulation. Research prototype on synthetic and exam cases; not clinical advice.</span><span>8 / 8</span></div>
+  <div class="foot"><span>laansdole.github.io/multi-agent-simulation. Research prototype on synthetic and exam cases; not clinical advice.</span><span>9 / 9</span></div>
 </section>
 
 </main>
-<div class="deck-controls"><span class="counter" id="counter">1 / 8</span></div>
+<div class="deck-controls"><span class="counter" id="counter">1 / 9</span></div>
 </div>
 
 <script>
