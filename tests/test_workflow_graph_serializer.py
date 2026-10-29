@@ -5,7 +5,12 @@ from pathlib import Path
 import pytest
 
 from check.check import load_config
-from server.services.workflow_graph_serializer import MAX_AGENT_SLOTS, role_label, serialize_design
+from server.services.workflow_graph_serializer import (
+    MAX_AGENT_SLOTS,
+    id_label,
+    role_label,
+    serialize_design,
+)
 
 YAML_INSTANCE = Path(__file__).resolve().parents[1] / "yaml_instance"
 DYNACLINIC_MVP = YAML_INSTANCE / "dynaclinic_mvp.yaml"
@@ -114,6 +119,33 @@ class TestSerializeDesign:
         # Punctuation inside parentheses or a number does not end the clause; folded YAML lines are joined.
         assert role_label("Gate (A, B; C)\n  at tau 0.5. Rest") == "Gate (A, B; C) at tau 0.5"
         assert role_label(None) == ""
+
+    def test_id_label_keeps_words_and_acronyms(self):
+        assert id_label("ERTransfer") == "ER Transfer"
+        assert id_label("node_DayStart") == "Node Day Start"
+        assert id_label("agent_12") == "Agent 12"
+        assert id_label("Doctor-Patient Phase Loop Counter") == "Doctor Patient Phase Loop Counter"
+        assert id_label("starter") == "Starter"
+
+    @pytest.mark.parametrize("filename, expected", [
+        ("demo_hospital.yaml", [
+            "Patient Data Generator", "Admission Report", "Triage Data Generator", "Triage Report",
+            "Daily Summary", "Final Report",
+        ]),
+        ("simulation_hospital.yaml", [
+            "Environment", "Patient Generator", "Patient Agent", "Discharge", "Doctor Diagnosis", "Doctor Intake",
+            "Doctor Notes", "Nurse", "ER Transfer", "Patient Interaction", "Scenario Evolver", "Report Saver",
+            "Final Report Data Extractor",
+        ]),
+        ("dynaclinic_mvp.yaml", [
+            "Triage", "Primary Care", "Diagnostic Imaging", "Pathology/Lab", "Pharmacology", "Proponent", "Critic",
+            "Synthesizer",
+        ]),
+    ])
+    def test_character_names_keep_words_and_capitals(self, filename, expected):
+        dummy = {key: "x" for key in ("MODEL_NAME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "EMBEDDING_MODEL", "API_KEY", "BASE_URL")}
+        design = load_config(YAML_INSTANCE / filename, vars_override=dummy)
+        assert [a["label"] for a in serialize_design(design, filename=filename)["agent_nodes"]] == expected
 
     @pytest.mark.parametrize("filename, expected", [
         ("dynaclinic_mvp.yaml", {

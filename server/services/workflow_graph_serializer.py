@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 from entity.configs import AgentConfig, DesignConfig, EdgeConfig, Node
 from runtime.node.registry import iter_node_registrations
 from schema_registry import iter_node_schemas
-from utils.strs import titleize
 
 # Max agent characters (the user is not counted). Keep in sync with MAX_AGENTS in
 # the-delegation/src/data/agents.ts, which caps how many slots the 3D scene renders.
@@ -16,6 +15,10 @@ _ROLE_LABEL_MAX = 32
 # A description's first clause: up to the first . ; : , ! ? followed by whitespace or the end, keeping
 # (one level of) parentheses whole, so "Meta-Controller (complexity), ..." gives "Meta-Controller (complexity)".
 _FIRST_CLAUSE = re.compile(r"(?:\([^()]*\)|[^(.;:,!?]|[.;:,!?](?=\S))+")
+# Words of a node id: split on _ - and spaces, then at CamelCase humps, keeping an acronym whole
+# ("ERTransfer" -> "ER", "Transfer").
+_ID_SEPARATORS = re.compile(r"[\s_\-]+")
+_ID_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[^A-Z]+")
 
 
 def role_label(description: Optional[str]) -> str:
@@ -26,6 +29,12 @@ def role_label(description: Optional[str]) -> str:
         return clause
     cut = clause[: _ROLE_LABEL_MAX - 1]
     return (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" -/&") + "…"
+
+
+def id_label(node_id: str) -> str:
+    """Readable name from a node id: "PatientDataGenerator" -> "Patient Data Generator", "ERTransfer" -> "ER Transfer"."""
+    words = [word for part in _ID_SEPARATORS.split(node_id) for word in _ID_WORD.findall(part)]
+    return " ".join(word[0].upper() + word[1:] for word in words) or node_id
 
 
 def _agent_config_summary(node: Node) -> Optional[Dict[str, Any]]:
@@ -49,7 +58,7 @@ def _node_label(node: Node) -> str:
     label = getattr(node, "label", None) or getattr(node, "name", None)
     if label:
         return str(label)
-    return titleize(node.id)
+    return id_label(node.id)
 
 
 def _serialize_edge(edge: EdgeConfig) -> Dict[str, Any]:
