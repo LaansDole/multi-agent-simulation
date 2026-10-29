@@ -5,9 +5,10 @@ from pathlib import Path
 import pytest
 
 from check.check import load_config
-from server.services.workflow_graph_serializer import MAX_AGENT_SLOTS, serialize_design
+from server.services.workflow_graph_serializer import MAX_AGENT_SLOTS, role_label, serialize_design
 
-DYNACLINIC_MVP = Path(__file__).resolve().parents[1] / "yaml_instance" / "dynaclinic_mvp.yaml"
+YAML_INSTANCE = Path(__file__).resolve().parents[1] / "yaml_instance"
+DYNACLINIC_MVP = YAML_INSTANCE / "dynaclinic_mvp.yaml"
 
 # Minimal workflow that passes load_config with concrete (non-${VAR}) values
 # so validation does not depend on environment variables.
@@ -102,7 +103,44 @@ class TestSerializeDesign:
     def test_agent_nodes_convenience_list_with_slots(self, design):
         result = serialize_design(design, filename="minimal.yaml")
         # A plain agent entry carries no sub_agent key (shape unchanged for agent workflows).
-        assert result["agent_nodes"] == [{"node_id": "worker", "label": "Worker", "proposed_slot": 1}]
+        assert result["agent_nodes"] == [
+            {"node_id": "worker", "label": "Worker", "role_label": "The worker agent", "proposed_slot": 1}
+        ]
+
+    def test_role_label_is_the_first_clause_cut_at_a_word(self):
+        assert role_label("Processes triage report") == "Processes triage report"
+        assert role_label("Triage nurse handling initial intake") == "Triage nurse handling initial…"
+        assert role_label("Meta-Controller (complexity), Complexity C. Ingests") == "Meta-Controller (complexity)"
+        # Punctuation inside parentheses or a number does not end the clause; folded YAML lines are joined.
+        assert role_label("Gate (A, B; C)\n  at tau 0.5. Rest") == "Gate (A, B; C) at tau 0.5"
+        assert role_label(None) == ""
+
+    @pytest.mark.parametrize("filename, expected", [
+        ("dynaclinic_mvp.yaml", {
+            ("Triage", None): "Meta-Controller (complexity)",
+            ("PrimaryCare", None): "Primary Care Agent",
+            ("CareTeam", "imaging"): "Diagnostic Imaging",
+            ("CareTeam", "pathology"): "Pathology/Lab",
+            ("CareTeam", "pharmacology"): "Pharmacology",
+            ("Proponent", None): "Proponent",
+            ("Critic", None): "Clinical Critic (Opponent)",
+            ("Synthesizer", None): "Consensus Builder / Mediator",
+        }),
+        ("demo_hospital.yaml", {
+            ("PatientDataGenerator", None): "Generates patient admission…",
+            ("AdmissionReport", None): "Processes admission report",
+            ("TriageDataGenerator", None): "Generates triage queue data",
+            ("TriageReport", None): "Processes triage report",
+            ("DailySummary", None): "Creates daily summary for each…",
+            ("FinalReport", None): "Generates final simulation…",
+        }),
+    ])
+    def test_characters_carry_their_role_label(self, filename, expected):
+        # Dummy values for demo_hospital's ${...} placeholders, so the test does not depend on a .env.
+        dummy = {key: "x" for key in ("MODEL_NAME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "EMBEDDING_MODEL")}
+        design = load_config(YAML_INSTANCE / filename, vars_override=dummy)
+        agents = serialize_design(design, filename=filename)["agent_nodes"]
+        assert {(a["node_id"], a.get("sub_agent")): a["role_label"] for a in agents} == expected
 
     def test_dynaclinic_llm_nodes_are_characters_and_care_team_has_three(self):
         design = load_config(DYNACLINIC_MVP)

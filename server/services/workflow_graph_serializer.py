@@ -1,5 +1,6 @@
 """Serialize a validated DesignConfig into a NormalizedGraph for the 3D frontend."""
 
+import re
 from typing import Any, Dict, List, Optional
 
 from entity.configs import AgentConfig, DesignConfig, EdgeConfig, Node
@@ -11,6 +12,20 @@ from utils.strs import titleize
 # the-delegation/src/data/agents.ts, which caps how many slots the 3D scene renders.
 MAX_AGENT_SLOTS = 13
 _ROLE_TRUNCATE = 200
+_ROLE_LABEL_MAX = 32
+# A description's first clause: up to the first . ; : , ! ? followed by whitespace or the end, keeping
+# (one level of) parentheses whole, so "Meta-Controller (complexity), ..." gives "Meta-Controller (complexity)".
+_FIRST_CLAUSE = re.compile(r"(?:\([^()]*\)|[^(.;:,!?]|[.;:,!?](?=\S))+")
+
+
+def role_label(description: Optional[str]) -> str:
+    """Short role for a character's 3D nameplate: the description's first clause, cut at a word past 32 chars."""
+    match = _FIRST_CLAUSE.match(" ".join((description or "").split()))
+    clause = match.group(0).strip() if match else ""
+    if len(clause) <= _ROLE_LABEL_MAX:
+        return clause
+    cut = clause[: _ROLE_LABEL_MAX - 1]
+    return (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" -/&") + "…"
 
 
 def _agent_config_summary(node: Node) -> Optional[Dict[str, Any]]:
@@ -82,8 +97,11 @@ def serialize_design(design: DesignConfig, *, filename: str) -> Dict[str, Any]:
         if not is_agent:
             continue
         sub_agents = capabilities.sub_agents if capabilities else {}
-        characters = [{"label": sub_label, "sub_agent": key} for key, sub_label in sub_agents.items()]
-        for character in characters or [{"label": label}]:
+        # A sub-agent's label (e.g. "Diagnostic Imaging") is its role; a plain node's role leads its description.
+        characters = [
+            {"label": sub_label, "sub_agent": key, "role_label": sub_label} for key, sub_label in sub_agents.items()
+        ]
+        for character in characters or [{"label": label, "role_label": role_label(node.description)}]:
             assigned = len(agent_nodes)
             proposed_slot = assigned + 1 if assigned < MAX_AGENT_SLOTS else None
             agent_nodes.append({"node_id": node.id, **character, "proposed_slot": proposed_slot})

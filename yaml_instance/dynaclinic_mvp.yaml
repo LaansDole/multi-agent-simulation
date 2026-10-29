@@ -35,7 +35,7 @@ graph:
     - id: Triage
       type: dc_triage
       description: >-
-        Meta-Controller, Complexity C. Ingests the case (FHIR-lite stub), asks the LLM for a complexity
+        Meta-Controller (complexity), Complexity C. Ingests the case (FHIR-lite stub), asks the LLM for a complexity
         tier, scores the case deterministically, bumps an LLM LOW to MODERATE when the score reaches
         escalate_threshold (safety bias), and emits ROUTE: LOW|MODERATE|HIGH. C = max(tier level, feature
         density), with tau_c 0.5 equivalent to the tier rule.
@@ -43,7 +43,7 @@ graph:
     - id: GeneralistSweep
       type: dc_uncertainty
       description: >-
-        Meta-Controller, Uncertainty U and mode rule. One generalist call lists a probability-weighted
+        Meta-Controller (uncertainty), Uncertainty U and mode rule. One generalist call lists a probability-weighted
         differential (top-k, or one entry per option); U is its normalised entropy. Emits
         MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL. tau_u per input form and per model: the model's
         calibrated row (75th percentile of U, python -m dynaclinic.eval.calibrate); a model without one
@@ -54,7 +54,7 @@ graph:
     - id: PrimaryCare
       type: dc_primary_care
       description: >-
-        Hierarchical mode hub. Primary Care Agent restricted to the Emanuel & Emanuel Informative model;
+        Primary Care Agent, the hierarchical mode hub, restricted to the Emanuel & Emanuel Informative model;
         it may consult up to two specialist spokes (CONSULT: <role>: <question>), each answering only its
         own question from its own slice, then answers:
         facts and risks of each option, ending in FINAL ANSWER: <letter>; for an open-ended case a
@@ -94,7 +94,7 @@ graph:
     - id: Proponent
       type: dc_proponent
       description: >-
-        Adversarial mode, before the Critic. H1 is the team's plurality hypothesis (option letter, or
+        Proponent, adversarial mode, before the Critic. H1 is the team's plurality hypothesis (option letter, or
         leading diagnosis for an open-ended case); on a tie, the generalist sweep's top differential.
         H2 is the strongest alternative: the dissenting specialist's hypothesis, else the sweep's next
         differential. The Proponent argues H1 from the case and the Blackboard, states what would
@@ -103,7 +103,7 @@ graph:
     - id: Critic
       type: dc_critic
       description: >-
-        Adversarial mode. Clinical Critic decomposes the Blackboard into atomic claims, scores them
+        Clinical Critic (Opponent), adversarial mode. Decomposes the Blackboard into atomic claims, scores them
         with the hybrid rule/LLM-judge estimator and flags unsupported claims for the Synthesizer. In
         the same call it is the Opponent: it reads H1, H2 and the Proponent's case and lists
         counterevidence against both (logical leaps, contradicting findings or trial evidence,
@@ -112,7 +112,7 @@ graph:
     - id: Synthesizer
       type: dc_synthesizer
       description: >-
-        Consensus Builder in collaborative mode, integrating the round-1 and mesh step-2 entries into one
+        Consensus Builder / Mediator. Consensus Builder in collaborative mode, integrating the round-1 and mesh step-2 entries into one
         unified differential; Mediator (Conflict Resolver) in adversarial mode, where it reads the
         debate transcript and the Critic's flagged claims and first states SURVIVING HYPOTHESIS:
         H1|H2|neither and why. Writes the team answer from the Blackboard, ending
