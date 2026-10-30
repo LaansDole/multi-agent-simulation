@@ -34,13 +34,16 @@ jobs:
           cp docs/dynaclinic/runbook/slides.html _site/slides.html
           cp docs/dynaclinic/runbook/alignment.html _site/alignment.html
           cp docs/dynaclinic/runbook/demo-hospital.html _site/demo-hospital.html
+          cp docs/dynaclinic/runbook/site.css _site/site.css
           cp docs/dynaclinic/runbook/*.pdf _site/
           cp docs/dynaclinic/runbook/*.mp4 docs/dynaclinic/runbook/*.png _site/
           touch _site/.nojekyll
           ls -la _site
       - name: Check the page and its media
         run: |
-          grep -q "DynaClinic in 3D: runbook demo" _site/index.html
+          grep -q "DynamiClinic in 3D: runbook demo" _site/index.html
+          test -s _site/site.css
+          for f in index results alignment demo-hospital; do grep -q 'href="site.css"' "_site/$f.html"; done
           test -s _site/dynaclinic-3d-runbook-demo.mp4
           grep -q "MedQA-USMLE sample" _site/results.html
           grep -q "DynamiClinic" _site/slides.html

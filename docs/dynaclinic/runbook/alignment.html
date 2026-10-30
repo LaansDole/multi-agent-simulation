@@ -3,42 +3,48 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DynaClinic: fact check against the reviewed proposal</title>
+<title>DynamiClinic: fact check against the reviewed proposal</title>
 <link rel="canonical" href="https://laansdole.github.io/multi-agent-simulation/alignment.html">
-<style>
-  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
-  header { padding:28px 36px 8px; }
-  nav { padding:0 36px; font-size:14px; }
-  nav a { margin-right:18px; }
-  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
-  main { padding:12px 36px 40px; max-width:none; }
-  main h2 { font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:30px 0 10px; }
-  main p, main li { color:#d9d9e0; }
-  .table-wrap { overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:6px 10px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th, td { text-align:left; padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
-  tr:last-child td { border-bottom:none; }
-  code { background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
-  a { color:#8ab4ff; }
-  .tag { white-space:nowrap; display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; text-transform:uppercase; letter-spacing:0.04em; }
-  .tag.ok { background:#1f3a2a; color:#8fd6a5; } .tag.part { background:#3e3218; color:#f0c674; }
-  .tag.miss { background:#4a1f1f; color:#ffa49b; } .tag.extra { background:#1f2f4a; color:#9cc0ff; }
-  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
-  @media (max-width: 600px) { header, nav, main, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-<header><h1>DynaClinic vs the reviewed proposal (DynamiClinic)</h1></header>
-<nav><a href="index.html">3D runbook demo</a><a href="results.html">Benchmark results</a><a href="slides.html">Slides</a><a href="demo-hospital.html">demo_hospital in 3D</a></nav>
+<header class="masthead">
+  <a class="wordmark" href="index.html"><b>DynamiClinic</b><span>Research prototype. Not for clinical use.</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="index.html">Runbook demo</a>
+    <a href="results.html">Results</a>
+    <a href="alignment.html" aria-current="page">Fact check</a>
+    <a href="demo-hospital.html">demo_hospital</a>
+    <a href="slides.html">Slides</a>
+  </nav>
+</header>
+
+<div class="page">
+<aside class="toc">
+  <nav aria-labelledby="toc-h">
+    <h2 id="toc-h">On this page</h2>
+    <ol>
+      <li><a href="#layers">Architecture layers</a></li>
+      <li><a href="#mechanisms">Mechanisms</a></li>
+      <li><a href="#examples">The proposal's examples</a></li>
+      <li><a href="#after-f15">After <span class="id">f14</span> and <span class="id">f15</span></a></li>
+      <li><a href="#bench-f15">Benchmarks after <span class="id">f15</span></a></li>
+      <li><a href="#citations">Citations checked</a></li>
+      <li><a href="#follows">What follows</a></li>
+    </ol>
+  </nav>
+</aside>
 <main>
-<p>The implementation was built from an extended draft of the proposal (5 layers: FHIR/Neo4j ingestion, MCTS control plane, Blackboard, A_SAD/S_NAP/T_SAD safety gates, BioBERT/Qdrant memory). This page checks it against the <strong>reviewed</strong> proposal, <em>"DynamiClinic: A Dynamic Architecture Switching Multi-Agent Framework in Healthcare Settings"</em> (Do Le Long An; reviewed by A/Prof. Arthur Tang and Dr. Linh Tran), which is shorter and defines the system differently: layers L0 to L4, three communication modes, a complexity score and an uncertainty score, and a Conflict Detector between two hypotheses.</p>
-<p>Checked on 2026-10-27 against the code at commit 7c83807 and with real runs on OpenAI gpt-6-luna, then re-checked after the fixes it led to (f11 to f13, commits ac19ad6 to 302f550), and again on 2026-10-28 after the Meta-Controller and the three modes were aligned with the proposal (f14 and f15, commits 9ace5a6 to 2cf1567). The repo keeps the name DynaClinic; the reviewed proposal spells it DynamiClinic.</p>
-<p>Status key: <strong>matches</strong>: the code does what the proposal says. <strong>partial</strong>: the idea is there but the mechanism differs. <strong>differs</strong>: the code does something else. <strong>missing</strong>: not in the code. <strong>extra</strong>: in the code, not in the reviewed proposal.</p>
-<h2>Architecture layers (proposal Table 1)</h2>
-<div class="table-wrap"><table>
+<h1>DynamiClinic vs the reviewed proposal</h1>
+<p class="lede">The implementation was built from an extended draft of the proposal (5 layers: FHIR/Neo4j ingestion, MCTS control plane, Blackboard, A_SAD/S_NAP/T_SAD safety gates, BioBERT/Qdrant memory). This page checks it against the <strong>reviewed</strong> proposal, <em>"DynamiClinic: A Dynamic Architecture Switching Multi-Agent Framework in Healthcare Settings"</em> (Do Le Long An; reviewed by A/Prof. Arthur Tang and Dr. Linh Tran), which is shorter and defines the system differently: layers L0 to L4, three communication modes, a complexity score and an uncertainty score, and a Conflict Detector between two hypotheses.</p>
+<p>Checked on 2026-10-27 against the code at commit <span class="id">7c83807</span> and with real runs on OpenAI gpt-6-luna, then re-checked after the fixes it led to (<span class="id">f11</span> to <span class="id">f13</span>, commits <span class="id">ac19ad6</span> to <span class="id">302f550</span>), and again on 2026-10-28 after the Meta-Controller and the three modes were aligned with the proposal (<span class="id">f14</span> and <span class="id">f15</span>, commits <span class="id">9ace5a6</span> to <span class="id">2cf1567</span>). The code keeps the name DynaClinic (the <code>dynaclinic/</code> package and workflows); the system is DynamiClinic, as the reviewed proposal spells it.</p>
+<dl class="key" aria-label="Status key"><dt><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span></dt><dd>the code does what the proposal says.</dd><dt><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i></i><i></i></span>partial</span></dt><dd>the idea is there but the mechanism differs.</dd><dt><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i></i><i></i><i></i></span>differs</span></dt><dd>the code does something else.</dd><dt><span class="status"><span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>missing</span></dt><dd>not in the code.</dd><dt><span class="status extra"><span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>extra</span></dt><dd>in the code, not in the reviewed proposal.</dd></dl>
+<h2 id="layers">Architecture layers (proposal Table 1)</h2>
+<div class="table-wrap"><table class="stack">
+<caption><b>Table 1.</b> Architecture layers L0 to L4 from the proposal's Table 1, and the DevAll runtime.</caption>
 <thead>
 <tr>
 <th>Layer (proposal)</th>
@@ -49,45 +55,46 @@
 </thead>
 <tbody>
 <tr>
-<td>L0 Clinical Input Gateway</td>
-<td>Query intake, Context Vector Builder</td>
-<td><code>CaseInput</code> passthrough, <code>case_from_text</code> (JSON, plain text, free text), <code>FHIRLiteIngestor</code> stub that turns structured fields into text sections</td>
-<td><span class="tag part">partial</span>: intake yes, no context vector</td>
+<td data-label="Layer (proposal)">L0 Clinical Input Gateway</td>
+<td data-label="Proposal components">Query intake, Context Vector Builder</td>
+<td data-label="In the code"><code>CaseInput</code> passthrough, <code>case_from_text</code> (JSON, plain text, free text), <code>FHIRLiteIngestor</code> stub that turns structured fields into text sections</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i></i><i></i></span>partial</span>: intake yes, no context vector</td>
 </tr>
 <tr>
-<td>L1 Meta-Controller Orchestration</td>
-<td>Meta-Controller, Complexity Score, Uncertainty Score, Triage</td>
-<td><code>dynaclinic/triage.py</code> (LLM tier plus a deterministic feature score) gives the Complexity Score C; <code>dynaclinic/uncertainty.py</code> and the <code>GeneralistSweep</code> node give the Uncertainty Score U; one rule over both picks the mode</td>
-<td><span class="tag ok">matches</span>; LOW / MODERATE / HIGH tiers kept as an extension (below)</td>
+<td data-label="Layer (proposal)">L1 Meta-Controller Orchestration</td>
+<td data-label="Proposal components">Meta-Controller, Complexity Score, Uncertainty Score, Triage</td>
+<td data-label="In the code"><code>dynaclinic/triage.py</code> (LLM tier plus a deterministic feature score) gives the Complexity Score C; <code>dynaclinic/uncertainty.py</code> and the <code>GeneralistSweep</code> node give the Uncertainty Score U; one rule over both picks the mode</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>; LOW / MODERATE / HIGH tiers kept as an extension (below)</td>
 </tr>
 <tr>
-<td>L2 Dynamic Communication Topology</td>
-<td>Hierarchical (hub-spoke), Collaborative (mesh), Adversarial (proponent/opponent/mediator)</td>
-<td>Modes <code>hierarchical</code> (Primary Care hub, up to 2 consulted specialists), <code>collaborative</code> (care team + one mesh exchange round), <code>adversarial</code> (Proponent, Clinical Critic as Opponent, Synthesizer as Mediator)</td>
-<td><span class="tag ok">matches</span>, one round each (below)</td>
+<td data-label="Layer (proposal)">L2 Dynamic Communication Topology</td>
+<td data-label="Proposal components">Hierarchical (hub-spoke), Collaborative (mesh), Adversarial (proponent/opponent/mediator)</td>
+<td data-label="In the code">Modes <code>hierarchical</code> (Primary Care hub, up to 2 consulted specialists), <code>collaborative</code> (care team + one mesh exchange round), <code>adversarial</code> (Proponent, Clinical Critic as Opponent, Synthesizer as Mediator)</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>, one round each (below)</td>
 </tr>
 <tr>
-<td>L3 Agent Execution and Processing</td>
-<td>Primary Care Agent; ICT (Imaging, Pathology, Pharmacology); Conflict Detector; Consensus Builder; Clinical Critic; Conflict Resolver</td>
-<td><code>dc_primary_care</code>; <code>dc_care_team</code> (3 specialists); <code>dc_divergence_gate</code>; <code>dc_mesh_exchange</code>; <code>dc_proponent</code>; <code>dc_critic</code> (Opponent); <code>dc_synthesizer</code> (Consensus Builder, or Mediator / Conflict Resolver in adversarial mode)</td>
-<td><span class="tag ok">matches</span>, with one node playing both Consensus Builder and Conflict Resolver</td>
+<td data-label="Layer (proposal)">L3 Agent Execution and Processing</td>
+<td data-label="Proposal components">Primary Care Agent; ICT (Imaging, Pathology, Pharmacology); Conflict Detector; Consensus Builder; Clinical Critic; Conflict Resolver</td>
+<td data-label="In the code"><code>dc_primary_care</code>; <code>dc_care_team</code> (3 specialists); <code>dc_divergence_gate</code>; <code>dc_mesh_exchange</code>; <code>dc_proponent</code>; <code>dc_critic</code> (Opponent); <code>dc_synthesizer</code> (Consensus Builder, or Mediator / Conflict Resolver in adversarial mode)</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>, with one node playing both Consensus Builder and Conflict Resolver</td>
 </tr>
 <tr>
-<td>L4 Data and Infrastructure</td>
-<td>Medical process models, institutional protocols, persistent state, trace store</td>
-<td><code>kb.py</code> (small illustrative drug/precedence KB), per-run state (<code>global_state["dynaclinic"]</code>, Blackboard), trace store = DevAll run folder (<code>node_outputs.yaml</code>, <code>execution_logs.json</code>)</td>
-<td><span class="tag part">partial</span>: no process models or institutional protocols</td>
+<td data-label="Layer (proposal)">L4 Data and Infrastructure</td>
+<td data-label="Proposal components">Medical process models, institutional protocols, persistent state, trace store</td>
+<td data-label="In the code"><code>kb.py</code> (small illustrative drug/precedence KB), per-run state (<code>global_state["dynaclinic"]</code>, Blackboard), trace store = DevAll run folder (<code>node_outputs.yaml</code>, <code>execution_logs.json</code>)</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i></i><i></i></span>partial</span>: no process models or institutional protocols</td>
 </tr>
 <tr>
-<td>DevAll runtime (Figure 1)</td>
-<td>WebSocket server, Runtime SDK, GraphExecutor, CycleManager, TopologyBuilder</td>
-<td>Runs as <code>yaml_instance/dynaclinic_mvp.yaml</code> on DevAll; 3D office view in <code>the-delegation/</code></td>
-<td><span class="tag ok">matches</span></td>
+<td data-label="Layer (proposal)">DevAll runtime (Figure 1)</td>
+<td data-label="Proposal components">WebSocket server, Runtime SDK, GraphExecutor, CycleManager, TopologyBuilder</td>
+<td data-label="In the code">Runs as <code>yaml_instance/dynaclinic_mvp.yaml</code> on DevAll; 3D office view in <code>the-delegation/</code></td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span></td>
 </tr>
 </tbody>
 </table></div>
-<h2>Mechanisms</h2>
-<div class="table-wrap"><table>
+<h2 id="mechanisms">Mechanisms</h2>
+<div class="table-wrap"><table class="stack">
+<caption><b>Table 2.</b> Mechanisms, with the proposal section in brackets.</caption>
 <thead>
 <tr>
 <th>Proposal (section)</th>
@@ -98,94 +105,95 @@
 </thead>
 <tbody>
 <tr>
-<td>Triage classes (3)</td>
-<td>Two classes: LOW, HIGH</td>
-<td>Three: LOW, MODERATE (2 specialists), HIGH (3)</td>
-<td><span class="tag part">differs</span> (extension)</td>
+<td data-label="Proposal (section)">Triage classes (3)</td>
+<td data-label="What it says">Two classes: LOW, HIGH</td>
+<td data-label="What the code does">Three: LOW, MODERATE (2 specialists), HIGH (3)</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i></i><i></i><i></i></span>differs</span> (extension)</td>
 </tr>
 <tr>
-<td>LOW path (3)</td>
-<td>Single Primary Care Agent, bypasses MAS collaboration</td>
-<td>Same</td>
-<td><span class="tag ok">matches</span></td>
+<td data-label="Proposal (section)">LOW path (3)</td>
+<td data-label="What it says">Single Primary Care Agent, bypasses MAS collaboration</td>
+<td data-label="What the code does">Same</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span></td>
 </tr>
 <tr>
-<td>HIGH path (3)</td>
-<td>ICT in parallel, synthesized by a Consensus Builder</td>
-<td>Same; specialists run concurrently and post to a Blackboard, synthesizer answers</td>
-<td><span class="tag ok">matches</span></td>
+<td data-label="Proposal (section)">HIGH path (3)</td>
+<td data-label="What it says">ICT in parallel, synthesized by a Consensus Builder</td>
+<td data-label="What the code does">Same; specialists run concurrently and post to a Blackboard, synthesizer answers</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span></td>
 </tr>
 <tr>
-<td>Complexity score C (2)</td>
-<td>Density of clinical context: comorbidities, conflicting labs, multimodal inputs</td>
-<td>Feature score from structured fields and LLM-extracted counts</td>
-<td><span class="tag ok">matches</span> in spirit; cut-offs not validated</td>
+<td data-label="Proposal (section)">Complexity score C (2)</td>
+<td data-label="What it says">Density of clinical context: comorbidities, conflicting labs, multimodal inputs</td>
+<td data-label="What the code does">Feature score from structured fields and LLM-extracted counts</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span> in spirit; cut-offs not validated</td>
 </tr>
 <tr>
-<td>Uncertainty score U (2)</td>
-<td>Normalized entropy of the initial distribution over top-k differentials from a baseline generalist sweep</td>
-<td><code>GeneralistSweep</code>: one generalist call returns a top-k differential with probabilities (k = number of options for multiple choice, 5 for open-ended); U is its normalized entropy. tau_u per input form: 0.15 multiple choice, 0.59 open-ended, each the 75th percentile of U on MedQA-50 + synthetic-24 (and the same vignettes without options)</td>
-<td><span class="tag ok">matches</span>; thresholds calibrated in-sample, not validated against outcomes</td>
+<td data-label="Proposal (section)">Uncertainty score U (2)</td>
+<td data-label="What it says">Normalized entropy of the initial distribution over top-k differentials from a baseline generalist sweep</td>
+<td data-label="What the code does"><code>GeneralistSweep</code>: one generalist call returns a top-k differential with probabilities (k = number of options for multiple choice, 5 for open-ended); U is its normalized entropy. tau_u per input form: 0.15 multiple choice, 0.59 open-ended, each the 75th percentile of U on MedQA-50 + synthetic-24 (and the same vignettes without options)</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>; thresholds calibrated in-sample, not validated against outcomes</td>
 </tr>
 <tr>
-<td>Piecewise mode selection from C and U (2)</td>
-<td>One rule over both scores chooses Hierarchical / Collaborative / Adversarial</td>
-<td><code>select_mode</code>: U &gt; tau_u adversarial; else C &lt;= tau_c (0.5) hierarchical; else collaborative. The Conflict Detector can still switch a collaborative team to adversarial afterwards</td>
-<td><span class="tag ok">matches</span>, plus the detector as a second entry point</td>
+<td data-label="Proposal (section)">Piecewise mode selection from C and U (2)</td>
+<td data-label="What it says">One rule over both scores chooses Hierarchical / Collaborative / Adversarial</td>
+<td data-label="What the code does"><code>select_mode</code>: U &gt; tau_u adversarial; else C &lt;= tau_c (0.5) hierarchical; else collaborative. The Conflict Detector can still switch a collaborative team to adversarial afterwards</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>, plus the detector as a second entry point</td>
 </tr>
 <tr>
-<td>Hierarchical mode (1)</td>
-<td>Meta-Controller as hub querying subordinate specialists, no inter-agent talk</td>
-<td>Primary Care is the hub; it may name up to 2 <code>CONSULT:</code> specialists, who answer independently and never see each other</td>
-<td><span class="tag ok">matches</span> (Primary Care, not the Meta-Controller, is the hub)</td>
+<td data-label="Proposal (section)">Hierarchical mode (1)</td>
+<td data-label="What it says">Meta-Controller as hub querying subordinate specialists, no inter-agent talk</td>
+<td data-label="What the code does">Primary Care is the hub; it may name up to 2 <code>CONSULT:</code> specialists, who answer independently and never see each other</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span> (Primary Care, not the Meta-Controller, is the hub)</td>
 </tr>
 <tr>
-<td>Collaborative mode (1)</td>
-<td>Fully connected mesh; agents share intermediate reasoning</td>
-<td>After an independent round 1 (which the Conflict Detector measures), <code>MeshExchange</code> gives every specialist all peers' round-1 entries; each states what it adopts or disputes from each named peer and posts a revised entry. The Consensus Builder integrates both rounds</td>
-<td><span class="tag ok">matches</span>, one exchange round</td>
+<td data-label="Proposal (section)">Collaborative mode (1)</td>
+<td data-label="What it says">Fully connected mesh; agents share intermediate reasoning</td>
+<td data-label="What the code does">After an independent round 1 (which the Conflict Detector measures), <code>MeshExchange</code> gives every specialist all peers' round-1 entries; each states what it adopts or disputes from each named peer and posts a revised entry. The Consensus Builder integrates both rounds</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>, one exchange round</td>
 </tr>
 <tr>
-<td>Conflict Detector (4)</td>
-<td>Normalized semantic distance between the primary diagnostic assertions of two hypotheses, threshold tau</td>
-<td>Multiple choice: mean pairwise Jensen-Shannon distance over answer distributions, tau 0.25, plus top-1 disagreement. Open-ended (since f11 to f13): each specialist states a LEADING DIAGNOSIS; mean pairwise cosine distance of their embeddings (text-embedding-3-small, hashing fallback), tau_semantic 0.35 (not validated)</td>
-<td><span class="tag ok">matches</span> for open-ended cases; threshold not validated</td>
+<td data-label="Proposal (section)">Conflict Detector (4)</td>
+<td data-label="What it says">Normalized semantic distance between the primary diagnostic assertions of two hypotheses, threshold tau</td>
+<td data-label="What the code does">Multiple choice: mean pairwise Jensen-Shannon distance over answer distributions, tau 0.25, plus top-1 disagreement. Open-ended (since <span class="id">f11</span> to <span class="id">f13</span>): each specialist states a LEADING DIAGNOSIS; mean pairwise cosine distance of their embeddings (text-embedding-3-small, hashing fallback), tau_semantic 0.35 (not validated)</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span> for open-ended cases; threshold not validated</td>
 </tr>
 <tr>
-<td>Adversarial mode (1, 4)</td>
-<td>Proponent team vs Opponent team, Mediator adjudicates; Clinical Critic does destructive, evidence-grounded testing of both hypotheses, Conflict Resolver synthesizes</td>
-<td>H1 = the team's plurality hypothesis (else the sweep's top differential), H2 = the strongest alternative. <code>Proponent</code> argues for H1 and states what would falsify it; the Clinical Critic, as Opponent, keeps its atomic-claim scoring and adds counterevidence against H1 and H2; the Synthesizer, as Mediator, reads the transcript and states the SURVIVING HYPOTHESIS before answering</td>
-<td><span class="tag ok">matches</span>, one agent per role and one round (the proposal says teams)</td>
+<td data-label="Proposal (section)">Adversarial mode (1, 4)</td>
+<td data-label="What it says">Proponent team vs Opponent team, Mediator adjudicates; Clinical Critic does destructive, evidence-grounded testing of both hypotheses, Conflict Resolver synthesizes</td>
+<td data-label="What the code does">H1 = the team's plurality hypothesis (else the sweep's top differential), H2 = the strongest alternative. <code>Proponent</code> argues for H1 and states what would falsify it; the Clinical Critic, as Opponent, keeps its atomic-claim scoring and adds counterevidence against H1 and H2; the Synthesizer, as Mediator, reads the transcript and states the SURVIVING HYPOTHESIS before answering</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span>, one agent per role and one round (the proposal says teams)</td>
 </tr>
 <tr>
-<td>Input form (2, 3, Figures 2-3)</td>
-<td>Free-text clinical queries</td>
-<td>Multiple-choice cases, and since f11 any open-ended scenario (bare narrative, optional Labs/Meds/Imaging lines) answered with ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS, MISSING INFORMATION and RECOMMENDATION, no letter</td>
-<td><span class="tag ok">matches</span></td>
+<td data-label="Proposal (section)">Input form (2, 3, Figures 2-3)</td>
+<td data-label="What it says">Free-text clinical queries</td>
+<td data-label="What the code does">Multiple-choice cases, and since <span class="id">f11</span> any open-ended scenario (bare narrative, optional Labs/Meds/Imaging lines) answered with ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS, MISSING INFORMATION and RECOMMENDATION, no letter</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>matches</span></td>
 </tr>
 <tr>
-<td>Counterfactual grounding loss (2)</td>
-<td>Opponent maximizes the distance between the proposed diagnostic embedding and verified medical constraints</td>
-<td>Closest analogue: KB veto and grounding score inside the critic. No embedding-space objective</td>
-<td><span class="tag miss">missing</span></td>
+<td data-label="Proposal (section)">Counterfactual grounding loss (2)</td>
+<td data-label="What it says">Opponent maximizes the distance between the proposed diagnostic embedding and verified medical constraints</td>
+<td data-label="What the code does">Closest analogue: KB veto and grounding score inside the critic. No embedding-space objective</td>
+<td data-label="Status"><span class="status"><span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>missing</span></td>
 </tr>
 <tr>
-<td>Safety gates A_SAD / S_NAP / T_SAD</td>
-<td>Not in the reviewed proposal</td>
-<td>Implemented (A_SAD, T_SAD) and stubbed (S_NAP) from the extended draft</td>
-<td><span class="tag extra">extra</span></td>
+<td data-label="Proposal (section)">Safety gates A_SAD / S_NAP / T_SAD</td>
+<td data-label="What it says">Not in the reviewed proposal</td>
+<td data-label="What the code does">Implemented (A_SAD, T_SAD) and stubbed (S_NAP) from the extended draft</td>
+<td data-label="Status"><span class="status extra"><span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>extra</span></td>
 </tr>
 <tr>
-<td>MCTS control plane, FHIR/Neo4j, BioBERT/Qdrant memory, semantic cache</td>
-<td>Not in the reviewed proposal</td>
-<td>Stubs from the extended draft</td>
-<td><span class="tag extra">extra</span> (stubs)</td>
+<td data-label="Proposal (section)">MCTS control plane, FHIR/Neo4j, BioBERT/Qdrant memory, semantic cache</td>
+<td data-label="What it says">Not in the reviewed proposal</td>
+<td data-label="What the code does">Stubs from the extended draft</td>
+<td data-label="Status"><span class="status extra"><span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>extra</span> (stubs)</td>
 </tr>
 </tbody>
 </table></div>
-<h2>The proposal's own examples, run for real</h2>
-<p>The reviewed proposal gives four example queries (Figures 2 and 3). Each was run twice through <code>dynaclinic_mvp.yaml</code> on gpt-6-luna before the fixes (commit 7c83807, run folders <code>WareHouse/pdf-before_*</code>) and twice after them (commit 302f550, <code>WareHouse/f13run1_*</code>, <code>f13run2_*</code>), with the user's own open-ended example added.</p>
-<div class="table-wrap"><table>
+<h2 id="examples">The proposal's own examples, run for real</h2>
+<p>The reviewed proposal gives four example queries (Figures 2 and 3). Each was run twice through <code>dynaclinic_mvp.yaml</code> on gpt-6-luna before the fixes (commit <span class="id">7c83807</span>, run folders <code>WareHouse/pdf-before_*</code>) and twice after them (commit <span class="id">302f550</span>, <code>WareHouse/f13run1_*</code>, <code>f13run2_*</code>), with the user's own open-ended example added.</p>
+<div class="table-wrap"><table class="stack">
+<caption><b>Table 3.</b> The proposal's example queries before and after the <span class="id">f11</span> to <span class="id">f13</span> fixes. Cells: route / conflict routing.</caption>
 <thead>
 <tr>
 <th>Example</th>
@@ -196,86 +204,87 @@
 </thead>
 <tbody>
 <tr>
-<td>"Patient presents with sore throat and mild fever for 2 days."</td>
-<td>LOW</td>
-<td>LOW, LOW / not reached</td>
-<td>LOW, LOW / not reached</td>
+<td data-label="Example">"Patient presents with sore throat and mild fever for 2 days."</td>
+<td data-label="Proposal expects">LOW</td>
+<td data-label="Before: route / conflict routing">LOW, LOW / not reached</td>
+<td data-label="After: route / conflict routing">LOW, LOW / not reached</td>
 </tr>
 <tr>
-<td>"68-year-old diabetic patient with chest pain, renal insufficiency, and concurrent warfarin therapy."</td>
-<td>HIGH</td>
-<td>HIGH, HIGH / adversarial by the "not measurable without options" fallback</td>
-<td>HIGH, HIGH / all three specialists: acute coronary syndrome; divergence 0.11, 0.12, collaborative</td>
+<td data-label="Example">"68-year-old diabetic patient with chest pain, renal insufficiency, and concurrent warfarin therapy."</td>
+<td data-label="Proposal expects">HIGH</td>
+<td data-label="Before: route / conflict routing">HIGH, HIGH / adversarial by the "not measurable without options" fallback</td>
+<td data-label="After: route / conflict routing">HIGH, HIGH / all three specialists: acute coronary syndrome; divergence 0.11, 0.12, collaborative</td>
 </tr>
 <tr>
-<td>"Young adult with fever, sore throat, and cervical lymphadenopathy."</td>
-<td>likely CONSENSUS</td>
-<td>LOW, LOW / not reached</td>
-<td>LOW, LOW / not reached (triage keeps it with Primary Care)</td>
+<td data-label="Example">"Young adult with fever, sore throat, and cervical lymphadenopathy."</td>
+<td data-label="Proposal expects">likely CONSENSUS</td>
+<td data-label="Before: route / conflict routing">LOW, LOW / not reached</td>
+<td data-label="After: route / conflict routing">LOW, LOW / not reached (triage keeps it with Primary Care)</td>
 </tr>
 <tr>
-<td>"55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long flight."</td>
-<td>likely CONFLICT</td>
-<td>HIGH, HIGH / adversarial by the same fallback</td>
-<td>MODERATE, HIGH / every specialist: pulmonary embolism; divergence 0.05, 0.14, collaborative</td>
+<td data-label="Example">"55-year-old with acute chest pain, normal ECG, elevated D-dimer, and recent long flight."</td>
+<td data-label="Proposal expects">likely CONFLICT</td>
+<td data-label="Before: route / conflict routing">HIGH, HIGH / adversarial by the same fallback</td>
+<td data-label="After: route / conflict routing">MODERATE, HIGH / every specialist: pulmonary embolism; divergence 0.05, 0.14, collaborative</td>
 </tr>
 <tr>
-<td>"a patient has COVID-19 in a sunny day" (user's example)</td>
-<td>(open-ended)</td>
-<td>LOW / report ended "FINAL ANSWER: A"</td>
-<td>LOW, LOW / six-section write-up, weather called irrelevant, no letter</td>
+<td data-label="Example">"a patient has COVID-19 in a sunny day" (user's example)</td>
+<td data-label="Proposal expects">(open-ended)</td>
+<td data-label="Before: route / conflict routing">LOW / report ended "FINAL ANSWER: A"</td>
+<td data-label="After: route / conflict routing">LOW, LOW / six-section write-up, weather called irrelevant, no letter</td>
 </tr>
 </tbody>
 </table></div>
-<p>Triage matched the proposal on every run. Before the fixes, conflict routing never measured anything on these queries and reports ended in meaningless letters. Two intermediate states were also run and rejected (<code>WareHouse/after*</code>, <code>f12run*</code>): first every specialist abstained because its structured data section was empty (fixed in f12: specialists read the narrative), then the distance compared each specialist's own next step ("order CT", "check troponin", "avoid NSAIDs") and crossed tau although all three agreed on the diagnosis (fixed in f13: the distance uses only the LEADING DIAGNOSIS line, as the proposal specifies).</p>
+<p>Triage matched the proposal on every run. Before the fixes, conflict routing never measured anything on these queries and reports ended in meaningless letters. Two intermediate states were also run and rejected (<code>WareHouse/after*</code>, <code>f12run*</code>): first every specialist abstained because its structured data section was empty (fixed in <span class="id">f12</span>: specialists read the narrative), then the distance compared each specialist's own next step ("order CT", "check troponin", "avoid NSAIDs") and crossed tau although all three agreed on the diagnosis (fixed in <span class="id">f13</span>: the distance uses only the LEADING DIAGNOSIS line, as the proposal specifies).</p>
 <p>After the fixes the detector measures what the proposal defines, and on these examples gpt-6-luna's specialists agree, so the "likely conflict" example stays collaborative. That is a property of the model and the example, not a fallback; nothing was tuned to change it. tau_semantic 0.35 for text-embedding-3-small is an assumed value, not validated.</p>
-<h3>After f14 and f15 (uncertainty score, mode rule, mesh, debate)</h3>
-<p>Same five queries, twice each, on gpt-6-luna: f14 (commit be596a7, tau_u 0.8 assumed, <code>WareHouse/f14run1_*</code>, <code>f14run2_*</code>) and f15 (commit 2cf1567, tau_u 0.59 for open-ended input, <code>WareHouse/f15run1_*</code>, <code>f15run2_*</code>). Cells: route / mode (U).</p>
-<div class="table-wrap"><table>
+<h3 id="after-f15">After <span class="id">f14</span> and <span class="id">f15</span> (uncertainty score, mode rule, mesh, debate)</h3>
+<p>Same five queries, twice each, on gpt-6-luna: <span class="id">f14</span> (commit <span class="id">be596a7</span>, tau_u 0.8 assumed, <code>WareHouse/f14run1_*</code>, <code>f14run2_*</code>) and <span class="id">f15</span> (commit <span class="id">2cf1567</span>, tau_u 0.59 for open-ended input, <code>WareHouse/f15run1_*</code>, <code>f15run2_*</code>). Cells: route / mode (U).</p>
+<div class="table-wrap"><table class="stack">
+<caption><b>Table 4.</b> The same queries after <span class="id">f14</span> and f15. Cells: route / mode (U).</caption>
 <thead>
 <tr>
 <th>Example</th>
 <th>Proposal expects</th>
-<th>f14 run 1, run 2</th>
-<th>f15 run 1, run 2</th>
-<th>f15 Mediator verdict</th>
+<th><span class="id">f14</span> run 1, run 2</th>
+<th><span class="id">f15</span> run 1, run 2</th>
+<th><span class="id">f15</span> Mediator verdict</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Sore throat and mild fever</td>
-<td>LOW</td>
-<td>LOW / hierarchical (0.60), hierarchical (0.65)</td>
-<td>LOW / adversarial (0.71), adversarial (0.65)</td>
-<td>H1 acute pharyngitis, both runs</td>
+<td data-label="Example">Sore throat and mild fever</td>
+<td data-label="Proposal expects">LOW</td>
+<td data-label="f14 run 1, run 2">LOW / hierarchical (0.60), hierarchical (0.65)</td>
+<td data-label="f15 run 1, run 2">LOW / adversarial (0.71), adversarial (0.65)</td>
+<td data-label="f15 Mediator verdict">H1 acute pharyngitis, both runs</td>
 </tr>
 <tr>
-<td>68-year-old diabetic, chest pain, renal insufficiency, warfarin</td>
-<td>HIGH</td>
-<td>HIGH / adversarial (0.93), adversarial (0.92)</td>
-<td>HIGH / adversarial (0.94), adversarial (0.92)</td>
-<td>H1 suspected ACS, both runs</td>
+<td data-label="Example">68-year-old diabetic, chest pain, renal insufficiency, warfarin</td>
+<td data-label="Proposal expects">HIGH</td>
+<td data-label="f14 run 1, run 2">HIGH / adversarial (0.93), adversarial (0.92)</td>
+<td data-label="f15 run 1, run 2">HIGH / adversarial (0.94), adversarial (0.92)</td>
+<td data-label="f15 Mediator verdict">H1 suspected ACS, both runs</td>
 </tr>
 <tr>
-<td>Young adult, fever, sore throat, cervical lymphadenopathy</td>
-<td>likely CONSENSUS</td>
-<td>LOW / adversarial (0.88), hierarchical (0.78)</td>
-<td>LOW / adversarial (0.91), adversarial (0.84)</td>
-<td>H1 acute pharyngitis; run 2 "neither" (cause undetermined)</td>
+<td data-label="Example">Young adult, fever, sore throat, cervical lymphadenopathy</td>
+<td data-label="Proposal expects">likely CONSENSUS</td>
+<td data-label="f14 run 1, run 2">LOW / adversarial (0.88), hierarchical (0.78)</td>
+<td data-label="f15 run 1, run 2">LOW / adversarial (0.91), adversarial (0.84)</td>
+<td data-label="f15 Mediator verdict">H1 acute pharyngitis; run 2 "neither" (cause undetermined)</td>
 </tr>
 <tr>
-<td>55-year-old, chest pain, normal ECG, high D-dimer, long flight</td>
-<td>likely CONFLICT</td>
-<td>HIGH / adversarial (0.94), adversarial (0.92)</td>
-<td>HIGH / adversarial (0.91), adversarial (0.94)</td>
-<td>H2, both runs: H1 and H2 were both pulmonary embolism, worded differently</td>
+<td data-label="Example">55-year-old, chest pain, normal ECG, high D-dimer, long flight</td>
+<td data-label="Proposal expects">likely CONFLICT</td>
+<td data-label="f14 run 1, run 2">HIGH / adversarial (0.94), adversarial (0.92)</td>
+<td data-label="f15 run 1, run 2">HIGH / adversarial (0.91), adversarial (0.94)</td>
+<td data-label="f15 Mediator verdict">H2, both runs: H1 and H2 were both pulmonary embolism, worded differently</td>
 </tr>
 <tr>
-<td>"a patient has COVID-19 in a sunny day"</td>
-<td>(open-ended)</td>
-<td>LOW / hierarchical, hierarchical</td>
-<td>LOW / hierarchical (0.04), adversarial (0.63)</td>
-<td>run 2: H1 COVID-19</td>
+<td data-label="Example">"a patient has COVID-19 in a sunny day"</td>
+<td data-label="Proposal expects">(open-ended)</td>
+<td data-label="f14 run 1, run 2">LOW / hierarchical, hierarchical</td>
+<td data-label="f15 run 1, run 2">LOW / hierarchical (0.04), adversarial (0.63)</td>
+<td data-label="f15 Mediator verdict">run 2: H1 COVID-19</td>
 </tr>
 </tbody>
 </table></div>
@@ -283,37 +292,38 @@
 <li>Complexity triage still matches the proposal on every run. The Uncertainty Score does not: on these short queries the generalist spreads probability over several differentials, so U is high (0.6 to 0.94) and every proposal example, including the LOW and "likely consensus" ones, goes adversarial under tau_u 0.59. This was predicted from the calibration (the sore-throat example sat above the open-ended p75) and nothing was tuned to avoid it.</li>
 <li>U is noisy on very short queries: the COVID example gave U 0.04 in one run and 0.63 in the other.</li>
 <li>The debate ran for real. In the D-dimer example the team plurality (H1) and the alternative (H2) were the same diagnosis in different words, because H1/H2 votes match only after case and punctuation folding; the Mediator said so and picked H2. Paraphrase-aware matching is needed.</li>
-<li>Safety gates passed on all 10 f15 runs.</li>
+<li>Safety gates passed on all 10 <span class="id">f15</span> runs.</li>
 </ul>
-<h3>Benchmarks after f15 (dynamic arm only, gpt-6-luna)</h3>
-<p>Results in <code>results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna/</code> and <code>results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna/</code>; f14 baselines in the matching <code>2026-10-27-f14-*</code> folders. The single and static arms did not change (identical prompt hashes before and after f15) and were not re-run.</p>
-<div class="table-wrap"><table>
+<h3 id="bench-f15">Benchmarks after <span class="id">f15</span> (dynamic arm only, gpt-6-luna)</h3>
+<p>Results in <code>results/2026-10-28-f15-medqa50-dynamic-gpt-6-luna/</code> and <code>results/2026-10-28-f15-synthetic-dynamic-gpt-6-luna/</code>; <span class="id">f14</span> baselines in the matching <code>2026-10-27-f14-*</code> folders. The single and static arms did not change (identical prompt hashes before and after <span class="id">f15</span>) and were not re-run.</p>
+<div class="table-wrap"><table class="stack">
+<caption><b>Table 5.</b> Dynamic arm before and after f15.</caption>
 <thead>
 <tr>
 <th>Set</th>
-<th>f14 accuracy</th>
-<th>f15 accuracy [95% CI]</th>
-<th>f15 modes</th>
-<th>calls / case (f14 -&gt; f15)</th>
-<th>mean latency (f14 -&gt; f15)</th>
+<th><span class="id">f14</span> accuracy</th>
+<th><span class="id">f15</span> accuracy [95% CI]</th>
+<th><span class="id">f15</span> modes</th>
+<th>calls / case (<span class="id">f14</span> -&gt; <span class="id">f15</span>)</th>
+<th>mean latency (<span class="id">f14</span> -&gt; <span class="id">f15</span>)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>MedQA-50</td>
-<td>94% (47/50)</td>
-<td>96% (48/50) [86.5, 98.9]</td>
-<td>adversarial 17, collaborative 20, hierarchical 13</td>
-<td>4.66 -&gt; 6.94</td>
-<td>14.9 s -&gt; 32.0 s</td>
+<td data-label="Set">MedQA-50</td>
+<td data-label="f14 accuracy">94% (47/50)</td>
+<td data-label="f15 accuracy [95% CI]">96% (48/50) [86.5, 98.9]</td>
+<td data-label="f15 modes">adversarial 17, collaborative 20, hierarchical 13</td>
+<td data-label="calls / case (f14 -&amp;gt; f15)">4.66 -&gt; 6.94</td>
+<td data-label="mean latency (f14 -&amp;gt; f15)">14.9 s -&gt; 32.0 s</td>
 </tr>
 <tr>
-<td>Synthetic-24</td>
-<td>100% (24/24)</td>
-<td>95.8% (23/24) [79.8, 99.3]</td>
-<td>adversarial 1, collaborative 18, hierarchical 5</td>
-<td>5.04 -&gt; 7.12</td>
-<td>15.0 s -&gt; 24.9 s</td>
+<td data-label="Set">Synthetic-24</td>
+<td data-label="f14 accuracy">100% (24/24)</td>
+<td data-label="f15 accuracy [95% CI]">95.8% (23/24) [79.8, 99.3]</td>
+<td data-label="f15 modes">adversarial 1, collaborative 18, hierarchical 5</td>
+<td data-label="calls / case (f14 -&amp;gt; f15)">5.04 -&gt; 7.12</td>
+<td data-label="mean latency (f14 -&amp;gt; f15)">15.0 s -&gt; 24.9 s</td>
 </tr>
 </tbody>
 </table></div>
@@ -323,22 +333,28 @@
 <li>The synthetic miss, syn-high-02, is a collaborative case where round 1's plurality was the correct answer (C); after the mesh exchange the Consensus Builder answered D, the safety gate blocked it twice and the case ended with no answer.</li>
 <li>In 11 of the 20 collaborative MedQA cases every specialist abstained in round 1 (uniform distribution; MedQA vignettes have no structured data for the specialists' modalities), so the mesh had nothing to exchange and the Consensus Builder answered alone.</li>
 </ul>
-<h2>Citations checked (web, 2026-10-27)</h2>
+<h2 id="citations">Citations checked (web, 2026-10-27)</h2>
 <ul>
 <li>MDAgents [3]: NeurIPS 2024; best on 7 of 10 benchmarks, up to +4.2% over prior best (arXiv 2404.15155). Matches the proposal's description.</li>
 <li>DynamiCare [5]: arXiv 2507.02616, multi-round interactive specialist team on MIMIC-Patient. Matches.</li>
 <li>Dialectic-Med [11]: published in <strong>Findings of ACL 2026</strong> (pages 36877-36894, DOI 10.18653/v1/2026.findings-acl.1837), not the main ACL 2026 conference as the reference list says, and it is evaluated on medical visual question answering (MIMIC-CXR-VQA, VQA-RAD, PathVQA). The proposal's "proves that adversarial communication is strictly necessary ... guarantee patient safety" is stronger than the paper's claim.</li>
 </ul>
-<h2>What follows for the research</h2>
+<h2 id="follows">What follows for the research</h2>
 <ul>
-<li>The two gaps named before f14 (uncertainty score at triage, mesh collaborative mode) are closed, and the proposal's single rule over C and U now chooses all three modes. Each mode is one round with one agent per role; the proposal's Proponent and Opponent <em>teams</em> and multi-round debate are not built.</li>
+<li>The two gaps named before <span class="id">f14</span> (uncertainty score at triage, mesh collaborative mode) are closed, and the proposal's single rule over C and U now chooses all three modes. Each mode is one round with one agent per role; the proposal's Proponent and Opponent <em>teams</em> and multi-round debate are not built.</li>
 <li>tau_u is calibrated in-sample (75th percentile on the eval's own vignettes) and sends every proposal example to adversarial. It needs validating against outcomes on a held-out set, and U itself needs more than one generalist sample to be stable on short queries.</li>
 <li>The adversarial mode now runs on a third of MedQA, but accuracy did not move outside the confidence interval while calls per case rose about 50%. A harder benchmark with real expert disagreement, or a weaker base model, is still needed to show whether the debate helps.</li>
 <li>A weaker base model (qwen3.5-4b, MedQA-50, three arms) gave headroom but no benefit: single 68%, dynamic 60%, static 62% (paired differences not significant), and tau_u calibrated on gpt-6-luna sent 49 of 50 questions to adversarial. tau_u has to be calibrated per model (or replaced by a model-independent rule). Done since f19/f20: a per-model table plus <code>python -m dynaclinic.eval.calibrate</code>; with qwen's own threshold (from synthetic-24, MedQA-50 held out) the dynamic arm spreads over all three modes at fewer calls, but stays at 60% while single scores 68% (p = 0.34).</li>
-<li>H1/H2 selection now groups paraphrases by meaning (f18; "pulmonary embolism" and "suspected pulmonary embolism" at distance 0.205 &lt; 0.35 are one hypothesis).</li>
+<li>H1/H2 selection now groups paraphrases by meaning (<span class="id">f18</span>; "pulmonary embolism" and "suspected pulmonary embolism" at distance 0.205 &lt; 0.35 are one hypothesis).</li>
 <li>tau_semantic still needs validating on labelled agree/disagree diagnosis pairs embedded with the production embedder.</li>
 </ul>
 </main>
-<footer>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/proposal-alignment.md">docs/dynaclinic/proposal-alignment.md</a> on branch threejs-devall.</footer>
+</div>
+
+<footer class="colophon">
+  <p><strong>Research prototype. Not for clinical use.</strong></p>
+  <p>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/proposal-alignment.md">docs/dynaclinic/proposal-alignment.md</a>, branch threejs-devall.</p>
+  <p>Live: <a href="https://laansdole.github.io/multi-agent-simulation/alignment.html">laansdole.github.io/multi-agent-simulation/alignment.html</a></p>
+</footer>
 </body>
 </html>

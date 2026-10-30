@@ -3,134 +3,146 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DynaClinic in 3D: runbook demo</title>
+<title>DynamiClinic in 3D: runbook demo</title>
 <link rel="canonical" href="https://laansdole.github.io/multi-agent-simulation/">
-<style>
-  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
-  header { padding:28px 36px 8px; }
-  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
-  .sub { color:var(--muted); }
-  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:24px; padding:20px 36px 40px; }
-  video { width:100%; border-radius:10px; background:#000; border:1px solid var(--line); }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
-  .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
-  .steps { list-style:none; margin:0; padding:0; }
-  .steps li { padding:7px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:44px 1fr; gap:6px; border-left:3px solid transparent; }
-  .steps li:hover { background:#24242d; }
-  .steps li.active { background:#22304a; border-left-color:var(--accent); }
-  .steps .t { color:var(--muted); font-variant-numeric:tabular-nums; }
-  .steps .chapter { margin-top:10px; padding:6px 10px 2px; cursor:pointer; font-weight:700; color:#fff; display:block; }
-  .tag { white-space:nowrap; display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:4px; vertical-align:1px; background:#1f2f4a; color:#9cc0ff; }
-  .tag.good, .tag.low { background:#1f3a2a; color:#8fd6a5; } .tag.warn, .tag.adv { background:#4a1f1f; color:#ffa49b; } .tag.collab { background:#1f2f4a; color:#9cc0ff; }
-  .table-wrap { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:14px; }
-  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
-  td.nw, th.nw { white-space:nowrap; }
-  .below { padding:0 36px 48px; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:24px; }
-  code { white-space:nowrap; background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
-  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; max-width:100%; }
-  pre code { white-space:pre; background:none; padding:0; }
-  a { color:#8ab4ff; }
-  .note { color:var(--muted); font-size:13px; }
-  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
-  @media (max-width: 1180px) { .wrap { grid-template-columns:1fr; } }
-  @media (max-width: 1400px) { .below { grid-template-columns:1fr; } }
-  @media (max-width: 600px) { header, .wrap, .below, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-<header>
-  <h1>DynaClinic in 3D: runbook demo</h1>
-  <div class="sub">One continuous recording of the runbook, step by step, in the three.js office. Three real mock scenarios on OpenAI gpt-6-luna, one per mode: the Meta-Controller scores complexity C and uncertainty U, keeps one Primary Care Agent for a simple case (hierarchical), calls the Integrated Care Team with a mesh exchange for a complex but clear one (collaborative), and opens a Proponent / Opponent / Mediator debate when uncertainty is high (adversarial). Agents meet and talk on every hand-off. Captions name the runbook step and quote the run&#x27;s own output. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged.</div>
+<header class="masthead">
+  <a class="wordmark" href="index.html"><b>DynamiClinic</b><span>Research prototype. Not for clinical use.</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="index.html" aria-current="page">Runbook demo</a>
+    <a href="results.html">Results</a>
+    <a href="alignment.html">Fact check</a>
+    <a href="demo-hospital.html">demo_hospital</a>
+    <a href="slides.html">Slides</a>
+  </nav>
 </header>
 
-<div class="wrap">
-  <div>
-    <video id="v" controls preload="metadata" src="dynaclinic-3d-runbook-demo.mp4"></video>
-    <p class="note">Recorded 2026-10-28 at commit be54e5a (after f14 to f23), fresh browser profile, backend on :6400, office on :3100. Click any step in the list to jump there.</p>
+<div class="page wide">
+<main>
+  <h1>DynamiClinic in 3D: runbook demo</h1>
+  <div class="intro">
+    <div class="abstract">
+      <p><span class="runin">In one recording</span>Three real mock scenarios on OpenAI gpt-6-luna, one per mode, run step by step through the runbook in the three.js office. The Meta-Controller scores complexity C and uncertainty U, keeps one Primary Care Agent for a simple case (hierarchical), calls the Integrated Care Team with a mesh exchange for a complex but clear one (collaborative), and opens a Proponent / Opponent / Mediator debate when uncertainty is high (adversarial). Agents meet and talk on every hand-off.</p>
+    </div>
+    <div>
+      <div class="equation" role="figure" aria-label="Equation 1: the mode rule">
+        <div class="cases">
+          <span class="lhs">mode(C, U) =</span>
+          <svg class="brace" viewBox="0 0 12 100" preserveAspectRatio="none" aria-hidden="true"><path d="M11 1 C5 1 6 6 6 12 V40 C6 46 4 50 1 50 C4 50 6 54 6 60 V88 C6 94 5 99 11 99" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
+          <span><span class="m">adversarial</span> <span class="if">if <i>U</i> &gt; <i>&tau;<sub>u</sub></i></span></span>
+          <span><span class="m">hierarchical</span> <span class="if">if <i>C</i> &le; 0.5</span></span>
+          <span><span class="m">collaborative</span> <span class="if">otherwise</span></span>
+        </div>
+        <span class="no">(1)</span>
+      </div>
+      <p class="meta">&tau;<sub>u</sub> is 0.15 for multiple choice (calibrated for gpt-6-luna). The Conflict Detector can still move a collaborative team to adversarial when the specialists' divergence reaches &tau; 0.25.</p>
+    </div>
   </div>
-  <div class="panel">
-    <h2>Runbook steps in the video</h2>
-    <ul class="steps" id="steps">
-      <span class="chapter" data-t="0.0">Intro</span>
-      <span class="chapter" data-t="7.2">Load DynaClinic</span>
-      <li data-t="7.2"><span class="t"></span><span>Runbook 3.1: Open the 3D office</span></li>
-      <li data-t="17.4"><span class="t"></span><span>Runbook 3.2: Browse Workflows -&gt; dynaclinic_mvp.yaml</span></li>
-      <li data-t="24.9"><span class="t"></span><span>Runbook 3.3: Reload: the DynaClinic agents appear</span></li>
-      <li data-t="34.5"><span class="t"></span><span>Runbook 3.4: Model: OPENAI gpt-6-luna</span></li>
-      <li data-t="37.0"><span class="t"></span><span>Runbook 3.5: Design view: the team hierarchy</span></li>
-      <span class="chapter" data-t="44.9">Scenario A: hierarchical</span>
-      <li data-t="44.9"><span class="t"></span><span>Scenario A: Mock case: 34-year-old man with a warm, red lower leg</span></li>
-      <li data-t="47.4"><span class="t"></span><span>Runbook 4.1: Getting Started -&gt; START: CHAT WITH TRIAGE</span></li>
-      <li data-t="51.0"><span class="t"></span><span>Runbook 4.2: Mock scenarios -&gt; Insert, then Enter</span></li>
-      <li data-t="59.7"><span class="t"></span><span>Meta-Controller: Triage: LOW (LLM LOW, rules LOW)</span></li>
-      <li data-t="63.1"><span class="t"></span><span>Mode rule: C 0.29 &lt;= 0.5 and U 0.11 &lt;= 0.15 -&gt; HIERARCHICAL</span></li>
-      <li data-t="68.4"><span class="t"></span><span>Result A: FINAL ANSWER: A, oral cephalexin</span></li>
-      <span class="chapter" data-t="94.4">Scenario B: collaborative + mesh</span>
-      <li data-t="94.4"><span class="t"></span><span>Scenario B: Mock case: 48-year-old man on phenelzine with severe flank pain</span></li>
-      <li data-t="100.4"><span class="t"></span><span>Runbook 4.2: Mock scenarios -&gt; Insert, then Enter</span></li>
-      <li data-t="114.2"><span class="t"></span><span>Meta-Controller: Triage: HIGH (LLM HIGH, rules MODERATE)</span></li>
-      <li data-t="117.1"><span class="t"></span><span>Mode rule: C 1.00 &gt; 0.5 and U 0.08 &lt;= 0.15 -&gt; COLLABORATIVE</span></li>
-      <li data-t="125.8"><span class="t"></span><span>Care team: Pharmacology: D 0.97. Imaging and Pathology abstain</span></li>
-      <li data-t="127.3"><span class="t"></span><span>Mesh exchange: Specialists read each other&#x27;s Blackboard entries</span></li>
-      <li data-t="143.5"><span class="t"></span><span>Result B: FINAL ANSWER: D, IV ketorolac</span></li>
-      <span class="chapter" data-t="169.6">Scenario C: adversarial debate</span>
-      <li data-t="169.6"><span class="t"></span><span>Scenario C: Mock case: pregnant woman at 30 weeks, chest pain, short of breath</span></li>
-      <li data-t="175.9"><span class="t"></span><span>Runbook 4.2: Mock scenarios -&gt; Insert, then Enter</span></li>
-      <li data-t="186.5"><span class="t"></span><span>Meta-Controller: Triage: MODERATE (LLM and rules agree)</span></li>
-      <li data-t="191.6"><span class="t"></span><span>Mode rule: U 0.64 &gt; tau_u 0.15 -&gt; ADVERSARIAL</span></li>
-      <li data-t="199.2"><span class="t"></span><span>Care team: Pharmacology: C 0.75. Pathology abstains</span></li>
-      <li data-t="210.0"><span class="t"></span><span>Proponent: H1: C, LMWH + leg ultrasound. H2: B, V/Q scan</span></li>
-      <li data-t="229.0"><span class="t"></span><span>Opponent (Clinical Critic): Argues against H1 and H2</span></li>
-      <li data-t="241.2"><span class="t"></span><span>Mediator: SURVIVING HYPOTHESIS: H1</span></li>
-      <li data-t="242.5"><span class="t"></span><span>Result C: FINAL ANSWER: C</span></li>
-      <span class="chapter" data-t="262.7">End</span>
-    </ul>
-  </div>
-</div>
 
-<div class="below">
-  <div class="panel">
-    <h2>What each run did (from the run&#x27;s own output)</h2>
-<div class="table-wrap"><table>
-      <tr><th>Case</th><th class="nw">Triage</th><th>Care team</th><th>Mode</th><th class="nw">Answer</th></tr>
-      <tr><td><code class="case-id">A: low-leg-redness</code><span class="note">Cellulitis with a sulfonamide allergy</span></td><td class="nw">LOW</td><td>Not called</td><td class="nw"><span class="tag low">hierarchical</span><br><span class="note">C 0.29, U 0.11</span></td><td class="nw">A, oral cephalexin</td></tr>
-      <tr><td><code class="case-id">B: high-flank-pain</code><span class="note">Renal colic on phenelzine</span></td><td class="nw">HIGH</td><td>Pharmacology D (0.97)<br><span class="note">Imaging and Pathology abstain; mesh exchange</span></td><td class="nw"><span class="tag collab">collaborative</span><br><span class="note">C 1.00, U 0.08, div 0.00</span></td><td class="nw">D, IV ketorolac</td></tr>
-      <tr><td><code class="case-id">C: contested-pregnancy-chest-pain</code><span class="note">30 weeks pregnant, suspected VTE</span></td><td class="nw">MODERATE</td><td>Pharmacology C (0.75)<br><span class="note">Pathology abstains</span></td><td class="nw"><span class="tag adv">adversarial</span><br><span class="note">U 0.64 &gt; 0.15</span><br><span class="note">H1 C vs H2 B; Mediator keeps H1</span></td><td class="nw">C, LMWH + leg ultrasound</td></tr>
-    </table></div>
-    <p class="note"><b>More:</b> <a href="results.html">benchmark results</a> (single vs dynamic vs static on MedQA and the synthetic set), the <a href="alignment.html">fact check against the reviewed proposal</a>, and the <a href="slides.html">9-slide deck</a> (scoping review to prototype) (<a href="dynamiclinic-slides.pdf">PDF</a>). A generic DevAll workflow in the same 3D office, with agents meeting on every hand-off: <a href="demo-hospital.html">demo_hospital in 3D</a>. The 3D app also takes any clinical scenario in plain words, not only multiple-choice questions.</p>
-    <p class="note">Mock scenarios from <code>dynaclinic_mvp.yaml</code> (Mock scenarios panel, Insert, Enter). Care team: each answering specialist's top choice and its probability. Thresholds: tau_c 0.5, tau_u 0.15 for multiple choice (calibrated for gpt-6-luna), divergence tau 0.25. Layer 4 safety gates (A_SAD, T_SAD) passed in all three; S_NAP is a stub. U is sampled (k = 5), so a re-run can land in another mode: in this session the apixaban case went collaborative (U 0.13), and earlier runs of case C went adversarial at U 0.51.</p>
+  <div class="recording">
+    <figure>
+      <video id="v" controls preload="metadata" src="dynaclinic-3d-runbook-demo.mp4"></video>
+      <figcaption><b>Figure 1.</b> The runbook in the 3D office, recorded 2026-10-28 at commit <span class="id">be54e5a</span> (after <span class="id">f14</span> to <span class="id">f23</span>) with a fresh browser profile, backend on :6400 and the office on :3100. Captions name the runbook step and quote the run's own output. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged. Its title card uses the code name, DynaClinic. Select any step to jump there.</figcaption>
+    </figure>
+    <section class="steps" aria-labelledby="steps-h">
+      <h2 id="steps-h">Steps in the recording</h2>
+      <ol id="steps">
+        <li class="chapter" data-t="0.0"><button type="button"><span class="t"></span><span>Intro</span></button></li>
+        <li class="chapter" data-t="7.2"><button type="button"><span class="t"></span><span>Load DynamiClinic</span></button></li>
+        <li data-t="7.2"><button type="button"><span class="t"></span><span>Runbook 3.1: open the 3D office</span></button></li>
+        <li data-t="17.4"><button type="button"><span class="t"></span><span>Runbook 3.2: Browse Workflows, <code>dynaclinic_mvp.yaml</code></span></button></li>
+        <li data-t="24.9"><button type="button"><span class="t"></span><span>Runbook 3.3: reload; the agents appear</span></button></li>
+        <li data-t="34.5"><button type="button"><span class="t"></span><span>Runbook 3.4: model OPENAI gpt-6-luna</span></button></li>
+        <li data-t="37.0"><button type="button"><span class="t"></span><span>Runbook 3.5: design view, the team hierarchy</span></button></li>
+        <li class="chapter" data-t="44.9"><button type="button"><span class="t"></span><span>Scenario A: hierarchical</span></button></li>
+        <li data-t="44.9"><button type="button"><span class="t"></span><span>Mock case: 34-year-old man with a warm, red lower leg</span></button></li>
+        <li data-t="47.4"><button type="button"><span class="t"></span><span>Runbook 4.1: Getting Started, START: CHAT WITH TRIAGE</span></button></li>
+        <li data-t="51.0"><button type="button"><span class="t"></span><span>Runbook 4.2: Mock scenarios, Insert, then Enter</span></button></li>
+        <li data-t="59.7"><button type="button"><span class="t"></span><span>Meta-Controller triage: LOW (LLM LOW, rules LOW)</span></button></li>
+        <li data-t="63.1"><button type="button"><span class="t"></span><span>Mode rule: C 0.29 &le; 0.5 and U 0.11 &le; 0.15, hierarchical</span></button></li>
+        <li data-t="68.4"><button type="button"><span class="t"></span><span>Result A: FINAL ANSWER: A, oral cephalexin</span></button></li>
+        <li class="chapter" data-t="94.4"><button type="button"><span class="t"></span><span>Scenario B: collaborative and mesh</span></button></li>
+        <li data-t="94.4"><button type="button"><span class="t"></span><span>Mock case: 48-year-old man on phenelzine with severe flank pain</span></button></li>
+        <li data-t="100.4"><button type="button"><span class="t"></span><span>Runbook 4.2: Mock scenarios, Insert, then Enter</span></button></li>
+        <li data-t="114.2"><button type="button"><span class="t"></span><span>Meta-Controller triage: HIGH (LLM HIGH, rules MODERATE)</span></button></li>
+        <li data-t="117.1"><button type="button"><span class="t"></span><span>Mode rule: C 1.00 &gt; 0.5 and U 0.08 &le; 0.15, collaborative</span></button></li>
+        <li data-t="125.8"><button type="button"><span class="t"></span><span>Care team: Pharmacology D 0.97; Imaging and Pathology abstain</span></button></li>
+        <li data-t="127.3"><button type="button"><span class="t"></span><span>Mesh exchange: specialists read each other's Blackboard entries</span></button></li>
+        <li data-t="143.5"><button type="button"><span class="t"></span><span>Result B: FINAL ANSWER: D, IV ketorolac</span></button></li>
+        <li class="chapter" data-t="169.6"><button type="button"><span class="t"></span><span>Scenario C: adversarial debate</span></button></li>
+        <li data-t="169.6"><button type="button"><span class="t"></span><span>Mock case: pregnant woman at 30 weeks, chest pain, short of breath</span></button></li>
+        <li data-t="175.9"><button type="button"><span class="t"></span><span>Runbook 4.2: Mock scenarios, Insert, then Enter</span></button></li>
+        <li data-t="186.5"><button type="button"><span class="t"></span><span>Meta-Controller triage: MODERATE (LLM and rules agree)</span></button></li>
+        <li data-t="191.6"><button type="button"><span class="t"></span><span>Mode rule: U 0.64 &gt; &tau;<sub>u</sub> 0.15, adversarial</span></button></li>
+        <li data-t="199.2"><button type="button"><span class="t"></span><span>Care team: Pharmacology C 0.75; Pathology abstains</span></button></li>
+        <li data-t="210.0"><button type="button"><span class="t"></span><span>Proponent: H1 C, LMWH and leg ultrasound; H2 B, V/Q scan</span></button></li>
+        <li data-t="229.0"><button type="button"><span class="t"></span><span>Opponent (Clinical Critic) argues against H1 and H2</span></button></li>
+        <li data-t="241.2"><button type="button"><span class="t"></span><span>Mediator: SURVIVING HYPOTHESIS: H1</span></button></li>
+        <li data-t="242.5"><button type="button"><span class="t"></span><span>Result C: FINAL ANSWER: C</span></button></li>
+        <li class="chapter" data-t="262.7"><button type="button"><span class="t"></span><span>End</span></button></li>
+      </ol>
+    </section>
   </div>
-  <div class="panel">
-    <h2>Run it yourself</h2>
-    <pre><code># from the repo root (git clone https://github.com/LaansDole/multi-agent-simulation)
+
+  <h2 id="runs">What each run did</h2>
+  <p>From each run's own output. Care team: each answering specialist's top choice and its probability.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Case</th><th>Triage</th><th>Care team</th><th>Mode</th><th>Answer</th></tr></thead>
+    <tbody>
+      <tr><td><code>A: low-leg-redness</code><span class="sub">Cellulitis with a sulfonamide allergy</span></td><td class="nw">LOW</td><td>Not called</td><td class="nw"><b>hierarchical</b><span class="sub">C 0.29, U 0.11</span></td><td>A, oral cephalexin</td></tr>
+      <tr><td><code>B: high-flank-pain</code><span class="sub">Renal colic on phenelzine</span></td><td class="nw">HIGH</td><td>Pharmacology D (0.97)<span class="sub">Imaging and Pathology abstain; mesh exchange</span></td><td class="nw"><b>collaborative</b><span class="sub">C 1.00, U 0.08, div 0.00</span></td><td>D, IV ketorolac</td></tr>
+      <tr><td><code>C: contested-pregnancy-chest-pain</code><span class="sub">30 weeks pregnant, suspected VTE</span></td><td class="nw">MODERATE</td><td>Pharmacology C (0.75)<span class="sub">Pathology abstains</span></td><td class="nw"><b>adversarial</b><span class="sub">U 0.64 &gt; 0.15</span><span class="sub">H1 C vs H2 B; Mediator keeps H1</span></td><td>C, LMWH and leg ultrasound</td></tr>
+    </tbody>
+  </table></div>
+  <p class="meta">Mock scenarios from <code>dynaclinic_mvp.yaml</code> (Mock scenarios panel, Insert, Enter). Thresholds: &tau;<sub>c</sub> 0.5, &tau;<sub>u</sub> 0.15 for multiple choice, divergence &tau; 0.25. Layer 4 safety gates (A_SAD, T_SAD) passed in all three; S_NAP is a stub. U is sampled (k = 5), so a re-run can land in another mode: in this session the apixaban case went collaborative (U 0.13), and earlier runs of case C went adversarial at U 0.51. The 3D app also takes any clinical scenario in plain words, not only multiple-choice questions.</p>
+
+  <h2 id="more">Where to go next</h2>
+  <ul>
+    <li><a href="results.html">Benchmark results</a>: single agent vs dynamic vs static on MedQA-50 and the synthetic set, with intervals.</li>
+    <li><a href="alignment.html">Fact check against the reviewed proposal</a>, layer by layer.</li>
+    <li><a href="slides.html">Slides</a>, from the scoping review to the prototype (<a href="dynamiclinic-slides.pdf">PDF</a>).</li>
+    <li><a href="demo-hospital.html">demo_hospital in 3D</a>: a generic DevAll workflow in the same office, agents meeting on every hand-off.</li>
+  </ul>
+
+  <h2 id="run">Run it yourself</h2>
+  <pre><code># from the repo root (git clone https://github.com/LaansDole/multi-agent-simulation)
 env -u PYTHONPATH -u VIRTUAL_ENV uv run python server_main.py --port 6400
 
 cd the-delegation
 npx vite --port=3100 --host=127.0.0.1 --strictPort</code></pre>
-    <p>Open <a href="http://localhost:3100/the-delegation/">localhost:3100/the-delegation/</a>, then follow the steps in the list above. Case lines: <code>data/dynaclinic/synthetic_cases.jsonl</code> (A) and <code>data/dynaclinic/demo_cases.jsonl</code> (B, C). Full instructions, troubleshooting and the proposal mapping: <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/runbook/README.md">runbook</a>.</p>
-  </div>
+  <p>Open <a href="http://localhost:3100/the-delegation/">localhost:3100/the-delegation/</a> and follow the steps above. Case lines: <code>data/dynaclinic/synthetic_cases.jsonl</code> (A) and <code>data/dynaclinic/demo_cases.jsonl</code> (B, C). Full instructions, troubleshooting and the proposal mapping are in the <a href="https://github.com/LaansDole/multi-agent-simulation/blob/threejs-devall/docs/dynaclinic/runbook/README.md">runbook</a>.</p>
+</main>
 </div>
 
-<footer>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/runbook">docs/dynaclinic/runbook</a> on branch threejs-devall. Live page: <a href="https://laansdole.github.io/multi-agent-simulation/">https://laansdole.github.io/multi-agent-simulation/</a></footer>
+<footer class="colophon">
+  <p><strong>Research prototype. Not for clinical use.</strong></p>
+  <p>Source: <a href="https://github.com/LaansDole/multi-agent-simulation/tree/threejs-devall/docs/dynaclinic/runbook">docs/dynaclinic/runbook</a>, branch threejs-devall.</p>
+  <p>Live: <a href="https://laansdole.github.io/multi-agent-simulation/">laansdole.github.io/multi-agent-simulation</a></p>
+</footer>
 
 <script>
   const v = document.getElementById('v');
   const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-  const items = [...document.querySelectorAll('#steps [data-t]')];
-  items.forEach(el => {
-    const t = parseFloat(el.dataset.t);
-    const slot = el.querySelector('.t'); if (slot) slot.textContent = fmt(t);
-    el.addEventListener('click', () => { v.currentTime = t; v.play(); });
+  const items = [...document.querySelectorAll('#steps li')];
+  items.forEach(li => {
+    const t = parseFloat(li.dataset.t);
+    li.querySelector('.t').textContent = fmt(t);
+    li.querySelector('button').addEventListener('click', () => { v.currentTime = t; v.play(); });
   });
-  const lis = items.filter(el => el.tagName === 'LI');
+  const steps = items.filter(li => !li.classList.contains('chapter'));
+  let current = null;
   v.addEventListener('timeupdate', () => {
     let cur = null;
-    for (const el of lis) if (parseFloat(el.dataset.t) <= v.currentTime + 0.2) cur = el;
-    lis.forEach(el => el.classList.toggle('active', el === cur));
+    for (const li of steps) if (parseFloat(li.dataset.t) <= v.currentTime + 0.2) cur = li;
+    if (cur === current) return;
+    if (current) current.removeAttribute('aria-current');
+    if (cur) cur.setAttribute('aria-current', 'step');
+    current = cur;
   });
 </script>
 </body>
