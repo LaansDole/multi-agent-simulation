@@ -77,7 +77,7 @@ components:
 
 **Creative North Star: "The Evidence Table"**
 
-The site reads like the results and appendix of a systematic review. Reviewers come to check claims, so every claim sits next to its interval, its recorded run, or its status mark. The world lives in the frame and the apparatus: a plum masthead rule, booktabs tables, forest plots, numbered figures and one numbered equation. The reading column stays calm, set in a serif at a real measure on white paper.
+The site reads like the results and appendix of a systematic review. Reviewers come to check claims, so every claim sits next to its interval, its recorded run, or its status mark. The world lives in the frame and the apparatus: a plum masthead rule, booktabs tables, forest plots, numbered figures and one numbered equation. The reading column stays calm, set in a serif on white paper and running the full width of the column.
 
 Bad news gets the same typographic weight as good news. A result that favours the single agent is plotted the same way as one that favours the team. A "missing" status gets the same mark anatomy as a "matches".
 
@@ -118,7 +118,7 @@ The serif carries what a reviewer reads. The sans carries what they scan: nav, t
 - **Headline** (700, clamp 32 to 46px, 1.1): the page title, balanced, at most 24ch.
 - **Title** (700, 26px, 1.2): section headings, with 64px above and 14px below.
 - **Subsection** (Source Sans 3 600, 19px): h3.
-- **Body** (400, 17px, 1.62): running text at 70ch; the lede is 19px.
+- **Body** (400, 17px, 1.62): running text across the full column width; the lede is 19px.
 - **Label** (Source Sans 3 600, 15px): table headers, run-ins, forest-plot labels.
 - **Caption** (Source Sans 3 400, 14.5px): figure and table captions, which lead with a bold "Figure n." or "Table n.".
 
@@ -129,7 +129,7 @@ The serif carries what a reviewer reads. The sans carries what they scan: nav, t
 
 - The content is at most 1240px wide, centred. Gutters are clamp(20px, 4vw, 56px).
 - Reference pages have a 196px sticky "On this page" rail beside the reading column, 56px apart. The demo page drops the rail and runs full width.
-- The reading measure is 70ch. Tables, forest plots and figures may run the full column width.
+- Text, tables, forest plots and figures all run the full column width (owner preference: no narrower text measure). Only the page title (24ch), Equation 1 (820px) and small lookup tables are capped.
 - On the demo, the abstract sits beside Equation 1, then the recording sits beside its step table. Each pair stacks below 1180px.
 - Below 960px the rail is hidden. Below 640px:
   - tables marked `stack` become one record per row, with a small label over each value;

@@ -14,7 +14,7 @@
   --serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
   --sans: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --mono: "Source Code Pro", ui-monospace, Menlo, monospace;
-  --measure: 70ch;
+  --measure: none;
   --gutter: clamp(20px, 4vw, 56px);
 }
 
@@ -83,8 +83,8 @@ li { margin: 0 0 8px; }
 li::marker { color: var(--plum); }
 strong, b { font-weight: 600; }
 
-.lede { font-size: 19px; line-height: 1.58; color: var(--ink); max-width: 66ch; }
-.abstract { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); padding: 16px 0 6px; margin: 22px 0 8px; max-width: 74ch; }
+.lede { font-size: 19px; line-height: 1.58; color: var(--ink); }
+.abstract { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); padding: 16px 0 6px; margin: 22px 0 8px; }
 .runin { font-family: var(--sans); font-weight: 700; color: var(--plum); margin-right: 0.45em; }
 .meta { font-family: var(--sans); font-size: 14.5px; color: var(--ink-2); max-width: var(--measure); }
 .small { font-size: 14.5px; }
@@ -97,7 +97,7 @@ pre {
   padding: 14px 16px; overflow-x: auto; margin: 0 0 16px; max-width: 100%;
 }
 pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
-pre.text { font-family: var(--serif); font-size: 16px; white-space: pre-wrap; max-width: 74ch; background: none; padding: 16px 0; }
+pre.text { font-family: var(--serif); font-size: 16px; white-space: pre-wrap; background: none; padding: 16px 0; }
 
 /* Equation */
 .equation {
@@ -115,9 +115,9 @@ pre.text { font-family: var(--serif); font-size: 16px; white-space: pre-wrap; ma
 
 /* Figures */
 figure { margin: 26px 0 30px; }
-figcaption { font-family: var(--sans); font-size: 14.5px; line-height: 1.5; color: var(--ink-2); margin-top: 10px; max-width: 74ch; }
+figcaption { font-family: var(--sans); font-size: 14.5px; line-height: 1.5; color: var(--ink-2); margin-top: 10px; }
 figcaption b { color: var(--ink); font-weight: 700; margin-right: 0.3em; }
-video, figure img { display: block; width: 100%; height: auto; background: #0b0b0d; border: 1px solid var(--rule); }
+video, figure img { display: block; width: 100%; height: auto; background: var(--ink); border: 1px solid var(--rule); }
 .plates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 28px; }
 .plates figure { margin: 8px 0 18px; }
 
@@ -163,7 +163,7 @@ td.wrong { font-weight: 700; color: var(--plum-deep); background: var(--plum-was
 td.right { padding-left: 8px; }
 
 /* Forest plot */
-.forest { font-family: var(--sans); font-size: 15px; margin: 22px 0 10px; max-width: 900px; --lo-axis: 40; --span: 60; }
+.forest { font-family: var(--sans); font-size: 15px; margin: 22px 0 10px; --lo-axis: 40; --span: 60; }
 .fp-row { display: grid; grid-template-columns: 170px 190px minmax(160px, 1fr); gap: 0 18px; align-items: center; min-height: 46px; padding: 8px 0; border-bottom: 1px solid var(--rule-soft); }
 .fp-row:last-child { border-bottom: 1.5px solid var(--ink); }
 .fp-head { border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--ink); font-weight: 600; min-height: 0; padding: 8px 0 6px; align-items: end; }
@@ -197,7 +197,7 @@ td.right { padding-left: 8px; }
 .dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--plum); }
 .dots i.f { background: var(--plum); }
 .status.extra .dots i { border-style: dashed; border-color: var(--ink-2); }
-.key { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-family: var(--sans); font-size: 15px; max-width: 74ch; margin: 16px 0 8px; align-items: center; }
+.key { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-family: var(--sans); font-size: 15px; margin: 16px 0 8px; align-items: center; }
 .key dt { margin: 0; } .key dd { margin: 0; color: var(--ink-2); }
 
 /* Footer */

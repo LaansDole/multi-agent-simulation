@@ -81,7 +81,7 @@
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Running text at a 70ch measure."
+        "purpose": "Running text across the full column width."
       },
       "label": {
         "displayName": "Label",
@@ -162,7 +162,7 @@
   ],
   "narrative": {
     "northStar": "The Evidence Table",
-    "overview": "The site reads like the results and appendix of a systematic review. Reviewers come to check claims, so every claim sits next to its interval, its recorded run, or its status mark. The world lives in the frame and the apparatus: a plum masthead rule, booktabs tables, forest plots, numbered figures and one numbered equation. The reading column stays calm, set in a serif at a real measure on white paper.\n\nBad news gets the same typographic weight as good news. A result that favours the single agent is plotted the same way as one that favours the team. A \"missing\" status gets the same mark anatomy as a \"matches\".",
+    "overview": "The site reads like the results and appendix of a systematic review. Reviewers come to check claims, so every claim sits next to its interval, its recorded run, or its status mark. The world lives in the frame and the apparatus: a plum masthead rule, booktabs tables, forest plots, numbered figures and one numbered equation. The reading column stays calm, set in a serif on white paper and running the full width of the column.\n\nBad news gets the same typographic weight as good news. A result that favours the single agent is plotted the same way as one that favours the team. A \"missing\" status gets the same mark anatomy as a \"matches\".",
     "keyCharacteristics": [
       "White paper, near-black ink, one plum accent, warm grey hairlines.",
       "Serif for reading and headings; humanist sans for the apparatus; mono only for code and identifiers.",
