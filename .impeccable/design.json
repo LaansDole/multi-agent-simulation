@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T01:56:39.428031+00:00",
+  "title": "Design System: DynamiClinic project site",
+  "extensions": {
+    "colorMeta": {
+      "review-plum": {
+        "role": "primary",
+        "displayName": "Review Plum",
+        "canonical": "#6b1f4f",
+        "tonalRamp": [
+          "#2a0b1f",
+          "#3f1230",
+          "#55183f",
+          "#6b1f4f",
+          "#8a3d6d",
+          "#ab6990",
+          "#d0a3bf",
+          "#f6eef3"
+        ]
+      },
+      "review-plum-deep": {
+        "role": "primary",
+        "displayName": "Deep Plum",
+        "canonical": "#4f1239"
+      },
+      "plum-wash": {
+        "role": "neutral",
+        "displayName": "Plum Wash",
+        "canonical": "#f6eef3"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#ffffff"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1b1b1f",
+        "tonalRamp": [
+          "#1b1b1f",
+          "#2e2b31",
+          "#4a454d",
+          "#6a656d",
+          "#8d888f",
+          "#b3aeb4",
+          "#d9d3d7",
+          "#ece8eb"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "canonical": "#4a454d"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d9d3d7"
+      },
+      "hairline-soft": {
+        "role": "neutral",
+        "displayName": "Soft Hairline",
+        "canonical": "#ece8eb"
+      },
+      "code-ground": {
+        "role": "neutral",
+        "displayName": "Code Ground",
+        "canonical": "#f6f4f5"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles only."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "h2 section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text at a 70ch measure."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Nav, table headers, run-ins, forest-plot labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Figure and table captions, meta lines."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code, file paths, commit ids, run codes."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "stack-pairs",
+        "value": "1180px"
+      },
+      {
+        "name": "hide-rail",
+        "value": "960px"
+      },
+      {
+        "name": "mobile",
+        "value": "640px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Site navigation",
+      "kind": "nav",
+      "refersTo": "nav-link-current",
+      "description": "Masthead nav; current page bold with a plum underline.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\">Runbook demo</a><a href=\"#\">Results</a><a href=\"#\">Fact check</a></nav>",
+      "css": ".ds-nav{display:flex;gap:22px;font:400 15.5px/1.4 'Source Sans 3',sans-serif;border-bottom:3px solid #6b1f4f;padding-bottom:10px}.ds-nav a{color:#1b1b1f;text-decoration:none;padding:4px 0 6px;border-bottom:2px solid transparent}.ds-nav a:hover{border-bottom-color:#d9d3d7}.ds-nav a:focus-visible{outline:2px solid #6b1f4f;outline-offset:3px}.ds-nav a[aria-current=page]{font-weight:600;border-bottom-color:#6b1f4f}"
+    },
+    {
+      "name": "Link",
+      "kind": "custom",
+      "refersTo": "link",
+      "description": "Inline plum link.",
+      "html": "<p class=\"ds-p\">See the <a class=\"ds-link\" href=\"#\">fact check</a>.</p>",
+      "css": ".ds-p{font:400 17px/1.62 'Source Serif 4',serif;color:#1b1b1f}.ds-link{color:#6b1f4f;text-decoration-thickness:1px;text-underline-offset:.18em}.ds-link:hover{color:#4f1239;text-decoration-thickness:2px}.ds-link:focus-visible{outline:2px solid #6b1f4f;outline-offset:3px}"
+    },
+    {
+      "name": "Forest plot row",
+      "kind": "custom",
+      "description": "Arm, value with interval, and plot with a diamond estimate and capped interval bar; dashed single-agent reference line.",
+      "html": "<div class=\"ds-fp\"><span><b>dynamic</b></span><span>60% (30/50) <small>46.2 to 72.4</small></span><span class=\"ds-fp-plot\"><i class=\"ds-ci\"></i><i class=\"ds-pt\"></i><i class=\"ds-ref\"></i></span></div>",
+      "css": ".ds-fp{display:grid;grid-template-columns:120px 170px 1fr;gap:16px;align-items:center;padding:8px 0;border-top:1.5px solid #1b1b1f;border-bottom:1.5px solid #1b1b1f;font:15px/1.4 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}.ds-fp small{color:#4a454d}.ds-fp-plot{position:relative;height:36px}.ds-ci{position:absolute;top:50%;height:2px;background:#1b1b1f;left:10.3%;width:43.7%}.ds-pt{position:absolute;top:50%;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;background:#6b1f4f;transform:rotate(45deg);left:33.3%}.ds-ref{position:absolute;top:0;bottom:0;left:46.7%;border-left:1.5px dashed #4a454d}"
+    },
+    {
+      "name": "Status mark",
+      "kind": "chip",
+      "description": "Four dots plus the status word.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-dots\"><i class=\"f\"></i><i class=\"f\"></i><i></i><i></i></span>partial</span>",
+      "css": ".ds-status{display:inline-flex;gap:8px;align-items:center;font:600 15px 'Source Sans 3',sans-serif;color:#1b1b1f}.ds-dots{display:inline-flex;gap:3px}.ds-dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid #6b1f4f}.ds-dots i.f{background:#6b1f4f}"
+    },
+    {
+      "name": "Booktabs table",
+      "kind": "custom",
+      "description": "Ink top/bottom rules, header rule, soft row hairlines; wrong cell bold on plum wash.",
+      "html": "<table class=\"ds-t\"><thead><tr><th>Question</th><th>single</th><th>dynamic</th></tr></thead><tbody><tr><td>medqa-test-0243</td><td>A</td><td class=\"w\">C</td></tr></tbody></table>",
+      "css": ".ds-t{border-collapse:collapse;border-top:1.5px solid #1b1b1f;border-bottom:1.5px solid #1b1b1f;font:15px/1.45 'Source Sans 3',sans-serif}.ds-t th{text-align:left;font-weight:600;padding:9px 12px 8px 0;border-bottom:1px solid #1b1b1f}.ds-t td{padding:9px 12px 9px 0}.ds-t td.w{font-weight:700;color:#4f1239;background:#f6eef3;padding-left:8px}"
+    },
+    {
+      "name": "Step list item",
+      "kind": "custom",
+      "refersTo": "step-current",
+      "description": "Recording step as a button; current step on plum wash, weight 600.",
+      "html": "<ol class=\"ds-steps\"><li><button>1:03 Mode rule: hierarchical</button></li><li aria-current=\"step\"><button>1:08 Result A</button></li></ol>",
+      "css": ".ds-steps{list-style:none;margin:0;padding:0;font:14.5px/1.4 'Source Sans 3',sans-serif}.ds-steps button{all:unset;cursor:pointer;display:block;width:100%;padding:7px 8px;border-bottom:1px solid #ece8eb}.ds-steps button:hover{background:#f6eef3}.ds-steps button:focus-visible{outline:2px solid #6b1f4f;outline-offset:-2px}.ds-steps li[aria-current=step] button{background:#f6eef3;font-weight:600}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Evidence Table",
+    "overview": "The site reads like the results and appendix of a systematic review. Reviewers come to check claims, so every claim sits next to its interval, its recorded run, or its status mark. The world lives in the frame and the apparatus: a plum masthead rule, booktabs tables, forest plots, numbered figures and one numbered equation. The reading column stays calm, set in a serif at a real measure on white paper.\n\nBad news gets the same typographic weight as good news. A result that favours the single agent is plotted the same way as one that favours the team. A \"missing\" status gets the same mark anatomy as a \"matches\".",
+    "keyCharacteristics": [
+      "White paper, near-black ink, one plum accent, warm grey hairlines.",
+      "Serif for reading and headings; humanist sans for the apparatus; mono only for code and identifiers.",
+      "Rules, not boxes. There are no cards, panels or shadows.",
+      "Data devices: forest plots, four-dot status marks and booktabs tables."
+    ],
+    "rules": [
+      {
+        "name": "The One Plum Rule",
+        "body": "Plum is the only accent. A second hue never carries meaning; status and correctness are told by dot count, weight and wash, with the word always printed.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono-for-Identifiers Rule",
+        "body": "Commit ids, run codes (f14, f15) and file names are set in Source Code Pro. Prose identifiers get no background; only real code gets the code ground.",
+        "section": "typography"
+      },
+      {
+        "name": "The Rules-Not-Boxes Rule",
+        "body": "Group content with horizontal rules and white space. A bordered, rounded or shadowed panel is not part of this world.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put the comparison a reviewer came for (arms with intervals) directly under the Bottom line.",
+      "**Do** number every figure and table, and cite them from the prose.",
+      "**Do** print the status word next to every status mark, and the count next to every percentage.",
+      "**Do** state \"Research prototype. Not for clinical use.\" in the masthead and the colophon of every page."
+    ],
+    "donts": [
+      "**Don't** add cards, panels, shadows, rounded containers or a dark theme. The incumbent dark dashboard of rounded panels is the anti-reference.",
+      "**Don't** add a second accent colour or encode meaning by hue alone.",
+      "**Don't** use coloured side stripes (left or right borders over 1px, or inset shadows) to mark an active or current item.",
+      "**Don't** set prose or headings in mono."
+    ]
+  }
+}

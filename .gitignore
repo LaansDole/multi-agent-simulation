@@ -28,3 +28,9 @@ data/
 temp/
 WareHouse/
 
+
+# Impeccable scratch (decision rounds, mocks, review captures); surfaces/ and design.json are kept
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/questions/
+.impeccable/decision-payload.json
