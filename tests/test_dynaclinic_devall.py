@@ -461,10 +461,10 @@ def test_short_staffing_clamps_the_sweep_mode_to_hierarchical(harness: Build) ->
 
 
 @pytest.mark.parametrize(("fatigue", "mode", "route"), [
-    (3, "HIERARCHICAL", "environment:staff_fatigue>=3:hierarchical"),
-    (2, "COLLABORATIVE", None),
+    (2, "HIERARCHICAL", "environment:staff_fatigue>=2:hierarchical"),
+    (1, "COLLABORATIVE", None),
 ])
-def test_staff_fatigue_clamps_the_sweep_mode_from_three(harness: Build, fatigue: int, mode: str, route: str | None) -> None:
+def test_staff_fatigue_clamps_the_sweep_mode_from_two(harness: Build, fatigue: int, mode: str, route: str | None) -> None:
     h = harness(triage=_triage("HIGH"), generalist=ONE_HOT)
     h.context.global_state["environment"] = {"staff_fatigue": fatigue}
     h.run("dc_triage", CASE_JSON)
@@ -513,6 +513,19 @@ def test_all_depleted_roles_fall_back_to_one_specialist_and_say_so(harness: Buil
             "imaging depleted; consulted anyway (no other specialist available).") in team
     assert [entry.agent for entry in h.run_state.board.entries(kind="hypothesis")] == [IMAGING]
     assert stock == {IMAGING: 0, PATHOLOGY: 0, PHARMACOLOGY: 0}
+    assert h.context.global_state["environment"]["staff_fatigue"] == 2
+
+
+def test_care_team_llm_error_leaves_stock_and_fatigue_unchanged(harness: Build) -> None:
+    broken = {role: "I cannot help with that." for role in (IMAGING, PATHOLOGY, PHARMACOLOGY)}
+    h = harness(triage=_triage("HIGH"), **broken)
+    stock = {IMAGING: 2, PATHOLOGY: 3, PHARMACOLOGY: 3}
+    h.context.global_state["environment"] = {"resource_availability": stock, "staff_fatigue": 1}
+    h.run("dc_triage", CASE_JSON)
+    with pytest.raises(LLMError, match="all specialists failed"):
+        h.run("dc_care_team")
+    assert h.context.global_state["environment"] == {
+        "resource_availability": {IMAGING: 2, PATHOLOGY: 3, PHARMACOLOGY: 3}, "staff_fatigue": 1}
 
 
 def test_no_environment_leaves_care_team_untouched(harness: Build) -> None:
