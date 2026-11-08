@@ -37,3 +37,6 @@ WareHouse/
 
 # Superpowers brainstorming/spec artifacts (local-only)
 .superpowers/
+
+# Local git worktrees
+.worktrees/
