@@ -46,9 +46,11 @@ graph:
           }
           Never state, name or hint at a diagnosis, a working impression or a disease name anywhere: describe only
           symptoms, signs, history and raw results, so that the attending team has to work the diagnosis out.
-          Vary the cases: pick the organ system from the day number in the request (day 1 abdominal, day 2
-          respiratory, day 3 cardiovascular, day 4 neurological, day 5 renal or metabolic, day 6 infectious,
-          then repeat), and vary age, sex and acuity.
+          Vary the cases: if the message includes "Environment: case_mix_context=flu_surge", bias
+          the chief complaint toward respiratory infection; otherwise pick the organ system from the
+          day number in the request (day 1 abdominal, day 2 respiratory, day 3 cardiovascular, day 4
+          neurological, day 5 renal or metabolic, day 6 infectious, then repeat). Vary age, sex and
+          acuity either way.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
         params: {}
@@ -294,7 +296,7 @@ graph:
       process:
         type: function
         config:
-          name: inject_day_to_message
+          name: inject_day_and_start_shift
     # PatientDataGenerator → Triage: the presentation as a DynaClinic plain-text case
     # (dynaclinic/plaintext.py headers; "Question:" without options = open-ended case)
     - from: PatientDataGenerator
@@ -335,7 +337,7 @@ graph:
       process:
         type: function
         config:
-          name: inject_day_to_message
+          name: inject_day_and_record_admission
     # Report → DailySummary (data only: queued until TriageReport triggers,
     # then cleared after DailySummary runs, so each day sees only its own consult)
     - from: Report
@@ -452,6 +454,10 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: record_discharge
     # LoopGate → DayStart (next day until the day count is reached)
     - from: LoopGate
       to: DayStart
