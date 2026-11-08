@@ -443,7 +443,8 @@ class UncertaintyExecutor(_StageExecutor):
         environment = self.context.global_state.get("environment", {})
         short_staffed = environment.get("staffing_level") == "short"
         fatigued = environment.get("staff_fatigue", 0) >= 3
-        if (short_staffed or fatigued) and r.mode != "hierarchical":
+        # Adversarial cases (U > tau_u) keep the critic path even when short-staffed.
+        if (short_staffed or fatigued) and r.mode == "collaborative":
             reason = "staffing_level=short" if short_staffed else "staff_fatigue>=3"
             r.mode_reason = f"{r.mode_reason}; {reason} overrides to hierarchical (fewer hands available today)"
             r.mode = "hierarchical"
@@ -483,20 +484,21 @@ class CareTeamExecutor(_StageExecutor):
         if environment is None:  # standalone dynaclinic_mvp.yaml: no environment, unchanged behaviour
             run.care_team(roles)
         else:
-            resources = environment.setdefault("resource_availability", {})
-            available, exhausted = [], []
-            for role in roles:
-                remaining = resources.get(role)
-                if remaining is not None and remaining <= 0:
-                    exhausted.append(role)
-                else:
-                    available.append(role)
-                    if remaining is not None:
-                        resources[role] = remaining - 1
-            run.care_team(available or roles[:1])
+            resources = environment.get("resource_availability", {})
+            exhausted = [role for role in roles if resources.get(role, 1) <= 0]
+            consulted = [role for role in roles if role not in exhausted] or roles[:1]
+            run.care_team(consulted)  # an LLMError here consumes no stock and adds no fatigue
+            for role in consulted:
+                if role in resources:
+                    resources[role] = max(0, resources[role] - 1)
             environment["staff_fatigue"] = environment.get("staff_fatigue", 0) + (2 if exhausted else 1)
-            if exhausted:
-                note = f"\nResource note: {', '.join(exhausted)} unavailable today (depleted).\n"
+            notes = []
+            if skipped := [role for role in exhausted if role not in consulted]:
+                notes.append(f"{', '.join(skipped)} unavailable today (depleted)")
+            if forced := [role for role in exhausted if role in consulted]:
+                notes.append(f"{', '.join(forced)} depleted; consulted anyway (no other specialist available)")
+            if notes:
+                note = f"\nResource note: {'; '.join(notes)}.\n"
         return f"STAGE: care_team{note}\n{run.board.snapshot()}"
 
 

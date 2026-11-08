@@ -458,6 +458,27 @@ def test_short_staffing_clamps_the_sweep_mode_to_hierarchical(harness: Build) ->
     assert h.run_state.result.route[-1] == "environment:staffing_level=short:hierarchical"
 
 
+@pytest.mark.parametrize(("fatigue", "mode", "route"), [
+    (3, "HIERARCHICAL", "environment:staff_fatigue>=3:hierarchical"),
+    (2, "COLLABORATIVE", None),
+])
+def test_staff_fatigue_clamps_the_sweep_mode_from_three(harness: Build, fatigue: int, mode: str, route: str | None) -> None:
+    h = harness(triage=_triage("HIGH"), generalist=ONE_HOT)
+    h.context.global_state["environment"] = {"staff_fatigue": fatigue}
+    h.run("dc_triage", CASE_JSON)
+    assert h.run("dc_uncertainty").startswith(f"MODE: {mode}\n")
+    environment_routes = [step for step in h.run_state.result.route if step.startswith("environment:")]
+    assert environment_routes == ([route] if route else [])
+
+
+def test_short_staffing_keeps_an_adversarial_sweep_adversarial(harness: Build) -> None:
+    h = harness(generalist=UNIFORM)  # LOW tier, U=1.00: MODE: ADVERSARIAL
+    h.context.global_state["environment"] = {"staffing_level": "short"}
+    h.run("dc_triage", CASE_JSON)
+    assert h.run("dc_uncertainty").startswith("MODE: ADVERSARIAL\n")
+    assert not any(step.startswith("environment:") for step in h.run_state.result.route)
+
+
 def test_depleted_role_sits_out_the_care_team_and_adds_fatigue(harness: Build) -> None:
     h = harness(triage=_triage("HIGH"))
     h.context.global_state["environment"] = {"resource_availability": {IMAGING: 0, PATHOLOGY: 1}}
@@ -467,6 +488,18 @@ def test_depleted_role_sits_out_the_care_team_and_adds_fatigue(harness: Build) -
     assert sorted(entry.agent for entry in h.run_state.board.entries(kind="hypothesis")) == [PATHOLOGY, PHARMACOLOGY]
     env = h.context.global_state["environment"]
     assert env["resource_availability"] == {IMAGING: 0, PATHOLOGY: 0} and env["staff_fatigue"] == 2
+
+
+def test_all_depleted_roles_fall_back_to_one_specialist_and_say_so(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"))
+    stock = {IMAGING: 0, PATHOLOGY: 0, PHARMACOLOGY: 0}
+    h.context.global_state["environment"] = {"resource_availability": stock}
+    h.run("dc_triage", CASE_JSON)
+    team = h.run("dc_care_team")
+    assert ("Resource note: pathology, pharmacology unavailable today (depleted); "
+            "imaging depleted; consulted anyway (no other specialist available).") in team
+    assert [entry.agent for entry in h.run_state.board.entries(kind="hypothesis")] == [IMAGING]
+    assert stock == {IMAGING: 0, PATHOLOGY: 0, PHARMACOLOGY: 0}
 
 
 def test_no_environment_leaves_care_team_untouched(harness: Build) -> None:
