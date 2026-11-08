@@ -1,15 +1,16 @@
 version: 0.0.0
+# ponytail: duplicated graph, drift accepted, both are MVPs
 graph:
   id: dynaclinic_hospital
   description: |
     Hospital simulation with a DynaClinic consult per day, derived from demo_hospital.
     Each day: PatientDataGenerator admits one patient as a symptom-level presentation (no diagnosis),
-    DynaClinicConsult runs yaml_instance/dynaclinic_mvp.yaml unchanged as one subgraph node on that
-    presentation (open-ended case: mode, C/U, assessment and plan, safety gates), then the triage queue
-    is generated and reported as in demo_hospital. DailySummary writes patient, DynaClinic mode, leading
-    diagnosis, plan and triage status to memory; LoopGate (loop_counter, 2 days) loops back, and
-    FinalReport lists every day's consult from memory. Research prototype on synthetic patients; not
-    clinical advice.
+    the inlined DynaClinic consult (dc_triage..dc_safety_gate, kept in sync by hand with
+    yaml_instance/dynaclinic_mvp.yaml) runs on that presentation (open-ended case: mode, C/U,
+    assessment and plan, safety gates), then the triage queue is generated and reported as in
+    demo_hospital. DailySummary writes patient, DynaClinic mode, leading diagnosis, plan and triage
+    status to memory; LoopGate (loop_counter, 2 days) loops back, and FinalReport lists every day's
+    consult from memory. Research prototype on synthetic patients; not clinical advice.
   log_level: INFO
   is_majority_voting: false
   nodes:
@@ -58,18 +59,120 @@ graph:
       description: Generates the day's admission as a presentation without a diagnosis
       context_window: 0
       log_output: true
-    - id: DynaClinicConsult
-      type: subgraph
-      config:
-        type: file
-        config:
-          path: dynaclinic_mvp.yaml
+    - id: Triage
+      type: dc_triage
       description: >-
-        DynaClinic consult on the admitted patient: runs yaml_instance/dynaclinic_mvp.yaml unchanged (fresh case
-        run per day) and returns its report (gate verdict, safety gates, Meta-Controller mode with C and U,
-        assessment and plan).
-      context_window: 0
-      log_output: true
+        Meta-Controller (complexity), Complexity C. Ingests the case (FHIR-lite stub), asks the LLM for a complexity
+        tier, scores the case deterministically, bumps an LLM LOW to MODERATE when the score reaches
+        escalate_threshold (safety bias), and emits ROUTE: LOW|MODERATE|HIGH. C = max(tier level, feature
+        density), with tau_c 0.5 equivalent to the tier rule.
+      config: {}
+    - id: GeneralistSweep
+      type: dc_uncertainty
+      description: >-
+        Meta-Controller (uncertainty), Uncertainty U and mode rule. One generalist call lists a probability-weighted
+        differential (top-k, or one entry per option); U is its normalised entropy. Emits
+        MODE: HIERARCHICAL|COLLABORATIVE|ADVERSARIAL. tau_u per input form and per model: the model's
+        calibrated row (75th percentile of U, python -m dynaclinic.eval.calibrate); a model without one
+        falls back to gpt-6-luna's 0.15 multiple choice / 0.59 open-ended with a warning. Calibrated, not
+        validated against outcomes. Set tau_u_mcq / tau_u_open (or tau_u for both) to pin a value.
+      config:
+        k: 5
+    - id: PrimaryCare
+      type: dc_primary_care
+      description: >-
+        Primary Care Agent, the hierarchical mode hub, restricted to the Emanuel & Emanuel Informative model;
+        it may consult up to two specialist spokes (CONSULT: <role>: <question>), each answering only its
+        own question from its own slice, then answers:
+        facts and risks of each option, ending in FINAL ANSWER: <letter>; for an open-ended case a
+        write-up (ASSESSMENT, DIFFERENTIAL, PLAN, RED FLAGS / ESCALATE IF, MISSING INFORMATION) ending
+        in RECOMMENDATION:.
+      config: {}
+    - id: CareTeam
+      type: dc_care_team
+      description: >-
+        Collaborative/adversarial modes. Integrated Care Team (Imaging, Pathology/Lab, Pharmacology; two of
+        them for a LOW or MODERATE tier) writes findings, an answer distribution and claims to the shared Blackboard; for
+        an open-ended case a LEADING DIAGNOSIS (or ABSTAIN) and a DOMAIN RECOMMENDATION instead of a
+        distribution. context_policy shared_core: each specialist reads the case summary,
+        then its own modality slice; strict: its modality slice only.
+      config:
+        context_policy: shared_core
+    - id: DivergenceGate
+      type: dc_divergence_gate
+      description: >-
+        Conflict-aware switch. Multiple choice: MODE: ADVERSARIAL when the specialists' top-1 answers
+        disagree or their mean pairwise Jensen-Shannon divergence reaches tau. Open-ended case: when
+        the mean pairwise cosine distance between their leading diagnoses (text-embedding-3-small,
+        hashing fallback) reaches tau_semantic (unset: the embedder's default), or fewer than two
+        specialists asserted anything. Else MODE: COLLABORATIVE. Adversarial mode entered by
+        uncertainty stays ADVERSARIAL; the divergence is only reported. No LLM call.
+      config:
+        tau: 0.25
+    - id: MeshExchange
+      type: dc_mesh_exchange
+      description: >-
+        Collaborative mode, after the Conflict Detector compared the independent round-1 hypotheses.
+        Fully connected mesh: each care-team specialist reads every peer's round-1 entry (findings,
+        claims, distribution or leading diagnosis), states what it adopts or disputes from each, and
+        posts a revised step-2 entry to the Blackboard, concurrently. A failed reply leaves that
+        specialist's round-1 entry standing. Not a 3D character (the specialists are the Care Team's).
+      config: {}
+    - id: Proponent
+      type: dc_proponent
+      description: >-
+        Proponent, adversarial mode, before the Critic. H1 is the team's plurality hypothesis (option letter, or
+        leading diagnosis for an open-ended case); on a tie, the generalist sweep's top differential.
+        H2 is the strongest alternative: the dissenting specialist's hypothesis, else the sweep's next
+        differential. The Proponent argues H1 from the case and the Blackboard, states what would
+        falsify it and why H1 beats H2. Nothing to debate or a failed call: classic Critic review.
+      config: {}
+    - id: Critic
+      type: dc_critic
+      description: >-
+        Clinical Critic (Opponent), adversarial mode. Decomposes the Blackboard into atomic claims, scores them
+        with the hybrid rule/LLM-judge estimator and flags unsupported claims for the Synthesizer. In
+        the same call it is the Opponent: it reads H1, H2 and the Proponent's case and lists
+        counterevidence against both (logical leaps, contradicting findings or trial evidence,
+        contraindications for this patient).
+      config: {}
+    - id: Synthesizer
+      type: dc_synthesizer
+      description: >-
+        Consensus Builder / Mediator. Consensus Builder in collaborative mode, integrating the round-1 and mesh step-2 entries into one
+        unified differential; Mediator (Conflict Resolver) in adversarial mode, where it reads the
+        debate transcript and the Critic's flagged claims and first states SURVIVING HYPOTHESIS:
+        H1|H2|neither and why. Writes the team answer from the Blackboard, ending
+        in FINAL ANSWER: <letter>, or for an open-ended case the sectioned write-up ending in
+        RECOMMENDATION:. context_policy shared_core adds the full case block; strict: question,
+        options and Blackboard only.
+      config:
+        context_policy: shared_core
+    - id: SafetyGate
+      type: dc_safety_gate
+      description: >-
+        Layer-4 safety gates on the answer: A_SAD (step precedence rules), T_SAD (allergy class,
+        contraindication, interaction with current meds), S_NAP (stub, always passes). A failing answer
+        is regenerated by the Synthesizer up to max_rollbacks times, then labelled for manual review.
+        Emits GATE: PASS|BLOCKED.
+      config:
+        max_rollbacks: 1
+    - id: Report
+      type: template
+      description: >-
+        Final report - gate verdict and per-gate results first, then the answer (FINAL ANSWER line) or,
+        for an open-ended case, the assessment and plan (RECOMMENDATION line).
+      config:
+        template: |-
+          {%- set marker, _, body = input.partition('\n') -%}
+          {%- set answer, _, gates = body.rpartition('\n\nSafety gates:\n') -%}
+          DynaClinic report ({{ marker }})
+
+          Safety gates:
+          {{ gates }}
+
+          {% if answer.startswith('Assessment and plan:\n') %}{{ answer }}{% else %}Answer:
+          {{ answer }}{% endif %}
     - id: TriageDataGenerator
       type: agent
       config:
@@ -192,10 +295,10 @@ graph:
         type: function
         config:
           name: inject_day_to_message
-    # PatientDataGenerator → DynaClinicConsult: the presentation as a DynaClinic plain-text case
+    # PatientDataGenerator → Triage: the presentation as a DynaClinic plain-text case
     # (dynaclinic/plaintext.py headers; "Question:" without options = open-ended case)
     - from: PatientDataGenerator
-      to: DynaClinicConsult
+      to: Triage
       trigger: true
       condition: 'true'
       carry_data: true
@@ -233,9 +336,9 @@ graph:
         type: function
         config:
           name: inject_day_to_message
-    # DynaClinicConsult → DailySummary (data only: queued until TriageReport triggers,
+    # Report → DailySummary (data only: queued until TriageReport triggers,
     # then cleared after DailySummary runs, so each day sees only its own consult)
-    - from: DynaClinicConsult
+    - from: Report
       to: DailySummary
       trigger: false
       condition: 'true'
@@ -247,8 +350,8 @@ graph:
         type: function
         config:
           name: inject_day_to_message
-    # DynaClinicConsult → TriageDataGenerator (trigger only; the consult text is not needed there)
-    - from: DynaClinicConsult
+    # Report → TriageDataGenerator (trigger only; the consult text is not needed there)
+    - from: Report
       to: TriageDataGenerator
       trigger: true
       condition: 'true'
@@ -260,6 +363,47 @@ graph:
         type: template
         config:
           template: Consult finished. Generate today's triage queue.
+    # Inlined DynaClinic consult edges (copied from dynaclinic_mvp.yaml, minus CaseInput → Triage)
+    - from: Triage
+      to: GeneralistSweep
+    - from: GeneralistSweep
+      to: PrimaryCare
+      condition:
+        type: function
+        config:
+          name: dc_mode_hierarchical
+    - from: GeneralistSweep
+      to: CareTeam
+      condition:
+        type: function
+        config:
+          name: dc_mode_team
+    - from: PrimaryCare
+      to: SafetyGate
+    - from: CareTeam
+      to: DivergenceGate
+    - from: DivergenceGate
+      to: MeshExchange
+      condition:
+        type: function
+        config:
+          name: dc_mode_collaborative
+    - from: MeshExchange
+      to: Synthesizer
+    - from: DivergenceGate
+      to: Proponent
+      condition:
+        type: function
+        config:
+          name: dc_mode_adversarial
+    - from: Proponent
+      to: Critic
+    - from: Critic
+      to: Synthesizer
+    - from: Synthesizer
+      to: SafetyGate
+    - from: SafetyGate
+      to: Report
     - from: TriageDataGenerator
       to: TriageReport
       trigger: true
@@ -350,7 +494,7 @@ graph:
     - DayStart
   end:
     - FinalReport
-# Agents call OpenAI (OPENAI_BASE_URL / OPENAI_API_KEY from .env); the DynaClinic consult nodes use
-# DYNACLINIC_MODEL / DYNACLINIC_FALLBACK_MODELS (dynaclinic_mvp.yaml).
+# Agents call OpenAI (OPENAI_BASE_URL / OPENAI_API_KEY from .env); the inlined DynaClinic consult nodes
+# use DYNACLINIC_MODEL / DYNACLINIC_FALLBACK_MODELS (as in dynaclinic_mvp.yaml).
 vars:
   MODEL_NAME: gpt-6-luna

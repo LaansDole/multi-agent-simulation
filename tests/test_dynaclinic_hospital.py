@@ -1,4 +1,4 @@
-"""yaml_instance/dynaclinic_hospital.yaml: two simulated days, one DynaClinic consult subgraph run per day (offline)."""
+"""yaml_instance/dynaclinic_hospital.yaml: two simulated days, one inlined DynaClinic consult per day (offline)."""
 
 import json
 from pathlib import Path
@@ -77,7 +77,7 @@ def test_two_days_each_run_one_fresh_consult_whose_report_reaches_the_daily_summ
 
     logs = json.loads((Path(result.meta_info.output_dir) / "execution_logs.json").read_text())["logs"]
     started = [log["node_id"] for log in logs if log["event_type"] == "NODE_START"]
-    assert started.count("DynaClinicConsult") == 2 and started.count("DailySummary") == 2
+    assert started.count("Triage") == 2 and started.count("DailySummary") == 2
     # Each consult starts its own case from that day's presentation only.
     triaged = [user for role, _system, user in client.prompts if role == TRIAGE]
     assert [[p["chief_complaint"] in case for p in PATIENTS] for case in triaged] == [[True, False], [False, True]]
