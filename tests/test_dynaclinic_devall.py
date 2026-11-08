@@ -24,8 +24,10 @@ from dynaclinic.prompts import (
 )
 from dynaclinic.types import Case
 from entity.configs import ConfigError, Node
+from entity.configs.node.memory import MemoryStoreConfig
 from entity.messages import Message, MessageRole
 from runtime.bootstrap.schema import ensure_schema_registry_populated
+from runtime.node.agent.memory.blackboard_memory import BlackboardMemory
 from runtime.node.executor.base import ExecutionContext
 from runtime.node.registry import iter_node_registrations
 from tests.dynaclinic_fixtures import no_network  # noqa: F401
@@ -488,6 +490,17 @@ def test_depleted_role_sits_out_the_care_team_and_adds_fatigue(harness: Build) -
     assert sorted(entry.agent for entry in h.run_state.board.entries(kind="hypothesis")) == [PATHOLOGY, PHARMACOLOGY]
     env = h.context.global_state["environment"]
     assert env["resource_availability"] == {IMAGING: 0, PATHOLOGY: 0} and env["staff_fatigue"] == 2
+
+
+def test_care_team_logs_its_roles_and_resource_note_to_the_staff_log(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"))
+    store = MemoryStoreConfig.from_dict({"name": "clinic_staff_log", "type": "blackboard", "config": {}}, path="m")
+    h.context.memory_stores["clinic_staff_log"] = BlackboardMemory(store)  # no memory_path: in-memory only
+    h.context.global_state["environment"] = {"resource_availability": {IMAGING: 0, PATHOLOGY: 1}}
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    [entry] = h.context.memory_stores["clinic_staff_log"].contents
+    assert "roles=pathology,pharmacology Resource note: imaging unavailable today (depleted).;" in entry.content_summary
 
 
 def test_all_depleted_roles_fall_back_to_one_specialist_and_say_so(harness: Build) -> None:

@@ -115,3 +115,5 @@ def test_staff_log_persists_across_separate_runs(tmp_path: Path, monkeypatch) ->
         set_client_factory(None)
     # BlackboardMemory.save() writes a bare JSON list (blackboard_memory.py); run b loaded run a's 2 entries.
     assert len(json.loads(path.read_text())) == 4
+    roles = [item["metadata"]["agent_role"] for item in json.loads(path.read_text())]
+    assert roles == ["primary_care", "care_team", "primary_care", "care_team"]  # day 1 hierarchical, day 2 adversarial

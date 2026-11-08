@@ -370,7 +370,9 @@ def _client(clients: dict[tuple[str, ...], LLMClient], models: list[str] | None)
     return clients[key]
 
 
-# ponytail: write-and-accumulate only; feed retrieved history into prompts once something reads it
+# ponytail: write-and-accumulate only; feed retrieved history into prompts once something reads it.
+# Ceiling: the shared literal path is loaded once per run and saved whole at run end, so concurrent runs on the
+# same path are last-writer-wins; use a per-run path or a file lock if runs ever overlap.
 def _log_staff(context: ExecutionContext, agent_role: str, inputs_text: str, text: str) -> None:
     """Append one entry to the graph's ``clinic_staff_log`` store (dynaclinic_hospital.yaml); a no-op in graphs
     that don't declare it, such as dynaclinic_mvp.yaml."""
@@ -513,7 +515,7 @@ class CareTeamExecutor(_StageExecutor):
             if notes:
                 note = f"\nResource note: {'; '.join(notes)}.\n"
         _log_staff(self.context, "care_team", ", ".join(consulted),
-                   f"roles={','.join(consulted)}{note.strip()}; {run.board.snapshot()[:200]}")
+                   f"roles={','.join(consulted)}{' ' + note.strip() if note else ''}; {run.board.snapshot()[:200]}")
         return f"STAGE: care_team{note}\n{run.board.snapshot()}"
 
 
