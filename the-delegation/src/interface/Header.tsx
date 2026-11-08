@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Maximize2, Settings } from 'lucide-react';
+import { ArrowLeft, BarChart3, Maximize2, Settings, Sparkles } from 'lucide-react';
 import React, { useState } from 'react';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useUiStore } from '../integration/store/uiStore';
@@ -12,6 +12,7 @@ const Header: React.FC = () => {
   const { backendStatus, setViewMode } = useCoreStore();
   const isWorkflowBrowserOpen = useUiStore((s) => s.isWorkflowBrowserOpen);
   const setWorkflowBrowserOpen = useUiStore((s) => s.setWorkflowBrowserOpen);
+  const setGenerateTeamOpen = useUiStore((s) => s.setGenerateTeamOpen);
   const [isBenchmarkOpen, setBenchmarkOpen] = useState(false);
 
   const handleFullscreen = () => {
@@ -44,6 +45,19 @@ const Header: React.FC = () => {
         >
           <Settings size={14} className="group-hover:rotate-45 transition-transform" />
           <span className="text-[10px] font-black uppercase tracking-wider ml-1 hidden sm:inline">Manage Teams</span>
+        </button>
+
+        <button
+          onClick={() => {
+            // The modal lives in the Team Editor so "Use this Team" lands there on the new team.
+            setViewMode('design');
+            setGenerateTeamOpen(true);
+          }}
+          className="flex items-center gap-2 px-3 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg transition-all active:scale-95 cursor-pointer h-9 shrink-0"
+          title="Describe a team in plain language and generate it"
+        >
+          <Sparkles size={14} />
+          <span className="text-[10px] font-black uppercase tracking-wider">Generate Team</span>
         </button>
 
         <button

@@ -1,8 +1,9 @@
 import { Plus, Sparkles } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { AGENTIC_SETS, AgenticSystem } from '../../data/agents';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
+import { useUiStore } from '../../integration/store/uiStore';
 import { TeamCard } from './TeamCard';
 import { GenerateFromTextModal } from './GenerateFromTextModal';
 
@@ -15,7 +16,8 @@ interface TeamsPanelProps {
 
 export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTeamId, onModeChange, mode }) => {
   const { customSystems, selectedAgentSetId, saveCustomSystem } = useTeamStore();
-  const [isGenerateOpen, setGenerateOpen] = useState(false);
+  const isGenerateOpen = useUiStore((s) => s.isGenerateTeamOpen);
+  const setGenerateOpen = useUiStore((s) => s.setGenerateTeamOpen);
 
   const allSystems = useMemo(() => {
     const combined = [...customSystems, ...AGENTIC_SETS];
