@@ -50,8 +50,8 @@ export class OpenAIProvider implements LLMProvider {
     const raw: unknown = await response.json().catch(() => null);
 
     if (!response.ok) {
-      const choices = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).error : undefined;
-      const message = readString(choices, 'message') || response.statusText;
+      const errorObj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).error : undefined;
+      const message = readString(errorObj, 'message') || response.statusText;
       throw new Error(`OpenAI-compatible request failed (${response.status}): ${message}`);
     }
 

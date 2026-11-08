@@ -29,14 +29,22 @@ interface ChatBubble {
   content: string;
 }
 
+/** Reads saved credentials field by field, so a missing, `null`, or older-shaped entry falls back instead of crashing render. */
 function loadCredentials(defaultModel: string): StoredCredentials {
+  let saved: unknown = null;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch {
-    // fall through to defaults
+    // corrupt entry: use defaults
   }
-  return { provider: 'openai', model: defaultModel, baseUrl: '', apiKey: '' };
+  const obj = saved && typeof saved === 'object' ? (saved as Record<string, unknown>) : {};
+  const str = (key: string): string => (typeof obj[key] === 'string' ? (obj[key] as string) : '');
+  return {
+    provider: obj.provider === 'gemini' ? 'gemini' : 'openai',
+    model: str('model') || defaultModel,
+    baseUrl: str('baseUrl'),
+    apiKey: str('apiKey'),
+  };
 }
 
 interface GenerateFromTextModalProps {
@@ -60,6 +68,9 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const titleId = useId();
+  // Bumped on every open/close; a turn that resolves after its session ended must not write into the next one.
+  const sessionRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -79,16 +90,20 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
 
   // Fresh session each time the modal opens.
   useEffect(() => {
+    sessionRef.current++;
     if (isOpen) {
       setMessages([]);
       setSystem(null);
       setInput('');
+      setIsGenerating(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const canGenerate = creds.apiKey.trim().length > 0 && creds.model.trim().length > 0 && !isGenerating;
+  // OpenAI-compatible local servers often take no key; Gemini always needs one.
+  const canGenerate =
+    creds.model.trim().length > 0 && (creds.provider === 'openai' || creds.apiKey.trim().length > 0) && !isGenerating;
 
   const handleGenerate = async () => {
     const instruction = input.trim();
@@ -97,6 +112,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: instruction }]);
     setIsGenerating(true);
+    const session = sessionRef.current;
 
     try {
       const provider: LLMProvider =
@@ -108,14 +124,16 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
         .filter((m): m is ChatBubble & { role: 'user' | 'assistant' } => m.role !== 'error')
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const result = await runGenerationTurn(provider, creds.model, history, system, instruction, MAX_AGENTS);
+      const result = await runGenerationTurn(provider, creds.model, history, system, instruction, MAX_AGENTS, defaultTextModel);
+      if (session !== sessionRef.current) return;
       setSystem(result.system);
       setMessages((prev) => [...prev, { role: 'assistant', content: result.assistantText }]);
     } catch (e) {
+      if (session !== sessionRef.current) return;
       const message = e instanceof Error ? e.message : String(e);
       setMessages((prev) => [...prev, { role: 'error', content: message }]);
     } finally {
-      setIsGenerating(false);
+      if (session === sessionRef.current) setIsGenerating(false);
     }
   };
 
@@ -128,7 +146,8 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
             ...system.leadAgent,
             provider: creds.provider,
             model: creds.model,
-            ...(creds.provider === 'openai' ? { baseUrl: creds.baseUrl || undefined, apiKey: creds.apiKey } : { apiKey: creds.apiKey }),
+            ...(creds.provider === 'openai' ? { baseUrl: creds.baseUrl || undefined } : {}),
+            apiKey: creds.apiKey || undefined,
           },
         }
       : system;
@@ -138,7 +157,12 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div onClick={onClose} className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
-      <div className="relative w-full h-full max-w-5xl max-h-[88vh] bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200/50 flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full h-full max-w-5xl max-h-[88vh] bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200/50 flex flex-col"
+      >
         {/* Header */}
         <div className="border-b border-zinc-100 px-6 py-4 flex items-start justify-between gap-6 shrink-0">
           <div className="flex items-center gap-3">
@@ -146,7 +170,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
               <Sparkles size={18} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-darkDelegation uppercase tracking-widest">Generate Team from Text</h3>
+              <h3 id={titleId} className="text-sm font-black text-darkDelegation uppercase tracking-widest">Generate Team from Text</h3>
               <p className="text-[11px] text-zinc-400 mt-0.5">Describe the team you want; refine it over a few turns, then use it.</p>
             </div>
           </div>
@@ -215,7 +239,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
               type="password"
               value={creds.apiKey}
               onChange={(e) => setCreds((c) => ({ ...c, apiKey: e.target.value }))}
-              placeholder="Required"
+              placeholder={creds.provider === 'gemini' ? 'Required' : 'Optional for local servers'}
               className="w-40 bg-white border border-zinc-200 text-[10px] font-medium rounded-xl px-2.5 py-1.5 outline-none"
             />
           </div>
@@ -284,7 +308,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault();
                       handleGenerate();
                     }
@@ -298,6 +322,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
                 />
                 <button
                   onClick={handleGenerate}
+                  aria-label="Send"
                   disabled={!input.trim() || !canGenerate}
                   style={{ backgroundColor: !input.trim() || !canGenerate ? undefined : USER_COLOR }}
                   className={`h-10 w-10 shrink-0 rounded-2xl flex items-center justify-center transition-all active:scale-95 ${!input.trim() || !canGenerate ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'text-white shadow-lg hover:brightness-90'}`}
@@ -305,8 +330,8 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
                   <Send size={15} strokeWidth={3} />
                 </button>
               </div>
-              {!creds.apiKey.trim() && (
-                <p className="text-[9px] text-zinc-400 mt-1.5 ml-1">Enter an API key above to start.</p>
+              {creds.provider === 'gemini' && !creds.apiKey.trim() && (
+                <p className="text-[9px] text-zinc-400 mt-1.5 ml-1">Enter a Gemini API key above to start.</p>
               )}
             </div>
           </div>

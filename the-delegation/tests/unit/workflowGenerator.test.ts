@@ -52,6 +52,34 @@ test('a team over MAX_AGENTS is rejected', () => {
   assert.throws(() => parseGeneratedSystem(text, null, 'gpt-5-mini', MAX_AGENTS), /agents.*max/i);
 });
 
+test('nested subtrees never share a position, and the lead stays centered under the user', () => {
+  // 1 lead + 3 subagents + 3x3 grandchildren = 13 nodes; sibling-only spacing used to stack grandchildren.
+  const branch = (name: string) => ({
+    name,
+    description: 'x',
+    subagents: [1, 2, 3].map((i) => ({ name: `${name}-${i}`, description: 'x' })),
+  });
+  const text = fenced({
+    teamName: 'Deep',
+    teamType: 'Custom',
+    teamDescription: '',
+    leadAgent: { name: 'Lead', description: 'x', subagents: [branch('A'), branch('B'), branch('C')] },
+  });
+
+  const { system } = parseGeneratedSystem(text, null, 'gpt-5-mini', MAX_AGENTS);
+
+  const positions: string[] = [];
+  const walk = (a: typeof system.leadAgent) => {
+    positions.push(`${a.position.x},${a.position.y}`);
+    a.subagents?.forEach(walk);
+  };
+  walk(system.leadAgent);
+
+  assert.equal(positions.length, 13);
+  assert.equal(new Set(positions).size, 13);
+  assert.equal(system.leadAgent.position.x, 0);
+});
+
 test('malformed JSON is rejected', () => {
   const text = 'Here you go.\n```json\n{ not valid json\n```\n';
   assert.throws(() => parseGeneratedSystem(text, null, 'gpt-5-mini', MAX_AGENTS), /not valid JSON/i);

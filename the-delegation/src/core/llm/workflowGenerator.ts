@@ -61,30 +61,17 @@ function countAgents(agent: AgentNode): number {
   return 1 + (agent.subagents || []).reduce((sum, sub) => sum + countAgents(sub), 0);
 }
 
-/** Assigns fresh id/index/position/color/model to every node, depth-first, mutating a fresh tree (does not mutate the input). */
-function rebuildAgent(
-  raw: unknown,
-  depth: number,
-  xCenter: number,
-  siblingIndex: number,
-  siblingCount: number,
-  indexCounter: { next: number },
-  fallbackModel: string
-): AgentNode {
+/** Assigns fresh id/index/color/model to every node, depth-first, building a fresh tree (does not mutate the input). Positions are set by `layoutAgent`. */
+function rebuildAgent(raw: unknown, indexCounter: { next: number }, fallbackModel: string): AgentNode {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const name = typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : 'Agent';
   const description = typeof obj.description === 'string' ? obj.description : '';
   const model = typeof obj.model === 'string' && obj.model.trim() ? obj.model.trim() : fallbackModel;
   const index = indexCounter.next++;
   const color = PALETTE[(index - 1) % PALETTE.length];
-  const spacing = 260;
-  const x = xCenter + (siblingIndex - (siblingCount - 1) / 2) * spacing;
-  const y = depth * 150;
 
   const rawSubagents = Array.isArray(obj.subagents) ? obj.subagents : [];
-  const subagents = rawSubagents.length
-    ? rawSubagents.map((sub, i) => rebuildAgent(sub, depth + 1, x, i, rawSubagents.length, indexCounter, fallbackModel))
-    : undefined;
+  const subagents = rawSubagents.map((sub) => rebuildAgent(sub, indexCounter, fallbackModel));
 
   return {
     id: `agent-${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -93,9 +80,26 @@ function rebuildAgent(
     description,
     color,
     model,
-    position: { x, y },
-    ...(subagents ? { subagents } : {}),
+    position: { x: 0, y: 0 },
+    ...(subagents.length ? { subagents } : {}),
   };
+}
+
+function countLeaves(agent: AgentNode): number {
+  const subs = agent.subagents || [];
+  return subs.length ? subs.reduce((sum, sub) => sum + countLeaves(sub), 0) : 1;
+}
+
+/**
+ * Gives every leaf its own column and centers each parent over its children, so sibling subtrees
+ * never overlap. `firstLeaf` is the column of the subtree's leftmost leaf; returns its leaf count.
+ */
+function layoutAgent(agent: AgentNode, depth: number, firstLeaf: number): number {
+  let leaves = 0;
+  for (const sub of agent.subagents || []) leaves += layoutAgent(sub, depth + 1, firstLeaf + leaves);
+  const width = Math.max(leaves, 1);
+  agent.position = { x: (firstLeaf + (width - 1) / 2) * 260, y: depth * 150 };
+  return width;
 }
 
 /**
@@ -128,7 +132,9 @@ export function parseGeneratedSystem(
   }
 
   const indexCounter = { next: 1 };
-  const leadAgent = rebuildAgent(leadAgentRaw, 1, 0, 0, 1, indexCounter, fallbackModel);
+  const leadAgent = rebuildAgent(leadAgentRaw, indexCounter, fallbackModel);
+  // Start the leftmost column so the lead agent lands at x = 0, under the user node.
+  layoutAgent(leadAgent, 1, -(countLeaves(leadAgent) - 1) / 2);
 
   const total = countAgents(leadAgent);
   if (total > maxAgents) {
@@ -156,14 +162,19 @@ export function parseGeneratedSystem(
   return { system, assistantText: prose || `Updated the team: ${teamName}.` };
 }
 
-/** Runs one chat turn: calls the provider, then parses/validates its response into a complete AgenticSystem. */
+/**
+ * Runs one chat turn: calls the provider, then parses/validates its response into a complete AgenticSystem.
+ * `modelName` is the model doing the generating; `agentFallbackModel` is what generated agents run on when
+ * the reply leaves their model blank (the backend default, not the generator's possibly-local model).
+ */
 export async function runGenerationTurn(
   provider: LLMProvider,
   modelName: string,
   history: LLMMessage[],
   currentSystem: AgenticSystem | null,
   instruction: string,
-  maxAgents: number
+  maxAgents: number,
+  agentFallbackModel: string
 ): Promise<GenerationTurnResult> {
   const systemInstruction = buildSystemPrompt(currentSystem, maxAgents);
   const messages: LLMMessage[] = [...history, { role: 'user', content: instruction }];
@@ -173,5 +184,5 @@ export async function runGenerationTurn(
     throw new Error('The model returned an empty response.');
   }
 
-  return parseGeneratedSystem(response.content, currentSystem, modelName, maxAgents);
+  return parseGeneratedSystem(response.content, currentSystem, agentFallbackModel, maxAgents);
 }
