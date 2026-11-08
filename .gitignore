@@ -34,3 +34,6 @@ WareHouse/
 .impeccable/review/
 .impeccable/questions/
 .impeccable/decision-payload.json
+
+# Superpowers brainstorming/spec artifacts (local-only)
+.superpowers/
