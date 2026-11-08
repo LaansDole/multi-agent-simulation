@@ -447,3 +447,30 @@ def test_mesh_exchange_summarises_what_each_specialist_reads_adopts_and_disputes
         "Warnings:\n- pathology: mesh reply has no distribution; no step-2 entry, its round-1 entry stands")
     assert h.run("dc_synthesizer").startswith("STAGE: synthesizer (Consensus Builder)\n")
     assert "[step 2] imaging (hypothesis)" in next(u for r, _, u in h.client.prompts if r == SYNTHESIZER)
+
+
+def test_short_staffing_clamps_the_sweep_mode_to_hierarchical(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"), generalist=ONE_HOT)  # unclamped: MODE: COLLABORATIVE
+    h.context.global_state["environment"] = {"staffing_level": "short"}
+    h.run("dc_triage", CASE_JSON)
+    out = h.run("dc_uncertainty")
+    assert out.startswith("MODE: HIERARCHICAL\n") and "staffing_level=short overrides to hierarchical" in out
+    assert h.run_state.result.route[-1] == "environment:staffing_level=short:hierarchical"
+
+
+def test_depleted_role_sits_out_the_care_team_and_adds_fatigue(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"))
+    h.context.global_state["environment"] = {"resource_availability": {IMAGING: 0, PATHOLOGY: 1}}
+    h.run("dc_triage", CASE_JSON)  # HIGH: every specialist
+    team = h.run("dc_care_team")
+    assert team.startswith("STAGE: care_team\nResource note: imaging unavailable today (depleted).")
+    assert sorted(entry.agent for entry in h.run_state.board.entries(kind="hypothesis")) == [PATHOLOGY, PHARMACOLOGY]
+    env = h.context.global_state["environment"]
+    assert env["resource_availability"] == {IMAGING: 0, PATHOLOGY: 0} and env["staff_fatigue"] == 2
+
+
+def test_no_environment_leaves_care_team_untouched(harness: Build) -> None:
+    h = harness()
+    h.run("dc_triage", CASE_JSON)
+    assert h.run("dc_care_team").splitlines()[0] == "STAGE: care_team"
+    assert "environment" not in h.context.global_state

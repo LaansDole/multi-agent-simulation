@@ -440,6 +440,14 @@ class UncertaintyExecutor(_StageExecutor):
             raise ValueError("dc_uncertainty needs an earlier dc_triage (Complexity Score C)")
         run.uncertainty(config.tau_u, config.k, config.tau_u_mcq, config.tau_u_open)
         r = run.result
+        environment = self.context.global_state.get("environment", {})
+        short_staffed = environment.get("staffing_level") == "short"
+        fatigued = environment.get("staff_fatigue", 0) >= 3
+        if (short_staffed or fatigued) and r.mode != "hierarchical":
+            reason = "staffing_level=short" if short_staffed else "staff_fatigue>=3"
+            r.mode_reason = f"{r.mode_reason}; {reason} overrides to hierarchical (fewer hands available today)"
+            r.mode = "hierarchical"
+            r.route.append(f"environment:{reason}:hierarchical")
         u = "n/a" if r.uncertainty is None else f"{r.uncertainty:.2f}"
         form = "open-ended" if run.case.open_ended else "multiple choice"
         differential = "\n".join(f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()) or "- none"
@@ -469,8 +477,27 @@ class CareTeamExecutor(_StageExecutor):
 
     def stage(self, run: CaseRun, config: DCContextConfig) -> str:
         run.context_policy = config.context_policy
-        run.care_team(run.team_roles())
-        return f"STAGE: care_team\n{run.board.snapshot()}"
+        roles = run.team_roles()
+        environment = self.context.global_state.get("environment")
+        note = ""
+        if environment is None:  # standalone dynaclinic_mvp.yaml: no environment, unchanged behaviour
+            run.care_team(roles)
+        else:
+            resources = environment.setdefault("resource_availability", {})
+            available, exhausted = [], []
+            for role in roles:
+                remaining = resources.get(role)
+                if remaining is not None and remaining <= 0:
+                    exhausted.append(role)
+                else:
+                    available.append(role)
+                    if remaining is not None:
+                        resources[role] = remaining - 1
+            run.care_team(available or roles[:1])
+            environment["staff_fatigue"] = environment.get("staff_fatigue", 0) + (2 if exhausted else 1)
+            if exhausted:
+                note = f"\nResource note: {', '.join(exhausted)} unavailable today (depleted).\n"
+        return f"STAGE: care_team{note}\n{run.board.snapshot()}"
 
 
 class DivergenceGateExecutor(_StageExecutor):
