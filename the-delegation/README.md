@@ -38,6 +38,8 @@ npm run dev
 
 The app talks to the DevAll backend at port 6400 on the page's host; set `VITE_BACKEND_URL` (e.g. `VITE_BACKEND_URL=http://localhost:6500 npm run dev`) to point it elsewhere.
 
+The header's **DevAll** link returns to the DevAll web console (`frontend/`) at port 5173 on the page's host; set `VITE_DEVALL_UI_URL` to point it elsewhere.
+
 ## Features
 
 ### Agentic AI System (v0.2.0)
