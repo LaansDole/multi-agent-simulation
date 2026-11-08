@@ -495,6 +495,11 @@ graph:
       type: blackboard
       config:
         memory_path: "{{run_dir}}/daily_summaries.json"
+    # Literal path (not {{run_dir}}): staff memory survives across separate runs; relative to the process CWD.
+    - name: clinic_staff_log
+      type: blackboard
+      config:
+        memory_path: "WareHouse/dynaclinic_hospital_staff_log.json"
   initial_instruction: ''
   start:
     - DayStart

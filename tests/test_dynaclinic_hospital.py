@@ -1,5 +1,6 @@
 """yaml_instance/dynaclinic_hospital.yaml: two simulated days, one inlined DynaClinic consult per day (offline)."""
 
+import itertools
 import json
 from pathlib import Path
 
@@ -33,14 +34,12 @@ PLAN: Scripted plan.
 RECOMMENDATION: Admit and treat as planned."""
 
 
-def test_two_days_each_run_one_fresh_consult_whose_report_reaches_the_daily_summary(tmp_path: Path, monkeypatch) -> None:
-    admitted = iter(PATIENTS)
-    summary_prompts: list[str] = []
-    final_prompts: list[str] = []
+def _hospital_provider(summary_prompts: list[str], final_prompts: list[str]) -> type:
+    """Provider class standing in for each hospital agent, keyed by its role; admissions cycle through PATIENTS
+    (one per day, across runs); DailySummary and FinalReport record what they were shown."""
+    admitted = itertools.cycle(PATIENTS)
 
     class ScriptedProvider:
-        """Stands in for each hospital agent, keyed by its role; DailySummary records what it was shown."""
-
         def __init__(self, config: AgentConfig) -> None:
             self.role = config.role
 
@@ -64,11 +63,19 @@ def test_two_days_each_run_one_fresh_consult_whose_report_reaches_the_daily_summ
                 text = "HOSPITAL SIMULATION - FINAL REPORT"
             return ModelResponse(message=Message(role=MessageRole.ASSISTANT, content=text))
 
+    return ScriptedProvider
+
+
+def test_two_days_each_run_one_fresh_consult_whose_report_reaches_the_daily_summary(tmp_path: Path, monkeypatch) -> None:
+    summary_prompts: list[str] = []
+    final_prompts: list[str] = []
+    provider = _hospital_provider(summary_prompts, final_prompts)
     client = FakeLLM({**SCRIPT, PRIMARY_CARE: WRITE_UP})
     set_client_factory(lambda models: client)
-    monkeypatch.setattr(ProviderRegistry, "get_provider", lambda _name: ScriptedProvider)
+    monkeypatch.setattr(ProviderRegistry, "get_provider", lambda _name: provider)
     monkeypatch.setattr(OpenAIEmbedding, "get_embedding", lambda self, text: pytest.fail("no embedder is configured"))
     monkeypatch.setattr(sdk, "OUTPUT_ROOT", tmp_path)
+    monkeypatch.chdir(tmp_path)
     try:
         result = sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_hospital",
                                   variables=DUMMY_VARS)
@@ -89,3 +96,22 @@ def test_two_days_each_run_one_fresh_consult_whose_report_reaches_the_daily_summ
     [final] = final_prompts
     assert "END OF DAY 1" in final and "END OF DAY 2" in final
     assert result.final_message.text_content().startswith("HOSPITAL SIMULATION - FINAL REPORT")
+
+
+def test_staff_log_persists_across_separate_runs(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sdk, "OUTPUT_ROOT", tmp_path)
+    provider = _hospital_provider([], [])
+    client = FakeLLM({**SCRIPT, PRIMARY_CARE: WRITE_UP})
+    set_client_factory(lambda models: client)
+    monkeypatch.setattr(ProviderRegistry, "get_provider", lambda _name: provider)
+    monkeypatch.setattr(OpenAIEmbedding, "get_embedding", lambda self, text: pytest.fail("no embedder is configured"))
+    path = tmp_path / "WareHouse" / "dynaclinic_hospital_staff_log.json"
+    try:
+        sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_a", variables=DUMMY_VARS)
+        assert len(json.loads(path.read_text())) == 2
+        sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_b", variables=DUMMY_VARS)
+    finally:
+        set_client_factory(None)
+    # BlackboardMemory.save() writes a bare JSON list (blackboard_memory.py); run b loaded run a's 2 entries.
+    assert len(json.loads(path.read_text())) == 4

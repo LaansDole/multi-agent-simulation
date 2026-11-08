@@ -44,7 +44,8 @@ from entity.configs.base import (
     require_mapping,
 )
 from entity.messages import Message, MessageRole
-from runtime.node.executor.base import NodeExecutor
+from runtime.node.agent.memory.memory_base import MemoryContentSnapshot, MemoryWritePayload
+from runtime.node.executor.base import ExecutionContext, NodeExecutor
 
 STATE_KEY = "dynaclinic"
 ARM = "devall"
@@ -369,6 +370,16 @@ def _client(clients: dict[tuple[str, ...], LLMClient], models: list[str] | None)
     return clients[key]
 
 
+# ponytail: write-and-accumulate only; feed retrieved history into prompts once something reads it
+def _log_staff(context: ExecutionContext, agent_role: str, inputs_text: str, text: str) -> None:
+    """Append one entry to the graph's ``clinic_staff_log`` store (dynaclinic_hospital.yaml); a no-op in graphs
+    that don't declare it, such as dynaclinic_mvp.yaml."""
+    store = context.get_memory_store("clinic_staff_log")
+    if store is not None:
+        store.update(MemoryWritePayload(agent_role=agent_role, inputs_text=inputs_text, input_snapshot=None,
+                                        output_snapshot=MemoryContentSnapshot(text=text)))
+
+
 class _StageExecutor(NodeExecutor):
     """Config, case-run state, client and ledger handling around one ``CaseRun`` stage."""
 
@@ -468,6 +479,7 @@ class PrimaryCareExecutor(_StageExecutor):
         consults = "".join(f"- {c['role']}: {c['question']} -> {c['answer']}\n" for c in run.result.consults)
         if consults:
             consults = f"Hub consults (each specialist answered independently):\n{consults}\n"
+        _log_staff(self.context, "primary_care", run.case.id, f"primary_care consults={len(run.result.consults)}")
         return f"STAGE: primary_care\n{consults}{run.result.final_text}"
 
 
@@ -481,8 +493,9 @@ class CareTeamExecutor(_StageExecutor):
         roles = run.team_roles()
         environment = self.context.global_state.get("environment")
         note = ""
+        consulted = roles
         if environment is None:  # standalone dynaclinic_mvp.yaml: no environment, unchanged behaviour
-            run.care_team(roles)
+            run.care_team(consulted)
         else:
             resources = environment.get("resource_availability", {})
             exhausted = [role for role in roles if resources.get(role, 1) <= 0]
@@ -499,6 +512,8 @@ class CareTeamExecutor(_StageExecutor):
                 notes.append(f"{', '.join(forced)} depleted; consulted anyway (no other specialist available)")
             if notes:
                 note = f"\nResource note: {'; '.join(notes)}.\n"
+        _log_staff(self.context, "care_team", ", ".join(consulted),
+                   f"roles={','.join(consulted)}{note.strip()}; {run.board.snapshot()[:200]}")
         return f"STAGE: care_team{note}\n{run.board.snapshot()}"
 
 
