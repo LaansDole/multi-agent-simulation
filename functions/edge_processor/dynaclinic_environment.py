@@ -55,3 +55,20 @@ def record_discharge(data: str, global_state: Dict[str, Any]) -> str:
     environment = global_state.setdefault(STATE_KEY, {})
     environment["bed_occupancy"] = max(BED_OCCUPANCY_FLOOR, environment.get("bed_occupancy", 20) - DISCHARGE_DELTA)
     return data
+
+
+def inject_day_and_flag_governance(data: str, global_state: Dict[str, Any]) -> str:
+    """Report -> DailySummary: day-prefixes the message (unchanged `inject_day_to_message`
+    behaviour) and appends a governance note when the day's consult went adversarial or was
+    blocked. Not real voting or enforcement (design spec 4.5 ponytail stub) - a log line for the
+    daily summary and, through it, the final report to surface."""
+    text = inject_day_to_message(data, global_state)
+    adversarial = "Meta-Controller: MODE ADVERSARIAL" in data
+    blocked = data.startswith("DynaClinic report (GATE: BLOCKED)")
+    if not (adversarial or blocked):
+        return text
+    day = global_state["hospital_day_counter"]
+    reason = "gate blocked" if blocked else "adversarial mode"
+    note = f"Day {day}: {reason} - flagged for protocol review (not enforced, prototype)."
+    global_state.setdefault("governance_notes", []).append(note)
+    return f"{text}\n\nGovernance note: {note}"

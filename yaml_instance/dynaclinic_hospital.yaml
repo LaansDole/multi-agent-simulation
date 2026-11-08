@@ -231,6 +231,7 @@ graph:
           Plan: <one sentence summarising the consult's plan and recommendation>
           Safety gate: <PASS or BLOCKED, from "DynaClinic report (GATE: ...)">
           Triage: <one sentence on the queue>
+          Governance: <copy the "Governance note:" line verbatim if the report has one, else "none">
           Take every value from the reports; never add a diagnosis or plan of your own.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
@@ -351,7 +352,7 @@ graph:
       process:
         type: function
         config:
-          name: inject_day_to_message
+          name: inject_day_and_flag_governance
     # Report → TriageDataGenerator (trigger only; the consult text is not needed there)
     - from: Report
       to: TriageDataGenerator

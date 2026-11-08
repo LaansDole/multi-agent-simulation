@@ -1,6 +1,7 @@
 """functions/edge_processor/dynaclinic_environment.py: day-loop environment state transitions."""
 
 from functions.edge_processor.dynaclinic_environment import (
+    inject_day_and_flag_governance,
     inject_day_and_record_admission,
     inject_day_and_start_shift,
     record_discharge,
@@ -33,3 +34,26 @@ def test_admission_and_discharge_move_bed_occupancy() -> None:
     assert state["environment"]["bed_occupancy"] == 28
     record_discharge("ignored", state)
     assert state["environment"]["bed_occupancy"] == 23
+
+
+def test_flag_governance_reads_the_rendered_report_markers() -> None:
+    adversarial = ("DynaClinic report (GATE: PASS)\n\nSafety gates:\n- A_SAD: pass\n\n"
+                   "Meta-Controller: MODE ADVERSARIAL, C=0.80, U=0.70\n\nAssessment and plan:\nASSESSMENT: ...")
+    state = {"hospital_day_counter": 2}
+    text = inject_day_and_flag_governance(adversarial, state)
+    assert text.startswith("Day 2: DynaClinic report (GATE: PASS)")
+    assert text.endswith("\n\nGovernance note: Day 2: adversarial mode - flagged for protocol review "
+                         "(not enforced, prototype).")
+    assert state["governance_notes"] == ["Day 2: adversarial mode - flagged for protocol review "
+                                         "(not enforced, prototype)."]
+
+    blocked = ("DynaClinic report (GATE: BLOCKED)\n\nSafety gates:\n- T_SAD: FAIL\n\n"
+               "Meta-Controller: MODE COLLABORATIVE, C=0.60, U=0.10\n\nAnswer:\nFINAL ANSWER: A")
+    state = {"hospital_day_counter": 3}
+    assert "Governance note: Day 3: gate blocked" in inject_day_and_flag_governance(blocked, state)
+
+    clean = ("DynaClinic report (GATE: PASS)\n\nSafety gates:\n- A_SAD: pass\n\n"
+             "Meta-Controller: MODE COLLABORATIVE, C=0.40, U=0.10\n\nAnswer:\nFINAL ANSWER: B")
+    state = {"hospital_day_counter": 1}
+    assert inject_day_and_flag_governance(clean, state) == f"Day 1: {clean}"
+    assert "governance_notes" not in state

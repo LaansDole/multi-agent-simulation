@@ -92,6 +92,7 @@ def test_two_days_each_run_one_fresh_consult_whose_report_reaches_the_daily_summ
         assert f"Day {day}:" in prompt and patient["patient_name"] in prompt and other["patient_name"] not in prompt
         assert "DynaClinic report (GATE: PASS)" in prompt and "Meta-Controller: MODE " in prompt
         assert prompt.count("DynaClinic report (") == 1 and "\n\nAssessment and plan:\n" in prompt
+        assert ("Governance note: Day 2: adversarial mode" in prompt) == (day == 2)
     # FinalReport reads every day's whole summary from memory.
     [final] = final_prompts
     assert "END OF DAY 1" in final and "END OF DAY 2" in final
