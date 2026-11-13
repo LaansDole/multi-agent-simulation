@@ -1,0 +1,744 @@
+{
+ "model_label": "qwen3.5-4b",
+ "client_model": "qwen3.5-4b",
+ "dataset": "synthetic",
+ "generated_at": "2026-10-28T11:32:11+00:00",
+ "percentiles": {
+  "mcq": {
+   "n": 24,
+   "errors": 0,
+   "p50": 0.6531822761588254,
+   "p75": 0.8055192634755567,
+   "p90": 0.8189786329930581
+  },
+  "open": {
+   "n": 24,
+   "errors": 0,
+   "p50": 0.6850652594191188,
+   "p75": 0.7658288249518004,
+   "p90": 0.8566199011403355
+  }
+ },
+ "rows": [
+  {
+   "case_id": "syn-low-01",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.5179158241133519,
+   "error": null,
+   "differential": {
+    "A": 0.75,
+    "E": 0.15,
+    "B": 0.05,
+    "D": 0.03,
+    "C": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-02",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.9403319177008925,
+   "error": null,
+   "differential": {
+    "C": 0.35,
+    "B": 0.25,
+    "A": 0.15,
+    "D": 0.15,
+    "E": 0.1
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-03",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.5963611823921352,
+   "error": null,
+   "differential": {
+    "D": 0.65,
+    "C": 0.25,
+    "A": 0.05,
+    "E": 0.03,
+    "B": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-04",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.45664966121836037,
+   "error": null,
+   "differential": {
+    "D": 0.75,
+    "C": 0.2,
+    "A": 0.03,
+    "B": 0.01,
+    "E": 0.01
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-05",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.3859431355865389,
+   "error": null,
+   "differential": {
+    "E": 0.85,
+    "D": 0.05,
+    "A": 0.05,
+    "C": 0.03,
+    "B": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-06",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.15717303547954747,
+   "error": null,
+   "differential": {
+    "A": 0.95,
+    "B": 0.03,
+    "C": 0.01,
+    "D": 0.005,
+    "E": 0.005
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-07",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.35148901094066753,
+   "error": null,
+   "differential": {
+    "B": 0.85,
+    "C": 0.1,
+    "A": 0.03,
+    "D": 0.01,
+    "E": 0.01
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-08",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.14528792496865087,
+   "error": null,
+   "differential": {
+    "C": 0.95,
+    "A": 0.04,
+    "D": 0.005,
+    "B": 0.003,
+    "E": 0.002
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-01",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.35148901094066753,
+   "error": null,
+   "differential": {
+    "D": 0.85,
+    "E": 0.1,
+    "B": 0.03,
+    "C": 0.01,
+    "A": 0.01
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-02",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.7423532106476954,
+   "error": null,
+   "differential": {
+    "C": 0.45,
+    "E": 0.35,
+    "B": 0.15,
+    "D": 0.03,
+    "A": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-03",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.5179158241133519,
+   "error": null,
+   "differential": {
+    "E": 0.75,
+    "A": 0.15,
+    "B": 0.05,
+    "C": 0.03,
+    "D": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-04",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.8247369178800421,
+   "error": null,
+   "differential": {
+    "B": 0.45,
+    "A": 0.25,
+    "C": 0.2,
+    "E": 0.05,
+    "D": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-05",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.708036298617941,
+   "error": null,
+   "differential": {
+    "C": 0.45,
+    "D": 0.4,
+    "A": 0.1,
+    "B": 0.03,
+    "E": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-06",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.5179158241133519,
+   "error": null,
+   "differential": {
+    "D": 0.75,
+    "A": 0.15,
+    "E": 0.05,
+    "C": 0.03,
+    "B": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-07",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.6531822761588254,
+   "error": null,
+   "differential": {
+    "E": 0.65,
+    "A": 0.2,
+    "B": 0.05,
+    "D": 0.05,
+    "C": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-08",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.35148901094066753,
+   "error": null,
+   "differential": {
+    "A": 0.85,
+    "B": 0.1,
+    "C": 0.03,
+    "D": 0.01,
+    "E": 0.01
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-01",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.7807682010093013,
+   "error": null,
+   "differential": {
+    "A": 0.45,
+    "B": 0.35,
+    "C": 0.1,
+    "D": 0.05,
+    "E": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-02",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.8106317861686881,
+   "error": null,
+   "differential": {
+    "E": 0.45,
+    "A": 0.3,
+    "C": 0.15,
+    "D": 0.05,
+    "B": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-03",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.8189786329930581,
+   "error": null,
+   "differential": {
+    "C": 0.4,
+    "D": 0.35,
+    "B": 0.15,
+    "A": 0.05,
+    "E": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-04",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.6850652594191188,
+   "error": null,
+   "differential": {
+    "E": 0.65,
+    "A": 0.15,
+    "D": 0.08,
+    "B": 0.07,
+    "C": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-05",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.8055192634755567,
+   "error": null,
+   "differential": {
+    "E": 0.45,
+    "D": 0.3,
+    "B": 0.15,
+    "A": 0.07,
+    "C": 0.03
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-06",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.7807682010093013,
+   "error": null,
+   "differential": {
+    "A": 0.45,
+    "B": 0.35,
+    "C": 0.1,
+    "D": 0.05,
+    "E": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-07",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.8189786329930581,
+   "error": null,
+   "differential": {
+    "C": 0.4,
+    "B": 0.35,
+    "A": 0.15,
+    "D": 0.05,
+    "E": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-08",
+   "form": "mcq",
+   "k": 5,
+   "u": 0.5720905254505683,
+   "error": null,
+   "differential": {
+    "D": 0.65,
+    "C": 0.25,
+    "A": 0.08,
+    "B": 0.01,
+    "E": 0.01
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-01",
+   "form": "open",
+   "k": 5,
+   "u": 0.7885752699911857,
+   "error": null,
+   "differential": {
+    "cellulitis": 0.55,
+    "early fungal infection": 0.2,
+    "drug reaction": 0.1,
+    "insect bite reaction": 0.08,
+    "malignant lymphoma": 0.07
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-02",
+   "form": "open",
+   "k": 5,
+   "u": 0.3896243562675558,
+   "error": null,
+   "differential": {
+    "acute streptococcal pharyngitis": 0.85,
+    "allergic reaction to penicillin": 0.05,
+    "viral pharyngitis": 0.04,
+    "peritonsillar abscess": 0.03,
+    "reactive airway disease": 0.03
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-03",
+   "form": "open",
+   "k": 5,
+   "u": 0.7885752699911857,
+   "error": null,
+   "differential": {
+    "community-acquired pneumonia": 0.55,
+    "viral pneumonia": 0.2,
+    "pulmonary embolism": 0.1,
+    "bronchitis": 0.08,
+    "aspiration pneumonia": 0.07
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-04",
+   "form": "open",
+   "k": 5,
+   "u": 0.6850652594191188,
+   "error": null,
+   "differential": {
+    "anterior talofibular ligament sprain": 0.65,
+    "mild ankle joint subluxation": 0.15,
+    "acute synovitis of the ankle joint": 0.08,
+    "tendonitis of the peroneal tendons": 0.07,
+    "posterior talofibular ligament injury": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-05",
+   "form": "open",
+   "k": 5,
+   "u": 0.6531822761588254,
+   "error": null,
+   "differential": {
+    "iron deficiency anemia": 0.65,
+    "heavy menstrual bleeding": 0.2,
+    "chronic disease anemia": 0.05,
+    "thalassemia trait": 0.05,
+    "vitamin B12 deficiency": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-06",
+   "form": "open",
+   "k": 5,
+   "u": 0.35148901094066753,
+   "error": null,
+   "differential": {
+    "primary hypothyroidism": 0.85,
+    "autoimmune thyroiditis": 0.1,
+    "subacute thyroiditis": 0.03,
+    "pituitary apoplexy": 0.01,
+    "medication-induced hypothyroidism": 0.01
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-07",
+   "form": "open",
+   "k": 5,
+   "u": 0.15717303547954747,
+   "error": null,
+   "differential": {
+    "gout": 0.95,
+    "septic arthritis": 0.03,
+    "rheumatoid arthritis": 0.01,
+    "psoriatic arthritis": 0.005,
+    "traumatic joint injury": 0.005
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-low-08",
+   "form": "open",
+   "k": 5,
+   "u": 0.5563308144749578,
+   "error": null,
+   "differential": {
+    "benign paroxysmal positional vertigo": 0.75,
+    "vestibular neuritis": 0.1,
+    "vestibular migraine": 0.05,
+    "labyrinthitis": 0.05,
+    "cervical vertigo": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-01",
+   "form": "open",
+   "k": 5,
+   "u": 0.6850652594191188,
+   "error": null,
+   "differential": {
+    "atrial fibrillation": 0.65,
+    "hypertension": 0.15,
+    "type 2 diabetes": 0.08,
+    "hypothyroidism": 0.07,
+    "left ventricular dysfunction": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-02",
+   "form": "open",
+   "k": 5,
+   "u": 0.8566199011403355,
+   "error": null,
+   "differential": {
+    "Diabetic nephropathy progression": 0.45,
+    "Chronic kidney disease stage 4 with worsening eGFR": 0.25,
+    "Hypertensive nephrosclerosis": 0.15,
+    "Renal tubular acidosis": 0.08,
+    "Medication-induced nephrotoxicity": 0.07
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-03",
+   "form": "open",
+   "k": 5,
+   "u": 0.748842604016709,
+   "error": null,
+   "differential": {
+    "chronic hypertension in pregnancy": 0.55,
+    "preeclampsia (early stage)": 0.25,
+    "gestational hypertension": 0.1,
+    "renal artery stenosis": 0.05,
+    "secondary hypertension due to endocrine disorder": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-04",
+   "form": "open",
+   "k": 5,
+   "u": 0.7658288249518004,
+   "error": null,
+   "differential": {
+    "knee osteoarthritis exacerbation": 0.5789473684210527,
+    "patellofemoral pain syndrome": 0.15789473684210525,
+    "meniscal tear": 0.1263157894736842,
+    "post-traumatic arthritis": 0.08421052631578947,
+    "gout": 0.05263157894736842
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-05",
+   "form": "open",
+   "k": 5,
+   "u": 0.15717303547954747,
+   "error": null,
+   "differential": {
+    "diabetic ketoacidosis": 0.95,
+    "hyperosmolar hyperglycemic state": 0.03,
+    "gastroenteritis": 0.01,
+    "pancreatitis": 0.005,
+    "sepsis": 0.005
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-06",
+   "form": "open",
+   "k": 5,
+   "u": 0.748842604016709,
+   "error": null,
+   "differential": {
+    "pulmonary embolism": 0.55,
+    "deep vein thrombosis": 0.25,
+    "acute pericarditis": 0.1,
+    "costochondritis": 0.05,
+    "acute myocardial infarction": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-07",
+   "form": "open",
+   "k": 5,
+   "u": 0.748842604016709,
+   "error": null,
+   "differential": {
+    "acute exacerbation of COPD": 0.55,
+    "pneumonia": 0.25,
+    "bronchial asthma": 0.1,
+    "pulmonary embolism": 0.05,
+    "chronic bronchitis": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-mod-08",
+   "form": "open",
+   "k": 5,
+   "u": 0.5179158241133519,
+   "error": null,
+   "differential": {
+    "pyelonephritis": 0.75,
+    "urinary tract infection": 0.15,
+    "pregnancy-related infection": 0.05,
+    "acute appendicitis": 0.03,
+    "viral fever": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-01",
+   "form": "open",
+   "k": 5,
+   "u": 0.6850652594191188,
+   "error": null,
+   "differential": {
+    "hyperkalemia": 0.65,
+    "acute kidney injury": 0.15,
+    "cardiac arrhythmia due to hyperkalemia": 0.08,
+    "metabolic acidosis": 0.07,
+    "chronic kidney disease exacerbation": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-02",
+   "form": "open",
+   "k": 5,
+   "u": 0.8566199011403355,
+   "error": null,
+   "differential": {
+    "community-acquired pneumonia": 0.45,
+    "sepsis": 0.25,
+    "acute kidney injury": 0.15,
+    "pneumonia with bacterial superinfection": 0.08,
+    "hypovolemic shock": 0.07
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-03",
+   "form": "open",
+   "k": 5,
+   "u": 0.5563308144749578,
+   "error": null,
+   "differential": {
+    "ureteral stone": 0.75,
+    "hypertensive urgency": 0.1,
+    "depression exacerbation": 0.05,
+    "acute pyelonephritis": 0.05,
+    "renal artery stenosis": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-04",
+   "form": "open",
+   "k": 5,
+   "u": 0.7104276136551029,
+   "error": null,
+   "differential": {
+    "acute coronary syndrome": 0.55,
+    "stable angina": 0.25,
+    "myocardial infarction": 0.15,
+    "non-cardiac chest pain": 0.03,
+    "sildenafil-induced vasodilation effect": 0.02
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-05",
+   "form": "open",
+   "k": 5,
+   "u": 0.6850652594191188,
+   "error": null,
+   "differential": {
+    "Helicobacter pylori-related duodenal ulcer": 0.65,
+    "Gastroesophageal reflux disease": 0.15,
+    "Peptic ulcer disease with NSAID use": 0.08,
+    "Gastric malignancy": 0.07,
+    "Zollinger-Ellison syndrome": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-06",
+   "form": "open",
+   "k": 5,
+   "u": 0.7658288249518004,
+   "error": null,
+   "differential": {
+    "pneumonia": 0.5789473684210527,
+    "acute exacerbation of chronic obstructive pulmonary disease": 0.15789473684210525,
+    "viral bronchitis": 0.1263157894736842,
+    "pulmonary embolism": 0.08421052631578947,
+    "aspiration pneumonia": 0.05263157894736842
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-07",
+   "form": "open",
+   "k": 5,
+   "u": 0.6850652594191188,
+   "error": null,
+   "differential": {
+    "acute cystitis": 0.65,
+    "interstitial cystitis": 0.15,
+    "pyelonephritis": 0.08,
+    "non-infectious urethral syndrome": 0.07,
+    "urinary tract infection due to methotrexate use": 0.05
+   },
+   "model": "qwen3.5-4b"
+  },
+  {
+   "case_id": "syn-high-08",
+   "form": "open",
+   "k": 5,
+   "u": 0.9297754970099917,
+   "error": null,
+   "differential": {
+    "gastrointestinal bleeding from peptic ulcer": 0.35,
+    "esophageal varices secondary to cirrhosis": 0.25,
+    "malignant gastrointestinal neoplasm": 0.2,
+    "infection-related gastrointestinal hemorrhage": 0.1,
+    "acute coronary syndrome with hypovolemia": 0.1
+   },
+   "model": "qwen3.5-4b"
+  }
+ ]
+}

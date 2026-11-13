@@ -1,0 +1,449 @@
+"""DevAll node types: registration, schema export, configs and executors over the shared pipeline stages."""
+
+import json
+from collections.abc import Callable, Iterator
+from unittest.mock import Mock
+
+import pytest
+
+from dynaclinic.devall_nodes import STATE_KEY, case_from_text
+from dynaclinic.divergence import HASHING_EMBEDDER, TAU_SEMANTIC
+from dynaclinic.llm import FakeLLM, LLMError, set_client_factory
+from dynaclinic.parsing import first_line_marker
+from dynaclinic.pipeline import BLOCKED_PREFIX, CaseRun
+from dynaclinic.prompts import (
+    CONSULT_ROLES,
+    CRITIC,
+    IMAGING,
+    MESH_ROLES,
+    PATHOLOGY,
+    PHARMACOLOGY,
+    PRIMARY_CARE,
+    SYNTHESIZER,
+    TRIAGE,
+)
+from dynaclinic.types import Case
+from entity.configs import ConfigError, Node
+from entity.messages import Message, MessageRole
+from runtime.bootstrap.schema import ensure_schema_registry_populated
+from runtime.node.executor.base import ExecutionContext
+from runtime.node.registry import iter_node_registrations
+from tests.dynaclinic_fixtures import no_network  # noqa: F401
+from tests.test_dynaclinic_metacontroller import DRUG_A, DRUG_Q, FINAL, ONE_HOT, UNIFORM
+from tests.test_dynaclinic_pipeline import (
+    CASE,
+    FOR_A,
+    OPPONENT,
+    PROPONENT_CASE,
+    SCRIPT,
+    UNSAFE_ANSWER,
+    UNSAFE_CLAIM,
+    _specialist,
+    _triage,
+)
+from utils.schema_exporter import build_schema_response
+
+NODE_TYPES = (
+    "dc_triage", "dc_uncertainty", "dc_primary_care", "dc_care_team", "dc_divergence_gate", "dc_mesh_exchange",
+    "dc_proponent", "dc_critic", "dc_synthesizer", "dc_safety_gate",
+)
+CASE_JSON = json.dumps(CASE.to_dict())
+SEPSIS_TEXT = "A 70-year-old man has fever, hypotension and confusion."
+Build = Callable[..., "Harness"]
+
+
+class Harness:
+    """Runs DynaClinic nodes in one ``ExecutionContext`` the way the DevAll graph does, against a FakeLLM."""
+
+    def __init__(self, script: object, embed: Callable[[list[str]], list[list[float]]] | None = None) -> None:
+        self.client = FakeLLM(script, embed)
+        self.models: list[list[str] | None] = []
+        self.context = ExecutionContext(tool_manager=Mock(), function_manager=Mock(), log_manager=Mock())
+
+    def factory(self, models: list[str] | None) -> FakeLLM:
+        self.models.append(models)
+        return self.client
+
+    def run(self, node_type: str, text: str = "", **config: object) -> str:
+        node = Node.from_dict({"id": node_type, "type": node_type, "config": config}, path="graph.nodes")
+        executor = iter_node_registrations()[node_type].build_executor(self.context)
+        inputs = [Message(role=MessageRole.USER, content=text)] if text else []
+        [message] = executor.execute(node, inputs)
+        return message.text_content()
+
+    @property
+    def run_state(self) -> CaseRun:
+        return self.context.global_state[STATE_KEY].run
+
+
+@pytest.fixture
+def harness() -> Iterator[Build]:
+    """Yield a ``Harness`` builder whose FakeLLM is installed through ``set_client_factory``."""
+    ensure_schema_registry_populated()
+
+    def build(embed: Callable[[list[str]], list[list[float]]] | None = None, **overrides: object) -> Harness:
+        h = Harness({**SCRIPT, **overrides}, embed)
+        set_client_factory(h.factory)
+        return h
+
+    yield build
+    set_client_factory(None)
+
+
+def test_registry_and_schema_export_include_every_node_type() -> None:
+    ensure_schema_registry_populated()
+    assert set(NODE_TYPES) <= iter_node_registrations().keys()
+    crumbs = [{"node": "DesignConfig", "field": "graph"}, {"node": "GraphDefinition", "field": "nodes"}]
+    type_field = next(f for f in build_schema_response(crumbs)["fields"] if f["name"] == "type")
+    assert set(NODE_TYPES) <= set(type_field["enum"])
+    triage_fields = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": "dc_triage"}])
+    assert {"model", "fallback_models", "escalate_threshold"} <= {f["name"] for f in triage_fields["fields"]}
+    for node_type in ("dc_care_team", "dc_synthesizer"):
+        fields = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": node_type}])["fields"]
+        assert "context_policy" in {f["name"] for f in fields}, node_type
+    sweep = build_schema_response([*crumbs, {"node": "Node", "field": "config", "value": "dc_uncertainty"}])
+    assert {"model", "tau_u_mcq", "tau_u_open", "tau_u", "k"} <= {f["name"] for f in sweep["fields"]}
+
+
+def test_configs_default_to_the_env_model_chain() -> None:
+    ensure_schema_registry_populated()
+    config = Node.from_dict({"id": "g", "type": "dc_safety_gate", "config": {}}, path="n").config
+    assert (config.model, config.fallback_models, config.max_rollbacks) == (None, [], 1)
+    assert Node.from_dict({"id": "d", "type": "dc_divergence_gate", "config": {}}, path="n").config.tau == 0.25
+    sweep = Node.from_dict({"id": "u", "type": "dc_uncertainty", "config": {}}, path="n").config
+    assert (sweep.tau_u_mcq, sweep.tau_u_open, sweep.tau_u, sweep.k) == (None, None, None, 5)  # the model's row
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config"),
+    [
+        ("dc_divergence_gate", {"tau": 1.5}),
+        ("dc_divergence_gate", {"tau_semantic": 1.5}),
+        ("dc_primary_care", {"pca_samples": 0}),
+        ("dc_safety_gate", {"max_rollbacks": -1}),
+        ("dc_triage", {"escalate_threshold": "high"}),
+        ("dc_care_team", {"fallback_models": ["gpt-5.6-luna"]}),
+        ("dc_critic", {"fallback_models": "gpt-5.6-luna", "model": "gpt-6-luna"}),
+        ("dc_care_team", {"context_policy": "loose"}),
+        ("dc_synthesizer", {"context_policy": 1}),
+        ("dc_uncertainty", {"tau_u": 1.5}),
+        ("dc_uncertainty", {"tau_u": "high"}),
+        ("dc_uncertainty", {"tau_u_mcq": 1.5}),
+        ("dc_uncertainty", {"tau_u_open": -0.5}),
+        ("dc_uncertainty", {"k": 1}),
+    ],
+)
+def test_invalid_config_is_a_config_error(node_type: str, config: dict) -> None:
+    ensure_schema_registry_populated()
+    with pytest.raises(ConfigError):
+        Node.from_dict({"id": "n", "type": node_type, "config": config}, path="n")
+
+
+def test_case_from_text_reads_case_json_or_falls_back_to_free_text() -> None:
+    assert case_from_text(CASE_JSON) == CASE
+    partial = case_from_text(json.dumps({"vignette": "v", "question": "q?", "options": [{"letter": "A", "text": "x"}]}))
+    assert (partial.letters(), partial.answer, partial.source) == (["A"], "", "devall")
+    free = case_from_text(f"  {SEPSIS_TEXT}\n")
+    assert (free.vignette, free.options, free.source) == (SEPSIS_TEXT, [], "devall")
+    assert case_from_text('{"vignette": "no options key"}').vignette == '{"vignette": "no options key"}'
+
+
+def test_low_path_emits_markers_and_shares_state(harness: Build) -> None:
+    h = harness()
+    assert first_line_marker(h.run("dc_triage", CASE_JSON), "ROUTE") == "LOW"
+    care = h.run("dc_primary_care")
+    assert care.splitlines()[0] == "STAGE: primary_care" and care.endswith("FINAL ANSWER: B")
+    assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
+    result = h.run_state.result
+    assert result.route == ["ingest", "triage:LOW", "primary_care", "safety_gate:pass"]
+    assert [call.role for call in result.calls] == [TRIAGE, PRIMARY_CARE]
+    assert result.final_answer == "B" and not result.blocked
+
+
+def test_high_disagreeing_team_goes_adversarial_through_the_debate(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"), imaging=_specialist(FOR_A, UNSAFE_CLAIM))
+    assert first_line_marker(h.run("dc_triage", CASE_JSON), "ROUTE") == "HIGH"
+    assert h.run("dc_care_team").splitlines()[0] == "STAGE: care_team"
+    assert first_line_marker(h.run("dc_divergence_gate"), "MODE") == "ADVERSARIAL"
+    assert h.run("dc_proponent") == (
+        "STAGE: proponent\nH1 (primary hypothesis; team plurality (2 of 3 specialists)): B. Oral azithromycin\n"
+        f"H2 (strongest alternative): A. Oral amoxicillin\n\n{PROPONENT_CASE}")
+    critic = h.run("dc_critic")
+    assert critic.startswith(f"STAGE: critic (Opponent)\nAgainst H1 (B. Oral azithromycin):\n- {OPPONENT['H1'][0]}\n"
+                             f"Against H2 (A. Oral amoxicillin):\n- {OPPONENT['H2'][0]}\nFlagged claims:\n")
+    assert UNSAFE_CLAIM in critic
+    assert h.run("dc_synthesizer").splitlines()[0] == "STAGE: synthesizer (Mediator (Conflict Resolver))"
+    assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
+    route = h.run_state.result.route
+    assert route[2] == "care_team:imaging,pathology,pharmacology"
+    assert route[3].endswith(":switch") and route[4:] == ["proponent", "critic", "synthesizer", "safety_gate:pass"]
+
+
+def test_critic_without_a_debate_keeps_its_classic_output(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"), imaging=_specialist(FOR_A, UNSAFE_CLAIM))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    h.run("dc_divergence_gate")
+    critic = h.run("dc_critic")
+    assert critic.startswith("STAGE: critic\nFlagged claims:\n") and "Against H1" not in critic
+
+
+def test_high_agreeing_team_is_collaborative(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    assert first_line_marker(h.run("dc_divergence_gate", tau=0.5), "MODE") == "COLLABORATIVE"
+    assert CRITIC not in [call.role for call in h.run_state.result.calls]
+
+
+def test_divergence_gate_shows_an_abstaining_specialist_without_counting_its_vote(harness: Build) -> None:
+    h = harness(triage=_triage("HIGH"), imaging=_specialist(dict.fromkeys("ABC", 1 / 3)))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate")
+    assert first_line_marker(gate, "MODE") == "COLLABORATIVE"
+    assert "imaging A (abstains)" in gate and "pathology B," in gate
+
+
+@pytest.mark.parametrize(
+    ("config", "sees_case"),
+    [({}, True), ({"context_policy": "shared_core"}, True), ({"context_policy": "strict"}, False)],
+)
+def test_care_team_and_synthesizer_follow_their_context_policy(harness: Build, config: dict, sees_case: bool) -> None:
+    h = harness(triage=_triage("HIGH"))
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team", **config)
+    h.run("dc_divergence_gate")
+    h.run("dc_synthesizer", **config)
+    seen = {role: "Tonsillar exudates" in user for role, _, user in h.client.prompts if role != TRIAGE}
+    assert seen == dict.fromkeys((IMAGING, PATHOLOGY, PHARMACOLOGY, SYNTHESIZER), sees_case)
+
+
+@pytest.mark.parametrize(("max_rollbacks", "synthesizer_calls"), [(1, 1), (0, 0)])
+def test_blocked_gate_regenerates_then_labels_manual_review(
+    harness: Build, max_rollbacks: int, synthesizer_calls: int
+) -> None:
+    h = harness(primary_care=UNSAFE_ANSWER, synthesizer=UNSAFE_ANSWER)
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_primary_care")
+    gate = h.run("dc_safety_gate", max_rollbacks=max_rollbacks)
+    assert first_line_marker(gate, "GATE") == "BLOCKED" and BLOCKED_PREFIX in gate and "T_SAD" in gate
+    assert [call.role for call in h.run_state.result.calls].count(SYNTHESIZER) == synthesizer_calls
+
+
+def test_free_text_case_has_optional_final_answer_and_text_only_gates(harness: Build) -> None:
+    h = harness(primary_care="Give IV ceftriaxone now, then draw blood cultures.",
+                synthesizer="Draw blood cultures, then give IV ceftriaxone.")
+    assert first_line_marker(h.run("dc_triage", SEPSIS_TEXT), "ROUTE") == "LOW"
+    h.run("dc_primary_care")
+    assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
+    result = h.run_state.result
+    assert result.route[-4:] == ["primary_care", "safety_gate:blocked", "regenerate", "safety_gate:pass"]
+    assert result.final_answer is None and result.warnings == []
+
+
+def _asserting(diagnosis: str, recommendation: str = "Act within this domain.") -> str:
+    return (json.dumps({"findings": ["scripted finding"], "claims": ["scripted claim"]})
+            + f"\nLEADING DIAGNOSIS: {diagnosis}\nDOMAIN RECOMMENDATION: {recommendation}")
+
+
+def _by_keyword(texts: list[str]) -> list[list[float]]:
+    """Deterministic fake embedder: one axis per diagnosis keyword."""
+    return [[float("embol" in text.lower()), float("coronary" in text.lower())] for text in texts]
+
+
+PE = "Pulmonary embolism"
+ACS = "Acute coronary syndrome"
+# One action per lens (imaging, pathology, pharmacology): the f12 real-run wording, which must not read as conflict.
+ACTIONS = ("Obtain CT pulmonary angiography to evaluate for pulmonary embolism.",
+           "Further evaluate for pulmonary embolism; the elevated D-dimer alone is not diagnostic.",
+           "Avoid NSAIDs and evaluate urgently before deciding on anticoagulation.")
+
+
+def test_open_ended_team_with_fewer_than_two_assertions_goes_adversarial_and_says_why(harness: Build) -> None:
+    findings = json.dumps({"findings": ["hypotension with fever"], "claims": ["Septic shock is likely"]})
+    h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=_asserting("ABSTAIN (no imaging)"),
+                pathology=findings, pharmacology=_asserting("Septic shock", "Start fluids and antibiotics."),
+                synthesizer="Draw blood cultures, then start IV ceftriaxone and fluids.")
+    h.run("dc_triage", SEPSIS_TEXT)
+    team = h.run("dc_care_team")
+    assert len(h.run_state.board) == 3 and "pathology: no LEADING DIAGNOSIS line; counted as abstaining" in team
+    gate = h.run("dc_divergence_gate")
+    assert gate == ("MODE: ADVERSARIAL\nSemantic divergence not measurable: fewer than two specialists asserted a "
+                    "diagnosis; adversarial review (safety-biased); leading diagnoses: imaging ABSTAIN, pathology "
+                    'ABSTAIN, pharmacology "Septic shock".')
+    h.run("dc_critic")
+    h.run("dc_synthesizer")
+    assert first_line_marker(h.run("dc_safety_gate"), "GATE") == "PASS"
+    result = h.run_state.result
+    assert (result.divergence, result.embedder, result.final_answer, result.error) == (None, None, None, None)
+    assert result.route[3:] == ["divergence:n/a:switch", "critic", "synthesizer", "safety_gate:pass"]
+
+
+@pytest.mark.parametrize(
+    ("pharmacology", "mode", "divergence", "synthesizer"),
+    [(PE, "COLLABORATIVE", 0.0, "Consensus Builder"), (ACS, "ADVERSARIAL", 2 / 3, "Mediator (Conflict Resolver)")],
+)
+def test_open_ended_team_switches_on_the_semantic_divergence_of_its_leading_diagnoses(
+    harness: Build, pharmacology: str, mode: str, divergence: float, synthesizer: str
+) -> None:
+    imaging, pathology, drugs = (_asserting(diagnosis, action) for diagnosis, action in zip((PE, PE, pharmacology),
+                                                                                             ACTIONS, strict=True))
+    h = harness(embed=_by_keyword, triage=_triage("HIGH"), imaging=imaging, pathology=pathology, pharmacology=drugs)
+    h.run("dc_triage", "A 61-year-old has sudden dyspnea and pleuritic chest pain.")
+    team = h.run("dc_care_team")
+    assert "leading diagnosis: " + PE in team and all(f"domain recommendation: {action}" in team for action in ACTIONS)
+    gate = h.run("dc_divergence_gate", tau_semantic=0.5)
+    assert gate == (f"MODE: {mode}\nSemantic divergence {divergence:.2f} (tau_semantic 0.5, embedder fake); "
+                    f'leading diagnoses: imaging "{PE}", pathology "{PE}", pharmacology "{pharmacology}".')
+    result = h.run_state.result
+    assert result.divergence == pytest.approx(divergence) and result.mode == mode.lower()
+    assert result.assertions == {IMAGING: PE, PATHOLOGY: PE, PHARMACOLOGY: pharmacology}
+    assert h.run("dc_synthesizer").splitlines()[0] == f"STAGE: synthesizer ({synthesizer})"
+
+
+def test_failing_embedder_falls_back_to_hashing_and_the_gate_names_it(harness: Build) -> None:
+    def unavailable(texts: list[str]) -> list[list[float]]:
+        raise LLMError("embeddings endpoint not found")
+
+    h = harness(embed=unavailable, triage=_triage("HIGH"), imaging=_asserting(PE), pathology=_asserting(PE),
+                pharmacology=_asserting(ACS))
+    h.run("dc_triage", "A 61-year-old has sudden dyspnea and pleuritic chest pain.")
+    h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate")
+    assert f"(tau_semantic {TAU_SEMANTIC[HASHING_EMBEDDER]:g}, embedder hashing)" in gate.splitlines()[1]
+    assert gate.endswith("Warnings:\n- divergence: embedder fake failed (embeddings endpoint not found); used hashing")
+    assert h.run_state.result.embedder == HASHING_EMBEDDER
+
+
+def test_all_specialists_failing_raises_and_records_the_error(harness: Build) -> None:
+    broken = {role: "I cannot help with that." for role in (IMAGING, PATHOLOGY, PHARMACOLOGY)}
+    h = harness(triage=_triage("HIGH"), **broken)
+    h.run("dc_triage", CASE_JSON)
+    with pytest.raises(LLMError, match="all specialists failed"):
+        h.run("dc_care_team")
+    result = h.run_state.result
+    assert result.error == "all specialists failed" and result.route[-1] == "care_team:failed"
+    assert sorted(call.role for call in result.calls) == sorted([TRIAGE, IMAGING, PATHOLOGY, PHARMACOLOGY])
+
+
+def test_model_config_builds_one_client_per_chain_per_run(harness: Build) -> None:
+    h = harness()
+    h.run("dc_triage", CASE_JSON, model="gpt-6-luna", fallback_models=["gpt-5.6-luna"])
+    h.run("dc_primary_care", model="gpt-6-luna", fallback_models=["gpt-5.6-luna"])
+    h.run("dc_safety_gate")
+    assert h.models == [["gpt-6-luna", "gpt-5.6-luna"], None]
+
+
+def test_triage_starts_a_fresh_case_run(harness: Build) -> None:
+    h = harness()
+    h.run("dc_triage", CASE_JSON)
+    first = h.run_state
+    h.run("dc_triage", SEPSIS_TEXT)
+    assert h.run_state is not first and isinstance(h.run_state.case, Case)
+    assert (h.run_state.case.vignette, h.run_state.case.options) == (SEPSIS_TEXT, [])
+    assert h.run_state.result.route == ["ingest", "triage:LOW"]
+
+
+@pytest.mark.parametrize(
+    ("tier", "sweep", "mode", "u"),
+    [("LOW", ONE_HOT, "HIERARCHICAL", "0.00"), ("HIGH", ONE_HOT, "COLLABORATIVE", "0.00"),
+     ("LOW", UNIFORM, "ADVERSARIAL", "1.00")],
+)
+def test_generalist_sweep_emits_the_mode_then_c_u_rule_and_differential(
+    harness: Build, tier: str, sweep: str, mode: str, u: str
+) -> None:
+    h = harness(triage=_triage(tier), generalist=sweep)
+    h.run("dc_triage", CASE_JSON)
+    lines = h.run("dc_uncertainty").splitlines()
+    r = h.run_state.result
+    assert lines[:4] == [f"MODE: {mode}",
+                         (f"Complexity C={r.complexity:.2f} (tau_c 0.5), Uncertainty U={u} (tau_u 0.15 for "
+                          "multiple choice, gpt-6-luna's (no model id), k 3)"),
+                         f"Rule: {r.mode_reason}", "Differential (generalist sweep):"]
+    assert lines[4:] == [f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()]
+    assert r.route[-2:] == [f"uncertainty:{u}", f"mode:{mode.lower()}" + (":uncertainty" if tier == "LOW" and
+                                                                         mode == "ADVERSARIAL" else "")]
+
+
+@pytest.mark.parametrize(
+    ("text", "config", "applied"),
+    [(SEPSIS_TEXT, {}, "tau_u 0.59 for open-ended, gpt-6-luna's (no model id), k 5"),
+     (SEPSIS_TEXT, {"tau_u_open": 0.4}, "tau_u 0.4 for open-ended, configured, k 5"),
+     (CASE_JSON, {"tau_u": 0.8}, "tau_u 0.8 for multiple choice, configured override, k 3")],
+    ids=["open-ended", "open-configured", "override"],
+)
+def test_generalist_sweep_prints_which_threshold_applied(harness: Build, text: str, config: dict, applied: str) -> None:
+    h = harness(generalist=ONE_HOT)
+    h.run("dc_triage", text)
+    out = h.run("dc_uncertainty", **config)
+    assert f"({applied})" in out.splitlines()[1] and h.run_state.result.tau_u == float(applied.split()[1])
+
+
+@pytest.mark.parametrize(
+    ("model", "applied", "warning"),
+    [("gpt-6-luna", "tau_u 0.15 for multiple choice, calibrated for gpt-6-luna, k 3", None),
+     ("qwen-test", "tau_u 0.15 for multiple choice, uncalibrated: fallback to gpt-6-luna's, k 3",
+      "- generalist: tau_u not calibrated for qwen-test; using gpt-6-luna's")],
+    ids=["calibrated", "uncalibrated"],
+)
+def test_generalist_sweep_names_the_model_row_or_the_fallback(
+    harness: Build, model: str, applied: str, warning: str | None
+) -> None:
+    h = harness(generalist=ONE_HOT)
+    h.client.active_model = model  # OpenAIChatClient's attribute; FakeLLM has none
+    h.run("dc_triage", CASE_JSON)
+    out = h.run("dc_uncertainty")
+    assert f"({applied})" in out.splitlines()[1]
+    assert (warning in out.splitlines()) if warning else "not calibrated" not in out
+
+
+def test_malformed_sweep_routes_on_c_and_says_u_was_not_measured(harness: Build) -> None:
+    h = harness(generalist="I would rather not guess.")
+    h.run("dc_triage", CASE_JSON)
+    out = h.run("dc_uncertainty")
+    assert out.startswith("MODE: HIERARCHICAL\n") and "Uncertainty U=n/a" in out and "\n- none\n" in out
+    assert out.splitlines()[-1].startswith("- generalist: ") and "U not measured, routed on C only" in out
+
+
+def test_sweep_without_triage_fails_loudly(harness: Build) -> None:
+    with pytest.raises(ValueError, match="dc_triage"):
+        harness().run("dc_uncertainty", CASE_JSON)
+
+
+def test_adversarial_by_uncertainty_gate_reports_divergence_but_keeps_the_mode(harness: Build) -> None:
+    h = harness(generalist=UNIFORM)  # LOW tier, the team agrees on B
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_uncertainty")
+    h.run("dc_care_team")
+    gate = h.run("dc_divergence_gate")
+    assert gate.startswith("MODE: ADVERSARIAL\nDivergence 0.00")
+    assert gate.endswith("Adversarial mode entered by uncertainty (U 1.00 > tau_u 0.15): the Conflict Detector "
+                         "reports only; the mode stays adversarial.")
+    assert h.run_state.result.route[-1] == "divergence:0.00:stay"
+
+
+def test_primary_care_hub_lists_its_consults_before_the_answer(harness: Build) -> None:
+    h = harness(primary_care=[f"CONSULT: pharmacology: {DRUG_Q}", FINAL],
+                **{CONSULT_ROLES[PHARMACOLOGY]: DRUG_A})
+    h.run("dc_triage", CASE_JSON)
+    assert h.run("dc_primary_care") == (f"STAGE: primary_care\nHub consults (each specialist answered independently):\n"
+                                        f"- pharmacology: {DRUG_Q} -> {DRUG_A}\n\n{FINAL}")
+
+
+def test_mesh_exchange_summarises_what_each_specialist_reads_adopts_and_disputes(harness: Build) -> None:
+    exchange = [{"peer": PATHOLOGY, "stance": "adopts", "point": "the positive antigen test"},
+                {"peer": PHARMACOLOGY, "stance": "Disputes", "point": "macrolide risk"}]
+    imaging = json.dumps({"exchange": exchange, "findings": ["f"], "distribution": FOR_A, "claims": []})
+    h = harness(triage=_triage("HIGH"), **{MESH_ROLES[IMAGING]: imaging, MESH_ROLES[PATHOLOGY]: "not json"})
+    h.run("dc_triage", CASE_JSON)
+    h.run("dc_care_team")
+    assert h.run("dc_divergence_gate").startswith("MODE: COLLABORATIVE\n")
+    assert h.run("dc_mesh_exchange") == (
+        "STAGE: mesh_exchange\n"
+        "- imaging reads pathology, pharmacology; adopts pathology: the positive antigen test; "
+        "disputes pharmacology: macrolide risk; revised: A\n"
+        "- pharmacology reads imaging, pathology; no adopt/dispute stated; revised: B\n\n"
+        "Warnings:\n- pathology: mesh reply has no distribution; no step-2 entry, its round-1 entry stands")
+    assert h.run("dc_synthesizer").startswith("STAGE: synthesizer (Consensus Builder)\n")
+    assert "[step 2] imaging (hypothesis)" in next(u for r, _, u in h.client.prompts if r == SYNTHESIZER)

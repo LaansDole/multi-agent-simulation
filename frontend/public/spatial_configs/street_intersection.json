@@ -1,0 +1,382 @@
+{
+  "canvas": {
+    "width": 1600,
+    "height": 1600,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "metadata": {
+    "name": "Street Intersection",
+    "description": "Urban intersection with four building blocks and crosswalks",
+    "tags": [
+      "street",
+      "urban",
+      "outdoor",
+      "intersection"
+    ],
+    "recommendedAgentCount": {
+      "min": 10,
+      "max": 30
+    },
+    "thumbnail": "thumbnails/street_intersection.png"
+  },
+  "floors": [
+    {
+      "id": "floor-road-h",
+      "tileType": "pavement",
+      "position": {
+        "x": 0,
+        "y": 560
+      },
+      "width": 1600,
+      "height": 480,
+      "sprite": "pavement.png",
+      "color": "#555555"
+    },
+    {
+      "id": "floor-road-v",
+      "tileType": "pavement",
+      "position": {
+        "x": 560,
+        "y": 0
+      },
+      "width": 480,
+      "height": 1600,
+      "sprite": "pavement.png",
+      "color": "#555555"
+    },
+    {
+      "id": "floor-nw",
+      "tileType": "concrete",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
+    },
+    {
+      "id": "floor-ne",
+      "tileType": "concrete",
+      "position": {
+        "x": 1040,
+        "y": 0
+      },
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
+    },
+    {
+      "id": "floor-sw",
+      "tileType": "concrete",
+      "position": {
+        "x": 0,
+        "y": 1040
+      },
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
+    },
+    {
+      "id": "floor-se",
+      "tileType": "concrete",
+      "position": {
+        "x": 1040,
+        "y": 1040
+      },
+      "width": 560,
+      "height": 560,
+      "sprite": "concrete.png",
+      "color": "#888888"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "block-nw",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 560,
+        "height": 560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "block-ne",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1040,
+        "y": 0
+      },
+      "size": {
+        "width": 560,
+        "height": 560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "block-sw",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 1040
+      },
+      "size": {
+        "width": 560,
+        "height": 560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "block-se",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1040,
+        "y": 1040
+      },
+      "size": {
+        "width": 560,
+        "height": 560
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "lamp-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 480
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 970,
+        "y": 480
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 1060
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 970,
+        "y": 1060
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "car-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 620,
+        "y": 200
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 620,
+        "y": 1200
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1100,
+        "y": 620
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 300,
+        "y": 960
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "tree-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 980,
+        "y": 200
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 600,
+        "y": 1300
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    },
+    {
+      "id": "tree-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 980,
+        "y": 1300
+      },
+      "size": {
+        "width": 60,
+        "height": 60
+      },
+      "color": "#228B22",
+      "collision": false,
+      "sprite": "tree.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "spawn-road-h",
+      "name": "Horizontal Road",
+      "position": {
+        "x": 0,
+        "y": 600
+      },
+      "size": {
+        "width": 1600,
+        "height": 400
+      }
+    },
+    {
+      "id": "spawn-road-v",
+      "name": "Vertical Road",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "size": {
+        "width": 400,
+        "height": 1600
+      }
+    }
+  ]
+}

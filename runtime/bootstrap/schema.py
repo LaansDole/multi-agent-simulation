@@ -13,6 +13,7 @@ def _modules_to_import() -> Iterable[str]:
         "runtime.node.agent.thinking.builtin_thinking",
         "runtime.edge.conditions.builtin_types",
         "runtime.node.agent.providers.builtin_providers",
+        "dynaclinic.register",
     )
 
 

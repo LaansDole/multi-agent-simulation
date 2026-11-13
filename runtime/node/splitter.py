@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Optional
 
 from entity.configs.dynamic_base import SplitConfig, RegexSplitConfig, JsonPathSplitConfig
-from entity.messages import Message, MessageRole
+from entity.messages import Message
 
 
 class Splitter(ABC):

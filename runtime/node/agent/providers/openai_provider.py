@@ -2,15 +2,20 @@
 
 import base64
 import hashlib
+import json
+import logging
 import re
+import threading
 
 import binascii
 import os
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import unquote_to_bytes
 
+import httpx
 import openai
 from openai import OpenAI
+
 
 from entity.messages import (
     AttachmentRef,
@@ -24,8 +29,52 @@ from entity.messages import (
 from entity.tool_spec import ToolSpec
 from runtime.node.agent import ModelProvider
 from runtime.node.agent import ModelResponse
+from runtime.node.agent.providers.base import ModelInfo
 from utils.token_tracker import TokenUsage
 
+logger = logging.getLogger(__name__)
+
+# (base_url, model) pairs that answered 400 "temperature unsupported"; process-wide so later calls omit it.
+_NO_TEMPERATURE: set[tuple[str | None, str]] = set()
+_NO_TEMPERATURE_LOCK = threading.Lock()
+
+
+class _DataUnwrapTransport(httpx.BaseTransport):
+    """HTTP transport that unwraps ``{"data": {...}, "success": ...}`` API responses.
+
+    Some OpenAI-compatible providers (e.g. Cline) wrap the standard OpenAI
+    response body under a ``data`` key. The OpenAI Python SDK does not unwrap
+    this wrapper, causing ``response.choices`` to be ``None``. This transport
+    intercepts the raw HTTP response and replaces the body with the unwrapped
+    ``data`` payload so the SDK parses it normally.
+    """
+
+    def __init__(self) -> None:
+        self._inner = httpx.HTTPTransport()
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        response = self._inner.handle_request(request)
+        if response.status_code == 200:
+            response.read()
+            content = response.content
+            if content:
+                try:
+                    body = json.loads(content)
+                except (json.JSONDecodeError, ValueError):
+                    return response
+                if (
+                    isinstance(body, dict)
+                    and "data" in body
+                    and "success" in body
+                ):
+                    unwrapped = body["data"]
+                    new_content = json.dumps(unwrapped).encode()
+                    response._content = new_content
+                    response.headers["content-length"] = str(len(new_content))
+        return response
+
+    def close(self) -> None:
+        self._inner.close()
 
 class OpenAIProvider(ModelProvider):
     """OpenAI provider implementation."""
@@ -34,10 +83,13 @@ class OpenAIProvider(ModelProvider):
     TEXT_INLINE_CHAR_LIMIT = 200_000  # safeguard large text/* attachments
     MAX_INLINE_FILE_BYTES = 50 * 1024 * 1024  # OpenAI function output limit (~50 MB)
 
+    # Provider-internal param keys that must NOT be forwarded to the OpenAI API.
+    _RESERVED_PARAMS = frozenset({"protocol", "unwrap_data_wrapper"})
+
     def create_client(self):
         """
         Create and return the OpenAI client.
-        
+
         Returns:
             OpenAI client instance with token tracking if available
         """
@@ -45,11 +97,24 @@ class OpenAIProvider(ModelProvider):
             return OpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
+                http_client=self._build_http_client(),
             )
         else:
             return OpenAI(
                 api_key=self.api_key,
+                http_client=self._build_http_client(),
             )
+
+    def _build_http_client(self) -> httpx.Client:
+        """Build the ``httpx.Client`` to pass to the OpenAI SDK.
+
+        When ``params.unwrap_data_wrapper`` is true, wraps the transport in
+        ``_DataUnwrapTransport`` to handle providers that nest the real
+        response body under a ``data`` key (e.g. the Cline API).
+        """
+        if self.params.get("unwrap_data_wrapper"):
+            return httpx.Client(transport=_DataUnwrapTransport())
+        return httpx.Client()
 
     def call_model(
         self,
@@ -64,10 +129,10 @@ class OpenAIProvider(ModelProvider):
         """
         # 1. Determine if we should use Chat Completions directly
         is_chat = self._is_chat_completions_mode(client)
-        
+
         if is_chat:
             request_payload = self._build_chat_payload(conversation, tool_specs, kwargs)
-            response = client.chat.completions.create(**request_payload)
+            response = self._create(client.chat.completions.create, request_payload)
             self._track_token_usage(response)
             self._append_chat_response_output(timeline, response)
             message = self._deserialize_chat_response(response)
@@ -76,18 +141,39 @@ class OpenAIProvider(ModelProvider):
         # 2. Try Responses API with fallback
         request_payload = self._build_request_payload(timeline, tool_specs, kwargs)
         try:
-            response = client.responses.create(**request_payload)
+            response = self._create(client.responses.create, request_payload)
             self._track_token_usage(response)
             self._append_response_output(timeline, response)
             message = self._deserialize_response(response)
             return ModelResponse(message=message, raw_response=response)
-        except Exception as e:
-            new_request_payload = self._build_chat_payload(conversation, tool_specs, kwargs)
-            response = client.chat.completions.create(**new_request_payload)
+        except Exception:
+            new_request_payload = self._build_chat_payload(
+                conversation, tool_specs, kwargs
+            )
+            response = self._create(client.chat.completions.create, new_request_payload)
             self._track_token_usage(response)
             self._append_chat_response_output(timeline, response)
             message = self._deserialize_chat_response(response)
             return ModelResponse(message=message, raw_response=response)
+
+    def _create(self, create: Any, payload: dict[str, Any]) -> Any:
+        """Call ``create(**payload)``; if the model rejects ``temperature``, retry once without it and remember."""
+        key = (self.base_url, self.model_name)
+        if key in _NO_TEMPERATURE:
+            payload.pop("temperature", None)
+        try:
+            return create(**payload)
+        except openai.BadRequestError as err:
+            message = str(err).lower()
+            if "temperature" not in payload or "temperature" not in message or "unsupported" not in message:
+                raise
+            with _NO_TEMPERATURE_LOCK:
+                first = key not in _NO_TEMPERATURE
+                _NO_TEMPERATURE.add(key)
+            if first:
+                logger.warning("model %s rejects temperature; omitting it from now on", self.model_name)
+            payload.pop("temperature")
+            return create(**payload)
 
     def _is_chat_completions_mode(self, client: Any) -> bool:
         """Determine if we should use standard chat completions instead of responses API."""
@@ -102,10 +188,10 @@ class OpenAIProvider(ModelProvider):
     def extract_token_usage(self, response: Any) -> TokenUsage:
         """
         Extract token usage from the OpenAI API response.
-        
+
         Args:
             response: OpenAI API response from the model call
-            
+
         Returns:
             TokenUsage instance with token counts
         """
@@ -125,8 +211,12 @@ class OpenAIProvider(ModelProvider):
         input_tokens = _get("input_tokens")
         output_tokens = _get("output_tokens")
 
-        resolved_input = input_tokens if input_tokens is not None else prompt_tokens or 0
-        resolved_output = output_tokens if output_tokens is not None else completion_tokens or 0
+        resolved_input = (
+            input_tokens if input_tokens is not None else prompt_tokens or 0
+        )
+        resolved_output = (
+            output_tokens if output_tokens is not None else completion_tokens or 0
+        )
 
         total_tokens = _get("total_tokens")
         if total_tokens is None:
@@ -146,6 +236,13 @@ class OpenAIProvider(ModelProvider):
             total_tokens=total_tokens or 0,
             metadata=metadata,
         )
+
+    def list_models(self) -> List[ModelInfo]:
+        client = self.create_client()
+        response = client.models.list()
+        return [
+            ModelInfo(id=m.id, provider="openai", type="text") for m in response.data
+        ]
 
     def _track_token_usage(self, response: Any) -> None:
         """Record token usage if a tracker is attached to the config."""
@@ -222,7 +319,9 @@ class OpenAIProvider(ModelProvider):
         elif tool_specs:
             payload.setdefault("tool_choice", "auto")
 
-        # Pass any remaining kwargs directly
+        # Pass any remaining kwargs directly (strip provider-internal keys)
+        for key in self._RESERVED_PARAMS:
+            params.pop(key, None)
         payload.update(params)
         return payload
 
@@ -256,7 +355,7 @@ class OpenAIProvider(ModelProvider):
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
         elif self.params.get("max_tokens"):
-             payload["max_tokens"] = self.params["max_tokens"]
+            payload["max_tokens"] = self.params["max_tokens"]
 
         user_tools = params.pop("tools", None)
         merged_tools: List[Any] = []
@@ -265,14 +364,17 @@ class OpenAIProvider(ModelProvider):
 
         if tool_specs:
             for spec in tool_specs:
-                merged_tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": spec.name,
-                        "description": spec.description,
-                        "parameters": spec.parameters or {"type": "object", "properties": {}},
+                merged_tools.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": spec.name,
+                            "description": spec.description,
+                            "parameters": spec.parameters
+                            or {"type": "object", "properties": {}},
+                        },
                     }
-                })
+                )
 
         if merged_tools:
             payload["tools"] = merged_tools
@@ -283,6 +385,8 @@ class OpenAIProvider(ModelProvider):
         elif tool_specs:
             payload.setdefault("tool_choice", "auto")
 
+        for key in self._RESERVED_PARAMS:
+            params.pop(key, None)
         payload.update(params)
         return payload
 
@@ -292,16 +396,18 @@ class OpenAIProvider(ModelProvider):
         if isinstance(item, FunctionCallOutputEvent):
             return self._serialize_function_call_output_event_for_chat(item)
         if isinstance(item, dict):
-             # basic conversion if it looks like a Responses output
-             role = item.get("role")
-             content = item.get("content")
-             tool_calls = item.get("tool_calls")
-             if role and (content or tool_calls):
-                  return {
-                       "role": role,
-                       "content": self._transform_blocks_for_chat(content) if isinstance(content, list) else content,
-                       "tool_calls": tool_calls
-                  }
+            # basic conversion if it looks like a Responses output
+            role = item.get("role")
+            content = item.get("content")
+            tool_calls = item.get("tool_calls")
+            if role and (content or tool_calls):
+                return {
+                    "role": role,
+                    "content": self._transform_blocks_for_chat(content)
+                    if isinstance(content, list)
+                    else content,
+                    "tool_calls": tool_calls,
+                }
         return None
 
     def _serialize_message_for_chat(self, message: Message) -> Dict[str, Any]:
@@ -311,7 +417,9 @@ class OpenAIProvider(ModelProvider):
         if not blocks or message.role == MessageRole.TOOL:
             content = message.text_content()
         else:
-            content = self._transform_blocks_for_chat(self._serialize_blocks(blocks, message.role))
+            content = self._transform_blocks_for_chat(
+                self._serialize_blocks(blocks, message.role)
+            )
 
         payload: Dict[str, Any] = {
             "role": role_value,
@@ -325,20 +433,24 @@ class OpenAIProvider(ModelProvider):
             payload["tool_calls"] = [tc.to_openai_dict() for tc in message.tool_calls]
         return payload
 
-    def _serialize_function_call_output_event_for_chat(self, event: FunctionCallOutputEvent) -> Dict[str, Any]:
+    def _serialize_function_call_output_event_for_chat(
+        self, event: FunctionCallOutputEvent
+    ) -> Dict[str, Any]:
         """Convert tool result to standard Chat Completions schema."""
         text = event.output_text or ""
         if event.output_blocks:
-             # simple concatenation for tool output in chat mode
-             text = "\n".join(b.describe() for b in event.output_blocks)
-        
+            # simple concatenation for tool output in chat mode
+            text = "\n".join(b.describe() for b in event.output_blocks)
+
         return {
             "role": "tool",
             "tool_call_id": event.call_id or "tool_call",
             "content": text,
         }
 
-    def _transform_blocks_for_chat(self, blocks: List[Dict[str, Any]]) -> Union[str, List[Dict[str, Any]]]:
+    def _transform_blocks_for_chat(
+        self, blocks: List[Dict[str, Any]]
+    ) -> Union[str, List[Dict[str, Any]]]:
         """Convert Responses block types to Chat block types (e.g., input_text -> text)."""
         transformed: List[Dict[str, Any]] = []
         for block in blocks:
@@ -346,11 +458,16 @@ class OpenAIProvider(ModelProvider):
             if b_type in ("input_text", "output_text"):
                 transformed.append({"type": "text", "text": block.get("text", "")})
             elif b_type in ("input_image", "output_image"):
-                transformed.append({"type": "image_url", "image_url": {"url": block.get("image_url", "")}})
+                transformed.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": block.get("image_url", "")},
+                    }
+                )
             else:
                 # Keep as is or drop if complex
                 transformed.append(block)
-        
+
         # If only one text block, return as string for better compatibility
         if len(transformed) == 1 and transformed[0]["type"] == "text":
             return transformed[0]["text"]
@@ -361,10 +478,10 @@ class OpenAIProvider(ModelProvider):
         choices = self._get_attr(response, "choices") or []
         if not choices:
             return Message(role=MessageRole.ASSISTANT, content="")
-            
+
         choice = choices[0]
         msg = self._get_attr(choice, "message")
-        
+
         tool_calls: List[ToolCallPayload] = []
         tc_data = self._get_attr(msg, "tool_calls")
         if tc_data:
@@ -376,21 +493,23 @@ class OpenAIProvider(ModelProvider):
                     arguments = str(arguments)
                 call_id = self._get_attr(tc, "id")
                 if not call_id:
-                    call_id = self._build_tool_call_id(function_name, arguments, fallback_prefix=f"tool_call_{idx}")
-                tool_calls.append(ToolCallPayload(
-                    id=call_id,
-                    function_name=function_name,
-                    arguments=arguments,
-                    type="function"
-                ))
-        
+                    call_id = self._build_tool_call_id(
+                        function_name, arguments, fallback_prefix=f"tool_call_{idx}"
+                    )
+                tool_calls.append(
+                    ToolCallPayload(
+                        id=call_id,
+                        function_name=function_name,
+                        arguments=arguments,
+                        type="function",
+                    )
+                )
+
         content = self._get_attr(msg, "content") or ""
         content = self._strip_thinking_tokens(content)
 
         return Message(
-            role=MessageRole.ASSISTANT,
-            content=content,
-            tool_calls=tool_calls
+            role=MessageRole.ASSISTANT, content=content, tool_calls=tool_calls
         )
 
     _THINK_PATTERN = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
@@ -404,12 +523,12 @@ class OpenAIProvider(ModelProvider):
 
     def _append_chat_response_output(self, timeline: List[Any], response: Any) -> None:
         """Add chat response to timeline, preserving tool_calls (Chat API compatible)."""
-        msg = response.choices[0].message
+        choices = self._get_attr(response, "choices") or []
+        if not choices:
+            return
+        msg = choices[0].message
         content = self._strip_thinking_tokens(msg.content or "")
-        assistant_msg = {
-            "role": "assistant",
-            "content": content
-        }
+        assistant_msg = {"role": "assistant", "content": content}
 
         if getattr(msg, "tool_calls", None):
             assistant_msg["tool_calls"] = []
@@ -418,15 +537,19 @@ class OpenAIProvider(ModelProvider):
                 arguments = tc.function.arguments or ""
                 if not isinstance(arguments, str):
                     arguments = str(arguments)
-                call_id = tc.id or self._build_tool_call_id(function_name, arguments, fallback_prefix=f"tool_call_{idx}")
-                assistant_msg["tool_calls"].append({
-                    "id": call_id,
-                    "type": "function",
-                    "function": {
-                        "name": function_name,
-                        "arguments": arguments,
-                    },
-                })
+                call_id = tc.id or self._build_tool_call_id(
+                    function_name, arguments, fallback_prefix=f"tool_call_{idx}"
+                )
+                assistant_msg["tool_calls"].append(
+                    {
+                        "id": call_id,
+                        "type": "function",
+                        "function": {
+                            "name": function_name,
+                            "arguments": arguments,
+                        },
+                    }
+                )
 
         timeline.append(assistant_msg)
 
@@ -455,20 +578,28 @@ class OpenAIProvider(ModelProvider):
         blocks = message.blocks()
         if not blocks:
             text = message.text_content()
-            block_type = "output_text" if message.role is MessageRole.ASSISTANT else "input_text"
+            block_type = (
+                "output_text" if message.role is MessageRole.ASSISTANT else "input_text"
+            )
             return [{"type": block_type, "text": text}]
 
         return self._serialize_blocks(blocks, message.role)
 
-    def _serialize_blocks(self, blocks: List[MessageBlock], role: MessageRole) -> List[Dict[str, Any]]:
+    def _serialize_blocks(
+        self, blocks: List[MessageBlock], role: MessageRole
+    ) -> List[Dict[str, Any]]:
         serialized: List[Dict[str, Any]] = []
         for block in blocks:
             serialized.append(self._serialize_block(block, role))
         return serialized
 
-    def _serialize_block(self, block: MessageBlock, role: MessageRole) -> Dict[str, Any]:
+    def _serialize_block(
+        self, block: MessageBlock, role: MessageRole
+    ) -> Dict[str, Any]:
         if block.type is MessageBlockType.TEXT:
-            content_type = "output_text" if role is MessageRole.ASSISTANT else "input_text"
+            content_type = (
+                "output_text" if role is MessageRole.ASSISTANT else "input_text"
+            )
             return {
                 "type": content_type,
                 "text": block.text or "",
@@ -476,18 +607,26 @@ class OpenAIProvider(ModelProvider):
 
         attachment = block.attachment
         if block.type is MessageBlockType.IMAGE:
-            media_type = "output_image" if role is MessageRole.ASSISTANT else "input_image"
+            media_type = (
+                "output_image" if role is MessageRole.ASSISTANT else "input_image"
+            )
             return self._serialize_media_block(media_type, attachment)
         if block.type is MessageBlockType.AUDIO:
-            media_type = "output_audio" if role is MessageRole.ASSISTANT else "input_audio"
+            media_type = (
+                "output_audio" if role is MessageRole.ASSISTANT else "input_audio"
+            )
             return self._serialize_media_block(media_type, attachment)
         if block.type is MessageBlockType.VIDEO:
-            media_type = "output_video" if role is MessageRole.ASSISTANT else "input_video"
+            media_type = (
+                "output_video" if role is MessageRole.ASSISTANT else "input_video"
+            )
             return self._serialize_media_block(media_type, attachment)
         if block.type is MessageBlockType.FILE:
             inline_text = self._maybe_inline_text_file(block)
             if inline_text is not None:
-                content_type = "output_text" if role is MessageRole.ASSISTANT else "input_text"
+                content_type = (
+                    "output_text" if role is MessageRole.ASSISTANT else "input_text"
+                )
                 return {
                     "type": content_type,
                     "text": inline_text,
@@ -523,7 +662,9 @@ class OpenAIProvider(ModelProvider):
         elif attachment.data_uri and url_key:
             payload[url_key] = attachment.data_uri
         elif attachment.local_path and url_key:
-            payload[url_key] = self._make_data_uri_from_path(attachment.local_path, attachment.mime_type)
+            payload[url_key] = self._make_data_uri_from_path(
+                attachment.local_path, attachment.mime_type
+            )
         return payload
 
     def _serialize_file_block(
@@ -538,11 +679,15 @@ class OpenAIProvider(ModelProvider):
             else:
                 data_uri = attachment.data_uri
                 if not data_uri and attachment.local_path:
-                    data_uri = self._make_data_uri_from_path(attachment.local_path, attachment.mime_type)
+                    data_uri = self._make_data_uri_from_path(
+                        attachment.local_path, attachment.mime_type
+                    )
                 if data_uri:
                     payload["file_data"] = data_uri
                 else:
-                    raise ValueError("Attachment missing file_id or data for input_file block")
+                    raise ValueError(
+                        "Attachment missing file_id or data for input_file block"
+                    )
             if attachment.name:
                 payload["filename"] = attachment.name
         else:
@@ -575,14 +720,20 @@ class OpenAIProvider(ModelProvider):
 
         is_csv = "text/csv" in mime or name.endswith(".csv")
         limit_attr = "csv_inline_char_limit" if is_csv else "text_inline_char_limit"
-        default_limit = self.CSV_INLINE_CHAR_LIMIT if is_csv else self.TEXT_INLINE_CHAR_LIMIT
+        default_limit = (
+            self.CSV_INLINE_CHAR_LIMIT if is_csv else self.TEXT_INLINE_CHAR_LIMIT
+        )
         limit = getattr(self, limit_attr, default_limit)
         truncated = False
         if len(text) > limit:
             text = text[:limit]
             truncated = True
 
-        display_name = attachment.name or attachment.attachment_id or ("attachment.csv" if is_csv else "attachment.txt")
+        display_name = (
+            attachment.name
+            or attachment.attachment_id
+            or ("attachment.csv" if is_csv else "attachment.txt")
+        )
         suffix = "\n\n[truncated after %d characters]" % limit if truncated else ""
         if is_csv:
             return f"CSV file '{display_name}':\n{text}{suffix}"
@@ -649,7 +800,9 @@ class OpenAIProvider(ModelProvider):
         if not assistant_blocks:
             fallback_text = self._extract_fallback_text(response)
             if fallback_text:
-                assistant_blocks.append(MessageBlock(MessageBlockType.TEXT, text=fallback_text))
+                assistant_blocks.append(
+                    MessageBlock(MessageBlockType.TEXT, text=fallback_text)
+                )
 
         return Message(
             role=MessageRole.ASSISTANT,
@@ -679,7 +832,11 @@ class OpenAIProvider(ModelProvider):
         for part in content_items:
             part_type = self._get_attr(part, "type")
             if part_type in {"output_text", "text"}:
-                blocks.append(MessageBlock(MessageBlockType.TEXT, text=self._get_attr(part, "text") or ""))
+                blocks.append(
+                    MessageBlock(
+                        MessageBlockType.TEXT, text=self._get_attr(part, "text") or ""
+                    )
+                )
             elif part_type in {"output_image", "image"}:
                 blocks.append(
                     MessageBlock(
@@ -725,8 +882,16 @@ class OpenAIProvider(ModelProvider):
 
     def _parse_tool_call(self, payload: Any) -> Optional[ToolCallPayload]:
         function_payload = self._get_attr(payload, "function") or {}
-        function_name = self._get_attr(function_payload, "name") or self._get_attr(payload, "name") or ""
-        arguments = self._get_attr(function_payload, "arguments") or self._get_attr(payload, "arguments") or ""
+        function_name = (
+            self._get_attr(function_payload, "name")
+            or self._get_attr(payload, "name")
+            or ""
+        )
+        arguments = (
+            self._get_attr(function_payload, "arguments")
+            or self._get_attr(payload, "arguments")
+            or ""
+        )
         if not function_name:
             return None
         if isinstance(arguments, (dict, list)):
@@ -738,7 +903,9 @@ class OpenAIProvider(ModelProvider):
                 arguments_str = str(arguments)
         else:
             arguments_str = str(arguments)
-        call_id = self._get_attr(payload, "call_id") or self._get_attr(payload, "id") or ""
+        call_id = (
+            self._get_attr(payload, "call_id") or self._get_attr(payload, "id") or ""
+        )
         if not call_id:
             call_id = self._build_tool_call_id(function_name, arguments_str)
         return ToolCallPayload(
@@ -748,7 +915,9 @@ class OpenAIProvider(ModelProvider):
             type="function",
         )
 
-    def _build_tool_call_id(self, function_name: str, arguments: str, *, fallback_prefix: str = "tool_call") -> str:
+    def _build_tool_call_id(
+        self, function_name: str, arguments: str, *, fallback_prefix: str = "tool_call"
+    ) -> str:
         base = function_name or fallback_prefix
         payload = f"{base}:{arguments or ''}".encode("utf-8")
         digest = hashlib.md5(payload).hexdigest()[:8]
@@ -791,7 +960,9 @@ class OpenAIProvider(ModelProvider):
             "call_id": event.call_id or event.function_name or "tool_call",
         }
         if event.output_blocks:
-            payload["output"] = self._serialize_blocks(event.output_blocks, MessageRole.TOOL)
+            payload["output"] = self._serialize_blocks(
+                event.output_blocks, MessageRole.TOOL
+            )
         else:
             text = event.output_text or ""
             payload["output"] = [

@@ -2,7 +2,6 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException
 
-from entity.enums import LogLevel
 from server.models import WorkflowRequest
 from server.state import ensure_known_session
 from utils.exceptions import ValidationError, WorkflowExecutionError

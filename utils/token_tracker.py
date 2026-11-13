@@ -1,7 +1,7 @@
 """Token usage tracking module for DevAll project."""
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from collections import defaultdict
 
 

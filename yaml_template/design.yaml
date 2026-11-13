@@ -8,12 +8,12 @@ graph:
   is_majority_voting: <bool> | false
   nodes:
   - id: <string> | required
-    type: <string> | [model, agent, human, subgraph, python, passthrough, literal,
+    type: <string> | [agent, human, subgraph, python, passthrough, literal,
       loop_counter]
     description: <string> | None
     context_window: <int> | 0
     config:
-      <variant[config]=model>:
+      <variant[config]=agent>:
         name: <string> | required
         role: <text> | None
         provider: <string> | [openai, gemini]
@@ -77,8 +77,6 @@ graph:
           - <string> | None
           retry_on_error_substrings:
           - <string> | None
-      <variant[config]=agent>:
-        url: <string> | required
       <variant[config]=human>:
         description: <text> | None
       <variant[config]=subgraph>:

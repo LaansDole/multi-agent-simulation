@@ -1,15 +1,14 @@
 """Custom middleware for the DevAll workflow system."""
 
 import uuid
-from typing import Callable, Awaitable
+from typing import Callable
 from fastapi import Request, HTTPException, FastAPI
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import time
 import re
 
-from utils.structured_logger import get_server_logger, LogType
-from utils.exceptions import SecurityError
+from utils.structured_logger import get_server_logger
 from server.local_security import allowed_browser_origins
 
 
@@ -72,7 +71,7 @@ async def security_middleware(request: Request, call_next: Callable):
                 f"Suspicious path detected: {path}",
                 correlation_id=getattr(request.state, 'correlation_id', str(uuid.uuid4()))
             )
-            raise HTTPException(status_code=400, detail="Invalid path")
+            return JSONResponse(status_code=400, content={"detail": "Invalid path"})
     
     response = await call_next(request)
     return response

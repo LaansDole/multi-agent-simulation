@@ -109,10 +109,18 @@ class AgentRetryConfig(BaseConfig):
     max_attempts: int = 5
     min_wait_seconds: float = 1.0
     max_wait_seconds: float = 6.0
-    retry_on_status_codes: List[int] = field(default_factory=lambda: list(DEFAULT_RETRYABLE_STATUS_CODES))
-    retry_on_exception_types: List[str] = field(default_factory=lambda: [name.lower() for name in DEFAULT_RETRYABLE_EXCEPTION_TYPES])
+    retry_on_status_codes: List[int] = field(
+        default_factory=lambda: list(DEFAULT_RETRYABLE_STATUS_CODES)
+    )
+    retry_on_exception_types: List[str] = field(
+        default_factory=lambda: [
+            name.lower() for name in DEFAULT_RETRYABLE_EXCEPTION_TYPES
+        ]
+    )
     non_retry_exception_types: List[str] = field(default_factory=list)
-    retry_on_error_substrings: List[str] = field(default_factory=lambda: list(DEFAULT_RETRYABLE_MESSAGE_SUBSTRINGS))
+    retry_on_error_substrings: List[str] = field(
+        default_factory=lambda: list(DEFAULT_RETRYABLE_MESSAGE_SUBSTRINGS)
+    )
 
     FIELD_SPECS = {
         "enabled": ConfigFieldSpec(
@@ -189,25 +197,54 @@ class AgentRetryConfig(BaseConfig):
         enabled = optional_bool(mapping, "enabled", path, default=True)
         if enabled is None:
             enabled = True
-        max_attempts = _coerce_positive_int(mapping.get("max_attempts", 5), field_path=extend_path(path, "max_attempts"))
-        min_wait = _coerce_float(mapping.get("min_wait_seconds", 1.0), field_path=extend_path(path, "min_wait_seconds"), minimum=0.0)
-        max_wait = _coerce_float(mapping.get("max_wait_seconds", 6.0), field_path=extend_path(path, "max_wait_seconds"), minimum=0.0)
+        max_attempts = _coerce_positive_int(
+            mapping.get("max_attempts", 5), field_path=extend_path(path, "max_attempts")
+        )
+        min_wait = _coerce_float(
+            mapping.get("min_wait_seconds", 1.0),
+            field_path=extend_path(path, "min_wait_seconds"),
+            minimum=0.0,
+        )
+        max_wait = _coerce_float(
+            mapping.get("max_wait_seconds", 6.0),
+            field_path=extend_path(path, "max_wait_seconds"),
+            minimum=0.0,
+        )
         if max_wait < min_wait:
-            raise ConfigError("max_wait_seconds must be >= min_wait_seconds", extend_path(path, "max_wait_seconds"))
+            raise ConfigError(
+                "max_wait_seconds must be >= min_wait_seconds",
+                extend_path(path, "max_wait_seconds"),
+            )
 
         status_codes = mapping.get("retry_on_status_codes")
         if status_codes is None:
             retry_status_codes = list(DEFAULT_RETRYABLE_STATUS_CODES)
         else:
-            retry_status_codes = _coerce_int_list(status_codes, field_path=extend_path(path, "retry_on_status_codes"))
+            retry_status_codes = _coerce_int_list(
+                status_codes, field_path=extend_path(path, "retry_on_status_codes")
+            )
 
         retry_types_raw = mapping.get("retry_on_exception_types")
         if retry_types_raw is None:
             retry_types = [name.lower() for name in DEFAULT_RETRYABLE_EXCEPTION_TYPES]
         else:
-            retry_types = [value.lower() for value in _coerce_str_list(retry_types_raw, field_path=extend_path(path, "retry_on_exception_types")) if value]
+            retry_types = [
+                value.lower()
+                for value in _coerce_str_list(
+                    retry_types_raw,
+                    field_path=extend_path(path, "retry_on_exception_types"),
+                )
+                if value
+            ]
 
-        non_retry_types = [value.lower() for value in _coerce_str_list(mapping.get("non_retry_exception_types"), field_path=extend_path(path, "non_retry_exception_types")) if value]
+        non_retry_types = [
+            value.lower()
+            for value in _coerce_str_list(
+                mapping.get("non_retry_exception_types"),
+                field_path=extend_path(path, "non_retry_exception_types"),
+            )
+            if value
+        ]
 
         retry_substrings_raw = mapping.get("retry_on_error_substrings")
         if retry_substrings_raw is None:
@@ -265,12 +302,17 @@ class AgentRetryConfig(BaseConfig):
 
         if self.retry_on_status_codes:
             for _, _, status_code, _ in chain:
-                if status_code is not None and status_code in self.retry_on_status_codes:
+                if (
+                    status_code is not None
+                    and status_code in self.retry_on_status_codes
+                ):
                     return True
 
         if self.retry_on_error_substrings:
             for _, _, _, message in chain:
-                if message and any(substr in message for substr in self.retry_on_error_substrings):
+                if message and any(
+                    substr in message for substr in self.retry_on_error_substrings
+                ):
                     return True
 
         return False
@@ -312,7 +354,9 @@ class AgentRetryConfig(BaseConfig):
                 linked.append(cause)
             if isinstance(context, BaseException):
                 linked.append(context)
-            if _BASE_EXCEPTION_GROUP_TYPE is not None and isinstance(current, _BASE_EXCEPTION_GROUP_TYPE):
+            if _BASE_EXCEPTION_GROUP_TYPE is not None and isinstance(
+                current, _BASE_EXCEPTION_GROUP_TYPE
+            ):
                 for exc_item in getattr(current, "exceptions", None) or ():
                     if isinstance(exc_item, BaseException):
                         linked.append(exc_item)
@@ -322,8 +366,8 @@ class AgentRetryConfig(BaseConfig):
 @dataclass
 class AgentConfig(BaseConfig):
     provider: str
-    base_url: str
     name: str
+    base_url: str | None = None
     role: str | None = None
     api_key: str | None = None
     params: Dict[str, Any] = field(default_factory=dict)
@@ -347,7 +391,9 @@ class AgentConfig(BaseConfig):
         if isinstance(name_value, str) and name_value.strip():
             model_name = name_value.strip()
         else:
-            raise ConfigError("model.name must be a non-empty string", extend_path(path, "name"))
+            raise ConfigError(
+                "model.name must be a non-empty string", extend_path(path, "name")
+            )
 
         role = optional_str(mapping, "role", path)
         api_key = optional_str(mapping, "api_key", path)
@@ -367,29 +413,45 @@ class AgentConfig(BaseConfig):
         if "tooling" in mapping and mapping["tooling"] is not None:
             raw_tooling = mapping["tooling"]
             if not isinstance(raw_tooling, list):
-                 raise ConfigError("tooling must be a list", extend_path(path, "tooling"))
+                raise ConfigError(
+                    "tooling must be a list", extend_path(path, "tooling")
+                )
             for idx, item in enumerate(raw_tooling):
                 tooling_cfg.append(
-                    ToolingConfig.from_dict(item, path=extend_path(path, f"tooling[{idx}]"))
+                    ToolingConfig.from_dict(
+                        item, path=extend_path(path, f"tooling[{idx}]")
+                    )
                 )
 
         thinking_cfg = None
         if "thinking" in mapping and mapping["thinking"] is not None:
-            thinking_cfg = ThinkingConfig.from_dict(mapping["thinking"], path=extend_path(path, "thinking"))
+            thinking_cfg = ThinkingConfig.from_dict(
+                mapping["thinking"], path=extend_path(path, "thinking")
+            )
 
         memories_cfg: List[MemoryAttachmentConfig] = []
         if "memories" in mapping and mapping["memories"] is not None:
             raw_memories = mapping["memories"]
             if not isinstance(raw_memories, list):
-                raise ConfigError("memories must be a list", extend_path(path, "memories"))
+                raise ConfigError(
+                    "memories must be a list", extend_path(path, "memories")
+                )
             for idx, item in enumerate(raw_memories):
                 memories_cfg.append(
-                    MemoryAttachmentConfig.from_dict(item, path=extend_path(path, f"memories[{idx}]"))
+                    MemoryAttachmentConfig.from_dict(
+                        item, path=extend_path(path, f"memories[{idx}]")
+                    )
                 )
 
         retry_cfg = None
         if "retry" in mapping and mapping["retry"] is not None:
-            retry_cfg = AgentRetryConfig.from_dict(mapping["retry"], path=extend_path(path, "retry"))
+            retry_cfg = AgentRetryConfig.from_dict(
+                mapping["retry"], path=extend_path(path, "retry")
+            )
+
+        skills_cfg = None
+        if "skills" in mapping and mapping["skills"] is not None:
+            skills_cfg = AgentSkillsConfig.from_dict(mapping["skills"], path=extend_path(path, "skills"))
 
         skills_cfg = None
         if "skills" in mapping and mapping["skills"] is not None:

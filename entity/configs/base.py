@@ -1,7 +1,7 @@
 """Shared helpers and base classes for configuration dataclasses."""
 
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Sequence, TypeVar, ClassVar, Optional
+from typing import Any, Dict, List, Mapping, MutableMapping, Sequence, TypeVar, ClassVar
 
 
 TConfig = TypeVar("TConfig", bound="BaseConfig")

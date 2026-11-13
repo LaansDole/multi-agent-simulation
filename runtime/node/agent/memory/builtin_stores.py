@@ -1,5 +1,8 @@
 """Register built-in memory stores."""
 
+from dataclasses import replace
+from pathlib import Path
+
 from entity.configs.node.memory import (
     BlackboardMemoryConfig,
     FileMemoryConfig,
@@ -47,9 +50,29 @@ register_memory_store(
     summary="Mem0 managed memory with semantic search and graph relationships",
 )
 
+RUN_DIR_PLACEHOLDER = "{{run_dir}}"
+_PATH_FIELDS = ("memory_path", "index_path")
+
+
+def resolve_run_dir(store: MemoryStoreConfig, run_dir: Path) -> MemoryStoreConfig:
+    """Return ``store`` with ``{{run_dir}}`` in its path fields replaced by ``run_dir``.
+
+    Covers every store config exposing ``memory_path`` or ``index_path``. The input
+    config is not mutated, so a design reused for several runs keeps its placeholder.
+    """
+    config = store.config
+    changes = {
+        name: value.replace(RUN_DIR_PLACEHOLDER, str(run_dir))
+        for name in _PATH_FIELDS
+        if isinstance(value := getattr(config, name, None), str) and RUN_DIR_PLACEHOLDER in value
+    }
+    if not changes:
+        return store
+    return replace(store, config=replace(config, **changes))
+
 
 class MemoryFactory:
     @staticmethod
-    def create_memory(store: MemoryStoreConfig) -> MemoryBase:
+    def create_memory(store: MemoryStoreConfig, *, run_dir: Path) -> MemoryBase:
         registration = get_memory_store_registration(store.type)
-        return registration.factory(store)
+        return registration.factory(resolve_run_dir(store, run_dir))

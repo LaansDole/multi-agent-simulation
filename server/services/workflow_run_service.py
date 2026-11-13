@@ -17,7 +17,7 @@ from workflow.graph_context import GraphContext
 from server.services.attachment_service import AttachmentService
 from server.services.session_execution import SessionExecutionController
 from server.services.session_store import SessionStatus, WorkflowSessionStore
-from server.services.websocket_executor import WebSocketGraphExecutor
+from server.hooks.spatial_events import SpatialWebSocketExecutor
 from server.services.workflow_storage import validate_workflow_filename
 from server.settings import WARE_HOUSE_DIR, YAML_DIR
 
@@ -159,7 +159,7 @@ class WorkflowRunService:
                 graph_config.definition.log_level = log_level
             graph_context = GraphContext(config=graph_config)
 
-            executor = WebSocketGraphExecutor(
+            executor = SpatialWebSocketExecutor(
                 graph_context,
                 session_id,
                 self.session_controller,
@@ -201,6 +201,8 @@ class WorkflowRunService:
                     "data": {
                         "results": results,
                         "summary": graph_context.final_message(),
+                        # End-node output (same as the SDK/CLI final message); summary if there is none.
+                        "final_text": executor.get_final_output() or graph_context.final_message(),
                         "token_usage": executor.token_tracker.get_token_usage(),
                     },
                 },

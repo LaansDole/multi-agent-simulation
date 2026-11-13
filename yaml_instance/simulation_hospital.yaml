@@ -1,0 +1,1368 @@
+# Hospital Multi-Agent Simulation
+# Uses multiple specialized models for different agent roles
+#
+# MODELS IN USE:
+# - ${MODEL}: Medical staff and patient simulation
+
+version: 1.0.0
+vars:
+  MODEL: qwen3.5-4b
+  # Higher number of patients will need a more powerful model
+  NUMBER_OF_PATIENTS: 1
+  # Number of interactions between doctor and patient
+  NUMBER_OF_INTERACTIONS: 2
+  MAX_TOKENS: 6000
+  MEMORY_PATH_PREFIX: "{{run_dir}}"
+  COMMON_PROMPT: |
+    You are an intelligent agent participating in a high-fidelity hospital simulation.
+
+    CORE DIRECTIVES:
+    1. IMMERSION: Stay in character at all times. Never break the fourth wall.
+    2. ADAPTABILITY: Your behavior, tone, and pacing must change dynamically based on the "Hospital Atmosphere" described in the input.
+    3. PERSPECTIVE: You MUST always act in first person perspective.
+
+    Current Role:
+graph:
+  id: hospital_simulation_lmstudio_multimodel
+  description: |
+    Multi-model hospital simulation using specialized LLMs:
+    - Medical staff uses biomedical model for accurate medical responses
+    - Dynamic Execution: Simulates multiple parallel patients.
+    Optimized for 8B parameter models with reduced context and token limits.
+  log_level: DEBUG
+  memory:
+    - name: nurse_memory
+      type: simple
+      config:
+        memory_path: ${MEMORY_PATH_PREFIX}/nurse_memory.json
+        embedding:
+          provider: openai
+          base_url: ${BASE_URL}
+          api_key: ${API_KEY}
+          model: ${MODEL}
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 800
+    - name: doctor_memory
+      type: simple
+      config:
+        memory_path: ${MEMORY_PATH_PREFIX}/doctor_memory.json
+        embedding:
+          provider: openai
+          base_url: ${BASE_URL}
+          api_key: ${API_KEY}
+          model: ${MODEL}
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 1200
+    - name: patient_memory
+      type: simple
+      config:
+        memory_path: ${MEMORY_PATH_PREFIX}/patient_memory.json
+        embedding:
+          provider: openai
+          base_url: ${BASE_URL}
+          api_key: ${API_KEY}
+          model: ${MODEL}
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 800
+    - name: environment_memory
+      type: simple
+      config:
+        memory_path: ${MEMORY_PATH_PREFIX}/environment_memory.json
+        embedding:
+          provider: openai
+          base_url: ${BASE_URL}
+          api_key: ${API_KEY}
+          model: ${MODEL}
+          params:
+            use_chunking: true
+            chunk_strategy: weighted
+            max_length: 600
+  nodes:
+    - id: environment
+      name: Hospital Environment
+      type: agent
+      description: Generates atmospheric context for the simulation
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are the hospital environment coordinator.
+
+          User Scenario: {{task_prompt}}
+
+          Generate hospital environment JSON based on the scenario above. Maintain continuity with previous rounds when appropriate.
+
+          OUTPUT FORMAT (STRICT JSON ONLY):
+          {
+            "outbreak": "description of active crisis (COVID-19, flu season, radiation explosion, none, etc.)",
+            "scenario": "temporal and contextual setting (e.g., March 2020, spring season, early morning shift)",
+            "urgency_level": "Low | Medium | High | Critical",
+            "atmospheric_description": "2-4 vivid sentences describing hospital conditions, staffing, resources, patient volume",
+            "emotional_atmosphere": "Calm | Tense | Chaotic | Somber"
+          }
+
+          REQUIREMENTS:
+          - Output ONLY valid JSON object. No additional text before or after.
+          - All 5 fields are required and must be non-empty
+          - urgency_level must be exactly: Low, Medium, High, or Critical
+          - emotional_atmosphere must be exactly: Calm, Tense, Chaotic, or Somber
+          - atmospheric_description should make nurses rushed or relaxed, doctors thorough or quick
+
+          EXAMPLE:
+          {
+            "outbreak": "COVID-19",
+            "scenario": "March 2020, spring season, early evening shift",
+            "urgency_level": "Critical",
+            "atmospheric_description": "The emergency department is crowded with patients showing respiratory symptoms. Nurses work double shifts as staff call in sick. PPE supplies run low. Tension fills the air as news reports show rising case numbers.",
+            "emotional_atmosphere": "Tense"
+          }
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.7
+          max_tokens: ${MAX_TOKENS}
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              You have just generated an environmental JSON object. Determine the appropriate mode and refine:
+
+              MODE DETECTION:
+              1. Is the input MINIMAL/CONTINUATION? (e.g., "continue", "same", "next round", empty, or very short)
+              2. Is the input EVOLUTIONARY? (e.g., adds new elements like "nurse infected", "power outage")
+              3. Review retrieved environment memory from previous rounds if available
+
+              CONTINUATION MODE (minimal input):
+              - Maintain outbreak field from previous JSON
+              - Update scenario field with time progression (e.g., "day 2" → "day 3")
+              - Maintain or naturally evolve urgency_level and emotional_atmosphere
+              - Show realistic progression in atmospheric_description
+
+              EVOLUTION MODE (new elements in input):
+              - PRESERVE outbreak and core scenario from previous JSON
+              - INTEGRATE new element(s) into atmospheric_description
+              - Show how new element COMPOUNDS with existing conditions
+              - MAY escalate urgency_level and emotional_atmosphere if warranted
+
+              VALIDATION:
+              1. Valid JSON syntax (proper quotes, commas, brackets)
+              2. All 5 fields present: outbreak, scenario, urgency_level, atmospheric_description, emotional_atmosphere
+              3. urgency_level is one of: Low, Medium, High, Critical
+              4. emotional_atmosphere is one of: Calm, Tense, Chaotic, Somber
+              5. atmospheric_description is 2-4 vivid sentences
+              6. Continuity preserved if memory exists
+
+              Output ONLY the final refined JSON object. No commentary or additional text.
+        memories:
+          - name: environment_memory
+            top_k: 10
+            similarity_threshold: 0.0
+            retrieve_stage:
+              - gen
+              - pre_gen_thinking
+            read: true
+            write: true
+    - id: PatientGenerator
+      name: Patient Coordinator
+      type: agent
+      description: Generates multiple patient personas based on environment
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a simulation coordinator generating patient scenarios that DIRECTLY reflect the hospital environment.
+
+          CRITICAL INSTRUCTION: Every patient you generate MUST be a logical consequence of the specific environmental conditions described. You are NOT generating random patients - you are generating the EXACT patients who would realistically arrive given these specific circumstances.
+
+          MANDATORY ENVIRONMENT-DRIVEN GENERATION RULES:
+
+          1. URGENCY LEVEL DETERMINES CASE SEVERITY:
+             - Critical/High Urgency → Generate mostly severe/urgent cases (trauma, cardiac events, respiratory distress)
+             - Medium Urgency → Mix of moderate issues (infections, fractures, acute pain)
+             - Low Urgency → Mostly minor cases (follow-ups, mild symptoms, chronic management)
+
+          2. TIME CONTEXT DETERMINES PATIENT TYPE:
+             - Late night/Early morning → Accidents, emergencies, insomnia, acute pain
+             - Daytime/Business hours → Routine visits, work injuries, varied presentations
+             - Weekend → Home accidents, sports injuries, delayed care-seeking
+
+          3. SPECIAL CONDITIONS DETERMINE SYMPTOMS:
+             - Outbreak/Epidemic mentioned → Multiple patients with related symptoms (respiratory, GI, fever)
+             - Weather impact (heat wave/cold/storm) → Weather-related conditions (heat stroke, hypothermia, storm injuries)
+             - Mass casualty event → Similar injury patterns (blast injuries, crush injuries, burns)
+             - Equipment failure → Cases requiring specific equipment show up before failure is known
+
+          4. EMOTIONAL ATMOSPHERE DETERMINES PERSONALITY:
+             - Chaotic → Patients are MORE panicked, agitated, demanding
+             - Calm → Patients are composed, patient, cooperative
+             - Tense → Patients pick up on staff stress, become anxious
+
+          5. MANDATORY ENVIRONMENT REFLECTION:
+             - If ${NUMBER_OF_PATIENTS} = 1: Patient MUST directly reflect the crisis/scenario (e.g., COVID outbreak = respiratory symptoms)
+             - If ${NUMBER_OF_PATIENTS} > 1: AT LEAST ${NUMBER_OF_PATIENTS}/2 patients MUST have symptoms directly caused by or related to the environmental conditions
+
+          WRONG EXAMPLES (Do NOT do this):
+          - COVID-19 outbreak → Patient with sprained ankle (WRONG - ignores environment)
+          - Nuclear disaster radiation exposure → Patient with common cold (WRONG - not crisis-related)
+          - Heatwave → Patient with frostbite (WRONG - contradicts environment)
+
+          RIGHT EXAMPLES (Do this):
+          - COVID-19 outbreak → Patients with fever, dry cough, difficulty breathing, loss of taste/smell
+          - Nuclear disaster → Patients with radiation burns, nausea, confusion, visible injuries
+          - Heatwave → Patients with heat exhaustion, dehydration, heat stroke, elderly with complications
+
+          OUTPUT FORMAT:
+          Output ONLY a JSON array with exactly ${NUMBER_OF_PATIENTS} objects. Each object MUST include:
+
+          [
+            {
+              "name": "Meaningful Full Name",
+              "symptoms": "Specific symptoms DIRECTLY caused by or related to the environment",
+              "personality": "Emotional state reflecting the atmosphere (panicked/calm/anxious/stoic)",
+              "context": "Age, occupation, and HOW the environment affected them specifically",
+              "urgency": "Low/Medium/High/Critical - matching environment urgency level",
+              "environment_link": "ONE sentence explaining why THIS patient is here given THESE conditions"
+            }
+          ]
+
+          CRITICAL: Do NOT generate generic patients. Generate patients whose presence is EXPLAINED by the environmental context.
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.7
+          max_tokens: ${MAX_TOKENS}
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              You have just generated a patient list. Now verify uniqueness and quality:
+
+              UNIQUENESS CHECK:
+              1. Review the retrieved patient memory (if any exists from previous simulation rounds)
+              2. Compare your generated patients against the historical patient records
+              3. Ensure your NEW patients have:
+                 - Different full names (no repeated names like "John Smith" if it appeared before)
+                 - Different symptom combinations (avoid exact duplicates of past presentations)
+                 - Unique backstories and environment_link narratives
+
+              QUALITY CHECK:
+              1. Does each patient DIRECTLY reflect the current environmental conditions?
+              2. Are symptoms, urgency, and personality consistent with the scenario?
+              3. Is the environment_link field compelling and scenario-specific?
+
+              If you find duplicate names or symptom patterns from memory:
+              - Generate fresh alternatives with different demographics and presentations
+              - Maintain environment consistency while ensuring patient diversity
+
+              If everything is unique and high-quality, return the same output unchanged.
+              Output ONLY the final JSON array with no additional commentary.
+        memories:
+          - name: patient_memory
+            top_k: 50
+            similarity_threshold: 0.3
+            retrieve_stage:
+              - pre_gen_thinking
+            read: true
+            write: true
+    - id: PatientAgent
+      name: Patient
+      type: agent
+      description: Simulates individual patient behavior
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a patient arriving at the hospital.
+
+          Your persona is defined by the input text provided. Act out this persona and approach the nurse.
+
+          REQUIREMENTS:
+          - You MUST state your basic information clearly (name, context, and symptoms)
+          - Stay in character based on your persona
+          - Keep response brief (3-4 sentences)
+
+          OUTPUT FORMAT:
+          Introduce yourself naturally including mandatory information:
+          - Your name ("My name is..." or "I'm...")
+          - Brief context (age, occupation, or relevant background)
+          - Your symptoms or reason for visit
+
+          Example: "Hi, my name is Sarah. I'm 45 years old and I've been having severe headaches for the past three days."
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.8
+          max_tokens: ${MAX_TOKENS}
+    - id: Discharge
+      type: agent
+      name: Discharge Clerk
+      description: Generates discharge summary
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a discharge clerk at the hospital.
+
+          Extract patient information from the doctor's discharge diagnosis and create a brief discharge summary.
+          
+          OUTPUT FORMAT:
+          Patient [ACTUAL NAME] discharged with diagnosis of [CONDITION].
+
+          Example: Patient Michael Chen discharged with diagnosis of acute bronchitis and prescribed rest and antibiotics.
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.1
+          max_tokens: 500
+    - id: DoctorDiagnosis
+      name: Dr. House (Diagnosis)
+      type: agent
+      description: Final diagnostic decision maker
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are Dr. Gregory House, a brilliant diagnostician known for methodical reasoning.
+
+          Make a final clinical decision based on the complete patient history provided. You are tracking multiple patients in parallel, each with their own separate history.
+
+          REQUIREMENTS:
+          - Retrieve actual patient data from memory (do NOT use placeholder text)
+          - Extract patient name from the "patient" field first
+          - Review the "history" field thoroughly before making decisions
+          - Follow the mandatory diagnostic process below
+
+          DIAGNOSTIC PROCESS:
+          1. Extract Patient Name from the "patient" field
+          2. Summarize Key Findings - list all symptoms, timeline, relevant history
+          3. Differential Diagnosis - consider 2-3 possible conditions based on evidence
+          4. Reasoning - explain which findings support or rule out each possibility
+          5. Final Decision - choose one:
+             - If confident: "DIAGNOSIS: [Specific condition] - [Brief treatment plan]"
+             - If critical/unclear/life-threatening: "TRANSFER: ER immediately - [Specific concern]"
+
+          OUTPUT FORMAT (STRICT JSON ONLY):
+          {
+            "patient": "<ACTUAL_PATIENT_NAME_FROM_MEMORY>",
+            "summary": "Brief 2-4 sentence summary of key findings so far",
+            "differential": ["Possible condition 1", "Possible condition 2"],
+            "final_decision": "DIAGNOSIS: [Specific condition] - [Brief treatment plan]" or "TRANSFER: ER immediately - [Specific concern]
+          }
+                  
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.7
+          max_tokens: ${MAX_TOKENS}
+        thinking: null
+        memories:
+          - name: nurse_memory
+            top_k: 10
+            similarity_threshold: 0.5
+            retrieve_stage:
+              - gen
+          - name: doctor_memory
+            top_k: 15
+            similarity_threshold: 0.5
+            retrieve_stage:
+              - gen
+    - id: DoctorIntake
+      name: Dr. House (Intake)
+      type: agent
+      description: Conducts patient intake interview
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are Dr. Gregory House conducting patient intake.
+
+          The hospital atmosphere described affects your patience and approach. You are tracking multiple patients in parallel, each with their own separate history.
+
+          REQUIREMENTS:
+          - Retrieve actual patient data from memory (do NOT use placeholder text)
+          - Extract patient name from the "patient" field first
+          - Review the "history" field thoroughly before making question(s)
+          - Follow the mandatory question process below
+          - If you have enough information to make a diagnosis, output "UNDERSTOOD" to exit the loop
+
+          QUESTION PROCESS:
+          1. Extract Patient Name from the "patient" field
+          2. Differential Diagnosis - consider 2-3 possible conditions based on evidence
+          3. Determine if you need more information:
+             - If YES (33% confidence): Formulate questions to elicit more information
+             - If NO (66% confidence): Output "UNDERSTOOD" to proceed to diagnosis
+
+          OUTPUT FORMAT (STRICT JSON ONLY):
+          {
+            "patient": "<ACTUAL_PATIENT_NAME_FROM_MEMORY>",
+            "questions": [
+              "First specific question to narrow diagnosis",
+              "Second question targeting different diagnostic possibility"
+            ],
+            "status": "UNDERSTOOD" or "CONTINUE"
+          }
+
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.7
+          max_tokens: ${MAX_TOKENS}
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              Review question strategy:
+              1. Are you asking for information already obtained?
+              2. Are you building on previous answers or repeating?
+              
+              If everything is correct, return the same output unchanged.
+        memories:
+          - name: nurse_memory
+            top_k: 5
+            similarity_threshold: 0.6
+            retrieve_stage:
+              - pre_gen_thinking
+              - gen
+            read: true
+            write: true
+          - name: doctor_memory
+            top_k: 5
+            similarity_threshold: 0.65
+            retrieve_stage:
+              - pre_gen_thinking
+              - gen
+            read: true
+            write: true
+    - id: DoctorNotes
+      name: Medical Scribe
+      type: agent
+      description: Maintains patient notes and compiles final histories
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a medical scribe maintaining patient clinical notes.
+
+          You MUST NEVER ask questions. You have two modes of operation based on the input:
+
+          REQUIREMENTS:
+          - Retrieve actual patient data from memory (do NOT use placeholder text)
+          - Extract real patient names from nurse intake notes
+          - Output STRICT JSON ONLY - no conversational text
+          - CRITICAL: DEDUPLICATE patients by name - one entry per unique patient name
+
+          TASK SCENARIOS:
+
+          1. NORMAL WORKFLOW (default - when receiving patient answer):
+             - You receive a single patient's answer/interaction
+             - Focus on THIS ONE PATIENT ONLY
+             - Identify which patient from memory context
+             - Extract that patient's actual name from conversation history
+             - Add this new information to that patient's notes
+             - Output ONLY a JSON object with patient name and history (no array during this phase)
+
+          2. FINALIZATION WORKFLOW (when doctor says UNDERSTOOD OR you receive "LOOP ENDED."):
+             - The doctor has finished questioning ALL patients (satisfied OR max iterations reached)
+             - NOW retrieve ALL patient histories from memory
+             - Extract all UNIQUE patient names from nurse intake notes
+             - DEDUPLICATION PROCESS (CRITICAL):
+               * Group all memory entries by patient name
+               * If multiple histories exist for same patient, use the one with most questions
+               * Each patient should appear EXACTLY ONCE in the output array
+             - Do NOT copy example names - use actual names from memory
+
+          OUTPUT FORMAT EXAMPLES (replace placeholders with real data from memory):
+
+          For NORMAL WORKFLOW - STRICT JSON OBJECT (ONE PATIENT):
+          {
+            "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>",
+            "history": "Q1: Nurse intake - <ACTUAL_SYMPTOMS_AND_CONTEXT_FROM_MEMORY>. Q2: <ACTUAL_DOCTOR_QUESTION> - <ACTUAL_PATIENT_ANSWER>. Q3: ... Q4: ..."
+          }
+
+          For FINALIZATION WORKFLOW - STRICT JSON ARRAY (UNIQUE PATIENTS):
+          If triggered by UNDERSTOOD or LOOP ENDED.
+          OUTPUT STRICT JSON ARRAY (no additional text):
+          [
+            {
+              "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>",
+              "history": "Q1: Nurse intake - <ACTUAL_SYMPTOMS_AND_CONTEXT_FROM_MEMORY>. Q2: <ACTUAL_DOCTOR_QUESTION> - <ACTUAL_PATIENT_ANSWER>. Q3: ... Q4: ... Q5: ..."
+            },
+            {
+              "patient": "<ACTUAL_PATIENT_NAME_FROM_NURSE_INTAKE>,
+              "history": "Q1: ... Q2: ... Q3: ... Q4: ... Q5: ..."
+            }
+          ]
+
+
+          CRITICAL NOTES:
+          - Use the MOST COMPLETE history (e.g., Q1-Q4 is better than Q1-Q3)
+          - Number of patients in output = Number of UNIQUE patient names
+          - Default behavior: Output JSON object with patient name and history
+          - Examples show FORMAT only - populate with real data from memory
+          - Include question sequence with actual content
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.1
+          max_tokens: ${MAX_TOKENS}
+        thinking:
+          type: reflection
+          config:
+            reflection_prompt: |
+              You have just compiled patient clinical notes. Verify data integrity:
+
+              VERIFICATION CHECKLIST:
+              1. COMPLETENESS CHECK:
+                 - For UPDATE: Does the history include ALL prior interactions (Q1, Q2, Q3...) from memory?
+                 - For LOOP ENDED: Are ALL patients from memory included in the array?
+
+               2. ACCURACY CHECK:
+                  - Are patient names EXACTLY as they appear in nurse intake (no placeholders, no generic names)?
+                  - Does each history accurately reflect the actual conversation from memory?
+
+               3. FORMAT CHECK:
+                  - Is the JSON format correct (valid syntax, no extra text)?
+                  - UPDATE: Single object with "status", "patient", "history" fields?
+                  - FINALIZATION: Output ONLY the JSON array
+
+              4. SEQUENCE CHECK:
+                 - Is the Q1, Q2, Q3... sequence complete with no gaps?
+                 - Does each Q include both the doctor's question AND patient's answer?
+
+              If everything is correct, return the same output unchanged.
+        memories:
+          - name: nurse_memory
+            top_k: 50
+            similarity_threshold: -1
+            retrieve_stage:
+              - pre_gen_thinking
+              - gen
+            read: true
+            write: false
+          - name: doctor_memory
+            top_k: 15
+            similarity_threshold: -1
+            retrieve_stage:
+              - pre_gen_thinking
+              - gen
+            read: true
+            write: true
+    - id: Nurse
+      name: Nurse Jackie
+      type: agent
+      description: Triage nurse handling initial intake
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are Nurse Jackie, an empathetic triage nurse.
+
+          You are the first point of contact. Your job is to intake the patient before sending them to the doctor. 
+          You MUST get basic information (name, context and symptoms) from the patient and provide a preliminary assessment based on their symptoms.
+
+          REQUIREMENTS:
+          - Adapt behavior based on hospital environment conditions
+          - DO NOT ASK QUESTIONS. You must state or confirm the facts provided by the patient.
+          - Extract: Name, Basic Context (age/occupation), and Symptoms.
+          - Speak professionally but let the environment affect your demeanor.
+
+          OUTPUT FORMAT:
+          Respond naturally as Nurse Jackie, adapting your tone and pacing to match the hospital conditions.
+          Patient basic information is mandatory before referral to the doctor.
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.7
+          max_tokens: ${MAX_TOKENS}
+        memories:
+          - name: nurse_memory
+            top_k: 5
+            similarity_threshold: 0.6
+            read: false
+            write: true
+    - id: ERTransfer
+      type: agent
+      name: Transfer Coordinator
+      description: Generates transfer summary
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a transfer coordinator at the hospital.
+
+          Extract patient information from the doctor's transfer order and create a brief transfer summary.
+          
+          OUTPUT FORMAT:
+          Patient [ACTUAL NAME] transferred to [DESTINATION] for [REASON].
+
+          Example: Patient Michael Chen transferred to Emergency Room for suspected appendicitis requiring immediate surgical evaluation.
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.3
+          max_tokens: 500
+    - id: PatientInteraction
+      name: Patient (Exam Room)
+      type: agent
+      description: Simulates patient responses during exam
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a patient in the exam room with Dr. House
+
+          Maintain your persona and answer the doctor's questions. You may be dramatic or difficult if your persona fits.
+
+          REQUIREMENTS:
+          - Speak in FIRST PERSON ("I feel...", "My pain...")
+          - Do NOT speak about the patient in third person
+          - Do NOT behave as an AI
+          - Stay in character based on your persona
+          - Keep answers brief (2-3 sentences)
+
+          OUTPUT FORMAT:
+          Respond naturally as the patient from the patient's perspective.
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.8
+          max_tokens: 1000
+    
+    - id: ScenarioEvolver
+      type: agent
+      name: Scenario Evolution Agent
+      description: Automatically generates scenario evolution prompts for next round
+      config:
+        role: |
+          You are a scenario evolution coordinator that generates brief evolution instructions for the next simulation round.
+          
+          EVOLUTION STRATEGIES:
+          
+          1. CONTINUATION (33% confidence):
+             - Output: "continue" or "next round" or "same scenario"
+             - Effect: Environment maintains current crisis with time progression
+          
+          2. EVOLUTION (66% confidence):
+             - Add complications or changes to existing scenario
+             - Examples: "staff member infected", "medication shortage", "power fluctuation", "influx of patients"
+             - Keep changes realistic and compounding with current crisis
+
+          CRITICAL REQUIREMENTS:
+          - Output ONLY the evolution instruction text (1-2 sentences maximum)
+          - NO explanations, NO meta-commentary, NO questions
+          - Vary your output - don't repeat the same instruction every round
+          - Evolution should feel natural and progressive
+          - Do NOT engage in conversation - just output the instruction
+
+          OUTPUT FORMAT:
+          Single brief instruction like: "continue" OR "staff shortage worsens as more nurses call in sick" OR "power backup systems begin to fail"
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.9
+          max_tokens: 100
+        memories:
+          - name: environment_memory
+            read: true
+            write: false
+            top_k: 5
+            similarity_threshold: 0.0
+            retrieve_stage:
+              - gen
+    - id: ReportSaver
+      type: agent
+      name: Medical Report Saver
+      description: Saves the medical case report to a file in the WareHouse directory
+      config:
+        role: |
+          ${COMMON_PROMPT}
+          You are a medical documentation clerk responsible for archiving clinical case reports.
+          
+          Your task is to save the medical case report to a file for archival purposes.
+          
+          INSTRUCTIONS:
+          1. Use the save_file function to write the report to a markdown file
+          2. Save to path: "medical_case_reports/simulation_report_{timestamp}.md"
+          3. The report content is provided in the input
+          4. After saving, confirm the file path and size
+          
+          OUTPUT FORMAT:
+          Medical case report successfully saved to: [file_path]
+          File size: [size] bytes
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.1
+          max_tokens: 500
+        tooling:
+          - type: function
+            config:
+              auto_load: true
+              tools:
+                - name: save_file
+    - id: SimulationEnd
+      type: literal
+      name: Simulation End
+      description: Terminal node marking simulation completion
+      config:
+        content: Hospital simulation ended.
+    - id: Doctor-Patient Phase Loop Counter
+      type: loop_counter
+      config:
+        max_iterations: 2
+        reset_on_emit: true
+        message: LOOP ENDED.
+        passthrough: true
+      description: Limits the number of doctor questions
+      context_window: 0
+      name: Question Limiter
+    - id: SimulationRoundCounter
+      type: loop_counter
+      config:
+        max_iterations: 2
+        reset_on_emit: false
+        message: ALL ROUNDS COMPLETED.
+        passthrough: true
+      description: Controls the number of simulation rounds
+      context_window: 0
+      name: Simulation Round Counter
+
+    - id: FinalReportDataExtractor
+      type: agent
+      log_output: true
+      name: Medical Data Extractor
+      description: Extracts all simulation data from memory stores and outputs structured JSON
+      config:
+        role: |
+          Extract ALL patient information from patient_memory and doctor_memory.
+          Extract scenario information from environment_memory.
+          
+          OUTPUT STRICT JSON FORMAT (no additional text):
+          {
+            "metadata": {
+              "timestamp": "[current timestamp]",
+              "report_type": "Final Clinical Summary",
+              "status": "FINAL"
+            },
+            "scenario": {
+              "outbreak": "[outbreak type from environment_memory]",
+              "description": "[scenario description from environment_memory]",
+              "urgency_level": "[urgency level]",
+              "atmosphere": "[emotional atmosphere]"
+            },
+            "patients": [
+              {
+                "name": "[patient name]",
+                "chief_complaint": "[symptoms/presenting problem]",
+                "diagnosis": "[final diagnosis or Pending]",
+                "disposition": "[Discharged or Transferred to ER]"
+              }
+            ],
+            "statistics": {
+              "total_encounters": [count of ALL patients],
+              "discharged": [count of patients with disposition "Discharged"],
+              "transferred": [count of patients with disposition "Transferred to ER"]
+            }
+          }
+          
+          CRITICAL REQUIREMENTS:
+          - Include ALL patients from memory, not just one
+          - Search thoroughly through patient_memory and doctor_memory
+          - Count all patients accurately for statistics
+          - Set total_encounters to the count of ALL patients extracted (length of patients array)
+          - Count discharged and transferred patients based on their disposition field
+          - Output ONLY valid JSON, no additional text or explanations
+        provider: openai
+        name: ${MODEL}
+        api_key: ${API_KEY}
+        base_url: ${BASE_URL}
+        params:
+          temperature: 0.2
+          max_tokens: 4000
+        thinking: null
+        memories:
+          - name: environment_memory
+            read: true
+            write: false
+            top_k: 50
+            similarity_threshold: -1
+            retrieve_stage:
+              - gen
+          - name: patient_memory
+            read: true
+            write: false
+            top_k: 50
+            similarity_threshold: -1
+            retrieve_stage:
+              - gen
+          - name: doctor_memory
+            read: true
+            write: false
+            top_k: 50
+            similarity_threshold: -1
+            retrieve_stage:
+              - gen
+    
+    - id: FinalReportFormatter
+      type: template
+      log_output: true
+      name: Medical Case Report Formatter
+      description: Formats medical case report with box-drawing characters from JSON data
+      context_window: 0
+      config:
+        template: |
+          {% set json_start = input.find('{') %}
+          {% set json_end = input.rfind('}') + 1 %}
+          {% set has_json = json_start >= 0 and json_end > json_start %}
+          {% if has_json %}
+            {% set json_str = input[json_start:json_end] %}
+            {% set data = json_str | fromjson %}
+          {% else %}
+            {% set data = {} %}
+          {% endif %}
+          {% set metadata = data.get('metadata', {}) %}
+          {% set scenario = data.get('scenario', {}) %}
+          {% set patients = data.get('patients', []) %}
+          {% set statistics = data.get('statistics', {}) %}
+          {% set has_data = patients | length > 0 or scenario.get('outbreak') or metadata.get('timestamp') %}
+          {% if not has_json and not has_data %}
+          # MEDICAL CASE REPORT: HOSPITAL SIMULATION
+
+          ## Raw Input Received
+          {{ input | trim if input | trim else "No input data received" }}
+          
+          {% else %}
+          # MEDICAL CASE REPORT: HOSPITAL SIMULATION
+          
+          ## REPORT METADATA
+          - **Generated**: {{ metadata.get('timestamp', 'Unknown') }}
+          - **Report Type**: {{ metadata.get('report_type', 'Clinical Summary') }}
+          - **Report Status**: {{ metadata.get('status', 'DRAFT') }}
+          - **Distribution**: Medical Records Archive
+          
+          ## CLINICAL SCENARIO
+          - **Outbreak**: {{ scenario.get('outbreak', 'Not specified') }}
+          - **Scenario**: {{ scenario.get('description', 'No description available') }}
+          - **Urgency Level**: {{ scenario.get('urgency_level', 'Unknown') }}
+          - **Atmosphere**: {{ scenario.get('atmosphere', 'Unknown') }}
+          
+          ## PATIENT ENCOUNTERS
+          {% for patient in patients %}
+          ### Patient {{ loop.index }}: {{ patient.get('name', 'Unknown Patient') }}
+          - **Chief Complaint**: {{ patient.get('chief_complaint', 'Not documented') }}
+          - **Diagnosis**: {{ patient.get('diagnosis', 'Pending') }}
+          - **Disposition**: {{ patient.get('disposition', 'Pending') }}
+          {% if not loop.last %}
+          
+          {% endif %}
+          {% endfor %}
+          {% if not patients %}
+          [!] No patient encounter data was extracted from memory stores.
+          This may indicate an issue with data collection during the simulation.
+          {% endif %}
+          
+          ## STATISTICAL SUMMARY
+          - **Total Patient Encounters**: {{ statistics.get('total_encounters', 0) }}
+          - **Patients Discharged**: {{ statistics.get('discharged', 0) }}
+          - **Patients Transferred**: {{ statistics.get('transferred', 0) }}
+          
+          ## QUALITY ASSURANCE
+          - **Patient Data**: {{ "PRESENT (" + (patients | length | string) + " patient records)" if patients else "MISSING - No patient records found" }}
+          - **Statistics Validation**: {{ "PASSED" if statistics.get('total_encounters', 0) > 0 else "FAILED - No encounters recorded" }}
+          - **Report Format**: Formatted successfully
+          - **Data Sources**: 3 memory stores accessed
+          - **Data Completeness**: {{ "COMPLETE" if has_data else "INCOMPLETE - Missing critical data" }}
+          
+          ## ATTESTATION
+          This report summarizes patient encounters and clinical outcomes from the 
+          hospital simulation exercise. All data extracted from simulation memory stores:
+          
+          - Environment Memory: Outbreak scenario and hospital conditions
+          - Patient Memory: Patient demographics, symptoms, and complaints
+          - Doctor Memory: Clinical assessments, diagnoses, and dispositions
+          
+          {% if has_data %}
+          The information contained herein is a faithful representation of the simulated
+          clinical scenario and may be used for training, analysis, and educational purposes.
+          
+          **Certified by**: Medical Case Report Generator  
+          **Data Quality**: VERIFIED
+          {% else %}
+          [!] WARNING: This report contains incomplete data and should not be used for
+          training or analysis without manual verification of data extraction issues.
+          
+          **Certified by**: Medical Case Report Generator  
+          **Data Quality**: INCOMPLETE - MANUAL REVIEW REQUIRED
+          {% endif %}
+          
+          ---
+          END OF MEDICAL CASE REPORT
+          {% endif %}
+  edges:
+    - from: environment
+      to: PatientGenerator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      clear_context: true
+      clear_kept_context: true
+      process:
+        type: template
+        config:
+          template: |
+            {% set env = input | fromjson %}
+            
+            HOSPITAL ENVIRONMENT CONTEXT
+            
+            
+            OUTBREAK: {{ env.outbreak }}
+            SCENARIO: {{ env.scenario }}
+            URGENCY LEVEL: {{ env.urgency_level }}
+            ATMOSPHERE: {{ env.emotional_atmosphere }}
+            
+            CONDITIONS:
+            {{ env.atmospheric_description }}
+            
+            {% if env.urgency_level == "Critical" %}
+            → ALERT: Critical situation - Generate severe cases
+            {% elif env.urgency_level == "High" %}
+            → NOTICE: High urgency - Generate urgent cases
+            {% elif env.urgency_level == "Medium" %}
+            → STANDARD: Medium urgency - Generate moderate cases
+            {% else %}
+            → ROUTINE: Low urgency - Generate routine cases
+            {% endif %}
+            
+            
+            CRITICAL MISSION: Generate ${NUMBER_OF_PATIENTS} patient(s) whose symptoms and arrival are DIRECT CONSEQUENCES of the conditions above.
+            
+            ANALYSIS REQUIRED:
+            1. What is the PRIMARY crisis/condition mentioned? (outbreak, disaster, weather, etc.)
+            2. What SPECIFIC symptoms would patients have from THIS crisis?
+            3. What is the urgency level? (Generate patients matching this urgency)
+            4. What is the emotional tone? (Generate personalities reflecting this)
+            
+            GENERATION CONSTRAINTS:
+            - If outbreak/epidemic mentioned → Patients MUST have related symptoms (respiratory, fever, disease-specific)
+            - If disaster mentioned → Patients MUST have disaster-related injuries (radiation, trauma, environmental)
+            - If weather extreme → Patients MUST have weather-related conditions (heat stroke, hypothermia, injuries)
+            - If urgency Critical/High → Generate higher urgency cases
+            - If urgency Low/Medium → Generate lower urgency, routine cases
+            
+            DO NOT generate random patients. Generate patients whose presence makes logical sense given these SPECIFIC conditions.
+            
+            Now generate exactly ${NUMBER_OF_PATIENTS} patient(s).
+    - from: PatientGenerator
+      to: PatientAgent
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      clear_context: true
+      clear_kept_context: true
+      dynamic:
+        type: map
+        split:
+          type: regex
+          config:
+            pattern: (?s)\{.*?\}
+        config:
+          max_parallel: 10
+    - from: PatientAgent
+      to: Nurse
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      clear_context: true
+      clear_kept_context: true
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: template
+        config:
+          template: |
+            Patient says: "{{input}}"
+
+            Respond as Nurse Jackie. 
+
+            REQUIREMENTS: Your demeanor, pacing, and thoroughness must DIRECTLY reflect the current hospital conditions.
+            - Match your stress level to the urgency
+            - Show visible effects of the atmosphere
+            - You MUST NOT ask any questions to the patient
+            - Patient basic information is mandatory before referral to the doctor
+
+            Then refer them to Dr. House for diagnosis.
+    - from: Nurse
+      to: DoctorIntake
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      clear_context: true
+      clear_kept_context: true
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: template
+        config:
+          template: |
+            
+            Nurse Assessment:
+            {{ input }}
+            
+            Dr. House Instructions:
+            Adapt your interview style to match the current hospital conditions.
+            
+    # Keyword-based loop control: DoctorIntake -> PatientInteraction (continue loop)
+    - from: DoctorIntake
+      to: PatientInteraction
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any: []
+          none:
+            - UNDERSTOOD
+          case_sensitive: false
+      carry_data: true
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: template
+        config:
+          template: |
+            {% set intake = input | fromjson %}
+            The Doctor says: "{{ intake.questions | join(' ') }}"
+
+            Answer him, but feel free to be intimidated or annoyed by his manner.
+    
+    # Keyword-based loop exit: DoctorIntake -> DoctorNotes (when doctor is satisfied)
+    - from: DoctorIntake
+      to: DoctorNotes
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - UNDERSTOOD
+          none: []
+          case_sensitive: false
+      carry_data: true
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: template
+        config:
+          template: |
+            UNDERSTOOD
+            
+            Doctor has completed interview. Finalize patient notes.
+    - from: PatientInteraction
+      to: DoctorNotes
+      trigger: true
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: template
+        config:
+          template: |
+            Patient Answer: "{{input}}"
+    
+    # DoctorNotes routes to loop counter if NOT finalization (not an array, not UNDERSTOOD/LOOP ENDED)
+    - from: DoctorNotes
+      to: Doctor-Patient Phase Loop Counter
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any: []
+          none:
+            - 'UNDERSTOOD'
+            - 'LOOP ENDED.'
+            - '['
+          case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: regex_extract
+        config:
+          pattern: '["""]history["""]\s*:\s*["""](?P<history>(?:[^"""\\]|\\.)*)["""]'
+          group: history
+          template: |
+            Clinical Notes: {match}
+
+            Review the history and determine if you need more information.
+          dotall: true
+    
+    # DoctorNotes routes directly to DoctorDiagnosis for finalization
+    # Extracts JSON array (removing UNDERSTOOD/LOOP ENDED keywords) and splits into parallel diagnosis units
+    - from: DoctorNotes
+      to: DoctorDiagnosis
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any: ["UNDERSTOOD", "LOOP ENDED.", "["]
+          case_sensitive: true
+      dynamic:
+        type: map
+        split:
+          type: json_path
+          config:
+            json_path: ''
+        config:
+          max_parallel: 10
+      process:
+        type: regex_extract
+        config:
+          pattern: '(?:UNDERSTOOD|LOOP ENDED\.)?\s*(\[[\s\S]*\])'
+          group: 1
+          dotall: true
+    
+    # Loop counter routes back to DoctorIntake (if under max iterations)
+    - from: Doctor-Patient Phase Loop Counter
+      to: DoctorIntake
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - LOOP ENDED.
+          case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+    
+    # Loop counter routes to DoctorNotes for finalization (if max iterations reached)
+    - from: Doctor-Patient Phase Loop Counter
+      to: DoctorNotes
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - LOOP ENDED.
+          case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: message
+        config:
+          max_parallel: 10
+      process:
+        type: template
+        config:
+          template: |
+            LOOP ENDED.
+            
+            Maximum iterations reached. Finalize all patient notes.
+    
+    - from: DoctorDiagnosis
+      to: Discharge
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - 'DIAGNOSIS:'
+          none:
+            - TRANSFER
+            - Transfer
+      regex: []
+      case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: json_path
+          config:
+            json_path: ''
+        config:
+          max_parallel: 10
+    - from: DoctorDiagnosis
+      to: ERTransfer
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - TRANSFER
+            - Transfer
+          none: []
+      regex: []
+      case_sensitive: false
+      dynamic:
+        type: map
+        split:
+          type: json_path
+          config:
+            json_path: ''
+        config:
+          max_parallel: 10
+
+    - from: Discharge
+      to: ScenarioEvolver
+      trigger: true
+      carry_data: true
+      process:
+        type: template
+        config:
+          template: |
+            Simulation round completed. Patient outcomes:
+            {{input}}
+            
+            Generate evolution instruction for next round.
+
+    - from: ERTransfer
+      to: ScenarioEvolver
+      trigger: true
+      carry_data: true
+      process:
+        type: template
+        config:
+          template: |
+            Simulation round completed. Patient outcomes:
+            {{input}}
+            
+            Generate evolution instruction for next round.
+
+    - from: ScenarioEvolver
+      to: SimulationRoundCounter
+      trigger: true
+      carry_data: true
+
+    - from: SimulationRoundCounter
+      to: environment
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - ALL ROUNDS COMPLETED.
+          case_sensitive: true
+      process:
+        type: template
+        config:
+          template: |
+            Evolution Input: {{input}}
+
+            INSTRUCTIONS:
+            - If input is minimal ("continue", "same", "next round") → maintain existing scenario with time progression
+            - If input contains new elements ("nurse infected", "power outage") → integrate while preserving existing context
+            - "outbreak" is mandatory and it must be related to the scenario
+
+            Generate hospital environment JSON:
+
+            OUTPUT FORMAT (STRICT JSON ONLY):
+            {
+              "outbreak": "maintain from previous if continuing",
+              "scenario": "show time progression or new context",
+              "urgency_level": "Low | Medium | High | Critical",
+              "atmospheric_description": "2-4 vivid sentences (integrate new elements if provided)",
+              "emotional_atmosphere": "Calm | Tense | Chaotic | Somber"
+            }
+
+    - from: SimulationRoundCounter
+      to: FinalReportDataExtractor
+      trigger: true
+      carry_data: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - ALL ROUNDS COMPLETED.
+          case_sensitive: true
+
+    - from: FinalReportDataExtractor
+      to: FinalReportFormatter
+      trigger: true
+      carry_data: true
+
+    - from: FinalReportFormatter
+      to: ReportSaver
+      trigger: true
+      carry_data: true
+      process:
+        type: template
+        config:
+          template: '{{input}}'
+
+    - from: ReportSaver
+      to: SimulationEnd
+      trigger: true
+      carry_data: true
+
+  # ================== SCENARIO PRESETS ==================
+  # Provide scenario via --task-prompt when running the workflow:
+  #
+  # 1. PANDEMIC START (COVID-19):
+  #    'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'
+  #
+  # 2. NUCLEAR DISASTER (Chernobyl):
+  #    'April 26, 1986, Pripyat Hospital. 2:00 AM. Firefighters arriving with violent radiation burns and confusion. Geiger counters off the charts. Staff unprotected and unaware of the true danger. Military lockdown. Atmosphere of invisible dread.'
+  #
+  # 3. NATURAL DISASTER (Hurricane Katrina):
+  #    'August 2005, New Orleans Hospital. Hurricane Katrina aftermath. Power failing, floodwaters rising. No AC, stifling heat. Critical supplies running low. Staff exhausted and making desperate evacuation decisions.'
+  #
+  # 4. MASS CASUALTY (Stadium Collapse):
+  #    'Friday Night, Metro General. Structural collapse at a packed stadium. Mass casualty incident. Sudden influx of crush injuries and trauma. Triage tents in parking lot. Blood bank critical. Chaos and high-decibel urgency.'
+  #
+  # 5. INFRASTRUCTURE FAILURE (Cyber Attack + Blizzard):
+  #    'Winter 2025. Total hospital network failure due to ransomware. No electronic records, no labs, no imaging. Backup generators only. Snowstorm preventing transfers. Staff flying blind with paper charts. High anxiety and communication breakdown.'
+
+  initial_instruction: Describe the scenario for the hospital simulation (e.g., 'March 2020, COVID-19 outbreak beginning. Hospital scrambling to set up isolation protocols. Staff anxious, limited PPE supplies, unclear treatment guidelines. Emergency department separating respiratory cases. High tension, everyone on edge.'). The system will simulate multiple patients arriving in parallel.
+  start:
+    - environment
+  end:
+    - SimulationEnd

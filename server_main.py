@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 
 from runtime.bootstrap.schema import ensure_schema_registry_populated
-from server.app import app
 
 
 ensure_schema_registry_populated()

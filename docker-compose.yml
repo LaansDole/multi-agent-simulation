@@ -1,0 +1,52 @@
+services:
+  backend:
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm
+    container_name: multi-agent-backend
+    working_dir: /app
+    volumes:
+      - .:/app
+      - uv-cache:/root/.cache/uv
+    ports:
+      - "6400:6400"
+    command: >
+      sh -c "apt-get update && apt-get install -y curl &&
+             uv sync &&
+             uv run python server_main.py --host 0.0.0.0 --port 6400"
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6400/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - app-network
+
+  frontend:
+    image: node:20-bookworm
+    container_name: multi-agent-frontend
+    working_dir: /app/frontend
+    volumes:
+      - .:/app
+      - node-modules:/app/frontend/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://backend:6400
+    command: >
+      sh -c "npm install &&
+             npm run dev -- --host 0.0.0.0"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  uv-cache:
+  node-modules:

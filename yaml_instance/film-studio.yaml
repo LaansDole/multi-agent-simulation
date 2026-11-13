@@ -1,0 +1,91 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: film-studio
+  description: "Full cinematic production: Visuals + Soundstage (Veo 3.1 style)."
+  is_majority_voting: false
+  start:
+    - film-director
+  nodes:
+  - id: film-director
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Orchestrates visuals and soundstage with global cinematic vision.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_film-director
+    type: human
+    config:
+      description: Please review and approve the output from Film Director.
+  - id: visual-lead
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Manages cinematography and VFX direction.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_visual-lead
+    type: human
+    config:
+      description: Please review and approve the output from Visual Lead.
+  - id: cinematographer
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Defines camera work, shot composition, and subject action."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: audio-lead
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Manages the soundstage: Dialogue, SFX, and Ambience."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_audio-lead
+    type: human
+    config:
+      description: Please review and approve the output from Audio Lead.
+  - id: sound-designer
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Specifies SFX (SFX:), Ambient Noise (Ambient noise:), and Dialogue (\" \")."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  edges:
+  - from: film-director
+    to: review_film-director
+  - from: review_film-director
+    to: visual-lead
+  - from: visual-lead
+    to: review_visual-lead
+  - from: review_visual-lead
+    to: cinematographer
+  - from: review_film-director
+    to: audio-lead
+  - from: audio-lead
+    to: review_audio-lead
+  - from: review_audio-lead
+    to: sound-designer

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import re
 import logging
-from typing import List, Optional
+from typing import List
 
 import openai
 from tenacity import (

@@ -1,0 +1,65 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: photo-studio
+  description: "Pro image generation using the [Subject] + [Action] + [Context] + [Comp] + [Style] formula."
+  is_majority_voting: false
+  start:
+    - art-director
+  nodes:
+  - id: art-director
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Synthesizes descriptions into valid Nano Banana prompts.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_art-director
+    type: human
+    config:
+      description: Please review and approve the output from Art Director.
+  - id: scene-designer
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Focuses on Subject and Action within the scene.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_scene-designer
+    type: human
+    config:
+      description: Please review and approve the output from Scene Designer.
+  - id: lighting-stylist
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Focuses on Composition, Lighting, and Style/Materiality."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_lighting-stylist
+    type: human
+    config:
+      description: Please review and approve the output from Lighting Stylist.
+  edges:
+  - from: art-director
+    to: review_art-director
+  - from: review_art-director
+    to: scene-designer
+  - from: scene-designer
+    to: review_scene-designer
+  - from: review_art-director
+    to: lighting-stylist
+  - from: lighting-stylist
+    to: review_lighting-stylist

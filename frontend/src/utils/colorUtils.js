@@ -107,3 +107,83 @@ export function getNodeStyles(nodeType) {
         '--node-shadow-color': palette.shadow
     };
 }
+
+// ───────── FLOOR BRIGHTNESS UTILITIES ─────────
+
+/**
+ * Default canvas background color (dark theme).
+ */
+const DEFAULT_CANVAS_BG = '#1a1a2e'
+
+/**
+ * Parse a hex color string (3, 4, 6, or 8 digit) into { r, g, b } with values 0-255.
+ * Returns null if the string is not a valid hex color.
+ *
+ * @param {string} hex - Hex color string, e.g. '#e8e8e8', '#fff', 'aabbcc'
+ * @returns {{ r: number, g: number, b: number } | null}
+ */
+export function parseHexColor(hex) {
+    if (!hex || typeof hex !== 'string') return null
+    let h = hex.replace(/^#/, '')
+    // Expand shorthand (3 or 4 digits)
+    if (h.length === 3 || h.length === 4) {
+        h = h.split('').map(c => c + c).join('')
+    }
+    if (h.length !== 6 && h.length !== 8) return null
+    const num = parseInt(h.substring(0, 6), 16)
+    if (isNaN(num)) return null
+    return {
+        r: (num >> 16) & 0xff,
+        g: (num >> 8) & 0xff,
+        b: num & 0xff
+    }
+}
+
+/**
+ * Compute the perceived brightness of a floor color composited over the
+ * canvas background at alpha 0.6.
+ *
+ * The compositing formula per channel is:
+ *   effective = floor_channel * 0.6 + bg_channel * 0.4
+ *
+ * Perceived brightness uses the NTSC/PAL luma formula:
+ *   Y = 0.299 * R + 0.587 * G + 0.114 * B   (values normalized to 0-1)
+ *
+ * @param {number} x - World x coordinate
+ * @param {number} y - World y coordinate
+ * @param {object|null} spatialConfig - Spatial config object with optional `floors` array
+ * @param {string} [canvasBgColor] - Canvas background hex color (default '#1a1a2e')
+ * @returns {number} Perceived brightness 0.0 - 1.0.  Returns 0.0 when no floor covers the point.
+ */
+export function getFloorBrightnessAt(x, y, spatialConfig, canvasBgColor) {
+    const floors = spatialConfig?.floors
+    if (!floors || !floors.length) return 0.0
+
+    // Find the floor tile containing (x, y)
+    let matchedFloor = null
+    for (const floor of floors) {
+        const fp = floor.position
+        if (
+            x >= fp.x && x < fp.x + floor.width &&
+            y >= fp.y && y < fp.y + floor.height
+        ) {
+            matchedFloor = floor
+            break
+        }
+    }
+
+    if (!matchedFloor || !matchedFloor.color) return 0.0
+
+    const floorRgb = parseHexColor(matchedFloor.color)
+    if (!floorRgb) return 0.0
+
+    const bgRgb = parseHexColor(canvasBgColor || DEFAULT_CANVAS_BG) || { r: 26, g: 26, b: 46 }
+
+    // Composite floor color at alpha 0.6 over background
+    const er = (floorRgb.r * 0.6 + bgRgb.r * 0.4) / 255
+    const eg = (floorRgb.g * 0.6 + bgRgb.g * 0.4) / 255
+    const eb = (floorRgb.b * 0.6 + bgRgb.b * 0.4) / 255
+
+    // NTSC/PAL luma
+    return 0.299 * er + 0.587 * eg + 0.114 * eb
+}

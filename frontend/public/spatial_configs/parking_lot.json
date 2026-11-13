@@ -1,0 +1,835 @@
+{
+  "canvas": {
+    "width": 2000,
+    "height": 1400,
+    "backgroundColor": "#1a1a2e"
+  },
+  "grid": {
+    "enabled": true,
+    "cellSize": 40,
+    "color": "#333344",
+    "opacity": 0.3
+  },
+  "metadata": {
+    "name": "Parking Lot",
+    "description": "Open parking lot with marked spots and parked vehicles",
+    "tags": [
+      "parking",
+      "outdoor",
+      "vehicles",
+      "urban"
+    ],
+    "recommendedAgentCount": {
+      "min": 5,
+      "max": 20
+    },
+    "thumbnail": "thumbnails/parking_lot.png"
+  },
+  "floors": [
+    {
+      "id": "floor-asphalt",
+      "tileType": "pavement",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 2000,
+      "height": 1400,
+      "sprite": "pavement.png",
+      "color": "#555555"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "wall-top",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 2000,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-bottom",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 1380
+      },
+      "size": {
+        "width": 2000,
+        "height": 20
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-left",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 0,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1360
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "wall-right",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1980,
+        "y": 20
+      },
+      "size": {
+        "width": 20,
+        "height": 1360
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c3",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c4",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 680,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c5",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 880,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c6",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1080,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c7",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c8",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r1-c9",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1680,
+        "y": 80
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c3",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c4",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 680,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c5",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 880,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c6",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1080,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c7",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c8",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r2-c9",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1680,
+        "y": 480
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c1",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 80,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c2",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 280,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c3",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 480,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c4",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 680,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c5",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 880,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c6",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1080,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c7",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1280,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c8",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1480,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "divider-r3-c9",
+      "type": "wall",
+      "shape": "rectangle",
+      "position": {
+        "x": 1680,
+        "y": 880
+      },
+      "size": {
+        "width": 10,
+        "height": 160
+      },
+      "color": "#64748b",
+      "collision": true
+    },
+    {
+      "id": "car-1",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-2",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 520,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-3",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 720,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-4",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1320,
+        "y": 100
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-5",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-6",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 320,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-7",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 920,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-8",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1520,
+        "y": 500
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-9",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 320,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-10",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 720,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-11",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1120,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "car-12",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1720,
+        "y": 900
+      },
+      "size": {
+        "width": 100,
+        "height": 60
+      },
+      "color": "#4a5568",
+      "collision": true,
+      "sprite": "vehicle_car.png"
+    },
+    {
+      "id": "lamp-400",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 300
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-400-b",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 400,
+        "y": 700
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-1000",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 300
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-1000-b",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1000,
+        "y": 700
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-1600",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 300
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    },
+    {
+      "id": "lamp-1600-b",
+      "type": "decoration",
+      "shape": "rectangle",
+      "position": {
+        "x": 1600,
+        "y": 700
+      },
+      "size": {
+        "width": 30,
+        "height": 80
+      },
+      "color": "#696969",
+      "collision": false,
+      "sprite": "street_lamp.png"
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "spawn-lane-1",
+      "name": "Lane 1",
+      "position": {
+        "x": 80,
+        "y": 260
+      },
+      "size": {
+        "width": 1840,
+        "height": 120
+      }
+    },
+    {
+      "id": "spawn-lane-2",
+      "name": "Lane 2",
+      "position": {
+        "x": 80,
+        "y": 660
+      },
+      "size": {
+        "width": 1840,
+        "height": 120
+      }
+    },
+    {
+      "id": "spawn-lane-3",
+      "name": "Lane 3",
+      "position": {
+        "x": 80,
+        "y": 1060
+      },
+      "size": {
+        "width": 1840,
+        "height": 120
+      }
+    }
+  ]
+}

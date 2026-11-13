@@ -20,9 +20,12 @@ class LoopCounterConfig(BaseConfig):
     max_iterations: int = 10
     reset_on_emit: bool = True
     message: Optional[str] = None
+    passthrough: bool = False
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any] | None, *, path: str) -> "LoopCounterConfig":
+    def from_dict(
+        cls, data: Mapping[str, Any] | None, *, path: str
+    ) -> "LoopCounterConfig":
         mapping = require_mapping(data or {}, path)
         max_iterations_raw = mapping.get("max_iterations", 10)
         try:
@@ -34,21 +37,27 @@ class LoopCounterConfig(BaseConfig):
             ) from exc
 
         if max_iterations < 1:
-            raise ConfigError("max_iterations must be >= 1", extend_path(path, "max_iterations"))
+            raise ConfigError(
+                "max_iterations must be >= 1", extend_path(path, "max_iterations")
+            )
 
         reset_on_emit = bool(mapping.get("reset_on_emit", True))
         message = optional_str(mapping, "message", path)
+        passthrough = bool(mapping.get("passthrough", False))
 
         return cls(
             max_iterations=max_iterations,
             reset_on_emit=reset_on_emit,
             message=message,
+            passthrough=passthrough,
             path=path,
         )
 
     def validate(self) -> None:
         if self.max_iterations < 1:
-            raise ConfigError("max_iterations must be >= 1", extend_path(self.path, "max_iterations"))
+            raise ConfigError(
+                "max_iterations must be >= 1", extend_path(self.path, "max_iterations")
+            )
 
     FIELD_SPECS = {
         "max_iterations": ConfigFieldSpec(
@@ -74,6 +83,15 @@ class LoopCounterConfig(BaseConfig):
             type_hint="text",
             required=False,
             description="Optional text sent downstream once the iteration cap is reached.",
+            advance=True,
+        ),
+        "passthrough": ConfigFieldSpec(
+            name="passthrough",
+            display_name="Passthrough Mode",
+            type_hint="bool",
+            required=False,
+            default=False,
+            description="If true, after emitting the limit message, all subsequent inputs pass through unchanged.",
             advance=True,
         ),
     }

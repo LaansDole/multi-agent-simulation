@@ -87,7 +87,7 @@ async def handle_mac_exception(request: Request, exc: MACException) -> JSONRespo
             "message": exc.message,
             "details": exc.details
         },
-        "timestamp": exc.__dict__.get('_timestamp', __import__('datetime').datetime.utcnow().isoformat())
+        "timestamp": exc.__dict__.get('_timestamp', __import__('datetime').datetime.now(__import__('datetime').UTC).isoformat())
     }
     
     return JSONResponse(

@@ -1,18 +1,14 @@
-import os
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
 import copy
-import traceback
 
 from entity.enums import CallStage, EventType, LogLevel
-from utils.structured_logger import StructuredLogger, LogType, get_workflow_logger
-from utils.exceptions import MACException
+from utils.structured_logger import StructuredLogger, get_workflow_logger
 
 
 def _json_safe(value: Any) -> Any:

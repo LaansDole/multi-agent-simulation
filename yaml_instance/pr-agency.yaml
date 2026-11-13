@@ -1,0 +1,53 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: pr-agency
+  description: "A sequential pipeline for media outreach: from strategy to press drafting."
+  is_majority_voting: false
+  start:
+    - pr-director
+  nodes:
+  - id: pr-director
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Oversees media relations, strategic communications, and brand reputation."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_pr-director
+    type: human
+    config:
+      description: Please review and approve the output from PR Director.
+  - id: media-strategist
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Identifies key media outlets and manages journalist outreach.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: press-writer
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Drafts press releases and media kits based on strategic goals.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  edges:
+  - from: pr-director
+    to: review_pr-director
+  - from: review_pr-director
+    to: media-strategist
+  - from: media-strategist
+    to: press-writer

@@ -1,0 +1,103 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: music-studio
+  description: "High-fidelity audio production following Lyria guidelines."
+  is_majority_voting: false
+  start:
+    - master-producer
+  nodes:
+  - id: master-producer
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: Orchestrates the 4 pillars of sound into a cohesive track.
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_master-producer
+    type: human
+    config:
+      description: Please review and approve the output from Master Producer.
+  - id: genre-expert
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Defines style, mood, and global aesthetic (e.g., Synthwave, Lofi)."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_genre-expert
+    type: human
+    config:
+      description: Please review and approve the output from Genre Expert.
+  - id: tempo-architect
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Specifies BPM, rhythmical complexity, and time signatures."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_tempo-architect
+    type: human
+    config:
+      description: Please review and approve the output from Tempo Architect.
+  - id: instrumentalist
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Selects timbres, arrangement, and orchestration layers."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_instrumentalist
+    type: human
+    config:
+      description: Please review and approve the output from Instrumentalist.
+  - id: dynamics-engineer
+    type: agent
+    config:
+      provider: gemini
+      base_url: ${BASE_URL}
+      api_key: ${API_KEY}
+      name: gemini-3-flash-preview
+      role: "Controls volume, texture, contrast, and emotional progression."
+      params:
+        temperature: 0.7
+        max_tokens: 4000
+  - id: review_dynamics-engineer
+    type: human
+    config:
+      description: Please review and approve the output from Dynamics Engineer.
+  edges:
+  - from: master-producer
+    to: review_master-producer
+  - from: review_master-producer
+    to: genre-expert
+  - from: genre-expert
+    to: review_genre-expert
+  - from: review_master-producer
+    to: tempo-architect
+  - from: tempo-architect
+    to: review_tempo-architect
+  - from: review_master-producer
+    to: instrumentalist
+  - from: instrumentalist
+    to: review_instrumentalist
+  - from: review_master-producer
+    to: dynamics-engineer
+  - from: dynamics-engineer
+    to: review_dynamics-engineer

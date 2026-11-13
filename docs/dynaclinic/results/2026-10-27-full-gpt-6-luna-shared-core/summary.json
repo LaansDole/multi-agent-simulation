@@ -1,0 +1,669 @@
+{
+  "run_id": "2026-10-27-full-gpt-6-luna-shared-core",
+  "generated_at": "2026-10-26T18:00:22+00:00",
+  "dataset": "synthetic",
+  "arms": [
+    "dynamic",
+    "single",
+    "static"
+  ],
+  "n_cases": 24,
+  "limit": null,
+  "seed": null,
+  "cache": false,
+  "concurrency": 4,
+  "context_policy": "shared_core",
+  "dry_run": false,
+  "primary_model": "gpt-6-luna",
+  "arms_summary": {
+    "dynamic": {
+      "n": 24,
+      "correct": 23,
+      "accuracy": 0.9583333333333334,
+      "accuracy_ci": [
+        0.7975777375115778,
+        0.992606734645195
+      ],
+      "triage": {
+        "n": 24,
+        "correct": 15,
+        "accuracy": 0.625
+      },
+      "routes": {
+        "single": 6,
+        "collaborative": 10,
+        "adversarial": 8
+      },
+      "adversarial_switch_rate": 0.3333333333333333,
+      "mean_divergence": 0.2662565268525141,
+      "mean_margin_loss": 0.08612336075842708,
+      "safety_violations": 0,
+      "safety_violation_rate": 0.0,
+      "blocked": 2,
+      "blocked_rate": 0.08333333333333333,
+      "errors": 0,
+      "mean_calls": 4.75,
+      "mean_prompt_tokens": 2503.4583333333335,
+      "mean_completion_tokens": 1601.125,
+      "mean_latency_s": 19.075060364540757,
+      "p50_latency_s": 13.478699749499356,
+      "models": {
+        "gpt-6-luna": 114
+      },
+      "fallback_calls": 0,
+      "cost_usd": null
+    },
+    "single": {
+      "n": 24,
+      "correct": 24,
+      "accuracy": 1.0,
+      "accuracy_ci": [
+        0.8620194241710247,
+        1.0
+      ],
+      "triage": null,
+      "routes": {
+        "single": 24
+      },
+      "adversarial_switch_rate": null,
+      "mean_divergence": null,
+      "mean_margin_loss": null,
+      "safety_violations": 0,
+      "safety_violation_rate": 0.0,
+      "blocked": 0,
+      "blocked_rate": 0.0,
+      "errors": 0,
+      "mean_calls": 1.0,
+      "mean_prompt_tokens": 366.9583333333333,
+      "mean_completion_tokens": 111.5,
+      "mean_latency_s": 2.5740459444577937,
+      "p50_latency_s": 2.402933083496464,
+      "models": {
+        "gpt-6-luna": 24
+      },
+      "fallback_calls": 0,
+      "cost_usd": null
+    },
+    "static": {
+      "n": 24,
+      "correct": 24,
+      "accuracy": 1.0,
+      "accuracy_ci": [
+        0.8620194241710247,
+        1.0
+      ],
+      "triage": null,
+      "routes": {
+        "adversarial": 24
+      },
+      "adversarial_switch_rate": 0.75,
+      "mean_divergence": 0.39512785946124257,
+      "mean_margin_loss": 0.1610049083507161,
+      "safety_violations": 0,
+      "safety_violation_rate": 0.0,
+      "blocked": 3,
+      "blocked_rate": 0.125,
+      "errors": 0,
+      "mean_calls": 6.166666666666667,
+      "mean_prompt_tokens": 3178.5,
+      "mean_completion_tokens": 2438.8333333333335,
+      "mean_latency_s": 27.723237783041743,
+      "p50_latency_s": 26.192829729498044,
+      "models": {
+        "gpt-6-luna": 148
+      },
+      "fallback_calls": 0,
+      "cost_usd": null
+    }
+  },
+  "per_tier": {
+    "LOW": {
+      "dynamic": {
+        "n": 8,
+        "correct": 8
+      },
+      "single": {
+        "n": 8,
+        "correct": 8
+      },
+      "static": {
+        "n": 8,
+        "correct": 8
+      }
+    },
+    "MODERATE": {
+      "dynamic": {
+        "n": 8,
+        "correct": 7
+      },
+      "single": {
+        "n": 8,
+        "correct": 8
+      },
+      "static": {
+        "n": 8,
+        "correct": 8
+      }
+    },
+    "HIGH": {
+      "dynamic": {
+        "n": 8,
+        "correct": 8
+      },
+      "single": {
+        "n": 8,
+        "correct": 8
+      },
+      "static": {
+        "n": 8,
+        "correct": 8
+      }
+    }
+  },
+  "cases": {
+    "syn-low-01": {
+      "gold": "A",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-02": {
+      "gold": "B",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-03": {
+      "gold": "C",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-04": {
+      "gold": "D",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-05": {
+      "gold": "E",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-06": {
+      "gold": "A",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-07": {
+      "gold": "B",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-low-08": {
+      "gold": "C",
+      "gold_tier": "LOW",
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-01": {
+      "gold": "D",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-02": {
+      "gold": "E",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-03": {
+      "gold": "A",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-04": {
+      "gold": "B",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-05": {
+      "gold": "C",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-06": {
+      "gold": "D",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": false,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-07": {
+      "gold": "E",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-mod-08": {
+      "gold": "A",
+      "gold_tier": "MODERATE",
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-01": {
+      "gold": "B",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-02": {
+      "gold": "C",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-03": {
+      "gold": "D",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-04": {
+      "gold": "E",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "E",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-05": {
+      "gold": "A",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "A",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-06": {
+      "gold": "B",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "B",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-07": {
+      "gold": "C",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "C",
+          "correct": true,
+          "error": false
+        }
+      }
+    },
+    "syn-high-08": {
+      "gold": "D",
+      "gold_tier": "HIGH",
+      "arms": {
+        "dynamic": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "single": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        },
+        "static": {
+          "answer": "D",
+          "correct": true,
+          "error": false
+        }
+      }
+    }
+  }
+}

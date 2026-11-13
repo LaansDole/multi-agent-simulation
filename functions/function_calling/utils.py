@@ -1,5 +1,4 @@
 import time
-from typing import Union
 
 
 def wait(seconds: float):

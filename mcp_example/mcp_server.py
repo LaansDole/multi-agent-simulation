@@ -1,7 +1,5 @@
 from fastmcp import FastMCP
 import random
-from datetime import datetime
-from typing import Dict, Optional
 
 # Initialize MCP server
 mcp = FastMCP(

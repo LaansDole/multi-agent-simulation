@@ -16,7 +16,8 @@ def allowed_browser_origins() -> list[str]:
     if configured is not None:
         # Wildcards must never authorize reading the local session token.
         return [origin.strip() for origin in configured.split(",") if origin.strip() and origin.strip() != "*"]
-    return ["http://localhost:5173", "http://127.0.0.1:5173"]
+    # the-delegation (3D frontend) dev server runs on :3000 and calls the backend cross-origin.
+    return ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 def require_local_tool_access(request: Request) -> None:

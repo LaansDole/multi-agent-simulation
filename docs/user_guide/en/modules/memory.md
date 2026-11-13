@@ -32,6 +32,9 @@ memory:
         model: text-embedding-3-small
 ```
 
+### Per-run Memory Paths
+A literal `memory_path` or `index_path` (as above) is shared by every run of the workflow, so a later run reads what earlier runs wrote. To give each run its own store, put `{{run_dir}}` in the path, e.g. `memory_path: "{{run_dir}}/simple.json"` (quote it: unquoted `{{` is a YAML mapping). When the run starts, `MemoryFactory.create_memory` (`runtime/node/agent/memory/builtin_stores.py`) replaces it with that run's output directory (`WareHouse/<session>_<timestamp>/`). This works for every store with one of those fields (`simple`, `file`, `blackboard`); `mem0` has no local path. Paths without the placeholder are used as written.
+
 ### Mem0 Memory Config
 ```yaml
 memory:
@@ -60,6 +63,11 @@ All stores register through `register_memory_store()` so summaries show up in UI
 | `top_k` | Number of items per retrieval (default 3). |
 | `similarity_threshold` | Minimum similarity cutoff (`-1` disables filtering). |
 | `read` / `write` | Whether this node can read from / write back to the store. |
+| `use_rlm` | Enable RLM (Recursive Language Model) for programmatic memory exploration. |
+| `rlm_max_iterations` | Maximum iterations for RLM code execution (default 5). |
+| `rlm_max_depth` | Maximum recursion depth for llm_query in RLM (default 2). |
+| `rlm_backend` | Backend provider for RLM (`openai`, `anthropic`, default: `openai`). |
+| `rlm_model` | Model to use for RLM execution (default: `gpt-4o`). |
 
 Agent node example:
 ```yaml
@@ -80,6 +88,32 @@ nodes:
           read: true
           write: false
 ```
+
+### 4.1 RLM-Enhanced Memory
+
+You can enable RLM (Recursive Language Model) exploration on memory attachments to programmatically analyze memory content:
+
+```yaml
+nodes:
+  - id: researcher
+    type: agent
+    config:
+      provider: openai
+      model: gpt-4o-mini
+      memories:
+        - name: project_docs
+          use_rlm: true
+          rlm_max_iterations: 10
+          rlm_max_depth: 2
+          rlm_backend: openai
+          rlm_model: gpt-4o
+```
+
+When `use_rlm: true` is set:
+- Memory items are exposed as a Python variable in an RLM REPL context
+- The agent can write code to analyze, filter, and transform memory data
+- Results are merged into the formatted memory text passed to the agent
+- Set `persist_env: true` on `rlm_memory` nodes to share RLM environments across agents
 Execution order:
 1. When the node enters `gen`, `MemoryManager` iterates attachments.
 2. Attachments matching the stage and `read=true` call `retrieve()` on their store.

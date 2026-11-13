@@ -4,13 +4,17 @@
 
 .PHONY: dev
 dev: ## Run both backend and frontend development servers
-	@$(MAKE) -j2 server client
-
+	@$(MAKE) server wait-backend client
 
 .PHONY: server
-server: ## Start the backend server in the background
+server: stop ## Start the backend server in the background
 	@echo "Starting server in background..."
 	@uv run python server_main.py --port 6400 &
+
+.PHONY: wait-backend
+wait-backend: ## Wait until backend port is reachable
+	@echo "Waiting for backend on port 6400..."
+	@for i in $$(seq 1 30); do if curl -fsS "http://127.0.0.1:6400/api/workflows" >/dev/null 2>&1; then echo "Backend is reachable"; exit 0; fi; sleep 1; done; echo "Backend did not become reachable within 30 seconds"; exit 1
 
 .PHONY: client
 client: ## Start the frontend development server
@@ -19,9 +23,9 @@ client: ## Start the frontend development server
 .PHONY: stop
 stop: ## Stop backend and frontend servers cross-platform
 	@echo "Stopping backend server (port 6400)..."
-	@npx kill-port 6400
+	@pids=$$(lsof -ti :6400 2>/dev/null); if [ -n "$$pids" ]; then echo "$$pids" | xargs kill -9 && echo "Process on port 6400 killed"; else echo "No process running on port 6400"; fi
 	@echo "Stopping frontend server (port 5173)..."
-	@npx kill-port 5173
+	@pids=$$(lsof -ti :5173 2>/dev/null); if [ -n "$$pids" ]; then echo "$$pids" | xargs kill -9 && echo "Process on port 5173 killed"; else echo "No process running on port 5173"; fi
 
 # ==============================================================================
 # Tools & Maintenance
@@ -31,23 +35,20 @@ stop: ## Stop backend and frontend servers cross-platform
 sync: ## Sync Vue graphs to the server database
 	@uv run python tools/sync_vuegraphs.py
 
+.PHONY: thumbnails
+thumbnails: ## Regenerate spatial config thumbnail images
+	@cd frontend && npm run generate:thumbnails
+
 .PHONY: validate-yamls
 validate-yamls: ## Validate all YAML configuration files
 	@uv run python tools/validate_all_yamls.py
 
 # ==============================================================================
-# Help
-# ==============================================================================
-
-.PHONY: help
-help: ## Display this help message
-	@uv run python -c "import re; \
-	p=r'$(firstword $(MAKEFILE_LIST))'.strip(); \
-	[print(f'{m[0]:<20} {m[1]}') for m in re.findall(r'^([a-zA-Z_-]+):.*?## (.*)$$', open(p, encoding='utf-8').read(), re.M)]" | sort
-
-# ==============================================================================
 # Quality Checks
 # ==============================================================================
+
+.PHONY: check
+check: check-backend check-frontend ## Run all quality checks (backend + frontend)
 
 .PHONY: check-backend
 check-backend: ## Run backend quality checks (tests + linting)
@@ -61,3 +62,25 @@ backend-tests: ## Run backend tests
 .PHONY: backend-lint
 backend-lint: ## Run backend linting
 	@uvx ruff check .
+
+.PHONY: check-frontend
+check-frontend: ## Run frontend quality checks (tests + linting)
+	@echo "Running frontend tests..."
+	@cd frontend && npx vitest run
+	@echo "Running frontend linting..."
+	@cd frontend && npm run lint
+
+.PHONY: test-frontend
+test-frontend: ## Run frontend unit tests
+	@cd frontend && npx vitest run
+
+# ==============================================================================
+# Help
+# ==============================================================================
+
+.PHONY: help
+help: ## Display this help message
+	@uv run python -c "import re; \
+	p=r'$(firstword $(MAKEFILE_LIST))'.strip(); \
+	[print(f'{m[0]:<20} {m[1]}') for m in re.findall(r'^([a-zA-Z_-]+):.*?## (.*)$$', open(p, encoding='utf-8').read(), re.M)]" | sort
+

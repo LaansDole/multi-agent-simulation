@@ -1,0 +1,356 @@
+version: 0.0.0
+graph:
+  id: dynaclinic_hospital
+  description: |
+    Hospital simulation with a DynaClinic consult per day, derived from demo_hospital.
+    Each day: PatientDataGenerator admits one patient as a symptom-level presentation (no diagnosis),
+    DynaClinicConsult runs yaml_instance/dynaclinic_mvp.yaml unchanged as one subgraph node on that
+    presentation (open-ended case: mode, C/U, assessment and plan, safety gates), then the triage queue
+    is generated and reported as in demo_hospital. DailySummary writes patient, DynaClinic mode, leading
+    diagnosis, plan and triage status to memory; LoopGate (loop_counter, 2 days) loops back, and
+    FinalReport lists every day's consult from memory. Research prototype on synthetic patients; not
+    clinical advice.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: DayStart
+      type: literal
+      config:
+        content: Starting hospital operations
+        role: user
+      description: Triggers the start of each hospital day
+      context_window: 0
+      log_output: true
+    - id: PatientDataGenerator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are the admissions desk of a simulated hospital. Generate ONE newly admitted patient as the
+          presentation the attending team receives. Output ONLY valid JSON with exactly these keys:
+          {
+            "patient_name": "<full name>",
+            "age": <integer>,
+            "sex": "<female or male>",
+            "chief_complaint": "<main symptom with its duration>",
+            "history_of_present_illness": "<2-4 sentences: onset, course, associated and pertinent negative symptoms>",
+            "vitals": "<BP, HR, RR, temperature, SpO2>",
+            "history": ["<past medical or surgical history item>"],
+            "medications": ["<drug and dose>"],
+            "allergies": ["<drug allergy and reaction, or none>"],
+            "exam": "<key examination findings>",
+            "labs": ["<test value unit>"],
+            "imaging": ["<study: findings described without a diagnosis, or leave the list empty>"]
+          }
+          Never state, name or hint at a diagnosis, a working impression or a disease name anywhere: describe only
+          symptoms, signs, history and raw results, so that the attending team has to work the diagnosis out.
+          Vary the cases: pick the organ system from the day number in the request (day 1 abdominal, day 2
+          respiratory, day 3 cardiovascular, day 4 neurological, day 5 renal or metabolic, day 6 infectious,
+          then repeat), and vary age, sex and acuity.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Generates the day's admission as a presentation without a diagnosis
+      context_window: 0
+      log_output: true
+    - id: DynaClinicConsult
+      type: subgraph
+      config:
+        type: file
+        config:
+          path: dynaclinic_mvp.yaml
+      description: >-
+        DynaClinic consult on the admitted patient: runs yaml_instance/dynaclinic_mvp.yaml unchanged (fresh case
+        run per day) and returns its report (gate verdict, safety gates, Meta-Controller mode with C and U,
+        assessment and plan).
+      context_window: 0
+      log_output: true
+    - id: TriageDataGenerator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          Generate a JSON array of 3 patients in triage:
+          [
+            {"name": "Alice Johnson", "priority": "high", "wait_time": 5},
+            {"name": "Bob Williams", "priority": "medium", "wait_time": 20},
+            {"name": "Carol Davis", "priority": "low", "wait_time": 45}
+          ]
+          Output ONLY valid JSON. Vary the patient data for each request.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Generates triage queue data
+      context_window: 0
+      log_output: true
+    - id: TriageReport
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: You received a triage status report. Acknowledge it briefly.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Processes triage report
+      context_window: 0
+      log_output: true
+    - id: DailySummary
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You received the hospital report for one simulation day: the admitted patient's presentation (JSON),
+          the DynaClinic consult report on that patient, and the triage queue status.
+
+          Write the day's summary in exactly this form, plain text, one line each:
+          Day <N, from the "Day N:" prefix>
+          Patient: <name>, <age>, <sex>, <chief complaint>
+          DynaClinic mode: <MODE from the consult's "Meta-Controller:" line> (C <value>, U <value>)
+          Leading diagnosis: <the leading diagnosis of the consult's assessment>
+          Plan: <one sentence summarising the consult's plan and recommendation>
+          Safety gate: <PASS or BLOCKED, from "DynaClinic report (GATE: ...)">
+          Triage: <one sentence on the queue>
+          Take every value from the reports; never add a diagnosis or plan of your own.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories:
+          - name: daily_summaries
+            top_k: 1
+            read: false
+        retry: null
+      description: Creates daily summary for each round (writes to memory)
+      context_window: 0
+      log_output: true
+    - id: FinalReport
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are a hospital simulation report generator. You have access to daily summaries from multiple
+          simulation days stored in memory.
+
+          Begin with the header "HOSPITAL SIMULATION - FINAL REPORT", then:
+          1. Executive Summary - one or two sentences.
+          2. DynaClinic consults - one line per day, in day order:
+             Day <N>: <patient> | mode <MODE> | leading diagnosis: <...> | plan: <...> | gate <PASS or BLOCKED>
+          3. Overall Assessment - one or two sentences, including the triage queue picture.
+          Use only what the daily summaries say.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories:
+          - name: daily_summaries
+            top_k: 100
+            retrieve_stage:
+              - gen
+            write: false
+        retry: null
+      description: Generates final simulation summary from daily memory
+      context_window: 0
+      log_output: true
+    - id: LoopGate
+      type: loop_counter
+      config:
+        max_iterations: 2
+        message: Hospital operation cycle completed - all days processed
+        passthrough: true
+      description: Counts simulated days; forwards days 1..N-1 back to DayStart, releases FinalReport on day N
+      context_window: 0
+      log_output: true
+  edges:
+    - from: DayStart
+      to: PatientDataGenerator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: true
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # PatientDataGenerator → DynaClinicConsult: the presentation as a DynaClinic plain-text case
+    # (dynaclinic/plaintext.py headers; "Question:" without options = open-ended case)
+    - from: PatientDataGenerator
+      to: DynaClinicConsult
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: template
+        config:
+          template: |-
+            {%- set p = input | fromjson -%}
+            {%- macro items(value) -%}{{ value if value is string else (value or []) | join('; ') }}{%- endmacro -%}
+            {{ p.patient_name }}, a {{ p.age }}-year-old {{ p.sex }}, presents with {{ p.chief_complaint }}.
+            {{ p.history_of_present_illness }}
+            Vitals: {{ p.vitals }}
+            Examination: {{ p.exam }}
+            Age: {{ p.age }}
+            Sex: {{ p.sex }}
+            History: {{ items(p.get('history')) }}
+            Medications: {{ items(p.get('medications')) }}
+            Allergies: {{ items(p.get('allergies')) }}
+            Labs: {{ items(p.get('labs')) }}
+            Imaging: {{ items(p.get('imaging')) }}
+            Question: What is the most likely diagnosis, and what is the initial management plan?
+    # PatientDataGenerator → DailySummary (data only: who was admitted)
+    - from: PatientDataGenerator
+      to: DailySummary
+      trigger: false
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # DynaClinicConsult → DailySummary (data only: queued until TriageReport triggers,
+    # then cleared after DailySummary runs, so each day sees only its own consult)
+    - from: DynaClinicConsult
+      to: DailySummary
+      trigger: false
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # DynaClinicConsult → TriageDataGenerator (trigger only; the consult text is not needed there)
+    - from: DynaClinicConsult
+      to: TriageDataGenerator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: template
+        config:
+          template: Consult finished. Generate today's triage queue.
+    - from: TriageDataGenerator
+      to: TriageReport
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: template
+        config:
+          template: |
+            TRIAGE QUEUE STATUS
+
+            {% set patients = input | fromjson %}
+
+            Current Queue ({{ patients | length }} patients):
+
+            {% for patient in patients %}
+            {{ loop.index }}. {{ patient.name }}
+               Priority: {{ patient.priority | upper }}
+               Wait Time: {{ patient.wait_time }} min
+               {% if patient.priority == 'high' %}
+               -> ALERT: Fast-track this patient
+               {% elif patient.wait_time > 30 %}
+               -> WARNING: Extended wait time
+               {% endif %}
+            {% endfor %}
+    - from: TriageReport
+      to: DailySummary
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    - from: DailySummary
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+    # LoopGate → DayStart (next day until the day count is reached)
+    - from: LoopGate
+      to: DayStart
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - Hospital operation cycle completed
+      carry_data: true
+      keep_message: false
+      clear_context: true
+      clear_kept_context: true
+      process:
+        type: function
+        config:
+          name: increment_day_counter
+    # LoopGate → FinalReport (exit after the last day)
+    - from: LoopGate
+      to: FinalReport
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - Hospital operation cycle completed
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+  # blackboard, not simple: it keeps each day's summary whole (no embedder). A simple store keeps only the
+  # first 500 characters of "Input: ... Output: ...", which the consult report fills before the summary.
+  memory:
+    - name: daily_summaries
+      type: blackboard
+      config:
+        memory_path: "{{run_dir}}/daily_summaries.json"
+  initial_instruction: ''
+  start:
+    - DayStart
+  end:
+    - FinalReport
+# Agents call OpenAI (OPENAI_BASE_URL / OPENAI_API_KEY from .env); the DynaClinic consult nodes use
+# DYNACLINIC_MODEL / DYNACLINIC_FALLBACK_MODELS (dynaclinic_mvp.yaml).
+vars:
+  MODEL_NAME: gpt-6-luna

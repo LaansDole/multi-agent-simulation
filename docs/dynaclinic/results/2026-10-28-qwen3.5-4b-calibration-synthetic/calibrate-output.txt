@@ -1,0 +1,5 @@
+mcq: measured 24 of 24, p50 0.653 p75 0.806 p90 0.819
+open: measured 24 of 24, p50 0.685 p75 0.766 p90 0.857
+row for dynaclinic/uncertainty.py TAU_U_BY_MODEL:
+    "qwen3.5-4b": TauU(0.81, 0.77, "p75 of U on synthetic (multiple choice, n = 24, p50 0.653, p90 0.819) and the same vignettes without options or question (k = 5, n = 24, p50 0.685, p90 0.857); dynaclinic.eval.calibrate 2026-10-28"),
+wrote /Users/laansdole/.hermes/cache/dynaclinic-dispatches/qwen-runs/calib-synth/calibration.json

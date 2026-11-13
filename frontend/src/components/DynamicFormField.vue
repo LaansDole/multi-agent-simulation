@@ -370,15 +370,29 @@
             <span class="help-icon" tabindex="0">?</span>
           </RichTooltip>
         </label>
-        <input
-          :id="`${modalId}-${field.name}`"
-          :value="formData[field.name]"
-          @input="onInput($event.target.value)"
-          type="text"
-          class="form-input"
-          :readonly="isReadOnly"
-          :class="{'input-readonly': isReadOnly}"
-        />
+        <div class="suggestion-wrapper">
+          <input
+            :id="`${modalId}-${field.name}`"
+            :value="formData[field.name]"
+            @input="onInput($event.target.value)"
+            @focus="showSuggestionsOnFocus"
+            @blur="closeSuggestions"
+            type="text"
+            class="form-input"
+            :readonly="isReadOnly"
+            :class="{'input-readonly': isReadOnly}"
+          />
+          <div v-if="showSuggestions && suggestionsList.length > 0" class="suggestions-dropdown">
+            <div
+              v-for="(suggestion, index) in suggestionsList"
+              :key="index"
+              class="suggestion-item"
+              @mousedown="insertSuggestion(suggestion, $event)"
+            >
+              {{ suggestion }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Multiline text fields -->
@@ -618,6 +632,10 @@ const props = defineProps({
   isReadOnly: {
     type: Boolean,
     default: false
+  },
+  suggestions: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -765,12 +783,37 @@ const onInput = (value) => {
 }
 
 const onInputNumber = (value) => {
-    // Check if empty string
-    if (value === "") {
-        props.formData[props.field.name] = null
-        return
+  // Handle empty input
+  if (value === '' || value === null || value === undefined) {
+    props.formData[props.field.name] = null
+    return
+  }
+  
+  // Check if value is an environment variable reference (${...})
+  if (typeof value === 'string' && value.match(/^\$\{[^}]+\}$/)) {
+    // Preserve environment variable references as strings
+    props.formData[props.field.name] = value
+    return
+  }
+  
+  const numValue = Number(value)
+  
+  // Validate: reject NaN, Infinity, -Infinity
+  if (!Number.isFinite(numValue)) {
+    // Keep previous value or fall back to field default
+    if (props.formData[props.field.name] === undefined || props.formData[props.field.name] === null) {
+      props.formData[props.field.name] = props.field.default ?? null
     }
-  props.formData[props.field.name] = Number(value)
+    // else: keep existing valid value
+    return
+  }
+  
+  // For int type, round to integer
+  if (props.field.type === 'int') {
+    props.formData[props.field.name] = Math.round(numValue)
+  } else {
+    props.formData[props.field.name] = numValue
+  }
 }
 
 const onBooleanSwitchChange = (checked) => {
@@ -845,6 +888,94 @@ const getSelectedLabel = () => {
 
   return currentValue
 }
+
+// Variable suggestion methods
+const SYSTEM_VARS = ['API_KEY', 'BASE_URL']
+
+const showSuggestionsOnFocus = () => {
+  if (!props.suggestions || props.suggestions.length === 0) {
+    showSuggestions.value = false
+    return
+  }
+  
+  // Filter out system variables (user already knows these exist via defaults)
+  const userVars = props.suggestions.filter(s => {
+    const varName = s.replace(/^\$\{/, '').replace(/\}$/, '')
+    return !SYSTEM_VARS.includes(varName)
+  })
+  
+  if (userVars.length === 0) {
+    showSuggestions.value = false
+    return
+  }
+  
+  suggestionsList.value = userVars
+  showSuggestions.value = true
+}
+
+const insertSuggestion = (suggestion, event) => {
+  const currentValue = props.formData[props.field.name] || ''
+  
+  // Get the input/textarea element
+  const suggestionItem = event.currentTarget || event.target
+  const dropdownEl = suggestionItem.parentElement
+  const wrapperEl = dropdownEl?.parentElement
+  const inputElement = wrapperEl?.querySelector('input, textarea')
+  
+  if (!inputElement) {
+    // Fallback: just append the suggestion
+    onInput(currentValue + suggestion)
+    showSuggestions.value = false
+    return
+  }
+  
+  const cursorPos = inputElement.selectionStart || currentValue.length
+  const textBeforeCursor = currentValue.substring(0, cursorPos)
+  const textAfterCursor = currentValue.substring(cursorPos)
+  
+  // Insert suggestion at cursor position
+  const newValue = textBeforeCursor + suggestion + textAfterCursor
+  onInput(newValue)
+  
+  // Set cursor position after the inserted suggestion
+  setTimeout(() => {
+    const newCursorPos = (textBeforeCursor + suggestion).length
+    inputElement.setSelectionRange(newCursorPos, newCursorPos)
+    inputElement.focus()
+  }, 10)
+  
+  showSuggestions.value = false
+  suggestionsList.value = []
+}
+
+const closeSuggestions = () => {
+  setTimeout(() => {
+    showSuggestions.value = false
+    suggestionsList.value = []
+  }, 200)
+}
+
+// Sanitize integer/float fields on mount to handle legacy string values
+onMounted(() => {
+  if ((props.field.type === 'int' || props.field.type === 'float') && !isList.value) {
+    const currentValue = props.formData[props.field.name]
+    if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+      // Preserve environment variable references
+      if (typeof currentValue === 'string' && currentValue.match(/^\$\{[^}]+\}$/)) {
+        return
+      }
+      
+      const numValue = Number(currentValue)
+      if (Number.isFinite(numValue)) {
+        const sanitizedValue = props.field.type === 'int' ? Math.round(numValue) : numValue
+        // Only update if the value is different (e.g., was a string or needs rounding)
+        if (sanitizedValue !== currentValue) {
+          props.formData[props.field.name] = sanitizedValue
+        }
+      }
+    }
+  }
+})
 </script>
 
 <style scoped>
@@ -1642,5 +1773,43 @@ input:checked + .switch-slider:before {
 
 .select-disabled .custom-select-input {
   cursor: not-allowed;
+}
+
+/* Variable suggestion styles */
+.suggestion-wrapper {
+  position: relative;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: rgba(25, 25, 25, 0.98);
+  border: 1px solid rgba(160, 196, 255, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  margin-top: 4px;
+  z-index: 1000;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #a0c4ff;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background-color: rgba(160, 196, 255, 0.15);
 }
 </style>

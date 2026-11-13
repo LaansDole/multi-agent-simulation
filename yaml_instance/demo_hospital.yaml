@@ -1,0 +1,351 @@
+version: 0.0.0
+graph:
+  id: demo_hospital
+  description: |
+    Simplified hospital workflow with timer-based looping (60 seconds).
+    Sequential flow: generates patient data, processes admission, generates triage data,
+    processes triage report, then creates a daily summary persisted to memory.
+    Loop timer controls iteration count. Final report aggregates all daily summaries from memory.
+  log_level: INFO
+  is_majority_voting: false
+  nodes:
+    - id: DayStart
+      type: literal
+      config:
+        content: Starting hospital operations
+        role: user
+      description: Triggers the start of each hospital day
+      context_window: 0
+      log_output: true
+    - id: PatientDataGenerator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          Generate a JSON object with patient data. Output ONLY valid JSON:
+          {
+            "patient_name": "John Smith",
+            "age": 68,
+            "condition": "Influenza",
+            "severity": "high",
+            "admission_date": "2024-01-15"
+          }
+          Generate varied patient data for each request.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Generates patient admission data for current day
+      context_window: 0
+      log_output: true
+    - id: AdmissionReport
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You received a patient admission report. Acknowledge it briefly in one sentence
+          that always restates the patient's name, age and condition from the report.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Processes admission report
+      context_window: 0
+      log_output: true
+    - id: TriageDataGenerator
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          Generate a JSON array of 3 patients in triage:
+          [
+            {"name": "Alice Johnson", "priority": "high", "wait_time": 5},
+            {"name": "Bob Williams", "priority": "medium", "wait_time": 20},
+            {"name": "Carol Davis", "priority": "low", "wait_time": 45}
+          ]
+          Output ONLY valid JSON. Vary the patient data for each request.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Generates triage queue data
+      context_window: 0
+      log_output: true
+    - id: TriageReport
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: You received a triage status report. Acknowledge it briefly.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories: []
+        retry: null
+      description: Processes triage report
+      context_window: 0
+      log_output: true
+    - id: DailySummary
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You received a hospital report for a simulation round: the day's admission
+          acknowledgement and the triage queue status.
+
+          Create a brief daily summary that includes:
+          1. Key events: name the admitted patient and their condition, then the triage status
+          2. A one-sentence overall assessment
+
+          Keep it concise (2-3 sentences total).
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories:
+          - name: daily_summaries
+            top_k: 1
+            read: false
+        retry: null
+      description: Creates daily summary for each round (writes to memory)
+      context_window: 0
+      log_output: true
+    - id: FinalReport
+      type: agent
+      config:
+        name: ${MODEL_NAME}
+        provider: openai
+        role: |
+          You are a hospital simulation report generator. You have access to daily summaries from multiple simulation days stored in memory.
+
+          Create a comprehensive final report that includes:
+          1. Executive Summary - overall simulation outcome
+          2. Day-by-Day Breakdown - key events from each day's summary
+          3. Overall Assessment
+
+          Keep the report professional but concise (5-8 sentences total).
+          Begin with "HOSPITAL SIMULATION - FINAL REPORT" header.
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+        params: {}
+        tooling: null
+        thinking: null
+        memories:
+          - name: daily_summaries
+            top_k: 100
+            retrieve_stage:
+              - gen
+            write: false
+        retry: null
+      description: Generates final simulation summary from daily memory
+      context_window: 0
+      log_output: true
+    - id: LoopGate
+      type: loop_timer
+      config:
+        max_duration: 60
+        duration_unit: seconds
+        reset_on_emit: false
+        message: Hospital operation cycle completed - all days processed
+        passthrough: true
+      description: Controls loop timing - releases after duration limit
+      context_window: 0
+      log_output: true
+  edges:
+    # Sequential chain: DayStart → PatientDataGenerator
+    - from: DayStart
+      to: PatientDataGenerator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: true
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # PatientDataGenerator → AdmissionReport (with template formatter)
+    - from: PatientDataGenerator
+      to: AdmissionReport
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: template
+        config:
+          template: |
+            PATIENT ADMISSION REPORT
+
+            {% set patient = input | fromjson %}
+
+            Patient Information:
+            - Name: {{ patient.patient_name }}
+            - Age: {{ patient.age }} years
+            - Condition: {{ patient.condition }}
+            - Admission Date: {{ patient.admission_date }}
+
+            Severity Assessment:
+            {% if patient.severity == "high" %}
+            URGENT: Immediate attention required
+            Priority: CRITICAL
+            {% elif patient.severity == "medium" %}
+            NOTICE: Review within 24 hours
+            Priority: MODERATE
+            {% else %}
+            ROUTINE: Standard processing
+            Priority: LOW
+            {% endif %}
+
+            Case Summary:
+            {{ patient.patient_name }} ({{ patient.age }}y) admitted with {{ patient.condition }}.
+            {% if patient.age > 60 %}
+            Note: Elderly patient - additional monitoring recommended.
+            {% endif %}
+    # AdmissionReport → TriageDataGenerator
+    - from: AdmissionReport
+      to: TriageDataGenerator
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # AdmissionReport → DailySummary (data only: queued until TriageReport triggers,
+    # then cleared after DailySummary runs, so each day sees only its own admission)
+    - from: AdmissionReport
+      to: DailySummary
+      trigger: false
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # TriageDataGenerator → TriageReport (with template formatter)
+    - from: TriageDataGenerator
+      to: TriageReport
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: template
+        config:
+          template: |
+            TRIAGE QUEUE STATUS
+
+            {% set patients = input | fromjson %}
+
+            Current Queue ({{ patients | length }} patients):
+
+            {% for patient in patients %}
+            {{ loop.index }}. {{ patient.name }}
+               Priority: {{ patient.priority | upper }}
+               Wait Time: {{ patient.wait_time }} min
+               {% if patient.priority == 'high' %}
+               -> ALERT: Fast-track this patient
+               {% elif patient.wait_time > 30 %}
+               -> WARNING: Extended wait time
+               {% endif %}
+            {% endfor %}
+    # TriageReport → DailySummary
+    - from: TriageReport
+      to: DailySummary
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+      process:
+        type: function
+        config:
+          name: inject_day_to_message
+    # DailySummary → LoopGate
+    - from: DailySummary
+      to: LoopGate
+      trigger: true
+      condition: 'true'
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+    # LoopGate → DayStart (loop back if timer not expired)
+    - from: LoopGate
+      to: DayStart
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          none:
+            - Hospital operation cycle completed
+      carry_data: true
+      keep_message: false
+      clear_context: true
+      clear_kept_context: true
+      process:
+        type: function
+        config:
+          name: increment_day_counter
+    # LoopGate → FinalReport (exit when timer expired)
+    - from: LoopGate
+      to: FinalReport
+      trigger: true
+      condition:
+        type: keyword
+        config:
+          any:
+            - Hospital operation cycle completed
+      carry_data: true
+      keep_message: false
+      clear_context: false
+      clear_kept_context: false
+  memory:
+    - name: daily_summaries
+      type: simple
+      config:
+        memory_path: "{{run_dir}}/daily_summaries.json"
+        embedding:
+          provider: openai
+          model: ${EMBEDDING_MODEL}
+          api_key: ${OPENAI_API_KEY}
+          base_url: ${OPENAI_BASE_URL}
+          params: {}
+  initial_instruction: ''
+  start:
+    - DayStart
+  end:
+    - FinalReport
+# Agents and the memory embedder call OpenAI (OPENAI_BASE_URL / OPENAI_API_KEY from .env).
+vars:
+  MODEL_NAME: gpt-6-luna
+  EMBEDDING_MODEL: text-embedding-3-small

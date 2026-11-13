@@ -1,7 +1,6 @@
 import argparse
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
-import yaml
 
 from check import check_yaml
 from utils.io_utils import read_yaml

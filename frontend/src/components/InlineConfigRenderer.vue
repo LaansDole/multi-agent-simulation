@@ -18,7 +18,8 @@
         :conditional-child-button-label="conditionalChildButtonLabel(modal, field)"
         :child-node-button-label="childNodeButtonLabel(modal, field)"
         :active-child-route="getActiveChildRoute(modal, field)"
-        :is-read-only="isFieldReadOnly(field)" 
+        :is-read-only="isFieldReadOnly(field)"
+        :suggestions="suggestions"
         @open-child-modal="(f, idx) => $emit('open-child-modal', modal.id, f, idx)"
         @open-conditional-child-modal="(f) => $emit('open-conditional-child-modal', modal.id, f)"
         @handle-enum-change="(f) => $emit('handle-enum-change', modal.id, f)"
@@ -64,6 +65,7 @@
         <!-- Recursion: Render the child modal -->
         <InlineConfigRenderer
           :modal="modal.inlineChildModals[field.name]"
+          :suggestions="suggestions"
           @open-child-modal="(mid, f, idx) => $emit('open-child-modal', mid, f, idx)"
           @open-conditional-child-modal="(mid, f) => $emit('open-conditional-child-modal', mid, f)"
           @handle-enum-change="(mid, f) => $emit('handle-enum-change', mid, f)"
@@ -100,6 +102,10 @@ const props = defineProps({
     required: true
   },
   readOnlyFields: {
+    type: Array,
+    default: () => []
+  },
+  suggestions: {
     type: Array,
     default: () => []
   }
