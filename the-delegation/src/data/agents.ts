@@ -15,6 +15,7 @@ export interface AgentNode {
   name: string;
   description: string;
   role?: string; // short role on the character's 3D nameplate (imported from the backend's role_label)
+  station?: string; // DynaClinic station role (clinicLayout.stationRole): the character works at that room's station
   color: string;
   model: string;
   provider?: string;

@@ -23,7 +23,8 @@ def test_start_shift_cycles_staffing_restocks_and_decays_fatigue() -> None:
     state["hospital_day_counter"] = 3
     text = inject_day_and_start_shift("Starting hospital operations", state)
     assert env["staffing_level"] == "short"
-    assert text.endswith("\nEnvironment: case_mix_context=baseline, bed_occupancy=20, staffing_level=short")
+    assert text.endswith("\nEnvironment: case_mix_context=baseline, bed_occupancy=20, staffing_level=short, "
+                         "staff_fatigue=2, resource_availability=imaging:0;pathology:3;pharmacology:3")
     assert env["resource_availability"]["imaging"] == 0  # no restock between restock days
     assert env["staff_fatigue"] == 2
 

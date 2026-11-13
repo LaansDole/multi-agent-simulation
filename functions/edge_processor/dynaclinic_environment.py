@@ -29,7 +29,8 @@ def inject_day_and_start_shift(data: str, global_state: Dict[str, Any]) -> str:
     behaviour) and starts the new day's shift: cycles staffing and case-mix, restocks resources
     only every RESTOCK_EVERY_DAYS days (or when unseeded), and decays staff fatigue by one.
     Appends an Environment line so PatientDataGenerator's prompt can bias the presentation toward
-    the day's case mix."""
+    the day's case mix. The line also carries staff_fatigue and the stock: the 3D office reads the
+    day's state from it (the-delegation/src/integration/api/clinicEnvironment.ts parses this format)."""
     text = inject_day_to_message(data, global_state)
     day = global_state["hospital_day_counter"]
     environment = global_state.setdefault(STATE_KEY, {})
@@ -40,8 +41,10 @@ def inject_day_and_start_shift(data: str, global_state: Dict[str, Any]) -> str:
     environment.setdefault("bed_occupancy", BED_OCCUPANCY_START)
     # Overnight rest: fatigue decays by one per day, so only exhaustion days (+2) accumulate toward the clamp.
     environment["staff_fatigue"] = max(0, environment.get("staff_fatigue", 0) - 1)
+    stock = ";".join(f"{role}:{count}" for role, count in environment["resource_availability"].items())
     return (f"{text}\nEnvironment: case_mix_context={environment['case_mix_context']}, "
-            f"bed_occupancy={environment['bed_occupancy']}, staffing_level={environment['staffing_level']}")
+            f"bed_occupancy={environment['bed_occupancy']}, staffing_level={environment['staffing_level']}, "
+            f"staff_fatigue={environment['staff_fatigue']}, resource_availability={stock}")
 
 
 def inject_day_and_record_admission(data: str, global_state: Dict[str, Any]) -> str:

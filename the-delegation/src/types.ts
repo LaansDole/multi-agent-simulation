@@ -1,6 +1,7 @@
 import type * as THREE from 'three/webgpu';
 
 import { LLMConfig } from './core/llm/types';
+import type { ClinicState } from './integration/api/clinicEnvironment';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
@@ -15,7 +16,9 @@ export type AgentState = 'idle' | 'moving' | 'working' | 'on_hold' | 'talking';
 export type SceneCue =
   | { kind: 'handoff'; speakers: number[]; listeners: number[]; waves: number[]; text: string }
   | { kind: 'meeting'; members: number[] }
-  | { kind: 'meeting_end' };
+  | { kind: 'meeting_end' }
+  /** DynaClinic staff fatigue crossed its threshold: the staff walk to the staff area between consults. */
+  | { kind: 'staff_break'; members: number[] };
 
 export interface CharacterState {
   isThinking: boolean;
@@ -44,6 +47,8 @@ export interface CharacterState {
   setSpeech: (index: number, text: string | null) => void;
   /** Role a character's latest output declared this run (DynaClinic `STAGE: <name> (<role>)`), shown on its nameplate. */
   liveRoles: Record<number, string>;
+  /** DynaClinic hospital environment read from the event stream; null outside a run that has one. */
+  clinic: ClinicState | null;
 
   isBYOKOpen: boolean;
   byokError: string | null;
@@ -162,6 +167,8 @@ export interface PoiDef {
   occupiedBy: number | null;
   /** Optional label to show on hover (e.g. "Sit down"). */
   label?: string;
+  /** DynaClinic station gate: only the character with this station role works here. */
+  role?: string;
 }
 
 // ── Driver interfaces ─────────────────────────────────────────

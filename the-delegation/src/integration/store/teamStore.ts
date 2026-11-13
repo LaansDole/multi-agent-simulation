@@ -45,15 +45,15 @@ const migrateGeminiDefault = (system: AgenticSystem): AgenticSystem => {
   };
 };
 
-/** Refreshes a saved imported team from a fresh import; slots, colours, positions and user-edited agents are kept (the YAML-derived role always follows). */
+/** Refreshes a saved imported team from a fresh import; slots, colours, positions and user-edited agents are kept (the YAML-derived role and station always follow). */
 const resyncSystem = (saved: AgenticSystem, fresh: AgenticSystem): AgenticSystem => {
   const freshById = new Map(getAllAgents(fresh).map((a) => [a.id, a]));
   const leadAgent = mapAgents(saved.leadAgent, (a) => {
     const src = freshById.get(a.id);
     if (!src) return a;
     return a.userEdited
-      ? { ...a, role: src.role }
-      : { ...a, name: src.name, description: src.description, role: src.role, model: src.model, provider: src.provider };
+      ? { ...a, role: src.role, station: src.station }
+      : { ...a, name: src.name, description: src.description, role: src.role, station: src.station, model: src.model, provider: src.provider };
   });
   // The importer derives outputModel from the lead; keep it following unless the user picked another one.
   const outputModel = saved.outputModel === saved.leadAgent.model ? leadAgent.model : saved.outputModel;

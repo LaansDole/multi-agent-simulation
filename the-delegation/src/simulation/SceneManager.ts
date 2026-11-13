@@ -7,7 +7,7 @@ import { DriverManager } from './drivers/DriverManager';
 import { CharacterManager } from './entities/CharacterManager';
 import { InputManager } from './input/InputManager';
 import { NavMeshManager } from './pathfinding/NavMeshManager';
-import { AREA_POI_PREFIX, BOARDROOM_POI_ID, PoiManager, spawnPoiId } from './world/PoiManager';
+import { AREA_POI_PREFIX, BOARDROOM_POI_ID, PoiManager, spawnPoiId, STAFF_AREA_POI_ID } from './world/PoiManager';
 import { WorldManager } from './world/WorldManager';
 
 import { BackendAgentSimulation } from './core/BackendAgentSimulation';
@@ -18,7 +18,7 @@ import { useUiStore } from '../integration/store/uiStore';
 import { AgentBehavior, ChatMessage, PoiDef, SceneCue } from '../types';
 import {
   AREA_SPOT_RINGS, AREA_SPOT_SPACING, BUBBLE_Y_OFFSET, HANDOFF_TALK_SECONDS, HANDOFF_WALK_TIMEOUT_SECONDS,
-  MEETING_IDLE_SECONDS,
+  MEETING_IDLE_SECONDS, STAFF_BREAK_SECONDS,
 } from './constants';
 
 type HandOffCue = Extract<SceneCue, { kind: 'handoff' }>;
@@ -57,6 +57,10 @@ export class SceneManager {
   private meeting: { members: Set<number>; areaId: string; idleTimer: number | null } | null = null;
   /** Pending hand-off / meeting timeouts (window.setTimeout ids), cleared on reset and dispose. */
   private timers = new Set<number>();
+  /** Characters on a fatigue break in the staff area (staff_break cue), kept from wandering until it ends. */
+  private onBreak = new Set<number>();
+  /** Station roles and colours the clinic rooms were last built for. */
+  private clinicKey = '';
   private container: HTMLElement;
   private resizeObserver: ResizeObserver;
 
@@ -122,8 +126,10 @@ export class SceneManager {
     if (this.isDisposed) return;
 
     await this.worldManager.load();
+    this.syncClinic(); // before the characters load: staffed characters spawn in their rooms
     await this.characterManager.load();
     if (this.isDisposed) return;
+    this.unsubs.push(useTeamStore.subscribe(() => this.syncClinic()));
 
     const state = useUiStore.getState();
     this.characterManager.setInstanceCount(state.instanceCount);
@@ -155,12 +161,14 @@ export class SceneManager {
     this.unsubs.push(useUiStore.subscribe((s, prev) => {
       if (s.instanceCount !== prev.instanceCount) this.controller?.setInstanceCount(s.instanceCount);
       if (s.sceneCue && s.sceneCue !== prev.sceneCue) this.onSceneCue(s.sceneCue);
+      if (s.clinic !== prev.clinic) this.worldManager.clinic.setState(s.clinic);
       const team = useTeamStore.getState();
       if (team.selectedAgentSetId !== this.lastAgentSetId) {
         this.lastAgentSetId = team.selectedAgentSetId;
         const set = getAgentSet(team.selectedAgentSetId, team.customSystems);
         this.reinitializeSimulation(set);
         this.worldManager.updateThemeColor(set.color);
+        this.syncClinic();
         if (this.controller) {
           this.controller.setColors();
           this.controller.warpAllToSpawn(set.user.index, getAllAgents(set).map(a => a.index));
@@ -287,16 +295,20 @@ export class SceneManager {
 
   /**
    * DESK ASSIGNMENT
-   * Agent N works at desk sit_work-N. The office has 5 desks but MAX_AGENTS is 13, so agents
-   * without a desk take a free chair, and with no chair free stand in the workspace area,
-   * instead of sharing (and blocking) another agent's desk.
+   * A DynaClinic character works at its room's station (PoiDef.role gates it to that role). Any other
+   * agent N works at desk sit_work-N, unless that desk is a station. The office has 5 desks but
+   * MAX_AGENTS is 13, so agents without a desk take a free chair, and with no chair free stand in
+   * the workspace area, instead of sharing (and blocking) another agent's desk.
    */
   public setNpcWorking(index: number, working: boolean): void {
     if (!this.controller) return;
     if (working) {
-      const poi = this.poiManager.getPoi(`sit_work-${index}`)
-        ?? this.poiManager.getFreePois('sit_idle', index)[0]
-        ?? this.poiManager.getPoi(`${AREA_POI_PREFIX}workspace`);
+      const station = getAllAgents(getActiveAgentSet()).find((a) => a.index === index)?.station;
+      const desk = this.poiManager.getPoi(`sit_work-${index}`);
+      const poi = (station && this.poiManager.getStation(station))
+        || (desk && !desk.role ? desk : undefined)
+        || this.poiManager.getFreePois('sit_idle', index)[0]
+        || this.poiManager.getPoi(`${AREA_POI_PREFIX}workspace`);
       if (poi) this.controller.walkToPoi(index, poi.id);
     }
   }
@@ -324,7 +336,41 @@ export class SceneManager {
   private onSceneCue(cue: SceneCue): void {
     if (cue.kind === 'handoff') this.handOff(cue);
     else if (cue.kind === 'meeting') this.startMeeting(cue.members);
+    else if (cue.kind === 'staff_break') this.staffBreak(cue.members);
     else this.endMeeting();
+  }
+
+  /** Builds the DynaClinic rooms for the active team's station roles; a team without any keeps the plain office. */
+  private syncClinic(): void {
+    const agents = getAllAgents(getActiveAgentSet());
+    const key = agents.map((a) => `${a.index}:${a.station ?? ''}:${a.color}`).join('|');
+    if (key === this.clinicKey) return;
+    this.clinicKey = key;
+    this.worldManager.clinic.set(agents);
+  }
+
+  /**
+   * Staff fatigue crossed its threshold: every member with nothing to do walks to the staff area and
+   * stays STAFF_BREAK_SECONDS, then returns to its room. A task, hand-off or meeting takes a member
+   * back at once (the task watcher and resume() move it; the break only stops its wandering).
+   */
+  private staffBreak(members: number[]): void {
+    const area = this.poiManager.expectPoi(STAFF_AREA_POI_ID);
+    if (!this.controller || !area) return;
+    const talking = (i: number) => this.handOffOf.has(i) || !!this.meeting?.members.has(i);
+    const busy = (i: number) => talking(i)
+      || useCoreStore.getState().tasks.some((t) => t.assignedAgentId === i && (t.status === 'in_progress' || t.status === 'on_hold'));
+    for (const i of new Set(members)) {
+      if (busy(i) || this.onBreak.has(i) || !this.controller.walkToPoi(i, area.id)) continue;
+      this.onBreak.add(i);
+      this.driverManager?.getNpcDriver(i)?.setChatting(true);
+      this.later(STAFF_BREAK_SECONDS, () => {
+        this.onBreak.delete(i);
+        if (talking(i)) return; // the hand-off or meeting owns the flag now and resumes the character itself
+        this.driverManager?.getNpcDriver(i)?.setChatting(false);
+        if (!busy(i)) this.moveNpcToSpawn(i);
+      });
+    }
   }
 
   /** window.setTimeout tracked in `timers`, so reset and dispose cancel it. */
@@ -499,11 +545,12 @@ export class SceneManager {
   private clearInteractions(): void {
     this.timers.forEach((id) => window.clearTimeout(id));
     this.timers.clear();
-    for (const i of new Set([...this.handOffOf.keys(), ...(this.meeting?.members ?? [])])) {
+    for (const i of new Set([...this.handOffOf.keys(), ...(this.meeting?.members ?? []), ...this.onBreak])) {
       this.driverManager?.getNpcDriver(i)?.setChatting(false);
       this.controller?.setSpeaking(i, false);
     }
     this.handOffOf.clear();
+    this.onBreak.clear();
     this.meeting = null;
     useUiStore.setState({ speech: {} });
   }
@@ -528,6 +575,7 @@ export class SceneManager {
     const w = this.container.clientWidth, h = this.container.clientHeight;
     if (w === 0 || h === 0) return;
     this.stage.onResize(w, h);
+    this.worldManager.clinic.setViewport(h, this.stage.camera.fov);
     if (!useCoreStore.getState().isResizing) this.engine.onResize(w, h);
   }
 
@@ -589,5 +637,5 @@ export class SceneManager {
     this.stage.setChatMode(false, false);
   }
 
-  public dispose() { this.isDisposed = true; this.clearInteractions(); this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.engine.dispose(); }
+  public dispose() { this.isDisposed = true; this.clearInteractions(); this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.worldManager.clinic.clear(); this.engine.dispose(); }
 }

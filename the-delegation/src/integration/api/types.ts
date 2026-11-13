@@ -97,6 +97,8 @@ export interface LogEntryData {
   node_id?: string;
   agent_index?: number;
   timestamp?: string;
+  /** utils/logger.py LogEntry.details; a node-start log lists the node's input messages. */
+  details?: { inputs?: { content?: unknown }[] };
 }
 
 export interface ErrorData {

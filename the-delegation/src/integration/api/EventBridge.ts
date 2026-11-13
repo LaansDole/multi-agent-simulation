@@ -28,6 +28,7 @@ import type {
   WorkflowStartedData,
 } from './types';
 import { InteractionTracker, stageRole, type StartPlan } from './interactionPlanner';
+import { ClinicEnvironment, parseShiftStart } from './clinicEnvironment';
 
 import { useCoreStore } from '../store/coreStore';
 import { useUiStore } from '../store/uiStore';
@@ -67,6 +68,7 @@ export class EventBridge {
   private nodeAgentMap: NodeAgentMap = new Map();
   private graph: NormalizedGraph | null = null;
   private tracker = new InteractionTracker();
+  private clinic = new ClinicEnvironment();
 
   constructor(client: BackendClient) {
     this.client = client;
@@ -112,6 +114,8 @@ export class EventBridge {
       this.graph?.edges ?? [],
       (nodeId) => (this.nodeAgentMap.get(nodeId) ?? []).some((index) => index >= 1),
     );
+    this.clinic = new ClinicEnvironment();
+    useUiStore.setState({ clinic: null });
   }
 
   /**
@@ -301,6 +305,7 @@ export class EventBridge {
     const taskIds = this._nodeTaskMap.get(data.node_id) ?? [];
     const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
     this.tracker.completed(data.node_id, data.output ?? '');
+    this.clinicCompleted(data);
 
     for (const taskId of taskIds) {
       if (data.output) {
@@ -365,6 +370,41 @@ export class EventBridge {
       agentIndex,
       action: `[${data.level}] ${data.message}`,
     });
+
+    // A node-start log carries the node's input messages: the hospital's day-start message is among them.
+    const shift = parseShiftStart((data.details?.inputs ?? []).map((message) => (typeof message.content === 'string' ? message.content : '')));
+    const started = shift && this.clinic.shiftStarted(shift);
+    if (!shift || !started) return;
+    const day = shift.day ? ` on day ${shift.day}` : '';
+    if (shift.staffing === 'short') core.addLogEntry({ agentIndex: -1, action: `Clinic: short shift${day}, Care Team rooms run on reduced staffing.` });
+    this.publishClinic();
+    if (started.fatigued) {
+      const staff = (this.graph?.nodes ?? [])
+        .filter((n) => n.type.startsWith('dc_'))
+        .flatMap((n) => this.nodeAgentMap.get(n.id) ?? [])
+        .filter((index) => index >= 1);
+      useUiStore.getState().setSceneCue({ kind: 'staff_break', members: staff });
+      core.addLogEntry({ agentIndex: -1, action: `Clinic: staff fatigue is ${shift.fatigue}${day}, the staff take a break in the staff area.` });
+    }
+  }
+
+  /** DynaClinic hospital environment: a Care Team output can report stock found depleted during the day. */
+  private clinicCompleted(data: NodeCompletedData): void {
+    if (this.graph?.nodes.find((n) => n.id === data.node_id)?.type !== 'dc_care_team') return;
+    this.clinic.careTeamCompleted(data.output ?? '');
+    this.publishClinic();
+  }
+
+  /** Publishes the environment for the 3D rooms and logs each room closing or reopening. */
+  private publishClinic(): void {
+    const next = this.clinic.state();
+    const closed = useUiStore.getState().clinic?.depleted ?? [];
+    const core = useCoreStore.getState();
+    for (const role of next.depleted) {
+      if (!closed.includes(role)) core.addLogEntry({ agentIndex: -1, action: `Clinic: ${role} stock is depleted, its room is closed until the next restock.` });
+    }
+    if (closed.length > 0 && next.depleted.length === 0) core.addLogEntry({ agentIndex: -1, action: 'Clinic: stock restocked, every room is open.' });
+    useUiStore.setState({ clinic: next });
   }
 
   private onError(data: ErrorData): void {
