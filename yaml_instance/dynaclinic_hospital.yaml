@@ -9,7 +9,7 @@ graph:
     yaml_instance/dynaclinic_mvp.yaml) runs on that presentation (open-ended case: mode, C/U,
     assessment and plan, safety gates), then the triage queue is generated and reported as in
     demo_hospital. DailySummary writes patient, DynaClinic mode, leading diagnosis, plan and triage
-    status to memory; LoopGate (loop_counter, 2 days) loops back, and FinalReport lists every day's
+    status to memory; LoopGate (loop_counter, 5 days) loops back, and FinalReport lists every day's
     consult from memory. Research prototype on synthetic patients; not clinical advice.
   log_level: INFO
   is_majority_voting: false
@@ -279,7 +279,7 @@ graph:
     - id: LoopGate
       type: loop_counter
       config:
-        max_iterations: 2
+        max_iterations: 5
         message: Hospital operation cycle completed - all days processed
         passthrough: true
       description: Counts simulated days; forwards days 1..N-1 back to DayStart, releases FinalReport on day N

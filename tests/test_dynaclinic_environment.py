@@ -47,25 +47,6 @@ def test_admission_and_discharge_move_bed_occupancy() -> None:
     assert state["environment"]["bed_occupancy"] == BED_OCCUPANCY_FLOOR
 
 
-def test_fatigue_clamp_threshold_is_reachable_under_the_shipped_schedule() -> None:
-    """Every day a HIGH team day: replay CareTeamExecutor's stock and fatigue bookkeeping by hand
-    and check dc_uncertainty's `staff_fatigue >= 2` clamp sees the threshold at some shift start."""
-    state: dict = {}
-    reached = []
-    for day in range(1, 9):
-        state["hospital_day_counter"] = day
-        inject_day_and_start_shift("Starting hospital operations", state)
-        env = state["environment"]
-        if env["staff_fatigue"] >= 2:
-            reached.append(day)
-        resources = env["resource_availability"]
-        exhausted = [role for role in resources if resources[role] <= 0]
-        for role in [role for role in resources if role not in exhausted] or list(resources)[:1]:
-            resources[role] = max(0, resources[role] - 1)
-        env["staff_fatigue"] += 2 if exhausted else 1
-    assert reached and reached[0] <= 8
-
-
 def test_flag_governance_reads_the_rendered_report_markers() -> None:
     adversarial = ("DynaClinic report (GATE: PASS)\n\nSafety gates:\n- A_SAD: pass\n\n"
                    "Meta-Controller: MODE ADVERSARIAL, C=0.80, U=0.70\n\nAssessment and plan:\nASSESSMENT: ...")

@@ -2,9 +2,11 @@
 
 import json
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+import yaml
 
 from dynaclinic.devall_nodes import STATE_KEY, case_from_text
 from dynaclinic.divergence import HASHING_EMBEDDER, TAU_SEMANTIC
@@ -26,6 +28,7 @@ from dynaclinic.types import Case
 from entity.configs import ConfigError, Node
 from entity.configs.node.memory import MemoryStoreConfig
 from entity.messages import Message, MessageRole
+from functions.edge_processor.dynaclinic_environment import STAFFING_CYCLE, inject_day_and_start_shift
 from runtime.bootstrap.schema import ensure_schema_registry_populated
 from runtime.node.agent.memory.blackboard_memory import BlackboardMemory
 from runtime.node.executor.base import ExecutionContext
@@ -51,6 +54,7 @@ NODE_TYPES = (
 )
 CASE_JSON = json.dumps(CASE.to_dict())
 SEPSIS_TEXT = "A 70-year-old man has fever, hypotension and confusion."
+HOSPITAL_YAML = Path(__file__).resolve().parents[1] / "yaml_instance" / "dynaclinic_hospital.yaml"
 Build = Callable[..., "Harness"]
 
 
@@ -533,3 +537,35 @@ def test_no_environment_leaves_care_team_untouched(harness: Build) -> None:
     h.run("dc_triage", CASE_JSON)
     assert h.run("dc_care_team").splitlines()[0] == "STAGE: care_team"
     assert "environment" not in h.context.global_state
+
+
+def test_shipped_day_loop_drives_depletion_short_staffing_and_the_fatigue_clamp(harness: Build) -> None:
+    """Real dc_triage/dc_uncertainty/dc_care_team|dc_primary_care over the hospital YAML's day count, each shift
+    started by inject_day_and_start_shift. Every case is HIGH; short-staffed days are adversarial (U = 1, so the
+    short clamp does not apply and the team still works), all other days collaborative."""
+    graph = yaml.safe_load(HOSPITAL_YAML.read_text())["graph"]
+    [days] = [node["config"]["max_iterations"] for node in graph["nodes"] if node["id"] == "LoopGate"]
+    sweeps = [UNIFORM if STAFFING_CYCLE[(day - 1) % len(STAFFING_CYCLE)] == "short" else ONE_HOT
+              for day in range(1, days + 1)]
+    h = harness(triage=_triage("HIGH"), generalist=sweeps)
+    state = h.context.global_state
+    trace, routes = [], []
+    for day in range(1, days + 1):
+        state["hospital_day_counter"] = day
+        inject_day_and_start_shift("Starting hospital operations", state)
+        env = state["environment"]
+        start = (env["staffing_level"], env["case_mix_context"], env["staff_fatigue"])
+        h.run("dc_triage", CASE_JSON)
+        mode = first_line_marker(h.run("dc_uncertainty"), "MODE")
+        h.run("dc_primary_care" if mode == "HIERARCHICAL" else "dc_care_team")
+        trace.append((*start, mode, dict(env["resource_availability"]), env["staff_fatigue"]))
+        routes += h.run_state.result.route
+    full, empty = {IMAGING: 2, PATHOLOGY: 3, PHARMACOLOGY: 3}, {IMAGING: 0, PATHOLOGY: 0, PHARMACOLOGY: 0}
+    assert trace[:5] == [
+        ("day", "baseline", 0, "COLLABORATIVE", {IMAGING: 1, PATHOLOGY: 2, PHARMACOLOGY: 2}, 1),
+        ("day", "baseline", 0, "COLLABORATIVE", {IMAGING: 0, PATHOLOGY: 1, PHARMACOLOGY: 1}, 1),
+        ("short", "baseline", 0, "ADVERSARIAL", empty, 2),  # imaging depleted: sits out, +2 fatigue
+        ("day", "baseline", 1, "COLLABORATIVE", empty, 3),  # all depleted: imaging forced, +2 fatigue
+        ("day", "flu_surge", 2, "HIERARCHICAL", full, 2),  # restocked; fatigue clamp routes to PrimaryCare
+    ]
+    assert "environment:staff_fatigue>=2:hierarchical" in routes

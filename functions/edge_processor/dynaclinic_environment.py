@@ -3,7 +3,7 @@ factors, design spec section 4.7). global_state['environment'] holds the clinic'
 state: bed_occupancy, staffing_level, resource_availability (per care-team role), case_mix_context
 and staff_fatigue. It persists across LoopGate iterations within one run (same global_state dict)
 and resets with each new run_workflow call, same as every other global_state key — not a
-cross-invocation store (use a literal-path memory store for that, see Task 5)."""
+cross-invocation store (that is the literal-path clinic_staff_log memory in dynaclinic_hospital.yaml)."""
 
 import re
 from typing import Any, Dict
