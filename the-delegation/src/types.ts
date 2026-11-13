@@ -57,6 +57,10 @@ export interface CharacterState {
   isWorkflowBrowserOpen: boolean;
   setWorkflowBrowserOpen: (open: boolean) => void;
 
+  /** "Generate from Text" modal; opened from the header or the Team Editor, mounted in TeamsPanel. */
+  isGenerateTeamOpen: boolean;
+  setGenerateTeamOpen: (open: boolean) => void;
+
   /** Text to put into the chat input (not sent); ChatPanel takes it and resets it to null. */
   chatDraft: string | null;
   setChatDraft: (text: string | null) => void;

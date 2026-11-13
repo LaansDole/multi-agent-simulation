@@ -27,6 +27,8 @@ node_modules/
 data/
 temp/
 WareHouse/
+# the-delegation uploads each custom team as yaml_instance/team-<ts>.yaml on run; these can hold literal API keys
+yaml_instance/team-*.yaml
 
 
 # Impeccable scratch (decision rounds, mocks, review captures); surfaces/ and design.json are kept

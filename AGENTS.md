@@ -56,7 +56,7 @@ echo "Your task" | uv run python run.py --path yaml_instance/demo_loop_counter.y
 ```bash
 uv run python -c "import sys; from pathlib import Path; from check.check import load_config; load_config(Path(sys.argv[1]))" yaml_instance/your_workflow.yaml
 ```
-Prints `Workflow OK.` or raises `DesignError` (exit 1). The same check as a CLI: `uv run python -m check.check --path <yaml>` (exit 1 on an invalid or missing file). `make validate-yamls` (`tools/validate_all_yamls.py`) runs it over every YAML and currently reports 9 pre-existing failures: GameDev_with_manager, deep_research_executor_sub, general_problem_solving_team, demo_mem0_memory, film-studio, music-studio, photo-studio, subgraphs/react_agent, subgraphs/reflexion_loop (the two subgraphs are not standalone workflows). Schema-only CLI: `uv run python -m check.check_yaml <path>`.
+Prints `Workflow OK.` or raises `DesignError` (exit 1). The same check as a CLI: `uv run python -m check.check --path <yaml>` (exit 1 on an invalid or missing file). `make validate-yamls` (`tools/validate_all_yamls.py`) runs it over every YAML except its `KNOWN_BROKEN` skip list (GameDev_with_manager, film-studio, music-studio, photo-studio, and the two non-standalone subgraphs/react_agent, subgraphs/reflexion_loop); it needs `${VAR}` placeholders resolvable from `.env` or the environment, which CI (`.github/workflows/validate-yamls.yml`) supplies as dummy values. Schema-only CLI: `uv run python -m check.check_yaml <path>`.
 
 **Run Tests:**
 ```bash

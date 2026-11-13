@@ -1,9 +1,11 @@
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { AGENTIC_SETS, AgenticSystem } from '../../data/agents';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
+import { useUiStore } from '../../integration/store/uiStore';
 import { TeamCard } from './TeamCard';
+import { GenerateFromTextModal } from './GenerateFromTextModal';
 
 interface TeamsPanelProps {
   onSelectTeam: (id: string) => void;
@@ -14,6 +16,8 @@ interface TeamsPanelProps {
 
 export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTeamId, onModeChange, mode }) => {
   const { customSystems, selectedAgentSetId, saveCustomSystem } = useTeamStore();
+  const isGenerateOpen = useUiStore((s) => s.isGenerateTeamOpen);
+  const setGenerateOpen = useUiStore((s) => s.setGenerateTeamOpen);
 
   const allSystems = useMemo(() => {
     const combined = [...customSystems, ...AGENTIC_SETS];
@@ -53,6 +57,12 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
     onSelectTeam(newId);
     onModeChange('edit');
   };
+  const handleGenerated = (system: AgenticSystem) => {
+    saveCustomSystem(system);
+    setGenerateOpen(false);
+    onSelectTeam(system.id);
+    onModeChange('edit');
+  };
 
   return (
     <div className="w-96 border-l border-zinc-100 bg-white flex flex-col h-full shrink-0">
@@ -76,7 +86,7 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
           );
         })}
       </div>
-      <div className="p-4 border-t border-zinc-50 bg-white">
+      <div className="p-4 border-t border-zinc-50 bg-white space-y-2">
         <button
           onClick={handleCreateNew}
           className="w-full flex items-center justify-center gap-2 py-3 bg-darkDelegation hover:bg-darkDelegation text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all shadow-lg shadow-black/5 active:scale-[0.98]"
@@ -84,7 +94,19 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
           <Plus size={14} strokeWidth={3} />
           Create New Team
         </button>
+        <button
+          onClick={() => setGenerateOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-zinc-200 hover:bg-zinc-50 text-darkDelegation rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all active:scale-[0.98]"
+        >
+          <Sparkles size={14} strokeWidth={3} />
+          Generate from Text
+        </button>
       </div>
+      <GenerateFromTextModal
+        isOpen={isGenerateOpen}
+        onClose={() => setGenerateOpen(false)}
+        onCreated={handleGenerated}
+      />
     </div>
   );
 };
