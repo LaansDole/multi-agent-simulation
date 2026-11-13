@@ -23,6 +23,18 @@ jobs:
   validate:
     name: Validate YAML Configuration Files
     runs-on: ubuntu-latest
+    # Dummy values so ${VAR} placeholders resolve; validation never calls a model.
+    env:
+      BASE_URL: http://ci.invalid/v1
+      API_KEY: ci-dummy
+      MODEL_NAME: ci-dummy
+      OPENAI_BASE_URL: http://ci.invalid/v1
+      OPENAI_API_KEY: ci-dummy
+      CLINE_BASE_URL: http://ci.invalid/v1
+      CLINE_API_KEY: ci-dummy
+      MEM0_API_KEY: ci-dummy
+      SERPER_DEV_API_KEY: ci-dummy
+      JINA_API_KEY: ci-dummy
     
     steps:
       - name: Checkout repository
