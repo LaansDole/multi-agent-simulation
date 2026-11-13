@@ -35,6 +35,7 @@ export const useUiStore = create<CharacterState>()(
       return { speech };
     }),
     liveRoles: {},
+    clinic: null,
 
     isBYOKOpen: false,
     byokError: null,
