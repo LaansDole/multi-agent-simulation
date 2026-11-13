@@ -637,5 +637,5 @@ export class SceneManager {
     this.stage.setChatMode(false, false);
   }
 
-  public dispose() { this.isDisposed = true; this.clearInteractions(); this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.engine.dispose(); }
+  public dispose() { this.isDisposed = true; this.clearInteractions(); this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.worldManager.clinic.clear(); this.engine.dispose(); }
 }

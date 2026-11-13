@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ClinicEnvironment, fatigueClamped, parseDepleted, parseShiftStart } from '../../src/integration/api/clinicEnvironment.ts';
+import { ClinicEnvironment, parseDepleted, parseShiftStart } from '../../src/integration/api/clinicEnvironment.ts';
 import { ROOMS, roomsFor, roomStatus, stationRole } from '../../src/simulation/world/clinicLayout.ts';
 
 // The eight DynaClinic characters of dynaclinic_hospital.yaml / dynaclinic_mvp.yaml: [node type, sub_agent].
@@ -11,8 +11,11 @@ const DC_CHARACTERS: [string, string?][] = [
   ['dc_care_team', 'imaging'], ['dc_care_team', 'pathology'], ['dc_care_team', 'pharmacology'],
   ['dc_proponent'], ['dc_critic'], ['dc_synthesizer'],
 ];
-const DAY = (day: number, staffing: string) =>
-  `Day ${day}: Starting hospital operations\nEnvironment: case_mix_context=baseline, bed_occupancy=28, staffing_level=${staffing}`;
+// inject_day_and_start_shift's message; the day-3 text is the one tests/test_dynaclinic_environment.py asserts.
+const DAY = (day: number, staffing: string, fatigue: number, stock: string) =>
+  `Day ${day}: Starting hospital operations\nEnvironment: case_mix_context=baseline, bed_occupancy=20, staffing_level=${staffing}, staff_fatigue=${fatigue}, resource_availability=${stock}`;
+const FULL = 'imaging:2;pathology:3;pharmacology:3';
+const DAY_3 = DAY(3, 'short', 2, 'imaging:0;pathology:3;pharmacology:3');
 // dynaclinic/devall_nodes.py CareTeamExecutor output, with and without a resource note.
 const TEAM = 'STAGE: care_team\n\n### imaging\nNo acute finding.';
 const TEAM_DEPLETED = 'STAGE: care_team\nResource note: imaging unavailable today (depleted).\n\n### pathology\nCBC normal.';
@@ -58,10 +61,28 @@ test('depleted stock closes a Care Team room, a short shift dims the others', ()
 });
 
 test('the day-start message is read from event text', () => {
-  assert.deepEqual(parseShiftStart(DAY(3, 'short')), { day: 3, staffing: 'short' });
-  assert.deepEqual(parseShiftStart('Environment: case_mix_context=flu_surge, bed_occupancy=31, staffing_level=day'), { day: null, staffing: 'day' });
-  assert.equal(parseShiftStart('Day 3: Starting hospital operations'), null);
-  assert.equal(parseShiftStart('The patient asked about the Environment: staffing_level=short'), null, 'not at a line start');
+  assert.deepEqual(parseShiftStart([DAY_3]), { day: 3, staffing: 'short', fatigue: 2, depleted: ['imaging'] });
+  assert.deepEqual(parseShiftStart([DAY(1, 'day', 0, FULL)]), { day: 1, staffing: 'day', fatigue: 0, depleted: [] });
+  assert.deepEqual(
+    parseShiftStart(['Environment: case_mix_context=flu_surge, bed_occupancy=31, staffing_level=day, staff_fatigue=1, resource_availability=imaging:0;pathology:0;pharmacology:1']),
+    { day: null, staffing: 'day', fatigue: 1, depleted: ['imaging', 'pathology'] },
+  );
+  assert.equal(parseShiftStart(['Day 3: Starting hospital operations']), null);
+  assert.equal(parseShiftStart([`The patient asked about the ${DAY_3.split('\n')[1]}`]), null, 'not at a line start');
+  assert.equal(parseShiftStart([]), null);
+});
+
+test('the newest day-start message wins among accumulated inputs', () => {
+  // PatientDataGenerator keeps every earlier day's message (keep_message on DayStart -> PatientDataGenerator).
+  const inputs = [DAY(1, 'day', 0, FULL), DAY(2, 'day', 0, 'imaging:1;pathology:2;pharmacology:2')];
+  assert.equal(parseShiftStart(inputs)?.day, 2);
+  assert.deepEqual(parseShiftStart([...inputs, DAY_3]), { day: 3, staffing: 'short', fatigue: 2, depleted: ['imaging'] });
+  assert.equal(parseShiftStart([...inputs, DAY_3, 'Patient presents with chest pain.'])?.day, 3, 'later messages of another kind are skipped');
+
+  const env = new ClinicEnvironment();
+  const seen = [1, 2, 3].map((n) => env.shiftStarted(parseShiftStart([...inputs, DAY_3].slice(0, n))!) !== null);
+  assert.deepEqual(seen, [true, true, true], 'every day registers');
+  assert.deepEqual(env.state(), { staffing: 'short', depleted: ['imaging'] });
 });
 
 test('the Care Team resource note lists the depleted roles', () => {
@@ -74,53 +95,34 @@ test('the Care Team resource note lists the depleted roles', () => {
   assert.deepEqual(parseDepleted('### imaging\nThe scanner is unavailable today (depleted).'), [], 'only the note line counts');
 });
 
-test('the sweep reports a fatigue clamp', () => {
-  assert.ok(fatigueClamped('MODE: hierarchical\nRule: C 0.75 > tau_c 0.5: collaborative; staff_fatigue>=2 overrides to hierarchical (staff are tired)'));
-  assert.ok(!fatigueClamped('MODE: hierarchical\nRule: C 0.75 > tau_c 0.5: collaborative; staffing_level=short overrides to hierarchical (fewer hands available today)'));
-});
-
 test('exactly one break per fatigue threshold crossing', () => {
   const env = new ClinicEnvironment();
-  const consult = (team: string) => {
-    env.careTeamCompleted(team);
-    return env.consultEnded();
-  };
-  assert.equal(env.consultEnded(), false, 'nothing happened yet');
-
-  env.shiftStarted({ day: 1, staffing: 'day' });
-  assert.equal(consult(TEAM), false, 'fatigue 1');
-  assert.equal(consult(TEAM), true, 'fatigue 2: crossed');
-  assert.equal(env.consultEnded(), false, 'the crossing is reported once');
-  assert.equal(consult(TEAM_DEPLETED), false, 'fatigue 4: still above, no new crossing');
-
-  env.shiftStarted({ day: 2, staffing: 'day' }); // fatigue 3
-  assert.equal(consult(TEAM), false);
-  env.shiftStarted({ day: 3, staffing: 'short' }); // fatigue 3
-  env.shiftStarted({ day: 4, staffing: 'day' }); // fatigue 2
-  env.shiftStarted({ day: 5, staffing: 'day' }); // fatigue 1: recovered
-  assert.equal(consult(TEAM_DEPLETED), true, 'fatigue 3: crossed again');
-  assert.equal(consult(TEAM), false);
+  // staff_fatigue at each day start, as the backend prints it.
+  const fatigue = [0, 0, 1, 2, 3, 2, 1, 0, 2, 2];
+  const breaks = fatigue.map((value, i) => env.shiftStarted({ day: i + 1, staffing: 'day', fatigue: value, depleted: [] })?.fatigued);
+  assert.deepEqual(breaks, [false, false, false, true, false, false, false, false, true, false]);
 });
 
-test('a sweep clamp counts as a crossing only when the tracker was below the threshold', () => {
-  const clamp = 'MODE: hierarchical\nRule: collaborative; staff_fatigue>=2 overrides to hierarchical';
+test('a day that has already started is ignored', () => {
   const env = new ClinicEnvironment();
-  env.sweepCompleted(clamp);
-  env.sweepCompleted(clamp);
-  assert.equal(env.consultEnded(), true);
-  env.sweepCompleted(clamp);
-  assert.equal(env.consultEnded(), false);
+  const day3 = parseShiftStart([DAY_3])!;
+  assert.deepEqual(env.shiftStarted(day3), { fatigued: true });
+  assert.equal(env.shiftStarted(day3), null, 'the same message in another log: no second break');
+  assert.equal(env.shiftStarted({ day: 2, staffing: 'day', fatigue: 0, depleted: [] }), null, 'an older day never replaces a newer one');
+  assert.deepEqual(env.state(), { staffing: 'short', depleted: ['imaging'] });
 });
 
-test('the environment state follows shifts, depletion and restock days', () => {
+test('the environment state follows shifts, depletion and restock', () => {
   const env = new ClinicEnvironment();
   assert.deepEqual(env.state(), { staffing: null, depleted: [] });
-  assert.equal(env.shiftStarted({ day: 3, staffing: 'short' }), true);
-  assert.equal(env.shiftStarted({ day: 3, staffing: 'short' }), false, 'the same day again is ignored');
-  env.careTeamCompleted(TEAM_DEPLETED);
-  assert.deepEqual(env.state(), { staffing: 'short', depleted: ['imaging'] });
-  env.shiftStarted({ day: 4, staffing: 'day' });
-  assert.deepEqual(env.state(), { staffing: 'day', depleted: ['imaging'] }, 'no restock on day 4');
-  env.shiftStarted({ day: 5, staffing: 'day' });
-  assert.deepEqual(env.state(), { staffing: 'day', depleted: [] }, 'restock on day 5');
+  env.shiftStarted(parseShiftStart([DAY(2, 'day', 0, 'imaging:1;pathology:2;pharmacology:2')])!);
+  assert.deepEqual(env.state(), { staffing: 'day', depleted: [] });
+  env.careTeamCompleted(TEAM);
+  assert.deepEqual(env.state(), { staffing: 'day', depleted: [] }, 'no note: nothing known until the next day start');
+  env.shiftStarted(parseShiftStart([DAY_3])!);
+  assert.deepEqual(env.state(), { staffing: 'short', depleted: ['imaging'] }, 'stock 0 at day start closes the room before any consult');
+  env.careTeamCompleted('STAGE: care_team\nResource note: imaging unavailable today (depleted); pathology depleted; consulted anyway (no other specialist available).\n\n### pathology');
+  assert.deepEqual(env.state(), { staffing: 'short', depleted: ['imaging', 'pathology'] }, 'a note adds to the day');
+  env.shiftStarted(parseShiftStart([DAY(5, 'day', 2, FULL)])!);
+  assert.deepEqual(env.state(), { staffing: 'day', depleted: [] }, 'the restocked line reopens every room');
 });

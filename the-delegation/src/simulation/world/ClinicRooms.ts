@@ -123,7 +123,8 @@ export class ClinicRooms {
     });
   }
 
-  private clear(): void {
+  /** Removes the rooms: frees their meshes and textures and gives the POIs and spawns back to the office. */
+  public clear(): void {
     this.undoPois.reverse().forEach((undo) => undo());
     this.undoPois = [];
     this.disposables.forEach((item) => item.dispose());
