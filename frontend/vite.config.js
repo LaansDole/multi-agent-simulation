@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       include: ['src/**/*.test.{js,ts}'],
     },
     server: {
-      host: true,
+      host: '127.0.0.1',
       proxy: {
         '/api': {
           target: target,
