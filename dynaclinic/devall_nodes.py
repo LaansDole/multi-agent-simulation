@@ -44,7 +44,8 @@ from entity.configs.base import (
     require_mapping,
 )
 from entity.messages import Message, MessageRole
-from runtime.node.executor.base import NodeExecutor
+from runtime.node.agent.memory.memory_base import MemoryContentSnapshot, MemoryWritePayload
+from runtime.node.executor.base import ExecutionContext, NodeExecutor
 
 STATE_KEY = "dynaclinic"
 ARM = "devall"
@@ -369,6 +370,18 @@ def _client(clients: dict[tuple[str, ...], LLMClient], models: list[str] | None)
     return clients[key]
 
 
+# ponytail: write-and-accumulate only; feed retrieved history into prompts once something reads it.
+# Ceiling: the shared literal path is loaded once per run and saved whole at run end, so concurrent runs on the
+# same path are last-writer-wins; use a per-run path or a file lock if runs ever overlap.
+def _log_staff(context: ExecutionContext, agent_role: str, inputs_text: str, text: str) -> None:
+    """Append one entry to the graph's ``clinic_staff_log`` store (dynaclinic_hospital.yaml); a no-op in graphs
+    that don't declare it, such as dynaclinic_mvp.yaml."""
+    store = context.get_memory_store("clinic_staff_log")
+    if store is not None:
+        store.update(MemoryWritePayload(agent_role=agent_role, inputs_text=inputs_text, input_snapshot=None,
+                                        output_snapshot=MemoryContentSnapshot(text=text)))
+
+
 class _StageExecutor(NodeExecutor):
     """Config, case-run state, client and ledger handling around one ``CaseRun`` stage."""
 
@@ -440,6 +453,15 @@ class UncertaintyExecutor(_StageExecutor):
             raise ValueError("dc_uncertainty needs an earlier dc_triage (Complexity Score C)")
         run.uncertainty(config.tau_u, config.k, config.tau_u_mcq, config.tau_u_open)
         r = run.result
+        environment = self.context.global_state.get("environment", {})
+        short_staffed = environment.get("staffing_level") == "short"
+        fatigued = environment.get("staff_fatigue", 0) >= 2
+        # Adversarial cases (U > tau_u) keep the critic path even when short-staffed.
+        if (short_staffed or fatigued) and r.mode == "collaborative":
+            reason = "staffing_level=short" if short_staffed else "staff_fatigue>=2"
+            r.mode_reason = f"{r.mode_reason}; {reason} overrides to hierarchical (fewer hands available today)"
+            r.mode = "hierarchical"
+            r.route.append(f"environment:{reason}:hierarchical")
         u = "n/a" if r.uncertainty is None else f"{r.uncertainty:.2f}"
         form = "open-ended" if run.case.open_ended else "multiple choice"
         differential = "\n".join(f"- {hypothesis}: {p:.2f}" for hypothesis, p in r.differential.items()) or "- none"
@@ -459,6 +481,7 @@ class PrimaryCareExecutor(_StageExecutor):
         consults = "".join(f"- {c['role']}: {c['question']} -> {c['answer']}\n" for c in run.result.consults)
         if consults:
             consults = f"Hub consults (each specialist answered independently):\n{consults}\n"
+        _log_staff(self.context, "primary_care", run.case.id, f"primary_care consults={len(run.result.consults)}")
         return f"STAGE: primary_care\n{consults}{run.result.final_text}"
 
 
@@ -469,8 +492,31 @@ class CareTeamExecutor(_StageExecutor):
 
     def stage(self, run: CaseRun, config: DCContextConfig) -> str:
         run.context_policy = config.context_policy
-        run.care_team(run.team_roles())
-        return f"STAGE: care_team\n{run.board.snapshot()}"
+        roles = run.team_roles()
+        environment = self.context.global_state.get("environment")
+        note = ""
+        consulted = roles
+        if environment is None:  # standalone dynaclinic_mvp.yaml: no environment, unchanged behaviour
+            run.care_team(consulted)
+        else:
+            resources = environment.get("resource_availability", {})
+            exhausted = [role for role in roles if resources.get(role, 1) <= 0]
+            consulted = [role for role in roles if role not in exhausted] or roles[:1]
+            run.care_team(consulted)  # an LLMError here consumes no stock and adds no fatigue
+            for role in consulted:
+                if role in resources:
+                    resources[role] = max(0, resources[role] - 1)
+            environment["staff_fatigue"] = environment.get("staff_fatigue", 0) + (2 if exhausted else 1)
+            notes = []
+            if skipped := [role for role in exhausted if role not in consulted]:
+                notes.append(f"{', '.join(skipped)} unavailable today (depleted)")
+            if forced := [role for role in exhausted if role in consulted]:
+                notes.append(f"{', '.join(forced)} depleted; consulted anyway (no other specialist available)")
+            if notes:
+                note = f"\nResource note: {'; '.join(notes)}.\n"
+        _log_staff(self.context, "care_team", ", ".join(consulted),
+                   f"roles={','.join(consulted)}{' ' + note.strip() if note else ''}; {run.board.snapshot()[:200]}")
+        return f"STAGE: care_team{note}\n{run.board.snapshot()}"
 
 
 class DivergenceGateExecutor(_StageExecutor):
