@@ -2,7 +2,7 @@
 // module directly, no bundler). `data/agents.ts` pulls in its own extensionless relative
 // imports, so only its types are imported here; MAX_AGENTS is passed in by the caller instead.
 import type { AgentNode, AgenticSystem } from '../../data/agents.ts';
-import { DEFAULT_MODELS } from './constants.ts';
+import { AVAILABLE_MODELS, DEFAULT_MODELS, inferProvider } from './constants.ts';
 import type { LLMMessage, LLMProvider } from './types.ts';
 
 const PALETTE = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#A855F7', '#FF6B35', '#14B8A6', '#EC4899'];
@@ -23,11 +23,15 @@ function buildSystemPrompt(currentSystem: AgenticSystem | null, maxAgents: numbe
     '  "leadAgent": {',
     '    "name": string,',
     '    "description": string (the agent\'s role/responsibilities),',
-    '    "model": string (optional; leave blank to use the default model),',
-    '    "subagents": [ { "name": string, "description": string, "model": string (optional), "subagents": [...] }, ... ] (optional)',
+    '    "model": string (optional; leave empty "" unless the user names a model),',
+    '    "subagents": [ { "name": string, "description": string, "model": string (optional, same rule), "subagents": [...] }, ... ] (optional)',
     '  }',
     '}',
     `The team (lead agent plus every nested subagent) must total at most ${maxAgents} agents. Do not invent ids, colors, or positions -- they are assigned automatically. Output valid JSON with no comments.`,
+    'Agents run on one of two providers. If the user names a model, use one of these exact ids:',
+    `- OpenAI-compatible: ${AVAILABLE_MODELS.text.filter((m) => inferProvider(m) === 'openai').join(', ')}`,
+    `- Gemini: ${AVAILABLE_MODELS.text.filter((m) => inferProvider(m) === 'gemini').join(', ')}`,
+    'Otherwise leave "model" empty so the default model is used.',
   ].join('\n');
 
   if (!currentSystem) {
@@ -57,16 +61,30 @@ function extractJsonBlock(text: string): { prose: string; jsonText: string } {
   return { prose, jsonText: match[1].trim() };
 }
 
-function countAgents(agent: AgentNode): number {
-  return 1 + (agent.subagents || []).reduce((sum, sub) => sum + countAgents(sub), 0);
+/** Counts agents in the raw (untrusted) tree iteratively, stopping once past `limit` so deep nesting cannot overflow the stack. */
+function countRawAgents(root: unknown, limit: number): number {
+  let total = 0;
+  const stack: unknown[] = [root];
+  while (stack.length && total <= limit) {
+    const node = stack.pop();
+    total++;
+    const subs = node && typeof node === 'object' ? (node as Record<string, unknown>).subagents : undefined;
+    if (Array.isArray(subs)) stack.push(...subs);
+  }
+  return total;
 }
+
+// Values below are written unquoted into the backend YAML (YamlExporter), so model-written text is restricted.
+const SAFE_MODEL = /^[\w.\-:/@]+$/;
+const stripControl = (s: string) => s.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim();
 
 /** Assigns fresh id/index/color/model to every node, depth-first, building a fresh tree (does not mutate the input). Positions are set by `layoutAgent`. */
 function rebuildAgent(raw: unknown, indexCounter: { next: number }, fallbackModel: string): AgentNode {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const name = typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : 'Agent';
-  const description = typeof obj.description === 'string' ? obj.description : '';
-  const model = typeof obj.model === 'string' && obj.model.trim() ? obj.model.trim() : fallbackModel;
+  const name = typeof obj.name === 'string' && stripControl(obj.name) ? stripControl(obj.name) : 'Agent';
+  const description = typeof obj.description === 'string' ? stripControl(obj.description) : '';
+  const rawModel = typeof obj.model === 'string' ? obj.model.trim() : '';
+  const model = SAFE_MODEL.test(rawModel) ? rawModel : fallbackModel;
   const index = indexCounter.next++;
   const color = PALETTE[(index - 1) % PALETTE.length];
 
@@ -131,15 +149,16 @@ export function parseGeneratedSystem(
     throw new Error('The generated team\'s "leadAgent" is not an object.');
   }
 
+  // Count the raw tree first: rebuilding/laying out an over-deep tree recursively would throw RangeError.
+  const total = countRawAgents(leadAgentRaw, maxAgents);
+  if (total > maxAgents) {
+    throw new Error(`The generated team has more than ${maxAgents} agents, but the max is ${maxAgents}. Try a narrower description.`);
+  }
+
   const indexCounter = { next: 1 };
   const leadAgent = rebuildAgent(leadAgentRaw, indexCounter, fallbackModel);
   // Start the leftmost column so the lead agent lands at x = 0, under the user node.
   layoutAgent(leadAgent, 1, -(countLeaves(leadAgent) - 1) / 2);
-
-  const total = countAgents(leadAgent);
-  if (total > maxAgents) {
-    throw new Error(`The generated team has ${total} agents, but the max is ${maxAgents}. Try a narrower description.`);
-  }
 
   const teamName = typeof obj.teamName === 'string' && obj.teamName.trim() ? obj.teamName.trim() : 'New Team';
   const teamType = typeof obj.teamType === 'string' && obj.teamType.trim() ? obj.teamType.trim() : 'Custom';

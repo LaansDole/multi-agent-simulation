@@ -17,11 +17,12 @@ import { TeamFlowViewport } from '../components/TeamFlowViewport';
 const STORAGE_KEY = 'generator-llm-config';
 const INPUT_MAX_HEIGHT_PX = 6 * 20 + 26;
 
+/** Keys are stored per provider so a key is only ever sent to the endpoint it was entered for. */
 interface StoredCredentials {
   provider: 'openai' | 'gemini';
   model: string;
-  baseUrl: string;
-  apiKey: string;
+  openai: { baseUrl: string; apiKey: string };
+  gemini: { apiKey: string };
 }
 
 interface ChatBubble {
@@ -29,7 +30,10 @@ interface ChatBubble {
   content: string;
 }
 
-/** Reads saved credentials field by field, so a missing, `null`, or older-shaped entry falls back instead of crashing render. */
+/**
+ * Reads saved credentials field by field, so a missing, `null`, or older-shaped entry falls back instead of crashing render.
+ * The old flat `{ apiKey, baseUrl }` shape is ignored: its key may belong to either provider.
+ */
 function loadCredentials(defaultModel: string): StoredCredentials {
   let saved: unknown = null;
   try {
@@ -38,12 +42,15 @@ function loadCredentials(defaultModel: string): StoredCredentials {
     // corrupt entry: use defaults
   }
   const obj = saved && typeof saved === 'object' ? (saved as Record<string, unknown>) : {};
-  const str = (key: string): string => (typeof obj[key] === 'string' ? (obj[key] as string) : '');
+  const str = (o: unknown, key: string): string => {
+    const v = o && typeof o === 'object' ? (o as Record<string, unknown>)[key] : undefined;
+    return typeof v === 'string' ? v : '';
+  };
   return {
     provider: obj.provider === 'gemini' ? 'gemini' : 'openai',
-    model: str('model') || defaultModel,
-    baseUrl: str('baseUrl'),
-    apiKey: str('apiKey'),
+    model: str(obj, 'model') || defaultModel,
+    openai: { baseUrl: str(obj.openai, 'baseUrl'), apiKey: str(obj.openai, 'apiKey') },
+    gemini: { apiKey: str(obj.gemini, 'apiKey') },
   };
 }
 
@@ -101,9 +108,11 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
 
   if (!isOpen) return null;
 
+  const { baseUrl } = creds.openai;
+  const apiKey = creds.provider === 'gemini' ? creds.gemini.apiKey : creds.openai.apiKey;
   // OpenAI-compatible local servers often take no key; Gemini always needs one.
   const canGenerate =
-    creds.model.trim().length > 0 && (creds.provider === 'openai' || creds.apiKey.trim().length > 0) && !isGenerating;
+    creds.model.trim().length > 0 && (creds.provider === 'openai' || apiKey.trim().length > 0) && !isGenerating;
 
   const handleGenerate = async () => {
     const instruction = input.trim();
@@ -117,8 +126,8 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
     try {
       const provider: LLMProvider =
         creds.provider === 'gemini'
-          ? new GeminiProvider({ apiKey: creds.apiKey, model: creds.model })
-          : new OpenAIProvider({ apiKey: creds.apiKey, baseUrl: creds.baseUrl, model: creds.model });
+          ? new GeminiProvider({ apiKey, model: creds.model })
+          : new OpenAIProvider({ apiKey, baseUrl, model: creds.model });
 
       const history: LLMMessage[] = messages
         .filter((m): m is ChatBubble & { role: 'user' | 'assistant' } => m.role !== 'error')
@@ -146,8 +155,8 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
             ...system.leadAgent,
             provider: creds.provider,
             model: creds.model,
-            ...(creds.provider === 'openai' ? { baseUrl: creds.baseUrl || undefined } : {}),
-            apiKey: creds.apiKey || undefined,
+            ...(creds.provider === 'openai' ? { baseUrl: baseUrl || undefined } : {}),
+            apiKey: apiKey || undefined,
           },
         }
       : system;
@@ -226,8 +235,8 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
               <label className="text-[7px] font-black uppercase text-zinc-400 ml-1">Base URL</label>
               <input
                 type="text"
-                value={creds.baseUrl}
-                onChange={(e) => setCreds((c) => ({ ...c, baseUrl: e.target.value }))}
+                value={baseUrl}
+                onChange={(e) => setCreds((c) => ({ ...c, openai: { ...c.openai, baseUrl: e.target.value } }))}
                 placeholder="https://api.openai.com/v1"
                 className="w-48 bg-white border border-zinc-200 text-[10px] font-medium rounded-xl px-2.5 py-1.5 outline-none"
               />
@@ -237,8 +246,13 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
             <label className="text-[7px] font-black uppercase text-zinc-400 ml-1">API Key</label>
             <input
               type="password"
-              value={creds.apiKey}
-              onChange={(e) => setCreds((c) => ({ ...c, apiKey: e.target.value }))}
+              value={apiKey}
+              onChange={(e) => {
+                const value = e.target.value;
+                setCreds((c) =>
+                  c.provider === 'gemini' ? { ...c, gemini: { apiKey: value } } : { ...c, openai: { ...c.openai, apiKey: value } }
+                );
+              }}
               placeholder={creds.provider === 'gemini' ? 'Required' : 'Optional for local servers'}
               className="w-40 bg-white border border-zinc-200 text-[10px] font-medium rounded-xl px-2.5 py-1.5 outline-none"
             />
@@ -330,7 +344,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
                   <Send size={15} strokeWidth={3} />
                 </button>
               </div>
-              {creds.provider === 'gemini' && !creds.apiKey.trim() && (
+              {creds.provider === 'gemini' && !apiKey.trim() && (
                 <p className="text-[9px] text-zinc-400 mt-1.5 ml-1">Enter a Gemini API key above to start.</p>
               )}
             </div>

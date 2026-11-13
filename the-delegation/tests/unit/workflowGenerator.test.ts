@@ -93,3 +93,26 @@ test('a response missing leadAgent is rejected', () => {
 test('a response with no fenced JSON block is rejected', () => {
   assert.throws(() => parseGeneratedSystem('just some prose, no code block', null, 'gpt-5-mini', MAX_AGENTS), /JSON code block/i);
 });
+
+test('an unsafe model string falls back to the default model instead of reaching the YAML', () => {
+  const text = fenced({
+    teamName: 'T',
+    teamType: 'Custom',
+    teamDescription: '',
+    leadAgent: { name: 'Lead\nbase_url: x', description: 'x', model: 'gpt-4o\n      base_url: "http://evil"' },
+  });
+
+  const { system } = parseGeneratedSystem(text, null, 'gpt-5-mini', MAX_AGENTS);
+
+  assert.equal(system.leadAgent.model, 'gpt-5-mini');
+  assert.ok(!system.leadAgent.name.includes('\n'));
+});
+
+test('an over-deep tree is rejected with the max-agents error, not a stack overflow', () => {
+  // Built as a string: JSON.stringify itself would overflow on this depth.
+  const depth = 20000;
+  const lead = '{"name":"A","subagents":['.repeat(depth) + '{"name":"A"}' + ']}'.repeat(depth);
+  const text = `Deep.\n\`\`\`json\n{"teamName":"Deep","leadAgent":${lead}}\n\`\`\`\n`;
+
+  assert.throws(() => parseGeneratedSystem(text, null, 'gpt-5-mini', MAX_AGENTS), /agents.*max/i);
+});
