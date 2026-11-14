@@ -4,20 +4,23 @@ graph:
   id: dynaclinic_hospital
   description: |
     Hospital simulation with a DynaClinic consult per day, derived from demo_hospital.
-    Each day: PatientDataGenerator admits one patient as a symptom-level presentation (no diagnosis),
-    the inlined DynaClinic consult (dc_triage..dc_safety_gate, kept in sync by hand with
-    yaml_instance/dynaclinic_mvp.yaml) runs on that presentation (open-ended case: mode, C/U,
-    assessment and plan, safety gates), then the triage queue is generated and reported as in
-    demo_hospital. DailySummary writes patient, DynaClinic mode, leading diagnosis, plan and triage
-    status to memory; LoopGate (loop_counter, 5 days) loops back, and FinalReport lists every day's
-    consult from memory. Research prototype on synthetic patients; not clinical advice.
+    Each day a seeded environment engine (dynaclinic/environment) steps the hospital: arrivals, beds and
+    waiting list, staffing, case-mix events, stock and fatigue. PatientDataGenerator renders the engine's
+    focus case as a symptom-level presentation (no diagnosis), and the inlined DynaClinic consult
+    (dc_triage..dc_safety_gate, kept in sync by hand with yaml_instance/dynaclinic_mvp.yaml) runs on it.
+    DailySummary writes patient, DynaClinic mode, leading diagnosis, plan and the day's hospital numbers to
+    memory; LoopGate (loop_counter, 5 days) loops back, and FinalReport lists every day's consult from memory.
+    Scenario: root vars ENVIRONMENT_PRESET and ENVIRONMENT_OVERRIDES (a single-line JSON string). Research prototype on
+    synthetic patients; not clinical advice.
   log_level: INFO
   is_majority_voting: false
   nodes:
     - id: DayStart
       type: literal
       config:
-        content: Starting hospital operations
+        content: |-
+          Starting hospital operations
+          Scenario: {"preset": "${ENVIRONMENT_PRESET}", "overrides": ${ENVIRONMENT_OVERRIDES}}
         role: user
       description: Triggers the start of each hospital day
       context_window: 0
@@ -46,11 +49,11 @@ graph:
           }
           Never state, name or hint at a diagnosis, a working impression or a disease name anywhere: describe only
           symptoms, signs, history and raw results, so that the attending team has to work the diagnosis out.
-          Vary the cases: if the message includes "Environment: case_mix_context=flu_surge", bias
-          the chief complaint toward respiratory infection; otherwise pick the organ system from the
-          day number in the request (day 1 abdominal, day 2 respiratory, day 3 cardiovascular, day 4
-          neurological, day 5 renal or metabolic, day 6 infectious, then repeat). Vary age, sex and
-          acuity either way.
+          The message holds one "Environment:" JSON line per simulated day so far. Use only the LAST one (the
+          highest "day"); earlier lines are previous days. Its "focus_case" fixes this patient: acuity (high,
+          medium or low), organ system, age and sex. Write a presentation consistent with all four and copy age
+          and sex exactly; never choose different values. Use the rest of that line only as context (a flu surge,
+          a full hospital).
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
         params: {}
@@ -175,45 +178,6 @@ graph:
 
           {% if answer.startswith('Assessment and plan:\n') %}{{ answer }}{% else %}Answer:
           {{ answer }}{% endif %}
-    - id: TriageDataGenerator
-      type: agent
-      config:
-        name: ${MODEL_NAME}
-        provider: openai
-        role: |
-          Generate a JSON array of 3 patients in triage:
-          [
-            {"name": "Alice Johnson", "priority": "high", "wait_time": 5},
-            {"name": "Bob Williams", "priority": "medium", "wait_time": 20},
-            {"name": "Carol Davis", "priority": "low", "wait_time": 45}
-          ]
-          Output ONLY valid JSON. Vary the patient data for each request.
-        base_url: ${OPENAI_BASE_URL}
-        api_key: ${OPENAI_API_KEY}
-        params: {}
-        tooling: null
-        thinking: null
-        memories: []
-        retry: null
-      description: Generates triage queue data
-      context_window: 0
-      log_output: true
-    - id: TriageReport
-      type: agent
-      config:
-        name: ${MODEL_NAME}
-        provider: openai
-        role: You received a triage status report. Acknowledge it briefly.
-        base_url: ${OPENAI_BASE_URL}
-        api_key: ${OPENAI_API_KEY}
-        params: {}
-        tooling: null
-        thinking: null
-        memories: []
-        retry: null
-      description: Processes triage report
-      context_window: 0
-      log_output: true
     - id: DailySummary
       type: agent
       config:
@@ -221,7 +185,7 @@ graph:
         provider: openai
         role: |
           You received the hospital report for one simulation day: the admitted patient's presentation (JSON),
-          the DynaClinic consult report on that patient, and the triage queue status.
+          the DynaClinic consult report on that patient, and the hospital's numbers for the day (the "Environment:" JSON line).
 
           Write the day's summary in exactly this form, plain text, one line each:
           Day <N, from the "Day N:" prefix>
@@ -230,7 +194,7 @@ graph:
           Leading diagnosis: <the leading diagnosis of the consult's assessment>
           Plan: <one sentence summarising the consult's plan and recommendation>
           Safety gate: <PASS or BLOCKED, from "DynaClinic report (GATE: ...)">
-          Triage: <one sentence on the queue>
+          Hospital: <beds_occupied>/<beds_capacity> beds, <waiting> waiting, <arrivals> arrivals, <staffing_level> shift, <case_mix_context>
           Governance: <copy the "Governance note:" line verbatim if the report has one, else "none">
           Take every value from the reports; never add a diagnosis or plan of your own.
         base_url: ${OPENAI_BASE_URL}
@@ -259,7 +223,7 @@ graph:
           1. Executive Summary - one or two sentences.
           2. DynaClinic consults - one line per day, in day order:
              Day <N>: <patient> | mode <MODE> | leading diagnosis: <...> | plan: <...> | gate <PASS or BLOCKED>
-          3. Overall Assessment - one or two sentences, including the triage queue picture.
+          3. Overall Assessment - one or two sentences, including the beds and waiting-list picture.
           Use only what the daily summaries say.
         base_url: ${OPENAI_BASE_URL}
         api_key: ${OPENAI_API_KEY}
@@ -338,12 +302,11 @@ graph:
       process:
         type: function
         config:
-          name: inject_day_and_record_admission
-    # Report → DailySummary (data only: queued until TriageReport triggers,
-    # then cleared after DailySummary runs, so each day sees only its own consult)
+          name: inject_day_and_attach_environment
+    # Report -> DailySummary (triggers the summary; the admission and environment arrived as data first)
     - from: Report
       to: DailySummary
-      trigger: false
+      trigger: true
       condition: 'true'
       carry_data: true
       keep_message: false
@@ -353,19 +316,6 @@ graph:
         type: function
         config:
           name: inject_day_and_flag_governance
-    # Report → TriageDataGenerator (trigger only; the consult text is not needed there)
-    - from: Report
-      to: TriageDataGenerator
-      trigger: true
-      condition: 'true'
-      carry_data: true
-      keep_message: false
-      clear_context: false
-      clear_kept_context: false
-      process:
-        type: template
-        config:
-          template: Consult finished. Generate today's triage queue.
     # Inlined DynaClinic consult edges (copied from dynaclinic_mvp.yaml, minus CaseInput → Triage)
     - from: Triage
       to: GeneralistSweep
@@ -407,46 +357,6 @@ graph:
       to: SafetyGate
     - from: SafetyGate
       to: Report
-    - from: TriageDataGenerator
-      to: TriageReport
-      trigger: true
-      condition: 'true'
-      carry_data: true
-      keep_message: false
-      clear_context: false
-      clear_kept_context: false
-      process:
-        type: template
-        config:
-          template: |
-            TRIAGE QUEUE STATUS
-
-            {% set patients = input | fromjson %}
-
-            Current Queue ({{ patients | length }} patients):
-
-            {% for patient in patients %}
-            {{ loop.index }}. {{ patient.name }}
-               Priority: {{ patient.priority | upper }}
-               Wait Time: {{ patient.wait_time }} min
-               {% if patient.priority == 'high' %}
-               -> ALERT: Fast-track this patient
-               {% elif patient.wait_time > 30 %}
-               -> WARNING: Extended wait time
-               {% endif %}
-            {% endfor %}
-    - from: TriageReport
-      to: DailySummary
-      trigger: true
-      condition: 'true'
-      carry_data: true
-      keep_message: false
-      clear_context: false
-      clear_kept_context: false
-      process:
-        type: function
-        config:
-          name: inject_day_to_message
     - from: DailySummary
       to: LoopGate
       trigger: true
@@ -455,10 +365,6 @@ graph:
       keep_message: false
       clear_context: false
       clear_kept_context: false
-      process:
-        type: function
-        config:
-          name: record_discharge
     # LoopGate → DayStart (next day until the day count is reached)
     - from: LoopGate
       to: DayStart
@@ -510,3 +416,7 @@ graph:
 # use DYNACLINIC_MODEL / DYNACLINIC_FALLBACK_MODELS (as in dynaclinic_mvp.yaml).
 vars:
   MODEL_NAME: gpt-6-luna
+  # Environment scenario (dynaclinic/environment/presets): a preset name and a JSON string of overrides,
+  # e.g. '{"arrivals": {"rate_per_day": 20}, "seed": 7}'. Run requests override both through `variables`.
+  ENVIRONMENT_PRESET: baseline
+  ENVIRONMENT_OVERRIDES: "{}"

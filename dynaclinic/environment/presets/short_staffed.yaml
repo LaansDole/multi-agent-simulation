@@ -1,0 +1,3 @@
+# Most shifts are short.
+staffing:
+  p_short: 0.8

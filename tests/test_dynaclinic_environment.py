@@ -1,51 +1,82 @@
-"""functions/edge_processor/dynaclinic_environment.py: day-loop environment state transitions."""
+"""functions/edge_processor/dynaclinic_environment.py: the adapter between the seeded engine and the day loop."""
 
+import json
+import random
+
+import pytest
+
+from dynaclinic.environment.config import resolve_scenario
+from dynaclinic.environment.engine import initial_state, snapshot, step_day
 from functions.edge_processor.dynaclinic_environment import (
-    BED_OCCUPANCY_CAP,
-    BED_OCCUPANCY_FLOOR,
+    ENGINE_KEY,
+    inject_day_and_attach_environment,
     inject_day_and_flag_governance,
-    inject_day_and_record_admission,
     inject_day_and_start_shift,
-    record_discharge,
 )
 
+FLU_7 = 'Starting hospital operations\nScenario: {"preset": "flu_surge", "overrides": {"seed": 7}}'
 
-def test_start_shift_cycles_staffing_restocks_and_decays_fatigue() -> None:
+
+def _payload(text: str) -> dict:
+    [line] = [line for line in text.splitlines() if line.startswith("Environment: ")]
+    return json.loads(line.removeprefix("Environment: "))
+
+
+def test_day_one_reports_a_replayable_scenario_and_later_days_only_the_state() -> None:
     state: dict = {}
-    inject_day_and_start_shift("Starting hospital operations", state)
-    env = state["environment"]
-    # staff_fatigue starts unset: 0 - 1 floors at 0
-    assert env["staffing_level"] == "day" and env["bed_occupancy"] == 20 and env["staff_fatigue"] == 0
-    assert env["resource_availability"] == {"imaging": 2, "pathology": 3, "pharmacology": 3}
-
-    env["resource_availability"]["imaging"] = 0
-    env["staff_fatigue"] = 3
-    state["hospital_day_counter"] = 3
-    text = inject_day_and_start_shift("Starting hospital operations", state)
-    assert env["staffing_level"] == "short"
-    assert text.endswith("\nEnvironment: case_mix_context=baseline, bed_occupancy=20, staffing_level=short, "
-                         "staff_fatigue=2, resource_availability=imaging:0;pathology:3;pharmacology:3")
-    assert env["resource_availability"]["imaging"] == 0  # no restock between restock days
-    assert env["staff_fatigue"] == 2
-
-    state["hospital_day_counter"] = 5
-    inject_day_and_start_shift("Starting hospital operations", state)
-    assert env["case_mix_context"] == "flu_surge" and env["resource_availability"]["imaging"] == 2
+    day_one = inject_day_and_start_shift(FLU_7, state)
+    assert day_one.startswith("Day 1: Starting hospital operations\nEnvironment: {") and "Scenario:" not in day_one
+    first = _payload(day_one)
+    config, _ = resolve_scenario("flu_surge", {"seed": 7})
+    assert (first.pop("preset"), first.pop("seed"), first.pop("config")) == ("flu_surge", 7, config)
+    state["hospital_day_counter"] = 2
+    second = _payload(inject_day_and_start_shift(FLU_7, state))
+    assert not {"preset", "seed", "config"} & set(second)
+    # Nothing ran between the days, so the pure engine on the same seed replays both payloads exactly.
+    rng = random.Random(7)
+    replay = initial_state(config, rng)
+    assert [first, second] == [snapshot(step_day(replay, config, rng), config) for _ in range(2)]
+    assert state["environment"] == second
 
 
-def test_admission_and_discharge_move_bed_occupancy() -> None:
-    state = {"hospital_day_counter": 1, "environment": {"bed_occupancy": 20}}
-    inject_day_and_record_admission("{}", state)
-    assert state["environment"]["bed_occupancy"] == 28
-    record_discharge("ignored", state)
-    assert state["environment"]["bed_occupancy"] == 23
+def test_the_next_day_continues_from_the_consults_stock_and_fatigue() -> None:
+    quiet = ('Starting hospital operations\nScenario: {"preset": "baseline", "overrides": '
+             '{"seed": 3, "arrivals": {"rate_per_day": 0}, "stock": {"restock_every_days": 10}}}')
+    state: dict = {}
+    inject_day_and_start_shift(quiet, state)
+    environment = state["environment"]
+    environment["resource_availability"]["imaging"] = 0  # what dc_care_team does during a consult
+    environment["staff_fatigue"] = 3
+    state["hospital_day_counter"] = 2
+    inject_day_and_start_shift(quiet, state)
+    assert environment["resource_availability"]["imaging"] == 0  # no arrivals, no restock until day 11
+    assert environment["staff_fatigue"] == 2  # 3 - 1 recovery, no load
 
-    state["environment"]["bed_occupancy"] = BED_OCCUPANCY_CAP - 1
-    inject_day_and_record_admission("{}", state)
-    assert state["environment"]["bed_occupancy"] == BED_OCCUPANCY_CAP
-    state["environment"]["bed_occupancy"] = BED_OCCUPANCY_FLOOR + 1
-    record_discharge("ignored", state)
-    assert state["environment"]["bed_occupancy"] == BED_OCCUPANCY_FLOOR
+
+@pytest.mark.parametrize("line", [
+    'Scenario: {"preset": "monsoon", "overrides": {}}',
+    'Scenario:{"preset": "monsoon", "overrides": {}}',
+    'Scenario: {"preset": "baseline", "overrides": {"beds": {"capacity": 0}}}',
+    "Scenario: {\"preset\": \"baseline\", \"overrides\": {'seed': 7}}",  # a dict inserted with str(), not JSON
+    'Scenario: {"preset": "baseline", "extra": 1}',
+])
+def test_an_invalid_scenario_drops_the_day_and_says_why(line: str, caplog: pytest.LogCaptureFixture) -> None:
+    state: dict = {}
+    assert inject_day_and_start_shift(f"Starting hospital operations\n{line}", state) is None
+    assert "environment" not in state and "hospital_day_counter" not in state
+    assert ENGINE_KEY not in state and "invalid scenario" in caplog.text
+
+
+def test_without_a_scenario_line_the_baseline_runs_and_its_seed_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    payload = _payload(inject_day_and_start_shift("Starting hospital operations", {}))
+    assert payload["preset"] == "baseline" and f"seed {payload['seed']}" in caplog.text
+
+
+def test_the_daily_summary_input_carries_the_days_environment() -> None:
+    state = {"hospital_day_counter": 4, "environment": {"day": 4, "waiting": 2}}
+    assert inject_day_and_attach_environment('{"patient_name": "Ana"}', state) == (
+        'Day 4: {"patient_name": "Ana"}\nEnvironment: {"day":4,"waiting":2}')
+    assert inject_day_and_attach_environment("x", {"hospital_day_counter": 1}) == "Day 1: x"
 
 
 def test_flag_governance_reads_the_rendered_report_markers() -> None:

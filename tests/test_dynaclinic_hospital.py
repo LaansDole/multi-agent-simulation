@@ -11,7 +11,6 @@ from dynaclinic.llm import FakeLLM, set_client_factory
 from dynaclinic.prompts import PRIMARY_CARE, TRIAGE
 from entity.configs.node.agent import AgentConfig
 from entity.messages import Message, MessageRole
-from functions.edge_processor.dynaclinic_environment import STAFFING_CYCLE
 from runtime import sdk
 from runtime.node.agent import ModelResponse, ProviderRegistry
 from runtime.node.agent.memory.embedding import OpenAIEmbedding
@@ -24,11 +23,16 @@ WORKFLOW = Path(__file__).resolve().parents[1] / "yaml_instance" / "dynaclinic_h
           if node["id"] == "LoopGate"]
 
 
+# No background arrivals, no short shifts and no events: the consults alone move fatigue, which never reaches the
+# clamp (Ben's collaborative day adds 1, the next day recovers 1), so the roles below are exact.
+QUIET_VARS = {**DUMMY_VARS, "ENVIRONMENT_OVERRIDES": json.dumps(
+    {"seed": 7, "arrivals": {"rate_per_day": 0}, "staffing": {"p_short": 0}, "events": {"p_start": 0}})}
+
+
 def _staff_log_roles(first_patient: int) -> list[str]:
-    """Admissions alternate Ana (hierarchical consult: PrimaryCare) and Ben (collaborative sweep: CareTeam) across
-    runs; on a short-staffed day Ben's sweep is clamped to hierarchical, so PrimaryCare logs instead."""
-    return ["care_team" if (first_patient + day - 1) % 2 and STAFFING_CYCLE[(day - 1) % len(STAFFING_CYCLE)] != "short"
-            else "primary_care" for day in range(1, DAYS + 1)]
+    """Admissions alternate Ana (hierarchical consult: PrimaryCare) and Ben (collaborative sweep: CareTeam)
+    across runs."""
+    return ["care_team" if (first_patient + day - 1) % 2 else "primary_care" for day in range(1, DAYS + 1)]
 
 
 PATIENTS = [
@@ -47,9 +51,10 @@ PLAN: Scripted plan.
 RECOMMENDATION: Admit and treat as planned."""
 
 
-def _hospital_provider(summary_prompts: list[str], final_prompts: list[str]) -> type:
+def _hospital_provider(summary_prompts: list[str], final_prompts: list[str],
+                       admission_prompts: list[str] | None = None) -> type:
     """Provider class standing in for each hospital agent, keyed by its role; admissions cycle through PATIENTS
-    (one per day, across runs); DailySummary and FinalReport record what they were shown."""
+    (one per day, across runs); the admissions desk, DailySummary and FinalReport record what they were shown."""
     admitted = itertools.cycle(PATIENTS)
 
     class ScriptedProvider:
@@ -62,11 +67,9 @@ def _hospital_provider(summary_prompts: list[str], final_prompts: list[str]) -> 
         def call_model(self, client: None, conversation: list[Message], *args, **kwargs) -> ModelResponse:
             seen = "\n".join(m.text_content() for m in conversation if m.role is not MessageRole.SYSTEM)
             if self.role.startswith("You are the admissions desk"):
+                if admission_prompts is not None:
+                    admission_prompts.append(seen)
                 text = json.dumps(next(admitted))
-            elif self.role.startswith("Generate a JSON array of 3 patients"):
-                text = json.dumps([{"name": f"Queue {i}", "priority": "low", "wait_time": 5} for i in range(3)])
-            elif self.role.startswith("You received a triage status report"):
-                text = "Triage queue acknowledged."
             elif self.role.startswith("You received the hospital report for one simulation day"):
                 summary_prompts.append(seen)
                 n = len(summary_prompts)
@@ -82,7 +85,8 @@ def _hospital_provider(summary_prompts: list[str], final_prompts: list[str]) -> 
 def test_each_day_runs_one_fresh_consult_whose_report_reaches_the_daily_summary(tmp_path: Path, monkeypatch) -> None:
     summary_prompts: list[str] = []
     final_prompts: list[str] = []
-    provider = _hospital_provider(summary_prompts, final_prompts)
+    admission_prompts: list[str] = []
+    provider = _hospital_provider(summary_prompts, final_prompts, admission_prompts)
     client = FakeLLM({**SCRIPT, PRIMARY_CARE: WRITE_UP})
     set_client_factory(lambda models: client)
     monkeypatch.setattr(ProviderRegistry, "get_provider", lambda _name: provider)
@@ -91,13 +95,17 @@ def test_each_day_runs_one_fresh_consult_whose_report_reaches_the_daily_summary(
     monkeypatch.chdir(tmp_path)
     try:
         result = sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_hospital",
-                                  variables=DUMMY_VARS)
+                                  variables=QUIET_VARS)
     finally:
         set_client_factory(None)
 
     logs = json.loads((Path(result.meta_info.output_dir) / "execution_logs.json").read_text())["logs"]
     started = [log["node_id"] for log in logs if log["event_type"] == "NODE_START"]
     assert started.count("Triage") == DAYS and started.count("DailySummary") == DAYS
+    assert not {"TriageDataGenerator", "TriageReport"} & set(started)
+    # The admissions desk renders the engine's focus case; it never sees the scenario line.
+    for day, prompt in enumerate(admission_prompts, start=1):
+        assert f'Environment: {{"day":{day},' in prompt and '"focus_case":{' in prompt and "Scenario:" not in prompt
     # Each consult starts its own case from that day's presentation only.
     triaged = [user for role, _system, user in client.prompts if role == TRIAGE]
     assert [[p["chief_complaint"] in case for p in PATIENTS] for case in triaged] == [
@@ -106,6 +114,7 @@ def test_each_day_runs_one_fresh_consult_whose_report_reaches_the_daily_summary(
     for day, prompt in enumerate(summary_prompts, start=1):
         patient, other = PATIENTS[(day - 1) % 2], PATIENTS[day % 2]
         assert f"Day {day}:" in prompt and patient["patient_name"] in prompt and other["patient_name"] not in prompt
+        assert f'\nEnvironment: {{"day":{day},' in prompt  # the day's engine numbers reach the summary
         assert "DynaClinic report (GATE: PASS)" in prompt and "Meta-Controller: MODE " in prompt
         assert prompt.count("DynaClinic report (") == 1 and "\n\nAssessment and plan:\n" in prompt
         assert (f"Governance note: Day {day}: adversarial mode" in prompt) == (day % 2 == 0)
@@ -125,9 +134,9 @@ def test_staff_log_persists_across_separate_runs(tmp_path: Path, monkeypatch) ->
     monkeypatch.setattr(OpenAIEmbedding, "get_embedding", lambda self, text: pytest.fail("no embedder is configured"))
     path = tmp_path / "WareHouse" / "dynaclinic_hospital_staff_log.json"
     try:
-        sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_a", variables=DUMMY_VARS)
+        sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_a", variables=QUIET_VARS)
         assert len(json.loads(path.read_text())) == DAYS
-        sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_b", variables=DUMMY_VARS)
+        sdk.run_workflow(WORKFLOW, task_prompt="Run the hospital", session_name="dc_b", variables=QUIET_VARS)
     finally:
         set_client_factory(None)
     # BlackboardMemory.save() writes a bare JSON list (blackboard_memory.py); run b loaded run a's entries.

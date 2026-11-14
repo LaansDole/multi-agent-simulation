@@ -28,7 +28,7 @@ from dynaclinic.types import Case
 from entity.configs import ConfigError, Node
 from entity.configs.node.memory import MemoryStoreConfig
 from entity.messages import Message, MessageRole
-from functions.edge_processor.dynaclinic_environment import STAFFING_CYCLE, inject_day_and_start_shift
+from functions.edge_processor.dynaclinic_environment import inject_day_and_start_shift
 from runtime.bootstrap.schema import ensure_schema_registry_populated
 from runtime.node.agent.memory.blackboard_memory import BlackboardMemory
 from runtime.node.executor.base import ExecutionContext
@@ -464,13 +464,16 @@ def test_short_staffing_clamps_the_sweep_mode_to_hierarchical(harness: Build) ->
     assert h.run_state.result.route[-1] == "environment:staffing_level=short:hierarchical"
 
 
-@pytest.mark.parametrize(("fatigue", "mode", "route"), [
-    (2, "HIERARCHICAL", "environment:staff_fatigue>=2:hierarchical"),
-    (1, "COLLABORATIVE", None),
+@pytest.mark.parametrize(("environment", "mode", "route"), [
+    ({"staff_fatigue": 2}, "HIERARCHICAL", "environment:staff_fatigue>=2:hierarchical"),
+    ({"staff_fatigue": 1.75}, "COLLABORATIVE", None),
+    ({"staff_fatigue": 2.5, "fatigue_threshold": 3}, "COLLABORATIVE", None),
+    ({"staff_fatigue": 3, "fatigue_threshold": 3}, "HIERARCHICAL", "environment:staff_fatigue>=3:hierarchical"),
 ])
-def test_staff_fatigue_clamps_the_sweep_mode_from_two(harness: Build, fatigue: int, mode: str, route: str | None) -> None:
+def test_staff_fatigue_clamps_the_sweep_mode_from_the_threshold(
+        harness: Build, environment: dict, mode: str, route: str | None) -> None:
     h = harness(triage=_triage("HIGH"), generalist=ONE_HOT)
-    h.context.global_state["environment"] = {"staff_fatigue": fatigue}
+    h.context.global_state["environment"] = environment
     h.run("dc_triage", CASE_JSON)
     assert h.run("dc_uncertainty").startswith(f"MODE: {mode}\n")
     environment_routes = [step for step in h.run_state.result.route if step.startswith("environment:")]
@@ -539,20 +542,25 @@ def test_no_environment_leaves_care_team_untouched(harness: Build) -> None:
     assert "environment" not in h.context.global_state
 
 
-def test_shipped_day_loop_drives_depletion_short_staffing_and_the_fatigue_clamp(harness: Build) -> None:
-    """Real dc_triage/dc_uncertainty/dc_care_team|dc_primary_care over the hospital YAML's day count, each shift
-    started by inject_day_and_start_shift. Every case is HIGH; short-staffed days are adversarial (U = 1, so the
-    short clamp does not apply and the team still works), all other days collaborative."""
+# A world with no arrivals, no short shifts and no events, and the old 2/3/3 stock restocked every 4 days:
+# only the consults move stock and fatigue, so the trace below is exact.
+QUIET_WORLD = {"seed": 1, "arrivals": {"rate_per_day": 0}, "staffing": {"p_short": 0}, "events": {"p_start": 0},
+               "stock": {"capacity": {"imaging": 2, "pathology": 3, "pharmacology": 3}, "restock_every_days": 4}}
+
+
+def test_shipped_day_loop_drives_depletion_restock_and_the_fatigue_clamp(harness: Build) -> None:
+    """Real dc_triage/dc_uncertainty/dc_care_team|dc_primary_care over the hospital YAML's day count, each day
+    started by inject_day_and_start_shift on the engine. Every case is HIGH and every sweep collaborative."""
     graph = yaml.safe_load(HOSPITAL_YAML.read_text())["graph"]
     [days] = [node["config"]["max_iterations"] for node in graph["nodes"] if node["id"] == "LoopGate"]
-    sweeps = [UNIFORM if STAFFING_CYCLE[(day - 1) % len(STAFFING_CYCLE)] == "short" else ONE_HOT
-              for day in range(1, days + 1)]
-    h = harness(triage=_triage("HIGH"), generalist=sweeps)
+    h = harness(triage=_triage("HIGH"), generalist=[ONE_HOT] * days)
     state = h.context.global_state
+    start_message = ("Starting hospital operations\nScenario: "
+                     + json.dumps({"preset": "baseline", "overrides": QUIET_WORLD}))
     trace, routes = [], []
     for day in range(1, days + 1):
         state["hospital_day_counter"] = day
-        inject_day_and_start_shift("Starting hospital operations", state)
+        inject_day_and_start_shift(start_message, state)
         env = state["environment"]
         start = (env["staffing_level"], env["case_mix_context"], env["staff_fatigue"])
         h.run("dc_triage", CASE_JSON)
@@ -564,8 +572,8 @@ def test_shipped_day_loop_drives_depletion_short_staffing_and_the_fatigue_clamp(
     assert trace[:5] == [
         ("day", "baseline", 0, "COLLABORATIVE", {IMAGING: 1, PATHOLOGY: 2, PHARMACOLOGY: 2}, 1),
         ("day", "baseline", 0, "COLLABORATIVE", {IMAGING: 0, PATHOLOGY: 1, PHARMACOLOGY: 1}, 1),
-        ("short", "baseline", 0, "ADVERSARIAL", empty, 2),  # imaging depleted: sits out, +2 fatigue
+        ("day", "baseline", 0, "COLLABORATIVE", empty, 2),  # imaging depleted: sits out, +2 fatigue
         ("day", "baseline", 1, "COLLABORATIVE", empty, 3),  # all depleted: imaging forced, +2 fatigue
-        ("day", "flu_surge", 2, "HIERARCHICAL", full, 2),  # restocked; fatigue clamp routes to PrimaryCare
+        ("day", "baseline", 2, "HIERARCHICAL", full, 2),  # restocked on day 5; fatigue clamp routes to PrimaryCare
     ]
     assert "environment:staff_fatigue>=2:hierarchical" in routes
