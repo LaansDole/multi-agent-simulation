@@ -65,10 +65,10 @@ export interface WorkflowCancelledData {
   message: string;
 }
 
+/** Node start, from a NODE_START log entry or BenchmarkPanel's replay. */
 export interface NodeStartedData {
   node_id: string;
   node_name: string;
-  agent_index: number;
 }
 
 export interface NodeOutputData {
@@ -78,9 +78,9 @@ export interface NodeOutputData {
   task_id?: string;
 }
 
+/** Node end, from a NODE_END log entry (full output) or BenchmarkPanel's replay. */
 export interface NodeCompletedData {
   node_id: string;
-  agent_index: number;
   output: string;
 }
 
@@ -97,8 +97,10 @@ export interface LogEntryData {
   node_id?: string;
   agent_index?: number;
   timestamp?: string;
-  /** utils/logger.py LogEntry.details; a node-start log lists the node's input messages. */
-  details?: { inputs?: { content?: unknown }[] };
+  /** utils/logger.py EventType, e.g. NODE_START / NODE_END. */
+  event_type?: string | null;
+  /** utils/logger.py LogEntry.details; a node-start log lists the node's input messages, a node-end log its output. */
+  details?: { inputs?: { content?: unknown }[]; output?: string | null };
 }
 
 export interface ErrorData {
