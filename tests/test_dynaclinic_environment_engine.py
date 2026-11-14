@@ -113,7 +113,7 @@ def test_a_flu_surge_raises_the_respiratory_share() -> None:
             tally[0] += sum(patient.organ_system == "respiratory" for patient in today)
             tally[1] += len(today)
     flu, baseline = (respiratory / total for respiratory, total in (counts["flu_surge"], counts["baseline"]))
-    assert flu > baseline + 0.15  # expected about 3/8 against 1/6
+    assert flu > baseline + 0.15  # measured about 0.40 against 0.18 with the sourced organ mix
 
 
 def test_fatigue_rises_on_heavy_days_and_recovers_on_empty_days() -> None:
@@ -186,7 +186,7 @@ def test_the_baseline_hospital_stays_within_capacity() -> None:
         days = _trajectory({}, seed)
         waiting.append(days[-1][0]["waiting"])
         depleted_days += [0 in snap["resource_availability"].values() for snap, _ in days]
-    assert mean(waiting) < 5  # measured 2.4
+    assert mean(waiting) < 5  # measured 0.95
     assert mean(depleted_days) < 0.3  # measured 0.21
 
 

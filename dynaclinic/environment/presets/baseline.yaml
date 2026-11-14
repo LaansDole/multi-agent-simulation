@@ -1,36 +1,38 @@
 # DynaClinic hospital environment: the full parameter set (spec 2026-11-14 section 4).
-# Each value: "source: <citation>" or "ASSUMED". Presets list only what differs from this file.
+# Each value: "source: <citation>" or "ASSUMED: <reason>". Presets list only what differs from this file.
+# NHAMCS 2022 = Cairns C, Kang K, National Hospital Ambulatory Medical Care Survey: 2022 Emergency
+# Department Summary Tables, NCHS (CDC). A bed here is any ED-sourced stay: admissions plus observation stays.
 arrivals:
-  rate_per_day: 9  # ASSUMED: about 80% occupancy of 40 beds at the default stays
-  acuity_mix: {high: 0.15, medium: 0.45, low: 0.40}  # ASSUMED
-  organ_mix: {abdominal: 1, respiratory: 1, cardiovascular: 1, neurological: 1, renal_metabolic: 1, infectious: 1}  # ASSUMED: equal
-  age_min: 18  # ASSUMED
-  age_max: 90  # ASSUMED
+  rate_per_day: 6  # ASSUMED: scaled to the 40-bed model, about 80% occupancy at the sourced stays below
+  acuity_mix: {high: 0.27, medium: 0.61, low: 0.12}  # source: NHAMCS 2022, tables 23-24: admissions triaged immediate/emergent 5,436k, other 12,367k; observation then discharged 2,450k
+  organ_mix: {abdominal: 10.6, respiratory: 9.0, cardiovascular: 12.9, neurological: 3.8, renal_metabolic: 9.3, infectious: 4.4}  # source: NHAMCS 2022, table 25, % of ED admissions by discharge chapter: K, J, I, G+H, E 4.4 + N 4.9, A-B
+  age_min: 18  # ASSUMED: adult ward
+  age_max: 90  # ASSUMED: ages above 89 are top-coded in de-identified records
 staffing:
-  p_short: 0.33  # carries over the old every-3rd-day short shift
+  p_short: 0.33  # ASSUMED: carries over the old every-3rd-day short shift
   staff_day: 5  # ASSUMED: the office's five desks
-  staff_short: 3  # ASSUMED
+  staff_short: 3  # ASSUMED: a short shift loses two of the five desks
 events:
-  p_start: 0.10  # ASSUMED
-  duration_days: 3  # ASSUMED
+  p_start: 0.10  # ASSUMED: roughly one event a month at the 3-day duration
+  duration_days: 3  # ASSUMED: one value for both kinds, between a one-day trauma cluster and a flu peak week
   start_with: none  # presets set flu_surge or trauma_cluster: active from day 1
-  flu_surge: {weight: 1, rate_multiplier: 1.5, organ_weight: {respiratory: 3}, acuity_weight: {}}  # ASSUMED
-  trauma_cluster: {weight: 1, rate_multiplier: 1.3, organ_weight: {}, acuity_weight: {high: 2}}  # ASSUMED
+  flu_surge: {weight: 1, rate_multiplier: 1.3, organ_weight: {respiratory: 3}, acuity_weight: {}}  # source: Schanzer & Schwartz 2013, Impact of seasonal and pandemic influenza on ED visits, Acad Emerg Med 20(4):388-397, Results and fig 1A: 2009 pandemic wave, visits 1.3x the usual peak, influenza 30% of weekly visits at peak (respiratory x3 lifts the 18% respiratory base to about 40%)
+  trauma_cluster: {weight: 1, rate_multiplier: 1.3, organ_weight: {}, acuity_weight: {high: 2}}  # ASSUMED: sized like the flu surge, with acuity instead of organ shift
 beds:
-  capacity: 40  # ASSUMED
-  start_occupancy: 0.6  # ASSUMED
-  los_median_days: {high: 5, medium: 3, low: 1}  # ASSUMED
-  los_sigma: 0.5  # ASSUMED
+  capacity: 40  # ASSUMED: scaled to the 40-bed model
+  start_occupancy: 0.6  # source: NCHS, Health, United States 2017, table 89 (AHA Annual Survey): community hospital occupancy 63.6% in 2015, rounded
+  los_median_days: {high: 4, medium: 3.5, low: 1}  # source: NHAMCS 2022, table 24: mean stay 6.5 d immediate/emergent, 5.6 d other (medians giving those means at los_sigma); low ASSUMED: observation stays end within a day or two
+  los_sigma: 0.86  # source: NHAMCS 2022, table 24: maximum-likelihood fit of the length-of-stay bins (1-2, 3-4, 5-6, 7-8, 9-10, >10 days)
 stock:
-  capacity: {imaging: 9, pathology: 14, pharmacology: 22}  # ASSUMED: about 1.2x the expected use between restocks at 9 arrivals/day
-  restock_every_days: 4  # carries over the old restock interval
-  use_prob:  # ASSUMED: chance one arrival uses one unit
+  capacity: {imaging: 8, pathology: 12, pharmacology: 18}  # ASSUMED: scaled to the 40-bed model, about 1.2x the expected use between restocks at 6 arrivals/day
+  restock_every_days: 4  # ASSUMED: carries over the old restock interval
+  use_prob:  # ASSUMED: chance one arrival uses one unit; no per-acuity source found
     high: {imaging: 0.5, pathology: 0.6, pharmacology: 0.8}
     medium: {imaging: 0.2, pathology: 0.4, pharmacology: 0.6}
     low: {imaging: 0.05, pathology: 0.1, pharmacology: 0.3}
 fatigue:
-  gain_per_load: 0.25  # ASSUMED: per arrival per staff member on shift
-  recovery_per_day: 1  # carries over the old -1 per day
-  threshold: 2  # carries over dc_uncertainty's clamp (dynaclinic/devall_nodes.py)
+  gain_per_load: 0.25  # ASSUMED: per arrival per staff member on shift; no published workload-to-fatigue rate maps to this scale
+  recovery_per_day: 1  # ASSUMED: carries over the old -1 per day
+  threshold: 2  # ASSUMED: carries over dc_uncertainty's clamp (dynaclinic/devall_nodes.py)
 focus:
   acuity_weight: {high: 3, medium: 2, low: 1}  # ASSUMED: sicker arrivals are likelier to get the consult
