@@ -1,13 +1,10 @@
 /**
  * clinicEnvironment -- Pure reading of the DynaClinic hospital environment from the event stream.
- * No imports, no IO. The backend keeps the state in global_state['environment'] and prints it once
- * a day, in the `Environment:` line of the day-start message (inject_day_and_start_shift in
- * functions/edge_processor/dynaclinic_environment.py; it reaches the stream as PatientDataGenerator's
- * input, in its node-start log). Within a day only the Care Team's `Resource note:` reports a change.
+ * No imports, no IO. The backend's seeded engine (dynaclinic/environment) steps once a day, and the day-start
+ * message carries the result as one `Environment: {json}` line (inject_day_and_start_shift in
+ * functions/edge_processor/dynaclinic_environment.py; it reaches the stream as PatientDataGenerator's input,
+ * in its node-start log). Within a day only the Care Team's `Resource note:` reports a change.
  */
-
-/** dc_uncertainty clamps to hierarchical at `staff_fatigue >= 2`; a day starting there sends staff on a break. */
-export const FATIGUE_THRESHOLD = 2;
 
 /** What the 3D scene shows of the environment. */
 export interface ClinicState {
@@ -19,17 +16,17 @@ export interface ClinicState {
 
 /** The state a day starts with. */
 export interface ShiftStart {
-  /** From the `Day N:` prefix; null without one. */
+  /** The engine's day; null when the payload has none. */
   day: number | null;
   staffing: string;
   fatigue: number;
+  /** dc_uncertainty clamps to hierarchical from here; a day starting there sends staff on a break. */
+  fatigueThreshold: number;
   /** Roles whose stock is 0. */
   depleted: string[];
 }
 
-const ENVIRONMENT_LINE = /^Environment:.*\bstaffing_level=(\w+), staff_fatigue=(\d+), resource_availability=(\S*)/m;
-const STOCK = /(\w+):(\d+)/g;
-const DAY_PREFIX = /^Day (\d+):/m;
+const ENVIRONMENT_LINE = /^Environment: (\{.*\})$/m;
 const RESOURCE_NOTE = /^Resource note: (.*)$/m;
 /** `<roles> unavailable today (depleted)` and `<roles> depleted; consulted anyway (...)`, roles comma-separated. */
 const DEPLETED_ROLES = /([a-z_, ]+?) (?:unavailable today \(depleted\)|depleted; consulted anyway)/g;
@@ -42,12 +39,19 @@ export function parseShiftStart(messages: string[]): ShiftStart | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const line = ENVIRONMENT_LINE.exec(messages[i]);
     if (!line) continue;
-    const day = DAY_PREFIX.exec(messages[i])?.[1];
+    let env: Record<string, unknown>;
+    try {
+      env = JSON.parse(line[1]);
+    } catch {
+      continue;
+    }
+    const stock = (env.resource_availability ?? {}) as Record<string, number>;
     return {
-      day: day ? Number(day) : null,
-      staffing: line[1],
-      fatigue: Number(line[2]),
-      depleted: [...line[3].matchAll(STOCK)].filter((stock) => Number(stock[2]) === 0).map((stock) => stock[1]),
+      day: typeof env.day === 'number' ? env.day : null,
+      staffing: String(env.staffing_level),
+      fatigue: Number(env.staff_fatigue),
+      fatigueThreshold: Number(env.fatigue_threshold),
+      depleted: Object.keys(stock).filter((role) => stock[role] === 0),
     };
   }
   return null;
@@ -69,11 +73,11 @@ export class ClinicEnvironment {
   /**
    * A new day replaces the state with the backend's. Null when that day has already started (the
    * same message can reach several logs); otherwise `fatigued` is true when this day starts at
-   * FATIGUE_THRESHOLD or above and the previous one did not: once per crossing.
+   * the day's fatigue threshold or above and the previous one did not: once per crossing.
    */
   public shiftStarted(shift: ShiftStart): { fatigued: boolean } | null {
     if (shift.day !== null && this.day !== null && shift.day <= this.day) return null;
-    const fatigued = this.fatigue < FATIGUE_THRESHOLD && shift.fatigue >= FATIGUE_THRESHOLD;
+    const fatigued = this.fatigue < shift.fatigueThreshold && shift.fatigue >= shift.fatigueThreshold;
     this.day = shift.day;
     this.staffing = shift.staffing;
     this.fatigue = shift.fatigue;
