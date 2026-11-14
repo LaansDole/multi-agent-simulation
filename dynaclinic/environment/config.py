@@ -74,7 +74,7 @@ def resolve_scenario(preset: str, overrides: dict[str, Any] | None) -> tuple[dic
 
 
 def _read(name: str) -> dict[str, Any]:
-    return yaml.safe_load((PRESETS_DIR / f"{name}.yaml").read_text()) or {}
+    return yaml.safe_load((PRESETS_DIR / f"{name}.yaml").read_text(encoding="utf-8")) or {}
 
 
 def _open_key(path: str, key: object) -> bool:
@@ -94,7 +94,7 @@ def _merge(base: dict[str, Any], override: object, path: str) -> dict[str, Any]:
         if isinstance(base.get(key), dict):
             merged[key] = _merge(base[key], value, where)
         elif isinstance(value, dict):
-            raise EnvironmentConfigError(f"{where} must be a number, got a mapping")
+            raise EnvironmentConfigError(f"{where} must be a scalar, got a mapping")
         else:
             merged[key] = value
     return merged

@@ -55,6 +55,7 @@ def test_the_next_day_continues_from_the_consults_stock_and_fatigue() -> None:
 
 @pytest.mark.parametrize("line", [
     'Scenario: {"preset": "monsoon", "overrides": {}}',
+    'Scenario:{"preset": "monsoon", "overrides": {}}',
     'Scenario: {"preset": "baseline", "overrides": {"beds": {"capacity": 0}}}',
     "Scenario: {\"preset\": \"baseline\", \"overrides\": {'seed': 7}}",  # a dict inserted with str(), not JSON
     'Scenario: {"preset": "baseline", "extra": 1}',
@@ -62,6 +63,7 @@ def test_the_next_day_continues_from_the_consults_stock_and_fatigue() -> None:
 def test_an_invalid_scenario_drops_the_day_and_says_why(line: str, caplog: pytest.LogCaptureFixture) -> None:
     state: dict = {}
     assert inject_day_and_start_shift(f"Starting hospital operations\n{line}", state) is None
+    assert "environment" not in state and "hospital_day_counter" not in state
     assert ENGINE_KEY not in state and "invalid scenario" in caplog.text
 
 

@@ -39,7 +39,7 @@ def test_whole_number_keys_become_ints() -> None:
     ("baseline", {"arrivals": {"surge": 1}}, "unknown key arrivals.surge"),
     ("baseline", {"arrivals": {"rate_per_day": -1}}, "arrivals.rate_per_day=-1 is outside [0, 500]"),
     ("baseline", {"arrivals": {"rate_per_day": "high"}}, "arrivals.rate_per_day must be a number"),
-    ("baseline", {"arrivals": {"rate_per_day": {"x": 1}}}, "arrivals.rate_per_day must be a number"),
+    ("baseline", {"arrivals": {"rate_per_day": {"x": 1}}}, "arrivals.rate_per_day must be a scalar"),
     ("baseline", {"arrivals": 3}, "arrivals must be a mapping"),
     ("baseline", {"staffing": {"p_short": 1.5}}, "staffing.p_short=1.5 is outside [0, 1]"),
     ("baseline", {"beds": {"capacity": 0}}, "beds.capacity=0 is outside"),
@@ -158,6 +158,25 @@ def test_a_seed_replays_its_run() -> None:
     assert first == [snap for snap, _ in _trajectory(overrides, 7)]
     assert first != [snap for snap, _ in _trajectory(overrides, 8)]
 
+
+def test_no_draw_depends_on_stock_or_fatigue() -> None:
+    """The consults change stock and fatigue from outside the engine; the RNG stream must not notice."""
+    config, _ = resolve_scenario("baseline", {"arrivals": {"rate_per_day": 20}})
+    runs = []
+    for tamper in (False, True):
+        rng = random.Random(3)
+        state = initial_state(config, rng)
+        days = []
+        for _ in range(30):
+            step_day(state, config, rng)
+            snap = snapshot(state, config)
+            del snap["resource_availability"], snap["staff_fatigue"]
+            days.append(snap)
+            if tamper:
+                state.stock = dict.fromkeys(state.stock, 0)
+                state.fatigue = 9.0
+        runs.append(days)
+    assert runs[0] == runs[1]
 
 def test_the_baseline_hospital_stays_within_capacity() -> None:
     """The default scenario is a busy but working hospital: the queue stays short and stock runs out on a minority

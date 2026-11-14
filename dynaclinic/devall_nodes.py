@@ -459,7 +459,7 @@ class UncertaintyExecutor(_StageExecutor):
         fatigued = environment.get("staff_fatigue", 0) >= threshold
         # Adversarial cases (U > tau_u) keep the critic path even when short-staffed.
         if (short_staffed or fatigued) and r.mode == "collaborative":
-            reason = "staffing_level=short" if short_staffed else f"staff_fatigue>={threshold}"
+            reason = "staffing_level=short" if short_staffed else f"staff_fatigue>={threshold:g}"
             r.mode_reason = f"{r.mode_reason}; {reason} overrides to hierarchical (fewer hands available today)"
             r.mode = "hierarchical"
             r.route.append(f"environment:{reason}:hierarchical")

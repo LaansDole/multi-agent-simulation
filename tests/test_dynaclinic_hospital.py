@@ -105,7 +105,7 @@ def test_each_day_runs_one_fresh_consult_whose_report_reaches_the_daily_summary(
     assert not {"TriageDataGenerator", "TriageReport"} & set(started)
     # The admissions desk renders the engine's focus case; it never sees the scenario line.
     for day, prompt in enumerate(admission_prompts, start=1):
-        assert f'Environment: {{"day":{day},' in prompt and '"focus_case":' in prompt and "Scenario:" not in prompt
+        assert f'Environment: {{"day":{day},' in prompt and '"focus_case":{' in prompt and "Scenario:" not in prompt
     # Each consult starts its own case from that day's presentation only.
     triaged = [user for role, _system, user in client.prompts if role == TRIAGE]
     assert [[p["chief_complaint"] in case for p in PATIENTS] for case in triaged] == [

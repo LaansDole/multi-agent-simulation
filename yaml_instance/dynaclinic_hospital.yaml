@@ -10,7 +10,7 @@ graph:
     (dc_triage..dc_safety_gate, kept in sync by hand with yaml_instance/dynaclinic_mvp.yaml) runs on it.
     DailySummary writes patient, DynaClinic mode, leading diagnosis, plan and the day's hospital numbers to
     memory; LoopGate (loop_counter, 5 days) loops back, and FinalReport lists every day's consult from memory.
-    Scenario: root vars ENVIRONMENT_PRESET and ENVIRONMENT_OVERRIDES (a JSON string). Research prototype on
+    Scenario: root vars ENVIRONMENT_PRESET and ENVIRONMENT_OVERRIDES (a single-line JSON string). Research prototype on
     synthetic patients; not clinical advice.
   log_level: INFO
   is_majority_voting: false

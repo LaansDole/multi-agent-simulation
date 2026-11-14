@@ -17,7 +17,7 @@ from functions.edge_processor.day_counter import inject_day_to_message
 
 STATE_KEY = "environment"
 ENGINE_KEY = "environment_engine"
-_SCENARIO_LINE = re.compile(r"^Scenario: (.*)$\n?", re.M)
+_SCENARIO_LINE = re.compile(r"^Scenario:\s*(.*)$\n?", re.M)
 _log = logging.getLogger(__name__)
 
 
@@ -39,6 +39,7 @@ def _start_engine(data: str, global_state: Dict[str, Any]) -> Dict[str, Any] | N
         return None
     if not match:
         _log.warning("DynaClinic environment: no Scenario line, running preset baseline with seed %d", seed)
+    _log.info("DynaClinic environment: preset %s, seed %d", preset, seed)
     rng = random.Random(seed)
     engine = {"preset": preset, "seed": seed, "config": config, "rng": rng, "state": initial_state(config, rng)}
     global_state[ENGINE_KEY] = engine
@@ -75,7 +76,6 @@ def inject_day_and_attach_environment(data: str, global_state: Dict[str, Any]) -
     text = inject_day_to_message(data, global_state)
     environment = global_state.get(STATE_KEY)
     return f"{text}\nEnvironment: {_compact(environment)}" if environment else text
-
 
 
 # The Report template emits header, gates (ending in the Meta-Controller line), then the write-up under one of these.
