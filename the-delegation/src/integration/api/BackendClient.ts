@@ -14,7 +14,6 @@ import type {
   BackendEvent,
   ClientMessage,
   MockScenario,
-  ModelInfo,
   NormalizedGraph,
   WorkflowExecuteRequest,
 } from './types';
@@ -230,20 +229,6 @@ export class BackendClient {
       return response.ok;
     } catch {
       return false;
-    }
-  }
-
-  /** Fetch available models from the backend. */
-  public async fetchModels(): Promise<ModelInfo[]> {
-    try {
-      const response = await fetch(`${this.apiUrl}/api/models`, {
-        signal: AbortSignal.timeout(5000)
-      });
-      if (!response.ok) return [];
-      const data = await response.json();
-      return data.models || [];
-    } catch {
-      return [];
     }
   }
 

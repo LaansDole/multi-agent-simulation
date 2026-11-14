@@ -1,7 +1,7 @@
 import { Plus, Sparkles } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { AGENTIC_SETS, AgenticSystem } from '../../data/agents';
-import { useCoreStore } from '../../integration/store/coreStore';
+import { DEFAULT_MODELS } from '../../core/llm/constants';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { useUiStore } from '../../integration/store/uiStore';
 import { TeamCard } from './TeamCard';
@@ -28,7 +28,6 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
 
   const handleCreateNew = () => {
     const newId = `team-${Date.now()}`;
-    const model = useCoreStore.getState().defaultTextModel;
     const newSystem: AgenticSystem = {
       id: newId,
       teamName: 'New Team',
@@ -36,7 +35,7 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
       teamDescription: 'A custom agentic team.',
       color: '#A855F7',
       outputType: 'text',
-      outputModel: model,
+      outputModel: DEFAULT_MODELS.text,
       user: {
         index: 0,
         model: 'Human',
@@ -48,7 +47,7 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
         name: 'Lead Agent',
         description: 'Coordinate the team to finish the project.',
         color: '#A855F7',
-        model,
+        model: DEFAULT_MODELS.text,
         position: { x: 0, y: 150 },
         subagents: []
       }

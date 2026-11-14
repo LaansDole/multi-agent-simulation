@@ -52,10 +52,10 @@ A React 19 + three.js playground, adapted from [The Delegation](https://github.c
 
 ### Platform changes (DevAll)
 
-- Server: `/api/models`, a workflow graph serializer (`/api/workflows/{filename}/graph`), demo scenarios (`/api/workflows/{filename}/scenarios`), a read-only benchmark results API.
+- Server: a workflow graph serializer (`/api/workflows/{filename}/graph`), demo scenarios (`/api/workflows/{filename}/scenarios`), a read-only benchmark results API.
 - Runtime: `{{run_dir}}` placeholder for per-run memory paths, function and template edge processors (`process:`; the old `processor:` key is rejected), temperature dropped for models that reject it, `python -m check.check --path` restored with a non-zero exit on failure.
 - Vue console: spatial layout editor and a contagion simulation sandbox ([guide](docs/user_guide/en/contagion_simulation.md)), collapsible chat panel.
-- Workflows: `demo_hospital.yaml`, `simulation_hospital.yaml`, `dynaclinic_*.yaml`, RLM memory demos.
+- Workflows: `demo_hospital.yaml`, `simulation_hospital.yaml`, `dynaclinic_*.yaml`.
 
 ## Quick start
 
@@ -93,7 +93,7 @@ Each run writes to `WareHouse/<session>_<timestamp>/` (`node_outputs.yaml`, `wor
 Checks:
 
 ```bash
-uv run pytest -m "not cline"
+uv run pytest
 make validate-yamls
 ```
 
