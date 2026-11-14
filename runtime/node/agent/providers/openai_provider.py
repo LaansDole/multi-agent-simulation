@@ -2,7 +2,6 @@
 
 import base64
 import hashlib
-import json
 import logging
 import re
 import threading
@@ -12,10 +11,8 @@ import os
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import unquote_to_bytes
 
-import httpx
 import openai
 from openai import OpenAI
-
 
 from entity.messages import (
     AttachmentRef,
@@ -29,7 +26,6 @@ from entity.messages import (
 from entity.tool_spec import ToolSpec
 from runtime.node.agent import ModelProvider
 from runtime.node.agent import ModelResponse
-from runtime.node.agent.providers.base import ModelInfo
 from utils.token_tracker import TokenUsage
 
 logger = logging.getLogger(__name__)
@@ -39,43 +35,6 @@ _NO_TEMPERATURE: set[tuple[str | None, str]] = set()
 _NO_TEMPERATURE_LOCK = threading.Lock()
 
 
-class _DataUnwrapTransport(httpx.BaseTransport):
-    """HTTP transport that unwraps ``{"data": {...}, "success": ...}`` API responses.
-
-    Some OpenAI-compatible providers (e.g. Cline) wrap the standard OpenAI
-    response body under a ``data`` key. The OpenAI Python SDK does not unwrap
-    this wrapper, causing ``response.choices`` to be ``None``. This transport
-    intercepts the raw HTTP response and replaces the body with the unwrapped
-    ``data`` payload so the SDK parses it normally.
-    """
-
-    def __init__(self) -> None:
-        self._inner = httpx.HTTPTransport()
-
-    def handle_request(self, request: httpx.Request) -> httpx.Response:
-        response = self._inner.handle_request(request)
-        if response.status_code == 200:
-            response.read()
-            content = response.content
-            if content:
-                try:
-                    body = json.loads(content)
-                except (json.JSONDecodeError, ValueError):
-                    return response
-                if (
-                    isinstance(body, dict)
-                    and "data" in body
-                    and "success" in body
-                ):
-                    unwrapped = body["data"]
-                    new_content = json.dumps(unwrapped).encode()
-                    response._content = new_content
-                    response.headers["content-length"] = str(len(new_content))
-        return response
-
-    def close(self) -> None:
-        self._inner.close()
-
 class OpenAIProvider(ModelProvider):
     """OpenAI provider implementation."""
 
@@ -84,7 +43,7 @@ class OpenAIProvider(ModelProvider):
     MAX_INLINE_FILE_BYTES = 50 * 1024 * 1024  # OpenAI function output limit (~50 MB)
 
     # Provider-internal param keys that must NOT be forwarded to the OpenAI API.
-    _RESERVED_PARAMS = frozenset({"protocol", "unwrap_data_wrapper"})
+    _RESERVED_PARAMS = frozenset({"protocol"})
 
     def create_client(self):
         """
@@ -97,24 +56,11 @@ class OpenAIProvider(ModelProvider):
             return OpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
-                http_client=self._build_http_client(),
             )
         else:
             return OpenAI(
                 api_key=self.api_key,
-                http_client=self._build_http_client(),
             )
-
-    def _build_http_client(self) -> httpx.Client:
-        """Build the ``httpx.Client`` to pass to the OpenAI SDK.
-
-        When ``params.unwrap_data_wrapper`` is true, wraps the transport in
-        ``_DataUnwrapTransport`` to handle providers that nest the real
-        response body under a ``data`` key (e.g. the Cline API).
-        """
-        if self.params.get("unwrap_data_wrapper"):
-            return httpx.Client(transport=_DataUnwrapTransport())
-        return httpx.Client()
 
     def call_model(
         self,
@@ -236,13 +182,6 @@ class OpenAIProvider(ModelProvider):
             total_tokens=total_tokens or 0,
             metadata=metadata,
         )
-
-    def list_models(self) -> List[ModelInfo]:
-        client = self.create_client()
-        response = client.models.list()
-        return [
-            ModelInfo(id=m.id, provider="openai", type="text") for m in response.data
-        ]
 
     def _track_token_usage(self, response: Any) -> None:
         """Record token usage if a tracker is attached to the config."""

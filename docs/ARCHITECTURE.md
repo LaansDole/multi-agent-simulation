@@ -144,7 +144,7 @@ flowchart LR
     ThinkPhase -->|"No"| MemRead
 
     Think --> MemRead{"Memory<br/>configured?"}
-    MemRead -->|"Yes"| ReadMem["MemoryManager.read()<br/>(simple / file / blackboard / RLM)"]
+    MemRead -->|"Yes"| ReadMem["MemoryManager.read()<br/>(simple / file / blackboard / mem0)"]
     MemRead -->|"No"| ToolCheck
 
     ReadMem --> ToolCheck{"Tooling<br/>configured?"}

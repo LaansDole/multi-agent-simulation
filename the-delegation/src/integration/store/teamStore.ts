@@ -28,9 +28,9 @@ const mapAgents = (agent: AgentNode, fn: (a: AgentNode) => AgentNode): AgentNode
 
 /**
  * v0 -> v1: teams saved before the text default moved to OpenAI (0d3ed91) carry the old implicit
- * Gemini default. Text teams switch it to DEFAULT_MODELS.text / openai (hydration is synchronous,
- * so the backend default is not known yet; imported teams get the backend's model from
- * syncImportedTeams right after). Image/music/video teams and user-edited agents are kept.
+ * Gemini default. Text teams switch it to DEFAULT_MODELS.text / openai (imported teams get their
+ * workflow's model from syncImportedTeams right after). Image/music/video teams and user-edited
+ * agents are kept.
  */
 const migrateGeminiDefault = (system: AgenticSystem): AgenticSystem => {
   if (system.outputType !== 'text') return system;
