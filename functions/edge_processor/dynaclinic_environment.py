@@ -1,68 +1,81 @@
-"""Environment-state edge processors for the DynaClinic hospital day-loop (ABM environmental
-factors, design spec section 4.7). global_state['environment'] holds the clinic's shared ABM
-state: bed_occupancy, staffing_level, resource_availability (per care-team role), case_mix_context
-and staff_fatigue. It persists across LoopGate iterations within one run (same global_state dict)
-and resets with each new run_workflow call, same as every other global_state key — not a
-cross-invocation store (that is the literal-path clinic_staff_log memory in dynaclinic_hospital.yaml)."""
+"""Environment edge processors for the DynaClinic hospital day loop (spec 2026-11-14 sections 5-7).
 
+The world is computed by the seeded engine in dynaclinic/environment; these processors connect it to the
+graph. global_state['environment'] holds the flat keys the clinical nodes read and change during a consult
+(dynaclinic/devall_nodes.py: stock and fatigue); global_state['environment_engine'] holds preset, seed, config,
+RNG and engine state. Both persist across LoopGate iterations of one run and reset with each run_workflow call."""
+
+import json
+import logging
+import random
 import re
 from typing import Any, Dict
 
+from dynaclinic.environment.config import RESOURCES, resolve_scenario
+from dynaclinic.environment.engine import initial_state, snapshot, step_day
 from functions.edge_processor.day_counter import inject_day_to_message
 
 STATE_KEY = "environment"
-# ponytail: scripted day-based cycles, not live data feeds (spec explicitly excludes live external grounding).
-STAFFING_CYCLE = ("day", "day", "short")  # every 3rd simulated day is short-staffed
-CASE_MIX_CYCLE = ("baseline", "baseline", "baseline", "baseline", "flu_surge")  # every 5th day
-RESOURCE_QUOTA = {"imaging": 2, "pathology": 3, "pharmacology": 3}
-# One admission per day: a daily reset could never deplete anything, so stock restocks every 4th day.
-RESTOCK_EVERY_DAYS = 4
-BED_OCCUPANCY_START = 20
-BED_OCCUPANCY_CAP = 100
-BED_OCCUPANCY_FLOOR = 0
-ADMISSION_DELTA = 8
-DISCHARGE_DELTA = 5
+ENGINE_KEY = "environment_engine"
+_SCENARIO_LINE = re.compile(r"^Scenario: (.*)$\n?", re.M)
+_log = logging.getLogger(__name__)
 
 
-def inject_day_and_start_shift(data: str, global_state: Dict[str, Any]) -> str:
-    """DayStart -> PatientDataGenerator: day-prefixes the message (unchanged `inject_day_to_message`
-    behaviour) and starts the new day's shift: cycles staffing and case-mix, restocks resources
-    only every RESTOCK_EVERY_DAYS days (or when unseeded), and decays staff fatigue by one.
-    Appends an Environment line so PatientDataGenerator's prompt can bias the presentation toward
-    the day's case mix. The line also carries staff_fatigue and the stock: the 3D office reads the
-    day's state from it (the-delegation/src/integration/api/clinicEnvironment.ts parses this format)."""
+def _compact(payload: Dict[str, Any]) -> str:
+    return json.dumps(payload, separators=(",", ":"))
+
+
+def _start_engine(data: str, global_state: Dict[str, Any]) -> Dict[str, Any] | None:
+    """Day 1: build config, seed and RNG from the Scenario line; None (logged) when the scenario is invalid."""
+    match = _SCENARIO_LINE.search(data)
+    try:
+        scenario = json.loads(match.group(1)) if match else {"preset": "baseline"}
+        if not isinstance(scenario, dict) or set(scenario) - {"preset", "overrides"}:
+            raise ValueError('the Scenario line must be {"preset": <name>, "overrides": {...}}')
+        preset = scenario.get("preset", "baseline")
+        config, seed = resolve_scenario(preset, scenario.get("overrides"))
+    except ValueError as exc:  # EnvironmentConfigError and json.JSONDecodeError are ValueErrors
+        _log.error("DynaClinic environment: invalid scenario, the run stops: %s", exc)
+        return None
+    if not match:
+        _log.warning("DynaClinic environment: no Scenario line, running preset baseline with seed %d", seed)
+    rng = random.Random(seed)
+    engine = {"preset": preset, "seed": seed, "config": config, "rng": rng, "state": initial_state(config, rng)}
+    global_state[ENGINE_KEY] = engine
+    return engine
+
+
+def inject_day_and_start_shift(data: str, global_state: Dict[str, Any]) -> str | None:
+    """DayStart -> PatientDataGenerator: day-prefixes the message, steps the engine one day and appends the
+    day's state as one `Environment: {json}` line (the-delegation/src/integration/api/clinicEnvironment.ts
+    parses it). Returns None, dropping the message and so ending the run, when the scenario is invalid."""
+    engine = global_state.get(ENGINE_KEY) or _start_engine(data, global_state)
+    if engine is None:
+        return None
+    state, config = engine["state"], engine["config"]
+    first_day = state.day == 0
+    text = inject_day_to_message(_SCENARIO_LINE.sub("", data).rstrip("\n"), global_state)
+    environment = global_state.setdefault(STATE_KEY, {})
+    # dc_care_team spends stock and adds fatigue during the day; the engine continues from there.
+    if "resource_availability" in environment:
+        state.stock = {resource: environment["resource_availability"].get(resource, 0) for resource in RESOURCES}
+    if "staff_fatigue" in environment:
+        state.fatigue = environment["staff_fatigue"]
+    step_day(state, config, engine["rng"])
+    environment.clear()
+    environment.update(snapshot(state, config))
+    payload = {**environment, **({"preset": engine["preset"], "seed": engine["seed"], "config": config}
+                                 if first_day else {})}
+    return f"{text}\nEnvironment: {_compact(payload)}"
+
+
+def inject_day_and_attach_environment(data: str, global_state: Dict[str, Any]) -> str:
+    """PatientDataGenerator -> DailySummary: day-prefixes the admission and appends the day's environment as
+    it stood at day start, so the summary reports the engine's numbers, not invented ones."""
     text = inject_day_to_message(data, global_state)
-    day = global_state["hospital_day_counter"]
-    environment = global_state.setdefault(STATE_KEY, {})
-    environment["staffing_level"] = STAFFING_CYCLE[(day - 1) % len(STAFFING_CYCLE)]
-    if (day - 1) % RESTOCK_EVERY_DAYS == 0 or "resource_availability" not in environment:
-        environment["resource_availability"] = dict(RESOURCE_QUOTA)
-    environment["case_mix_context"] = CASE_MIX_CYCLE[(day - 1) % len(CASE_MIX_CYCLE)]
-    environment.setdefault("bed_occupancy", BED_OCCUPANCY_START)
-    # Overnight rest: fatigue decays by one per day, so only exhaustion days (+2) accumulate toward the clamp.
-    environment["staff_fatigue"] = max(0, environment.get("staff_fatigue", 0) - 1)
-    stock = ";".join(f"{role}:{count}" for role, count in environment["resource_availability"].items())
-    return (f"{text}\nEnvironment: case_mix_context={environment['case_mix_context']}, "
-            f"bed_occupancy={environment['bed_occupancy']}, staffing_level={environment['staffing_level']}, "
-            f"staff_fatigue={environment['staff_fatigue']}, resource_availability={stock}")
+    environment = global_state.get(STATE_KEY)
+    return f"{text}\nEnvironment: {_compact(environment)}" if environment else text
 
-
-def inject_day_and_record_admission(data: str, global_state: Dict[str, Any]) -> str:
-    """PatientDataGenerator -> DailySummary: day-prefixes the message (unchanged
-    `inject_day_to_message` behaviour) and records today's admission against bed occupancy."""
-    text = inject_day_to_message(data, global_state)
-    environment = global_state.setdefault(STATE_KEY, {})
-    environment["bed_occupancy"] = min(BED_OCCUPANCY_CAP,
-                                       environment.get("bed_occupancy", BED_OCCUPANCY_START) + ADMISSION_DELTA)
-    return text
-
-
-def record_discharge(data: str, global_state: Dict[str, Any]) -> str:
-    """DailySummary -> LoopGate: scripted end-of-day discharge count against bed occupancy."""
-    environment = global_state.setdefault(STATE_KEY, {})
-    environment["bed_occupancy"] = max(BED_OCCUPANCY_FLOOR,
-                                       environment.get("bed_occupancy", BED_OCCUPANCY_START) - DISCHARGE_DELTA)
-    return data
 
 
 # The Report template emits header, gates (ending in the Meta-Controller line), then the write-up under one of these.
