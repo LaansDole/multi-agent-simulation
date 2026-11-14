@@ -6,6 +6,9 @@ import { defineConfig, devices } from '@playwright/test';
  * Expects both servers running before test start:
  *   - DevAll backend on port 6400
  *   - Vite dev server on port 3000
+ *
+ * The test uses the @cline tag so it can be filtered:
+ *   npx playwright test --grep @cline
  */
 export default defineConfig({
   testDir: './tests',
