@@ -17,7 +17,7 @@ from functions.edge_processor.day_counter import inject_day_to_message
 
 STATE_KEY = "environment"
 ENGINE_KEY = "environment_engine"
-_SCENARIO_LINE = re.compile(r"^Scenario:\s*(.*)$\n?", re.M)
+_SCENARIO_LINE = re.compile(r"^Scenario:[ \t]*(.*)$\n?", re.M)
 _log = logging.getLogger(__name__)
 
 
