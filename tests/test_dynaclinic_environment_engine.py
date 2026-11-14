@@ -1,9 +1,14 @@
 """dynaclinic/environment: scenario validation, and the seeded engine's patterns and invariants
 (spec 2026-11-14 section 8)."""
 
+import random
+from statistics import mean
+from typing import Any
+
 import pytest
 
-from dynaclinic.environment.config import SEED_MAX, EnvironmentConfigError, presets, resolve_scenario
+from dynaclinic.environment.config import RESOURCES, SEED_MAX, EnvironmentConfigError, presets, resolve_scenario
+from dynaclinic.environment.engine import Patient, initial_state, snapshot, step_day
 
 
 def test_presets_are_the_four_named_scenarios() -> None:
@@ -61,3 +66,111 @@ def test_invalid_scenarios_name_the_key(preset: str, overrides: object, message:
 def test_event_weights_accept_any_organ_or_acuity_key() -> None:
     config, _ = resolve_scenario("baseline", {"events": {"flu_surge": {"organ_weight": {"cardiovascular": 2}}}})
     assert config["events"]["flu_surge"]["organ_weight"] == {"respiratory": 3, "cardiovascular": 2}
+
+
+SEEDS = range(200)
+DAYS = 30
+SNAPSHOT_KEYS = {
+    "day", "staffing_level", "staff_on_shift", "case_mix_context", "event_days_left", "arrivals", "admitted",
+    "discharged", "beds_capacity", "beds_occupied", "bed_occupancy", "waiting", "resource_availability",
+    "staff_fatigue", "fatigue_threshold", "focus_case",
+}
+
+
+def _trajectory(overrides: dict, seed: int, days: int = DAYS, preset: str = "baseline"
+                ) -> list[tuple[dict[str, Any], list[Patient]]]:
+    """(snapshot, today's arrivals) for each simulated day."""
+    config, _ = resolve_scenario(preset, overrides)
+    rng = random.Random(seed)
+    state = initial_state(config, rng)
+    days_out = []
+    for _ in range(days):
+        step_day(state, config, rng)
+        days_out.append((snapshot(state, config), list(state.today)))
+    return days_out
+
+
+def _mean(overrides: dict, key: str) -> float:
+    return mean(snap[key] for seed in SEEDS for snap, _ in _trajectory(overrides, seed))
+
+
+def test_more_arrivals_fill_beds_and_the_queue() -> None:
+    quiet, busy = {"arrivals": {"rate_per_day": 8}}, {"arrivals": {"rate_per_day": 20}}
+    assert _mean(busy, "beds_occupied") > _mean(quiet, "beds_occupied")
+    assert _mean(busy, "waiting") > _mean(quiet, "waiting")
+
+
+def test_more_short_shifts_mean_more_fatigue() -> None:
+    assert _mean({"staffing": {"p_short": 0.8}}, "staff_fatigue") > _mean({"staffing": {"p_short": 0.1}}, "staff_fatigue")
+
+
+def test_a_flu_surge_raises_the_respiratory_share() -> None:
+    overrides = {"events": {"p_start": 0.3, "trauma_cluster": {"weight": 0}}}
+    counts = {"flu_surge": [0, 0], "baseline": [0, 0]}  # [respiratory, all] arrivals
+    for seed in SEEDS:
+        for snap, today in _trajectory(overrides, seed):
+            tally = counts[snap["case_mix_context"]]
+            tally[0] += sum(patient.organ_system == "respiratory" for patient in today)
+            tally[1] += len(today)
+    flu, baseline = (respiratory / total for respiratory, total in (counts["flu_surge"], counts["baseline"]))
+    assert flu > baseline + 0.15  # expected about 3/8 against 1/6
+
+
+def test_fatigue_rises_on_heavy_days_and_recovers_on_empty_days() -> None:
+    heavy, _ = resolve_scenario("baseline", {"arrivals": {"rate_per_day": 40}, "staffing": {"p_short": 1}})
+    empty, _ = resolve_scenario("baseline", {"arrivals": {"rate_per_day": 0}})
+    for seed in range(50):
+        rng = random.Random(seed)
+        state = initial_state(heavy, rng)
+        step_day(state, heavy, rng)
+        assert state.fatigue > 1  # about 40 arrivals x 0.25 over 3 staff
+        before = state.fatigue
+        step_day(state, empty, rng)
+        assert state.fatigue == max(0, round(before - 1, 2))
+
+
+@pytest.mark.parametrize("preset", ["baseline", "flu_surge", "short_staffed", "trauma_cluster"])
+def test_every_day_keeps_the_invariants(preset: str) -> None:
+    overrides = {"arrivals": {"rate_per_day": 30}}
+    config, _ = resolve_scenario(preset, overrides)
+    for seed in range(50):
+        for snap, today in _trajectory(overrides, seed, preset=preset):
+            assert set(snap) == SNAPSHOT_KEYS
+            assert 0 <= snap["beds_occupied"] <= snap["beds_capacity"]
+            assert snap["waiting"] >= 0
+            if snap["waiting"]:
+                assert snap["beds_occupied"] == snap["beds_capacity"], "nobody waits while a bed is free"
+            assert all(0 <= snap["resource_availability"][r] <= config["stock"]["capacity"][r] for r in RESOURCES)
+            assert set(snap["focus_case"]) == {"acuity", "organ_system", "age", "sex"}
+            if today:
+                assert snap["focus_case"] in [patient.describe() for patient in today]
+            assert snap["arrivals"] == len(today)
+
+
+def test_a_preset_event_is_active_from_day_one() -> None:
+    [(day_one, _)] = _trajectory({"events": {"duration_days": 2}}, 0, days=1, preset="flu_surge")
+    assert day_one["case_mix_context"] == "flu_surge" and day_one["event_days_left"] == 1
+
+
+def test_a_seed_replays_its_run() -> None:
+    overrides = {"events": {"p_start": 0.3}}
+    first = [snap for snap, _ in _trajectory(overrides, 7)]
+    assert first == [snap for snap, _ in _trajectory(overrides, 7)]
+    assert first != [snap for snap, _ in _trajectory(overrides, 8)]
+
+
+def test_the_baseline_hospital_stays_within_capacity() -> None:
+    """The default scenario is a busy but working hospital: the queue stays short and stock runs out on a minority
+    of days, so surge presets have room to look worse."""
+    waiting, depleted_days = [], []
+    for seed in SEEDS:
+        days = _trajectory({}, seed)
+        waiting.append(days[-1][0]["waiting"])
+        depleted_days += [0 in snap["resource_availability"].values() for snap, _ in days]
+    assert mean(waiting) < 5  # measured 2.4
+    assert mean(depleted_days) < 0.3  # measured 0.21
+
+
+def test_the_starting_occupancy_holds_on_day_one() -> None:
+    occupancy = [_trajectory({"arrivals": {"rate_per_day": 0}}, seed, days=1)[0][0]["beds_occupied"] for seed in SEEDS]
+    assert mean(occupancy) == 24  # 0.6 x 40 beds; nobody seeded at day 0 leaves before day 2
