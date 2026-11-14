@@ -1,0 +1,36 @@
+# DynaClinic hospital environment: the full parameter set (spec 2026-11-14 section 4).
+# Each value: "source: <citation>" or "ASSUMED". Presets list only what differs from this file.
+arrivals:
+  rate_per_day: 9  # ASSUMED: about 80% occupancy of 40 beds at the default stays
+  acuity_mix: {high: 0.15, medium: 0.45, low: 0.40}  # ASSUMED
+  organ_mix: {abdominal: 1, respiratory: 1, cardiovascular: 1, neurological: 1, renal_metabolic: 1, infectious: 1}  # ASSUMED: equal
+  age_min: 18  # ASSUMED
+  age_max: 90  # ASSUMED
+staffing:
+  p_short: 0.33  # carries over the old every-3rd-day short shift
+  staff_day: 5  # ASSUMED: the office's five desks
+  staff_short: 3  # ASSUMED
+events:
+  p_start: 0.10  # ASSUMED
+  duration_days: 3  # ASSUMED
+  start_with: none  # presets set flu_surge or trauma_cluster: active from day 1
+  flu_surge: {weight: 1, rate_multiplier: 1.5, organ_weight: {respiratory: 3}, acuity_weight: {}}  # ASSUMED
+  trauma_cluster: {weight: 1, rate_multiplier: 1.3, organ_weight: {}, acuity_weight: {high: 2}}  # ASSUMED
+beds:
+  capacity: 40  # ASSUMED
+  start_occupancy: 0.6  # ASSUMED
+  los_median_days: {high: 5, medium: 3, low: 1}  # ASSUMED
+  los_sigma: 0.5  # ASSUMED
+stock:
+  capacity: {imaging: 9, pathology: 14, pharmacology: 22}  # ASSUMED: about 1.2x the expected use between restocks at 9 arrivals/day
+  restock_every_days: 4  # carries over the old restock interval
+  use_prob:  # ASSUMED: chance one arrival uses one unit
+    high: {imaging: 0.5, pathology: 0.6, pharmacology: 0.8}
+    medium: {imaging: 0.2, pathology: 0.4, pharmacology: 0.6}
+    low: {imaging: 0.05, pathology: 0.1, pharmacology: 0.3}
+fatigue:
+  gain_per_load: 0.25  # ASSUMED: per arrival per staff member on shift
+  recovery_per_day: 1  # carries over the old -1 per day
+  threshold: 2  # carries over dc_uncertainty's clamp (dynaclinic/devall_nodes.py)
+focus:
+  acuity_weight: {high: 3, medium: 2, low: 1}  # ASSUMED: sicker arrivals are likelier to get the consult
