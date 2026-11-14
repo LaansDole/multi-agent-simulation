@@ -152,12 +152,6 @@ export interface MockScenario {
   text: string;
 }
 
-export interface ModelInfo {
-  id: string;
-  provider: string;
-  type: string;
-}
-
 // ── Backend Connection State ──────────────────────────────────────
 
 export type BackendConnectionStatus =

@@ -2,7 +2,6 @@
 
 import threading
 from typing import Any, Callable, Dict, List, Optional
-from runtime.node.agent.memory.shared_rlm_environment import SharedRLMEnvironment
 
 from runtime.node.agent.memory import MemoryBase, MemoryFactory, MemoryManager
 from runtime.node.agent.thinking import ThinkingManagerBase, ThinkingManagerFactory
@@ -89,7 +88,6 @@ class GraphExecutor:
         self.thinking_managers: Dict[str, ThinkingManagerBase] = {}
         self.global_memories: Dict[str, MemoryBase] = {}
         self.agent_memory_managers: Dict[str, MemoryManager] = {}
-        self.shared_rlm_environments: Dict[str, "SharedRLMEnvironment"] = {}
 
         # Token tracking
         self.token_tracker = runtime.token_tracker
@@ -151,7 +149,6 @@ class GraphExecutor:
     def _build_memories_and_thinking(self) -> None:
         """Initialize all memory and thinking managers before execution."""
         self._build_global_memories()
-        self._build_shared_rlm_environments()
         self._build_thinking_managers()
         self._build_agent_memories()
         self._build_node_executors()
@@ -190,53 +187,6 @@ class GraphExecutor:
                 logger.log_exception(e, error_msg, memory_name=store.name)
                 raise WorkflowExecutionError(
                     error_msg, details={"memory_name": store.name}
-                )
-
-    def _build_shared_rlm_environments(self) -> None:
-        """Build shared RLM environments for multi-agent memory computation."""
-        from runtime.node.agent.memory.shared_rlm_environment import (
-            SharedRLMEnvironment,
-        )
-
-        memory_config = self.graph.config.get_memory_config()
-        if not memory_config:
-            return
-
-        env_names = set()
-
-        for node_id, node in self.graph.nodes.items():
-            agent_config = node.as_config(AgentConfig)
-            if not (agent_config and agent_config.memories):
-                continue
-
-            for memory_ref in agent_config.memories:
-                if not getattr(memory_ref, "use_rlm", False):
-                    continue
-
-                env_name = f"shared_{memory_ref.name}"
-                if env_name in env_names:
-                    continue
-
-                env_names.add(env_name)
-
-                rlm_env = SharedRLMEnvironment(
-                    name=env_name,
-                    backend=getattr(memory_ref, "rlm_backend", "openai"),
-                    model_name=getattr(memory_ref, "rlm_model", "gpt-4o"),
-                    max_depth=getattr(memory_ref, "rlm_max_depth", 3),
-                    max_iterations=getattr(memory_ref, "rlm_max_iterations", 10),
-                )
-
-                for mem_store_name, mem_store in self.global_memories.items():
-                    if mem_store_name == memory_ref.name:
-                        rlm_env.add_memory_store(mem_store_name, mem_store)
-
-                rlm_env.initialize()
-
-                self.shared_rlm_environments[env_name] = rlm_env
-                self.log_manager.info(
-                    f"Shared RLM environment '{env_name}' built for memory '{memory_ref.name}'",
-                    details={"env_name": env_name, "memory_store": memory_ref.name},
                 )
 
     def _build_thinking_managers(self) -> None:
@@ -286,7 +236,6 @@ class GraphExecutor:
                 log_manager=self.log_manager,
                 memory_managers=self.agent_memory_managers,
                 memory_stores=self.global_memories,
-                rlm_environments=self.shared_rlm_environments,
                 thinking_managers=self.thinking_managers,
                 token_tracker=self.token_tracker,
                 global_state=global_state,
