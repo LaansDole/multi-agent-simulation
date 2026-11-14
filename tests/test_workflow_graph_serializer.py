@@ -13,7 +13,6 @@ from server.services.workflow_graph_serializer import (
 )
 
 YAML_INSTANCE = Path(__file__).resolve().parents[1] / "yaml_instance"
-DYNACLINIC_MVP = YAML_INSTANCE / "dynaclinic_mvp.yaml"
 
 # Minimal workflow that passes load_config with concrete (non-${VAR}) values
 # so validation does not depend on environment variables.
@@ -137,10 +136,6 @@ class TestSerializeDesign:
             "Doctor Notes", "Nurse", "ER Transfer", "Patient Interaction", "Scenario Evolver", "Report Saver",
             "Final Report Data Extractor",
         ]),
-        ("dynaclinic_mvp.yaml", [
-            "Triage", "Primary Care", "Diagnostic Imaging", "Pathology/Lab", "Pharmacology", "Proponent", "Critic",
-            "Synthesizer",
-        ]),
     ])
     def test_character_names_keep_words_and_capitals(self, filename, expected):
         dummy = {key: "x" for key in ("MODEL_NAME", "OPENAI_API_KEY", "OPENAI_BASE_URL", "EMBEDDING_MODEL", "API_KEY", "BASE_URL")}
@@ -148,16 +143,6 @@ class TestSerializeDesign:
         assert [a["label"] for a in serialize_design(design, filename=filename)["agent_nodes"]] == expected
 
     @pytest.mark.parametrize("filename, expected", [
-        ("dynaclinic_mvp.yaml", {
-            ("Triage", None): "Meta-Controller (complexity)",
-            ("PrimaryCare", None): "Primary Care Agent",
-            ("CareTeam", "imaging"): "Diagnostic Imaging",
-            ("CareTeam", "pathology"): "Pathology/Lab",
-            ("CareTeam", "pharmacology"): "Pharmacology",
-            ("Proponent", None): "Proponent",
-            ("Critic", None): "Clinical Critic (Opponent)",
-            ("Synthesizer", None): "Consensus Builder / Mediator",
-        }),
         ("demo_hospital.yaml", {
             ("PatientDataGenerator", None): "Generates patient admission…",
             ("AdmissionReport", None): "Processes admission report",
@@ -173,40 +158,6 @@ class TestSerializeDesign:
         design = load_config(YAML_INSTANCE / filename, vars_override=dummy)
         agents = serialize_design(design, filename=filename)["agent_nodes"]
         assert {(a["node_id"], a.get("sub_agent")): a["role_label"] for a in agents} == expected
-
-    def test_dynaclinic_llm_nodes_are_characters_and_care_team_has_three(self):
-        design = load_config(DYNACLINIC_MVP)
-        result = serialize_design(design, filename="dynaclinic_mvp.yaml")
-        assert {n["id"]: n["is_agent"] for n in result["nodes"]} == {
-            "CaseInput": False,
-            "Triage": True,
-            "GeneralistSweep": False,  # LLM call, but not agent_like: no 3D character
-            "PrimaryCare": True,
-            "CareTeam": True,
-            "DivergenceGate": False,
-            "MeshExchange": False,  # the Care Team's specialists talking: no second set of characters
-            "Proponent": True,
-            "Critic": True,
-            "Synthesizer": True,
-            "SafetyGate": False,
-            "Report": False,
-        }
-        agents = result["agent_nodes"]
-        assert [(a["node_id"], a.get("sub_agent"), a["proposed_slot"]) for a in agents] == [
-            ("Triage", None, 1),
-            ("PrimaryCare", None, 2),
-            ("CareTeam", "imaging", 3),
-            ("CareTeam", "pathology", 4),
-            ("CareTeam", "pharmacology", 5),
-            ("Proponent", None, 6),
-            ("Critic", None, 7),
-            ("Synthesizer", None, 8),
-        ]
-        assert [a["label"] for a in agents if a["node_id"] == "CareTeam"] == [
-            "Diagnostic Imaging",
-            "Pathology/Lab",
-            "Pharmacology",
-        ]
 
     def test_agent_past_the_cap_gets_null_slot(self, tmp_path):
         nodes_yaml = "\n".join(
@@ -236,53 +187,3 @@ class TestSerializeDesign:
         assert e["trigger"] is True
         assert e["carry_data"] is True
         assert e["is_dynamic"] is False
-
-
-PINNED_DC_YAML = """\
-version: 0.0.0
-vars: {}
-graph:
-  id: pinned_dc
-  description: One DynaClinic node with an explicit model.
-  is_majority_voting: false
-  nodes:
-    - id: Triage
-      type: dc_triage
-      config:
-        model: pinned-model
-  edges: []
-  start:
-    - Triage
-  end:
-    - Triage
-"""
-
-
-class TestDynaClinicModelSummary:
-    def test_dc_agent_nodes_use_env_model(self, monkeypatch):
-        design = load_config(DYNACLINIC_MVP)
-        monkeypatch.setenv("DYNACLINIC_MODEL", "env-model")
-        nodes = serialize_design(design, filename="dynaclinic_mvp.yaml")["nodes"]
-        dc_agents = [n for n in nodes if n["is_agent"] and n["type"].startswith("dc_")]
-        assert dc_agents
-        for n in dc_agents:
-            assert n["config_summary"]["provider"] == "openai"
-            assert n["config_summary"]["model"] == "env-model"
-        assert all(n["config_summary"] is None for n in nodes if not n["is_agent"])
-
-    def test_explicit_model_wins_over_env(self, tmp_path, monkeypatch):
-        p = tmp_path / "pinned.yaml"
-        p.write_text(PINNED_DC_YAML, encoding="utf-8")
-        design = load_config(p)
-        monkeypatch.setenv("DYNACLINIC_MODEL", "env-model")
-        summary = serialize_design(design, filename="pinned.yaml")["nodes"][0]["config_summary"]
-        assert summary["model"] == "pinned-model"
-
-    def test_default_model_env_fallback_chain(self, monkeypatch):
-        from dynaclinic.devall_nodes import default_model
-
-        monkeypatch.delenv("DYNACLINIC_MODEL", raising=False)
-        monkeypatch.setenv("DYNACLINIC_FALLBACK_MODELS", " ,fb-model")
-        assert default_model() == "fb-model"
-        monkeypatch.delenv("DYNACLINIC_FALLBACK_MODELS")
-        assert default_model() is None

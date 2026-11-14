@@ -66,3 +66,15 @@ class TestSaveSpatialConfig:
             json={"config": {}},
         )
         assert response.status_code == 400
+
+    def test_trailing_newline_name_returns_400(self, client, tmp_spatial_dir):
+        response = client.put("/api/spatial-configs/abc%0A", json={"config": {}})
+        assert response.status_code == 400
+        assert not tmp_spatial_dir.exists() or not any(tmp_spatial_dir.iterdir())
+
+
+def test_bundled_configs_listed_from_any_cwd(client, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    response = client.get("/api/spatial-configs")
+    assert response.status_code == 200
+    assert "default" in {c["name"] for c in response.json()["configs"]}

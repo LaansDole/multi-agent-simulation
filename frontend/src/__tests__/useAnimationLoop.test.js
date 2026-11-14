@@ -92,7 +92,6 @@ function createMockOptions(overrides = {}) {
     const ctx = createMockCtx()
     return {
         ctx,
-        canvasRef: ref(null),
         agentPositions: ref(new Map()),
         trailParticles: ref([]),
         activeConnections: ref([]),

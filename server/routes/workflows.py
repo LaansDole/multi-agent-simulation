@@ -175,8 +175,8 @@ async def get_workflow_graph(filename: str) -> dict[str, Any]:
         raise
     except ResourceNotFoundError:
         raise
-    except SecurityError:
-        raise
+    except SecurityError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)})
     except DesignError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -198,6 +198,8 @@ async def get_workflow_scenarios(filename: str) -> list[dict[str, str]]:
                 resource_id=safe_filename,
             )
         design = load_config(file_path)
+    except SecurityError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)})
     except DesignError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return [
