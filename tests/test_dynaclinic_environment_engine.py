@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from dynaclinic.environment.config import RESOURCES, SEED_MAX, EnvironmentConfigError, presets, resolve_scenario
-from dynaclinic.environment.engine import Patient, initial_state, snapshot, step_day
+from dynaclinic.environment.engine import EnvironmentState, Patient, initial_state, snapshot, step_day
 
 
 def test_presets_are_the_four_named_scenarios() -> None:
@@ -177,6 +177,18 @@ def test_no_draw_depends_on_stock_or_fatigue() -> None:
                 state.fatigue = 9.0
         runs.append(days)
     assert runs[0] == runs[1]
+
+
+def test_admission_takes_highest_acuity_then_earliest_arrival() -> None:
+    config, _ = resolve_scenario("baseline", {"beds": {"capacity": 1, "start_occupancy": 0},
+                                              "arrivals": {"rate_per_day": 0}})
+    low, high, medium = (Patient(acuity, "respiratory", 50, "female", arrived)
+                         for acuity, arrived in (("low", 1), ("high", 2), ("medium", 1)))
+    state = EnvironmentState(queue=[low, high, medium])
+    step_day(state, config, random.Random(0))
+    assert len(state.inpatients) == 1 and state.inpatients[0] is high
+    assert [p.acuity for p in state.queue] == ["medium", "low"]
+
 
 def test_the_baseline_hospital_stays_within_capacity() -> None:
     """The default scenario is a busy but working hospital: the queue stays short and stock runs out on a minority
