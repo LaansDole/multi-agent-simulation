@@ -257,7 +257,7 @@ export class InteractionTracker {
     return null;
   }
 
-  /** Last output seen for `nodeId` (node_completed payload, truncated by the backend). */
+  /** Last output seen for `nodeId` (the node_completed payload). */
   public outputOf(nodeId: string): string | undefined {
     return this.outputs.get(nodeId);
   }

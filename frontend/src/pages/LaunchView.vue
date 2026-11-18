@@ -792,7 +792,6 @@ const obstacleEditorRef = ref(null)
 const spatialLayoutRef = ref(null)
 const spatialLayoutHeight = ref(600)
 const selectedSpatialAgent = ref(null)
-const mousePosition = ref(null)
 let spatialLayoutResizeObserver = null
 
 // ───────── OBSTACLE EDITOR HANDLERS ─────────
@@ -804,10 +803,6 @@ function onCanvasClick(coords) {
   } else if (editor?.isFloorEditorActive) {
     editor.addFloor(coords.x, coords.y)
   }
-}
-
-function onCanvasMouseMove(coords) {
-  mousePosition.value = coords
 }
 
 function onCanvasDragStart(coords) {

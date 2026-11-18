@@ -12,7 +12,6 @@ from entity.messages import Message, MessageContent, MessageRole, serialize_mess
 from runtime.node.agent import MemoryManager, MemoryBase
 from runtime.node.agent import ThinkingManagerBase
 from runtime.node.agent import ToolManager
-from runtime.node.agent.memory.shared_rlm_environment import SharedRLMEnvironment
 from utils.function_manager import FunctionManager
 from utils.human_prompt import HumanPromptService
 from utils.log_manager import LogManager
@@ -30,7 +29,6 @@ class ExecutionContext:
         log_manager: Structured log manager
         memory_managers: Mapping of node_id to ``MemoryManager`` instances
         memory_stores: Mapping of store name to ``MemoryBase`` instances
-        rlm_environments: Mapping of environment name to ``SharedRLMEnvironment`` instances
         thinking_managers: Mapping of node_id to ``ThinkingManagerBase`` instances
         token_tracker: Token tracker used for accounting
         global_state: Shared global state dictionary
@@ -41,7 +39,6 @@ class ExecutionContext:
     log_manager: LogManager
     memory_managers: Dict[str, MemoryManager] = field(default_factory=dict)
     memory_stores: Dict[str, MemoryBase] = field(default_factory=dict)
-    rlm_environments: Dict[str, SharedRLMEnvironment] = field(default_factory=dict)
     thinking_managers: Dict[str, ThinkingManagerBase] = field(default_factory=dict)
     token_tracker: Optional[TokenTracker] = None
     global_state: Dict[str, Any] = field(default_factory=dict)
@@ -68,10 +65,6 @@ class ExecutionContext:
     def get_memory_store(self, name: str) -> Optional[MemoryBase]:
         """Return the memory store by name."""
         return self.memory_stores.get(name)
-
-    def get_rlm_environment(self, name: str) -> Optional[SharedRLMEnvironment]:
-        """Return the RLM environment by name."""
-        return self.rlm_environments.get(name)
 
 
 class NodeExecutor(ABC):
@@ -130,14 +123,6 @@ class NodeExecutor(ABC):
             parts.append(
                 f"=== INPUT FROM {source} ({message.role.value}) ===\n\n{message.text_content()}"
             )
-        return "\n\n".join(parts)
-
-    def _inputs_to_human_text(self, inputs: List[Message]) -> str:
-        if not inputs:
-            return ""
-        parts: list[str] = []
-        for message in inputs:
-            parts.append(message.text_content())
         return "\n\n".join(parts)
 
     def _inputs_to_message_json(self, inputs: List[Message]) -> str | None:

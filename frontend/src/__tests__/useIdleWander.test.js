@@ -203,9 +203,7 @@ describe('useIdleWander - neighbor visit wander', () => {
         // Force Math.random to return values that trigger neighbor visit
         // NEIGHBOR_VISIT_CHANCE = 0.3, so random < 0.3 triggers visit
         const originalRandom = Math.random
-        let callCount = 0
         Math.random = () => {
-            callCount++
             // 1st call: cooldown init (ignored), 2nd+: wander target selection
             // Return 0.1 for neighbor visit chance check, 0.0 for neighbor pick,
             // 0.4 for distance ratio
@@ -308,7 +306,6 @@ describe('useIdleWander - neighbor visit wander', () => {
 describe('useIdleWander - resetWanderCooldown delay override', () => {
     it('uses custom delay range when provided', () => {
         vi.useFakeTimers()
-        const now = Date.now()
 
         const options = createMockOptions()
         options.ctx.agentSprites.set('agent1', { interactive: true })

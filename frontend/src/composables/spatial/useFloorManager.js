@@ -31,7 +31,7 @@ export function useFloorManager({ ctx }) {
         if (!floors.length) return
 
         const floorPromises = floors.map(async (floor) => {
-            const { id, position, width, height, sprite: spriteFile, color, contaminationLevel } = floor
+            const { id, position, width, height, sprite: spriteFile, color } = floor
             if (!position || !width || !height) return
 
             const floorGroup = new Graphics()

@@ -74,9 +74,9 @@ class TestGetWorkflowGraph:
         response = client.get("/api/workflows/..%2Fetc%2Fpasswd/graph")
         assert response.status_code in (400, 404)
 
-    def test_security_error_returns_403(self, client, tmp_yaml_dir):
-        # A filename with ".." in the middle bypasses the URL-encoding middleware
-        # but is rejected by validate_workflow_filename as a SecurityError (-> 403).
+    def test_security_error_returns_400(self, client, tmp_yaml_dir):
+        # A filename with ".." in the middle bypasses the URL-encoding middleware but is
+        # rejected by validate_workflow_filename as a SecurityError, mapped to 400 like the sibling routes.
         response = client.get("/api/workflows/foo..bar.yaml/graph")
-        assert response.status_code == 403
+        assert response.status_code == 400
 

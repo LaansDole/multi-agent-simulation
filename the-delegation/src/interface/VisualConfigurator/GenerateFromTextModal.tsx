@@ -3,12 +3,11 @@ import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'reac
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgenticSystem, MAX_AGENTS } from '../../data/agents';
-import { AVAILABLE_MODELS, GEMINI_TEXT_MODEL } from '../../core/llm/constants';
+import { AVAILABLE_MODELS, DEFAULT_MODELS, GEMINI_TEXT_MODEL } from '../../core/llm/constants';
 import type { LLMMessage, LLMProvider } from '../../core/llm/types';
 import { OpenAIProvider } from '../../core/llm/providers/openaiProvider';
 import { GeminiProvider } from '../../core/llm/providers/geminiProvider';
 import { runGenerationTurn } from '../../core/llm/workflowGenerator';
-import { useCoreStore } from '../../integration/store/coreStore';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../../theme/brand';
 import { Avatar } from '../components/Avatar';
 import { useEscapeToClose } from '../components/useEscapeToClose';
@@ -62,11 +61,8 @@ interface GenerateFromTextModalProps {
 
 export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ isOpen, onClose, onCreated }) => {
   useEscapeToClose(onClose, isOpen);
-  const defaultTextModel = useCoreStore((s) => s.defaultTextModel);
-  const openaiModels = useCoreStore((s) => s.openaiModels);
-  const modelListId = useId();
 
-  const [creds, setCreds] = useState<StoredCredentials>(() => loadCredentials(defaultTextModel));
+  const [creds, setCreds] = useState<StoredCredentials>(() => loadCredentials(DEFAULT_MODELS.text));
   const [carryCredentials, setCarryCredentials] = useState(true);
   const [messages, setMessages] = useState<ChatBubble[]>([]);
   const [system, setSystem] = useState<AgenticSystem | null>(null);
@@ -133,7 +129,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
         .filter((m): m is ChatBubble & { role: 'user' | 'assistant' } => m.role !== 'error')
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const result = await runGenerationTurn(provider, creds.model, history, system, instruction, MAX_AGENTS, defaultTextModel);
+      const result = await runGenerationTurn(provider, creds.model, history, system, instruction, MAX_AGENTS, DEFAULT_MODELS.text);
       if (session !== sessionRef.current) return;
       setSystem(result.system);
       setMessages((prev) => [...prev, { role: 'assistant', content: result.assistantText }]);
@@ -196,7 +192,7 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
               value={creds.provider}
               onChange={(e) => {
                 const provider = e.target.value as 'openai' | 'gemini';
-                setCreds((c) => ({ ...c, provider, model: provider === 'gemini' ? GEMINI_TEXT_MODEL : defaultTextModel }));
+                setCreds((c) => ({ ...c, provider, model: provider === 'gemini' ? GEMINI_TEXT_MODEL : DEFAULT_MODELS.text }));
               }}
               className="bg-white border border-zinc-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 outline-none cursor-pointer lowercase"
             >
@@ -207,19 +203,13 @@ export const GenerateFromTextModal: React.FC<GenerateFromTextModalProps> = ({ is
           <div className="space-y-1">
             <label className="text-[7px] font-black uppercase text-zinc-400 ml-1">Model</label>
             {creds.provider === 'openai' ? (
-              <>
-                <input
-                  type="text"
-                  value={creds.model}
-                  list={modelListId}
-                  onChange={(e) => setCreds((c) => ({ ...c, model: e.target.value }))}
-                  placeholder="Model name"
-                  className="w-40 bg-white border border-zinc-200 text-[11px] font-medium rounded-xl px-2.5 py-1.5 outline-none"
-                />
-                <datalist id={modelListId}>
-                  {openaiModels.map((m) => <option key={m} value={m} />)}
-                </datalist>
-              </>
+              <input
+                type="text"
+                value={creds.model}
+                onChange={(e) => setCreds((c) => ({ ...c, model: e.target.value }))}
+                placeholder="Model name"
+                className="w-40 bg-white border border-zinc-200 text-[11px] font-medium rounded-xl px-2.5 py-1.5 outline-none"
+              />
             ) : (
               <select
                 value={creds.model}

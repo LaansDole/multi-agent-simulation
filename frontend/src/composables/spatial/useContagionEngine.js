@@ -126,7 +126,7 @@ export function useContagionEngine() {
         isAgentNode
     } = useSpatialLayout()
 
-    const { getConfig, getFloorTiles, updateFloorTile } = useSpatialConfig()
+    const { getConfig, getFloorTiles } = useSpatialConfig()
 
     // ── Parameter helpers ──
 
@@ -356,8 +356,6 @@ export function useContagionEngine() {
         state.elapsedTimeMs += deltaMs
         const now = Date.now()
         const params = getParams()
-        const floors = getFloorTiles()
-        const GRID_SIZE = 40
 
         // Tick counters for debug summary
         let tickProximityHits = 0

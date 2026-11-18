@@ -28,13 +28,12 @@ const App: React.FC = () => {
   const managerRef = useRef<SceneManager | null>(null);
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null);
   const { isLogOpen, isKanbanOpen, setIsResizing, viewMode, setViewMode } = useCoreStore();
-  const fetchModelsFromBackend = useCoreStore(s => s.fetchModelsFromBackend);
   const backendStatus = useCoreStore(s => s.backendStatus);
   const workflowGraph = useWorkflowStore((s) => s.workflowGraph);
-  // On load and every (re)connect: refresh the backend default, then resync saved imported teams.
+  // On load and every (re)connect: resync saved imported teams.
   useEffect(() => {
     if (backendStatus === 'connecting' || backendStatus === 'reconnecting') return;
-    fetchModelsFromBackend().then(syncImportedTeams);
+    syncImportedTeams();
   }, [backendStatus]);
 
   const closeDesign = () => setViewMode('simulation');

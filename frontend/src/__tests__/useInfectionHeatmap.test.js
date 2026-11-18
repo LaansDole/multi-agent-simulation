@@ -21,7 +21,6 @@ function createMockOptions(overrides = {}) {
             heatmapGraphics: createMockGraphics(),
             agentSprites: new Map()
         },
-        agentPositions: ref(new Map()),
         getAgentCondition: vi.fn(() => 'healthy'),
         getParams: vi.fn(() => ({ infectionRadius: 120 })),
         sandboxMode: ref(false),
@@ -82,12 +81,10 @@ describe('useInfectionHeatmap - updateInfectionHeatmap', () => {
         expect(options.ctx.heatmapGraphics.circle).not.toHaveBeenCalled()
     })
 
-    it('draws heatmap circles at container position (not agentPositions)', () => {
+    it('draws heatmap circles at the sprite container position', () => {
         const options = createMockOptions()
         options.sandboxMode = ref(true)
         options.simulationRunning = ref(true)
-        // agentPositions is at (100, 200) = home position
-        options.agentPositions.value.set('agent-1', { x: 100, y: 200 })
         // container is at (150, 250) = mid-animation visual position
         addAgentSprite(options, 'agent-1', 150, 250)
         options.getAgentCondition = vi.fn(() => 'infected')
@@ -95,7 +92,7 @@ describe('useInfectionHeatmap - updateInfectionHeatmap', () => {
         const { updateInfectionHeatmap } = useInfectionHeatmap(options)
         updateInfectionHeatmap()
 
-        // Should draw 3 concentric bands at container position, NOT agentPositions
+        // Should draw 3 concentric bands at the container position
         expect(options.ctx.heatmapGraphics.circle).toHaveBeenCalledTimes(3)
         const circleCalls = options.ctx.heatmapGraphics.circle.mock.calls
         circleCalls.forEach(call => {

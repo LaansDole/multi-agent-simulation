@@ -51,7 +51,7 @@ interface NodeResult {
   )[];
 }
 
-/** Full text of a node's last output (node_completed carries only the first 500 characters). */
+/** Full text of a node's last output from workflow_completed `results`. */
 function resultText(entry: NodeResult | undefined): string | null {
   const last = entry?.results?.at(-1);
   if (!last) return null;
@@ -146,6 +146,8 @@ export class EventBridge {
       case 'workflow_cancelled':
         this.onWorkflowCancelled();
         break;
+      // node_started / node_completed come only from BenchmarkPanel's replay; a live backend run
+      // reports node starts and ends as NODE_START / NODE_END log entries (see onBackendLog).
       case 'node_started':
         this.onNodeStarted(event.data as NodeStartedData);
         break;
@@ -159,7 +161,7 @@ export class EventBridge {
         this.onHumanInputRequired(event.data as HumanInputRequiredData);
         break;
       case 'log':
-        this.onLog(event.data as LogEntryData);
+        this.onBackendLog(event.data as LogEntryData);
         break;
       case 'error':
         this.onError(event.data as ErrorData);
@@ -261,7 +263,7 @@ export class EventBridge {
 
   private onNodeStarted(data: NodeStartedData): void {
     const core = useCoreStore.getState();
-    const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
+    const agentIndices = this.resolveAgentIndices(data.node_id);
     this.cue(this.tracker.started(data.node_id));
 
     // One task per character: the 3D scene walks a character to its desk while it has an in_progress task.
@@ -303,7 +305,7 @@ export class EventBridge {
   private onNodeCompleted(data: NodeCompletedData): void {
     const core = useCoreStore.getState();
     const taskIds = this._nodeTaskMap.get(data.node_id) ?? [];
-    const agentIndices = this.resolveAgentIndices(data.node_id, data.agent_index);
+    const agentIndices = this.resolveAgentIndices(data.node_id);
     this.tracker.completed(data.node_id, data.output ?? '');
     this.clinicCompleted(data);
 
@@ -360,6 +362,19 @@ export class EventBridge {
       action: `Waiting for human input: ${data.prompt}`,
       taskId,
     });
+  }
+
+  /** A backend log entry; NODE_START / NODE_END (utils/logger.py enter_node / exit_node) drive the node handlers. */
+  private onBackendLog(data: LogEntryData): void {
+    const nodeId = data.node_id;
+    if (nodeId && data.event_type === 'NODE_START') {
+      const label = this.graph?.nodes.find((n) => n.id === nodeId)?.label;
+      this.onNodeStarted({ node_id: nodeId, node_name: label ?? nodeId });
+    }
+    this.onLog(data);
+    if (nodeId && data.event_type === 'NODE_END') {
+      this.onNodeCompleted({ node_id: nodeId, output: data.details?.output ?? '' });
+    }
   }
 
   private onLog(data: LogEntryData): void {

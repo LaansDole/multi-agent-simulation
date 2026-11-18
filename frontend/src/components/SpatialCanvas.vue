@@ -81,8 +81,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, markRaw, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
-import { Application, Container, Sprite, Graphics, Text, TextStyle, Assets, Rectangle, Circle } from 'pixi.js'
+import { ref, reactive, markRaw, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
   useSpatialLayout,
   isInteractiveNode,
@@ -103,7 +102,6 @@ import { useCommunicationAnimation } from '../composables/spatial/useCommunicati
 import { useAnimationLoop } from '../composables/spatial/useAnimationLoop.js'
 import { useAgentRenderer } from '../composables/spatial/useAgentRenderer.js'
 import { usePixiApp } from '../composables/spatial/usePixiApp.js'
-import { spriteFetcher } from '../utils/spriteFetcher.js'
 import { createPathfinder } from '../utils/pathfinding.js'
 import { useContagionEngine } from '../composables/spatial/useContagionEngine.js'
 import { useInfectionHeatmap } from '../composables/spatial/useInfectionHeatmap.js'
@@ -135,7 +133,6 @@ const {
   updateObstaclePosition,
   removeObstacle,
   saveConfig,
-  downloadConfig,
   saveStatus,
   markConfigChanged
 } = useSpatialConfig()
@@ -191,13 +188,6 @@ let showImportConfirm = ref(false)
 let pendingImportConfig = ref('')
 const moveSelectedAgentId = ref(null)
 
-// Convenience aliases for backward-compatible access
-const getApp = () => ctx.app
-const getAgentSprites = () => ctx.agentSprites
-const getAnimatingAgents = () => ctx.animatingAgents
-
-
-
 const GRID_SIZE = 40
 
 
@@ -221,7 +211,6 @@ const {
   selectedObstacleId,
   selectedObstacle,
   obstacleTooltipStyle,
-  showDeleteConfirm,
   drawObstacles,
   deselectObstacle,
   executeDeleteObstacle,
@@ -282,7 +271,6 @@ const {
   cleanup: cleanupHeatmap
 } = useInfectionHeatmap({
   ctx,
-  agentPositions,
   getAgentCondition,
   getParams: contagionGetParams,
   sandboxMode,
@@ -338,7 +326,6 @@ const {
   renderLoop
 } = useAnimationLoop({
   ctx,
-  canvasRef,
   agentPositions,
   trailParticles,
   activeConnections,
@@ -366,8 +353,7 @@ const {
 
 // ───────── AGENT RENDERER COMPOSABLE ─────────
 const {
-  buildScene,
-  drawStatusGlow
+  buildScene
 } = useAgentRenderer({
   ctx,
   props,
@@ -485,7 +471,7 @@ async function executeImportConfig() {
   try {
     const key = `devall_spatial_${configName}`
     localStorage.removeItem(key)
-  } catch (e) {
+  } catch {
     // ignore
   }
 

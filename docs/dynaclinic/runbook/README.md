@@ -9,7 +9,7 @@ Time: about 5 minutes to start, about 30 seconds per case.
 ## 1. Prerequisites (once)
 
 - `uv sync` in the repo root, and `npm install` in `the-delegation/`.
-- `.env` in the repo root with `OPENAI_API_KEY`, and optionally `OPENAI_BASE_URL` for an OpenAI-compatible server and `DYNACLINIC_MODEL` (here `gpt-6-luna`). Do not commit it. The 3D app defaults to provider OpenAI and shows the model the backend actually uses (`GET /api/models` returns `default: {provider: "openai", model}`). Gemini stays selectable for text, and is the only option for image, music and video teams.
+- `.env` in the repo root with `OPENAI_API_KEY`, and optionally `OPENAI_BASE_URL` for an OpenAI-compatible server and `DYNACLINIC_MODEL` (here `gpt-6-luna`). Do not commit it. The 3D app defaults to provider OpenAI; an imported team shows the model from its workflow's node configs (for DynaClinic nodes, `DYNACLINIC_MODEL`). Gemini stays selectable for text, and is the only option for image, music and video teams.
 - Ports 6400 (backend) and 3100 (3D view) free. Port 3000 often belongs to another local project, which is why the 3D view runs on 3100.
 
 ## 2. Start the servers (two terminals)
@@ -158,7 +158,7 @@ Ctrl-C both terminals (if the servers were started in the background instead: `p
 | Top bar not CONNECTED | Backend not running on 6400, or started from the wrong directory |
 | Run fails immediately | `.env` missing `OPENAI_API_KEY`, or the model is unreachable (the pipeline falls back to `DYNACLINIC_FALLBACK_MODELS` if set) |
 | Agent card or badge shows `GEMINI-3-FLASH-PREVIEW` | The team was saved in your browser before the OpenAI default (8f27bff). Reload the page with the backend running: saved imported teams resync their provider and model from the backend on every load. Agents you edited yourself keep your edit |
-| Badge shows `gpt-5-mini` instead of your model | That is the offline fallback: the backend was unreachable when the page loaded, or it runs code older than 0d3ed91. Start or restart the backend, then reload |
+| Badge shows `gpt-5-mini` instead of your model | That is the default for teams created in the app, or the backend was unreachable when an imported team loaded. Start or restart the backend, then reload |
 | A full-screen view will not close | Press Escape, or click the X at the top right. Every overlay supports both |
 | `--strictPort` error | Port 3100 in use; pick another port. Do not stop the process on 3000 |
 | Automated screenshots show a blank canvas | Some automation browsers do not render WebGL/WebGPU. Use real Chrome (headless works: `--headless=new --remote-debugging-port=<port>`) |

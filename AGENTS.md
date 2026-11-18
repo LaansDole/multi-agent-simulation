@@ -65,7 +65,6 @@ uv run pytest tests/test_file.py     # Run specific test file
 uv run pytest tests/test_file.py::test_function  # Run single test
 uv run pytest -v                     # Verbose output
 uv run pytest -k "pattern"           # Run tests matching pattern
-uv run pytest -m "not cline"         # Skip tests that call the real Cline API
 ```
 
 ### Frontend (Vue 3)
@@ -375,7 +374,6 @@ Known defects in the three YAMLs (reproduced with a fake provider, no model call
 - Config in `pyproject.toml` `[tool.pytest.ini_options]`: `testpaths = ["tests"]`, `pythonpath = ["."]`, `addopts = "-v --tb=short"`. Tests are flat `tests/test_*.py` files.
 - Shared fixtures in `tests/conftest.py`: `tmp_yaml_dir`, `tmp_warehouse_dir`, `tmp_spatial_dir`, `tmp_vuegraph_db`, `client` (FastAPI `TestClient`). They redirect storage via `monkeypatch`. `runtime.sdk` writes to `OUTPUT_ROOT = Path("WareHouse")` relative to the CWD, so SDK-driven tests should `monkeypatch.chdir(tmp_path)` or patch `runtime.sdk.OUTPUT_ROOT`.
 - No network: patch `ProviderRegistry.get_provider` to return a `Mock` whose `call_model` returns `ModelResponse(message=...)` (`tests/test_attachment_boundary_security.py`). The mem0 client is patched with `MagicMock` (`tests/test_mem0_memory.py`). Pass dummy `BASE_URL`/`API_KEY` through `variables=` so `.env` is not needed.
-- The only real-API test is marked `@pytest.mark.cline` and skips without `CLINE_API_KEY` (`tests/test_cline_dry_run.py`). Deselect it with `-m "not cline"`.
 
 ## Resources
 

@@ -32,7 +32,6 @@ from runtime.node.agent.memory.memory_base import (
     MemoryRetrievalResult,
     MemoryWritePayload,
 )
-from runtime.node.agent.memory.rlm_memory import RLMMemory
 from runtime.node.agent import ThinkingPayload
 from runtime.node.agent import ModelProvider, ProviderRegistry, ModelResponse
 from runtime.node.agent.skills import AgentSkillManager
@@ -561,26 +560,11 @@ class AgentNodeExecutor(NodeExecutor):
         if not memory_manager:
             return None
 
-        agent_config = node.as_config(AgentConfig)
-
         with self.log_manager.memory_timer(node.id, "RETRIEVE", stage.value):
             retrieved_memory = memory_manager.retrieve(
                 agent_role=node.role if node.role else "",
                 query=query_snapshot,
                 current_stage=stage,
-            )
-
-        if not retrieved_memory:
-            return None
-
-        rlm_result = self._run_rlm_exploration(
-            node, retrieved_memory, query_snapshot.text, agent_config
-        )
-
-        if rlm_result:
-            retrieved_memory = MemoryRetrievalResult(
-                formatted_text=f"{retrieved_memory.formatted_text}\n\n===== RLM Exploration =====\n{rlm_result}\n===== End of RLM =====",
-                items=retrieved_memory.items,
             )
 
         preview_text = retrieved_memory.formatted_text if retrieved_memory else ""
@@ -590,7 +574,6 @@ class AgentNodeExecutor(NodeExecutor):
             "attachment_count": len(retrieved_memory.attachment_overview())
             if retrieved_memory
             else 0,
-            "rlm_executed": rlm_result is not None,
         }
 
         self.log_manager.record_memory_operation(
@@ -602,54 +585,6 @@ class AgentNodeExecutor(NodeExecutor):
         )
 
         return retrieved_memory
-
-    def _run_rlm_exploration(
-        self,
-        node: Node,
-        retrieved_memory: MemoryRetrievalResult,
-        query_text: str,
-        agent_config: AgentConfig | None,
-    ) -> str | None:
-        """Run RLM exploration on retrieved memory if enabled."""
-        if not agent_config or not agent_config.memories:
-            return None
-
-        for attachment in agent_config.memories:
-            if not getattr(attachment, "use_rlm", False):
-                continue
-
-            env_name = f"shared_{attachment.name}"
-            shared_env = self.context.get_rlm_environment(env_name)
-
-            if shared_env and shared_env.is_initialized:
-                items = shared_env.retrieve_memories(
-                    store_name=attachment.name,
-                    query=query_text,
-                    top_k=attachment.top_k,
-                )
-                if items:
-                    memory_context = shared_env.serialize_memories(items)
-                    result = shared_env.execute(
-                        query=f"Explore the memories and answer: {query_text}",
-                        memory_context={"memories": memory_context},
-                    )
-                    if result:
-                        return result
-
-            memory_store = self.context.get_memory_store(attachment.name)
-            if not memory_store:
-                continue
-
-            rlm_memory = RLMMemory(memory_store, attachment)
-            _, rlm_result = rlm_memory.retrieve_with_rlm(
-                agent_role=node.role if node.role else "",
-                query=MemoryContentSnapshot(text=query_text),
-            )
-
-            if rlm_result:
-                return rlm_result
-
-        return None
 
     def _handle_tool_calls(
         self,

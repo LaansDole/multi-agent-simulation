@@ -1,17 +1,19 @@
 """Routes for saving and listing spatial configuration files."""
 
 import json
-from pathlib import Path
+import re
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from server.settings import SPATIAL_CONFIGS_DIR
 from utils.structured_logger import get_server_logger, LogType
+from utils.workspace_paths import resolve_workspace_path
 
 router = APIRouter()
 
-SPATIAL_CONFIGS_DIR = Path("frontend/public/spatial_configs")
+_CONFIG_NAME = re.compile(r"[a-zA-Z0-9_-]+")
 
 
 class SpatialConfigPayload(BaseModel):
@@ -103,15 +105,11 @@ def _determine_category(tags):
 @router.put("/api/spatial-configs/{name}")
 async def save_spatial_config(name: str, payload: SpatialConfigPayload):
     """Save a spatial configuration to disk."""
-    import json
-    import re
-
-    # Validate name: alphanumeric, underscores, hyphens only
-    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+    if not _CONFIG_NAME.fullmatch(name):
         raise HTTPException(status_code=400, detail="Invalid config name")
 
     SPATIAL_CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = SPATIAL_CONFIGS_DIR / f"{name}.json"
+    file_path = resolve_workspace_path(SPATIAL_CONFIGS_DIR, f"{name}.json")
 
     try:
         with open(file_path, "w", encoding="utf-8") as f:
