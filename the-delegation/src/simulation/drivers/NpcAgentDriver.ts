@@ -153,10 +153,14 @@ export class NpcAgentDriver implements IAgentDriver {
 
     // 2. Behavior when STANDING (or if decided to get up)
 
+    // DynaClinic staff keep to their room between consults (flavour animations only): they leave
+    // it for work, hand-offs and the fatigue break, which SceneManager drives.
+    const staysInRoom = !!this.data.station;
+
     // A. Chance to go sit (only if NOT already seated or if we explicitly want a new POI)
     // Lead agent candidates NEVER sit, they prefer to pace or stay standing
     const isLeadCandidate = this.agentIndex === 1;
-    if (!isSeated && rand < 0.4 && !isLeadCandidate) {
+    if (!isSeated && rand < 0.4 && !isLeadCandidate && !staysInRoom) {
       const pois = this.controller.poiManager.getFreePois('sit_idle', this.agentIndex);
       if (pois.length > 0) {
         const poi = pois[Math.floor(Math.random() * pois.length)];
@@ -168,7 +172,7 @@ export class NpcAgentDriver implements IAgentDriver {
 
     // B. Chance to wander to common areas (both standing and those getting up).
     // Areas are shared: walkToPoi gives each agent its own standing spot facing the centre.
-    if (rand < 0.7) {
+    if (rand < 0.7 && !staysInRoom) {
       const areaPois = this.controller.poiManager.getPoisByPrefix(AREA_POI_PREFIX);
       if (areaPois.length > 0) {
         const areaPoi = areaPois[Math.floor(Math.random() * areaPois.length)];

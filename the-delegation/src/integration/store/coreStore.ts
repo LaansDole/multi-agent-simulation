@@ -1,12 +1,10 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { LLMMessage, LLMTokenUsage, LLMToolCall, LLMToolDefinition } from '../../core/llm/types';
-import { DEFAULT_MODELS } from '../../core/llm/constants';
 import { calculateCost } from '../../core/llm/pricing';
 import { useTeamStore } from './teamStore';
 import { useUiStore } from './uiStore';
-import { BackendConnectionStatus, ModelInfo } from '../api/types';
-import { BACKEND_URL } from '../api/BackendClient';
+import { BackendConnectionStatus } from '../api/types';
 
 export type TaskStatus = 'scheduled' | 'on_hold' | 'in_progress' | 'done'
 
@@ -78,10 +76,6 @@ interface CoreState {
   referenceImages: string[]
   phase: ProjectPhase
   finalOutput: string | null
-  /** OpenAI-compatible text models offered in the model pickers: the backend's list, else its default. */
-  openaiModels: string[]
-  /** Backend default text model (GET /api/models `default`), else DEFAULT_MODELS.text. */
-  defaultTextModel: string
   totalTokenUsage: LLMTokenUsage
   agentTokenUsage: Record<number, LLMTokenUsage>
   totalEstimatedCost: number
@@ -118,7 +112,6 @@ interface CoreState {
   // ── Actions — Backend Integration ────────────────────────────
   setBackendStatus: (status: BackendConnectionStatus) => void;
   setWsSessionId: (sessionId: string | null) => void;
-  fetchModelsFromBackend: () => Promise<void>;
 
   // ── Actions — Project —————————————————————————————————────────
   setUserBrief: (brief: string) => void;
@@ -177,8 +170,6 @@ export const useCoreStore = create<CoreState>()(
       referenceImages: [],
       phase: 'idle',
       finalOutput: null,
-      openaiModels: [DEFAULT_MODELS.text],
-      defaultTextModel: DEFAULT_MODELS.text,
       totalTokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       agentTokenUsage: {},
       totalEstimatedCost: 0,
@@ -230,21 +221,6 @@ export const useCoreStore = create<CoreState>()(
 
       setBackendStatus: (status) => set({ backendStatus: status }),
       setWsSessionId: (sessionId) => set({ wsSessionId: sessionId }),
-
-      fetchModelsFromBackend: async () => {
-        try {
-          const response = await fetch(`${BACKEND_URL}/api/models`, {
-            signal: AbortSignal.timeout(5000)
-          });
-          if (!response.ok) return;
-          const data: { models?: ModelInfo[]; default?: { model?: string | null } } = await response.json();
-          const defaultTextModel = data.default?.model || DEFAULT_MODELS.text;
-          const ids = (data.models ?? []).filter((m) => m.provider === 'openai').map((m) => m.id);
-          set({ defaultTextModel, openaiModels: ids.length > 0 ? ids : [defaultTextModel] });
-        } catch {
-          // Keep the DEFAULT_MODELS.text fallback
-        }
-      },
       setUserBrief: (brief) => set({ userBrief: brief }),
       addReferenceImage: (base64) => set((s) => ({ 
         referenceImages: [...s.referenceImages, base64].slice(0, 3) 

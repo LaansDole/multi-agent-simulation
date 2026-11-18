@@ -35,6 +35,7 @@ export const useUiStore = create<CharacterState>()(
       return { speech };
     }),
     liveRoles: {},
+    clinic: null,
 
     isBYOKOpen: false,
     byokError: null,
@@ -46,6 +47,9 @@ export const useUiStore = create<CharacterState>()(
 
     isWorkflowBrowserOpen: false,
     setWorkflowBrowserOpen: (open: boolean) => set({ isWorkflowBrowserOpen: open }),
+
+    isGenerateTeamOpen: false,
+    setGenerateTeamOpen: (open: boolean) => set({ isGenerateTeamOpen: open }),
 
     chatDraft: null,
     setChatDraft: (text: string | null) => set({ chatDraft: text }),

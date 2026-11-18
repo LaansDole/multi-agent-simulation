@@ -11,7 +11,7 @@ const TYPE_COLORS: Record<string, string> = {
   agent: '#4285F4', human: '#FBBC05', literal: '#a1a1aa',
   loop_counter: '#64748B', loop_timer: '#64748B',
   template: '#14b8a6', python: '#14b8a6', passthrough: '#d4d4d8',
-  subgraph: '#8b5cf6', rlm_memory: '#f59e0b',
+  subgraph: '#8b5cf6',
 };
 
 const LAYER_X = 260;

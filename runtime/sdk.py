@@ -67,9 +67,7 @@ def _resolve_yaml_path(yaml_file: Union[str, Path]) -> Path:
         return candidate
     if candidate.exists():
         return candidate
-    repo_root = Path(__file__).resolve().parents[1]
-    yaml_root = YAML_DIR if YAML_DIR.is_absolute() else (repo_root / YAML_DIR)
-    return (yaml_root / candidate).expanduser()
+    return (YAML_DIR / candidate).expanduser()
 
 
 def run_workflow(

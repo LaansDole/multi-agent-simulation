@@ -70,6 +70,6 @@ def test_endpoint_returns_empty_list_without_the_key(client: TestClient, tmp_yam
     assert response.status_code == 200 and response.json() == []
 
 
-@pytest.mark.parametrize(("filename", "status"), [("missing.yaml", 404), ("foo..bar.yaml", 403)])
+@pytest.mark.parametrize(("filename", "status"), [("missing.yaml", 404), ("foo..bar.yaml", 400)])
 def test_endpoint_rejects_unknown_or_unsafe_files(client: TestClient, tmp_yaml_dir: Path, filename: str, status: int) -> None:
     assert client.get(f"/api/workflows/{filename}/scenarios").status_code == status

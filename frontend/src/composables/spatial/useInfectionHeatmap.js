@@ -27,7 +27,6 @@ const RESIDUAL_DECAY_MS = 3000
 /**
  * @param {object} options
  * @param {object} options.ctx - Shared canvas context (must have ctx.heatmapGraphics, ctx.agentSprites)
- * @param {import('vue').Ref<Map>} options.agentPositions - Agent positions ref (used as fallback)
  * @param {Function} options.getAgentCondition - Get agent condition string
  * @param {Function} options.getParams - Get contagion engine parameters (infectionRadius)
  * @param {import('vue').Ref<boolean>} options.sandboxMode - Whether sandbox mode is active
@@ -36,7 +35,6 @@ const RESIDUAL_DECAY_MS = 3000
  */
 export function useInfectionHeatmap({
     ctx,
-    agentPositions,
     getAgentCondition,
     getParams,
     sandboxMode,

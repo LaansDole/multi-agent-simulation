@@ -14,6 +14,7 @@ import type { AgentNodeSlot, NormalizedGraph } from './types';
 import type { AgenticSystem, AgentNode } from '../../data/agents';
 import { MAX_AGENTS } from '../../data/agents';
 import { DEFAULT_MODELS } from '../../core/llm/constants';
+import { stationRole } from '../../simulation/world/clinicLayout';
 
 /** One distinct colour per character slot (index = slot - 1); length must be MAX_AGENTS. */
 export const SLOT_COLORS = [
@@ -45,6 +46,7 @@ export function importWorkflow(graph: NormalizedGraph): ImportResult {
       name: slot.label,
       description: summary?.role || fullNode?.description || 'Imported agent node',
       role: slot.role_label,
+      station: fullNode && stationRole(fullNode.type, slot.sub_agent),
       color: SLOT_COLORS[index - 1] ?? SLOT_COLORS[0],
       model: summary?.model || DEFAULT_MODELS.text,
       provider: summary?.provider,

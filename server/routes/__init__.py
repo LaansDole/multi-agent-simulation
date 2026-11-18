@@ -6,7 +6,6 @@ from . import (
     execute,
     execute_sync,
     health,
-    models,
     sessions,
     spatial_configs,
     uploads,
@@ -19,7 +18,6 @@ from . import (
 
 ALL_ROUTERS = [
     health.router,
-    models.router,
     vuegraphs.router,
     workflows.router,
     uploads.router,

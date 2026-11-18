@@ -1,9 +1,8 @@
 import { Cpu, Save, Target, Trash2, User, X, Check, Pipette, Zap, CircleUser } from 'lucide-react';
-import React, { useState, useMemo, useEffect, useId } from 'react';
-import { AVAILABLE_MODELS, GEMINI_TEXT_MODEL, inferProvider } from '../../core/llm/constants';
+import React, { useState, useMemo, useEffect } from 'react';
+import { AVAILABLE_MODELS, DEFAULT_MODELS, GEMINI_TEXT_MODEL, inferProvider } from '../../core/llm/constants';
 import { AgentNode, AgenticSystem, getAllCharacters } from '../../data/agents';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../../theme/brand';
-import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { Avatar } from '../components/Avatar';
 import { ColorPicker } from './ColorPicker';
@@ -28,9 +27,6 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
   mode = 'edit'
 }) => {
   const isView = mode === 'view';
-  const openaiModels = useCoreStore((s) => s.openaiModels);
-  const defaultTextModel = useCoreStore((s) => s.defaultTextModel);
-  const modelListId = useId();
   const { saveCustomSystem } = useTeamStore();
 
   const [editData, setEditData] = useState<AgentNode>(agent);
@@ -193,7 +189,7 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
                   value={provider}
                   onChange={(e) => {
                     const next = e.target.value;
-                    const model = inferProvider(editData.model) === next ? editData.model : (next === 'gemini' ? GEMINI_TEXT_MODEL : defaultTextModel);
+                    const model = inferProvider(editData.model) === next ? editData.model : (next === 'gemini' ? GEMINI_TEXT_MODEL : DEFAULT_MODELS.text);
                     updateDraft({ provider: next, model });
                   }}
                   className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-black/5 cursor-pointer lowercase"
@@ -205,7 +201,7 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
 
               {renderField('LLM Model', <Cpu size={12} />, isView ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-mono text-zinc-600 w-fit lowercase">
-                  {editData.model || defaultTextModel}
+                  {editData.model || DEFAULT_MODELS.text}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -214,14 +210,10 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
                       <input
                         type="text"
                         value={editData.model === 'custom-local' ? '' : editData.model}
-                        list={modelListId}
                         onChange={(e) => updateDraft({ model: e.target.value || 'custom-local' })}
                         placeholder="Model name (e.g. llama3:8b)"
                         className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-black/5 text-darkDelegation"
                       />
-                      <datalist id={modelListId}>
-                        {openaiModels.map(m => <option key={m} value={m} />)}
-                      </datalist>
                       <input
                         type="text"
                         value={editData.baseUrl || ''}
