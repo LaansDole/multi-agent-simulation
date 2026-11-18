@@ -1,71 +1,16 @@
-import { Background, Edge, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
 import { X } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { AgenticSystem, getAllAgents, getAllCharacters } from '../data/agents';
-import { DirectionalEdge } from './VisualConfigurator/edges/DirectionalEdge';
-import { VisualFlowNode } from './VisualConfigurator/nodes/VisualFlowNode';
 import { useEscapeToClose } from './components/useEscapeToClose';
-import { systemToFlow, VisualAgentNode } from './VisualConfigurator/flowUtils';
-import { useFlowFocus } from './VisualConfigurator/hooks/useFlowFocus';
 import { TeamBadge } from './components/TeamBadge';
 import { TeamOutputBadge } from './components/TeamOutputBadge';
-
-const nodeTypes = {
-  agent: VisualFlowNode,
-  user: VisualFlowNode,
-};
-
-const edgeTypes = {
-  default: DirectionalEdge,
-  hierarchy: DirectionalEdge,
-  smoothstep: DirectionalEdge,
-};
+import { TeamFlowViewport } from './components/TeamFlowViewport';
 
 interface TeamFlowModalProps {
   isOpen: boolean;
   onClose: () => void;
   system: AgenticSystem;
 }
-
-const FlowViewport: React.FC<{ system: AgenticSystem }> = ({ system }) => {
-  const { fitView } = useReactFlow();
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => systemToFlow(system), [system]);
-
-  const [nodes] = useState<VisualAgentNode[]>(initialNodes);
-  const [edges] = useState<Edge[]>(initialEdges);
-
-  // Focus lead agent by default
-  const { nodesWithFocus, edgesWithFocus } = useFlowFocus(nodes, edges, null, system.leadAgent.id);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fitView({ padding: 0.2, duration: 800 });
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [fitView]);
-
-  return (
-    <ReactFlow
-      nodes={nodesWithFocus}
-      edges={edgesWithFocus}
-      nodeTypes={nodeTypes as any}
-      edgeTypes={edgeTypes as any}
-      nodeOrigin={[0.5, 0]}
-      fitView
-      proOptions={{ hideAttribution: true }}
-      nodesConnectable={false}
-      nodesDraggable={false}
-      elementsSelectable={false}
-      zoomOnScroll={true}
-      maxZoom={1.5}
-      minZoom={0.2}
-      className="bg-zinc-50/50"
-    >
-      <Background gap={24} color="#bbbbbb" size={2} />
-    </ReactFlow>
-  );
-};
 
 const TeamFlowModal: React.FC<TeamFlowModalProps> = ({ isOpen, onClose, system }) => {
   useEscapeToClose(onClose, isOpen);
@@ -100,9 +45,7 @@ const TeamFlowModal: React.FC<TeamFlowModalProps> = ({ isOpen, onClose, system }
 
         {/* Flow Area */}
         <div className="flex-1 relative">
-          <ReactFlowProvider>
-            <FlowViewport system={system} />
-          </ReactFlowProvider>
+          <TeamFlowViewport system={system} />
         </div>
 
         {/* Footer/Legend */}

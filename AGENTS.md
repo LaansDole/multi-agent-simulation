@@ -56,7 +56,7 @@ echo "Your task" | uv run python run.py --path yaml_instance/demo_loop_counter.y
 ```bash
 uv run python -c "import sys; from pathlib import Path; from check.check import load_config; load_config(Path(sys.argv[1]))" yaml_instance/your_workflow.yaml
 ```
-Prints `Workflow OK.` or raises `DesignError` (exit 1). The same check as a CLI: `uv run python -m check.check --path <yaml>` (exit 1 on an invalid or missing file). `make validate-yamls` (`tools/validate_all_yamls.py`) runs it over every YAML and currently reports 9 pre-existing failures: GameDev_with_manager, deep_research_executor_sub, general_problem_solving_team, demo_mem0_memory, film-studio, music-studio, photo-studio, subgraphs/react_agent, subgraphs/reflexion_loop (the two subgraphs are not standalone workflows). Schema-only CLI: `uv run python -m check.check_yaml <path>`.
+Prints `Workflow OK.` or raises `DesignError` (exit 1). The same check as a CLI: `uv run python -m check.check --path <yaml>` (exit 1 on an invalid or missing file). `make validate-yamls` (`tools/validate_all_yamls.py`) runs it over every YAML except its `KNOWN_BROKEN` skip list (GameDev_with_manager, film-studio, music-studio, photo-studio, and the two non-standalone subgraphs/react_agent, subgraphs/reflexion_loop); it needs `${VAR}` placeholders resolvable from `.env` or the environment, which CI (`.github/workflows/validate-yamls.yml`) supplies as dummy values. Schema-only CLI: `uv run python -m check.check_yaml <path>`.
 
 **Run Tests:**
 ```bash
@@ -65,7 +65,6 @@ uv run pytest tests/test_file.py     # Run specific test file
 uv run pytest tests/test_file.py::test_function  # Run single test
 uv run pytest -v                     # Verbose output
 uv run pytest -k "pattern"           # Run tests matching pattern
-uv run pytest -m "not cline"         # Skip tests that call the real Cline API
 ```
 
 ### Frontend (Vue 3)
@@ -375,7 +374,6 @@ Known defects in the three YAMLs (reproduced with a fake provider, no model call
 - Config in `pyproject.toml` `[tool.pytest.ini_options]`: `testpaths = ["tests"]`, `pythonpath = ["."]`, `addopts = "-v --tb=short"`. Tests are flat `tests/test_*.py` files.
 - Shared fixtures in `tests/conftest.py`: `tmp_yaml_dir`, `tmp_warehouse_dir`, `tmp_spatial_dir`, `tmp_vuegraph_db`, `client` (FastAPI `TestClient`). They redirect storage via `monkeypatch`. `runtime.sdk` writes to `OUTPUT_ROOT = Path("WareHouse")` relative to the CWD, so SDK-driven tests should `monkeypatch.chdir(tmp_path)` or patch `runtime.sdk.OUTPUT_ROOT`.
 - No network: patch `ProviderRegistry.get_provider` to return a `Mock` whose `call_model` returns `ModelResponse(message=...)` (`tests/test_attachment_boundary_security.py`). The mem0 client is patched with `MagicMock` (`tests/test_mem0_memory.py`). Pass dummy `BASE_URL`/`API_KEY` through `variables=` so `.env` is not needed.
-- The only real-API test is marked `@pytest.mark.cline` and skips without `CLINE_API_KEY` (`tests/test_cline_dry_run.py`). Deselect it with `-m "not cline"`.
 
 ## Resources
 

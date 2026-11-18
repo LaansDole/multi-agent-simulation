@@ -6,16 +6,21 @@ import { getAgentSet, MAX_AGENTS } from '../../data/agents';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { DRACO_LIB_PATH } from '../constants';
 import { NavMeshManager } from '../pathfinding/NavMeshManager';
+import { ClinicRooms } from './ClinicRooms';
 import { PoiManager, spawnPoiId } from './PoiManager';
 
 export class WorldManager {
   private office: THREE.Group | null = null;
+  /** DynaClinic rooms on top of the office; empty for teams without station roles. */
+  public readonly clinic: ClinicRooms;
 
   constructor(
     private scene: THREE.Scene,
     private navMesh: NavMeshManager,
     private poiManager: PoiManager
-  ) {}
+  ) {
+    this.clinic = new ClinicRooms(scene, poiManager);
+  }
 
   public async load(): Promise<void> {
     const loader = new GLTFLoader();

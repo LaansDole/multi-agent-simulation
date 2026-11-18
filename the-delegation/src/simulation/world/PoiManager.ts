@@ -6,6 +6,8 @@ import { CharacterStateKey, PoiDef } from '../../types';
 export const SPAWN_POI_PREFIX = 'idle-spawn-';
 export const AREA_POI_PREFIX = 'idle-area-';
 export const BOARDROOM_POI_ID = `${AREA_POI_PREFIX}boardroom`;
+/** The canteen is the DynaClinic staff area: where fatigued staff take their break. */
+export const STAFF_AREA_POI_ID = `${AREA_POI_PREFIX}canteen`;
 export const spawnPoiId = (agentIndex: number): string => `${SPAWN_POI_PREFIX}${agentIndex}`;
 
 /**
@@ -57,6 +59,12 @@ export class PoiManager {
 
   public getPoi(id: string): PoiDef | undefined {
     return this.pois.get(id);
+  }
+
+  /** The station gated to a DynaClinic role (PoiDef.role), if the clinic rooms are up. */
+  public getStation(role: string): PoiDef | undefined {
+    for (const poi of this.pois.values()) if (poi.role === role) return poi;
+    return undefined;
   }
 
   /** getPoi for ids the office is expected to have: warns once per missing id instead of failing silently. */

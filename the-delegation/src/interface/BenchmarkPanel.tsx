@@ -116,7 +116,7 @@ const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({ isOpen, onClose }) => {
   };
 
   const inject = (type: 'node_started' | 'node_completed', data: Record<string, unknown>) =>
-    scene?.getSimulation()?.getClient().inject({ type, data: { agent_index: -1, ...data } });
+    scene?.getSimulation()?.getClient().inject({ type, data });
 
   const fire = (event: ReplayEvent) => {
     if (event.kind === 'start') inject('node_started', { node_id: event.nodeId, node_name: event.nodeId });

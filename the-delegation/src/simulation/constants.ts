@@ -54,6 +54,8 @@ export const HANDOFF_TALK_SECONDS = 2.5;
 export const HANDOFF_WALK_TIMEOUT_SECONDS = 8;
 /** A conversation meeting breaks up after this many seconds with no member working. */
 export const MEETING_IDLE_SECONDS = 10;
+/** Seconds fatigued DynaClinic staff stay in the staff area before returning to their rooms. */
+export const STAFF_BREAK_SECONDS = 12;
 
 /** Color de fondo de la escena (Three.js) */
 export const SCENE_BACKGROUND_COLOR = 0xFaFcFb;

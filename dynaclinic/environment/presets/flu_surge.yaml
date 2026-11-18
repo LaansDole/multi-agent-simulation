@@ -1,0 +1,3 @@
+# A flu surge is under way on day 1.
+events:
+  start_with: flu_surge

@@ -12,10 +12,17 @@ Spatial configurations are JSON files with the following structure:
 {
   "canvas": { ... },
   "grid": { ... },
+  "metadata": { ... },
+  "floors": [ ... ],
   "obstacles": [ ... ],
-  "spawnZones": [ ... ]
+  "spawnZones": [ ... ],
+  "simulation": { ... }
 }
 ```
+
+- `metadata` (`name`, `description`, `tags`, `recommendedAgentCount`, `thumbnail`) feeds the layout picker via `GET /api/spatial-configs`; tags pick its category (Office, Industrial, Outdoor, Hospital, Specialized, Other).
+- `floors` lists floor tiles (`id`, `tileType`, `position`, `width`, `height`, `sprite` from `/sprites/tiles/`, `color`).
+- `simulation` (optional, e.g. `simulation_hospital.json`, `school_classroom.json`) holds contagion parameters such as `infectionRadius` and `recoveryTimeMs`.
 
 ### Canvas Configuration
 
@@ -86,7 +93,7 @@ Array of obstacles in the environment. Each obstacle has:
 Obstacles can optionally use PNG sprites instead of solid colors:
 
 - Sprites are loaded from `/sprites/obstacles/` directory
-- Available sprites: `hospital_bed.png`, `desk.png`, `chair.png`, `computer.png`, `wall.png`
+- Available sprites: the PNG files in `frontend/public/sprites/obstacles/` (e.g. `hospital_bed.png`, `desk.png`, `chair.png`, `computer.png`, `wall.png`)
 - If sprite loading fails, falls back to solid color rendering
 - Sprites are automatically scaled to fit obstacle dimensions
 
@@ -107,49 +114,33 @@ Array of spawn zones where agents can appear in the simulation.
 }
 ```
 
-## Sample Configurations
+## Bundled Configurations
 
-### demo_hospital.json
+| File | Name | Description |
+|------|------|-------------|
+| `default.json` | Open Office | Modern open-plan office with desk rows, meeting areas, and amenities |
+| `demo_hospital.json` | Hospital Simulation | Multi-ward hospital layout with patient rooms, corridors, and nurse stations |
+| `factory_floor.json` | Factory Floor | Industrial factory with conveyor lines, machinery stations, and loading area |
+| `meeting_rooms.json` | Meeting Rooms | Four meeting rooms around a central hallway with full amenities |
+| `office_cubicles.json` | Cubicle Office | Traditional office with cubicle partitions in organized rows |
+| `office_openplan.json` | Open Plan Office | Modern open-plan office with desk pods and shared amenities |
+| `park_large.json` | Large Park | Open outdoor park with trees, benches, and walking paths |
+| `park_small.json` | Small Park | Compact neighborhood park with central seating area |
+| `parking_lot.json` | Parking Lot | Open parking lot with marked spots and parked vehicles |
+| `restaurant.json` | Restaurant | Restaurant with dining area and kitchen separated by a wall |
+| `retail_store.json` | Retail Store | Retail store with shelf aisles and checkout counters |
+| `school_classroom.json` | School Classroom | Standard classroom with student desks in rows and teacher area |
+| `simulation_hospital.json` | Hospital Simulation | Multi-ward hospital layout with patient rooms, corridors, and nurse stations |
+| `street_intersection.json` | Street Intersection | Urban intersection with four building blocks and crosswalks |
+| `warehouse_large.json` | Large Warehouse | Industrial warehouse with shelf aisles, forklifts, and loading area |
+| `warehouse_small.json` | Small Warehouse | Compact warehouse with organized shelving and staging area |
 
-Hospital layout with:
-- Patient beds along the left wall
-- Triage desk and waiting area (top center)
-- Administrative desk (top right)
-- Medical equipment stations
-- Status board (center)
-- Two spawn zones: Patient Entry and Staff Area
+Thumbnails for the picker live in `thumbnails/<name>.png`.
 
-Matches workflow: `yaml_instance/demo_hospital.yaml`
-- Agents: PatientDataGenerator, AdmissionReport, TriageReport, StatusReport, DischargeDataGenerator, HospitalMetrics, DailySummary
+Two files match a workflow by name and load automatically:
 
-### ChatDev_v1.json
-
-Software development office layout with:
-- CEO desk (top left)
-- CPO desk (mid left)
-- Programmer workstations (top right, multiple desks)
-- Code Reviewer desk (mid right)
-- Tester desk (mid right)
-- Meeting area with table (bottom center)
-- Whiteboard (bottom right)
-- Two spawn zones: Development Team and Management
-
-Matches workflow: `yaml_instance/ChatDev_v1.yaml`
-- Agents: CEO, CPO, Programmers, Code Reviewer, Software Test Engineer
-
-### demo_dynamic.json
-
-Travel agency layout with:
-- Reception desk (top center)
-- Multiple travel planner workstations (left side, 6 desks)
-- Aggregator desk (center right)
-- Meeting table (right side)
-- Display board (bottom right)
-- Two spawn zones: Travel Planners and Aggregation Hub
-
-Matches workflow: `yaml_instance/demo_dynamic.yaml`
-- Agents: Travel planners for food, fun, accommodation, transportation, and academic experiences
-- Dynamic map/tree execution for parallel planning
+- `demo_hospital.json` for `yaml_instance/demo_hospital.yaml` (agents: PatientDataGenerator, AdmissionReport, TriageDataGenerator, TriageReport, DailySummary, FinalReport)
+- `simulation_hospital.json` for `yaml_instance/simulation_hospital.yaml`
 
 ## Creating Custom Configurations
 
@@ -173,10 +164,9 @@ Matches workflow: `yaml_instance/demo_dynamic.yaml`
 Configuration files should be named to match their corresponding workflow:
 
 - Workflow: `yaml_instance/demo_hospital.yaml` → Config: `spatial_configs/demo_hospital.json`
-- Workflow: `yaml_instance/ChatDev_v1.yaml` → Config: `spatial_configs/ChatDev_v1.json`
-- Workflow: `yaml_instance/demo_dynamic.yaml` → Config: `spatial_configs/demo_dynamic.json`
+- Workflow: `yaml_instance/simulation_hospital.yaml` → Config: `spatial_configs/simulation_hospital.json`
 
-This allows the system to automatically load the appropriate spatial configuration when a workflow is selected.
+When a workflow is selected the frontend uses its in-memory cache, then a layout saved in localStorage, then `spatial_configs/<workflow>.json`, and falls back to an empty layout. Saving from the editor writes `spatial_configs/<name>.json` through `PUT /api/spatial-configs/{name}` (names: letters, digits, `_`, `-`).
 
 ## Technical Details
 

@@ -28,9 +28,9 @@ const mapAgents = (agent: AgentNode, fn: (a: AgentNode) => AgentNode): AgentNode
 
 /**
  * v0 -> v1: teams saved before the text default moved to OpenAI (0d3ed91) carry the old implicit
- * Gemini default. Text teams switch it to DEFAULT_MODELS.text / openai (hydration is synchronous,
- * so the backend default is not known yet; imported teams get the backend's model from
- * syncImportedTeams right after). Image/music/video teams and user-edited agents are kept.
+ * Gemini default. Text teams switch it to DEFAULT_MODELS.text / openai (imported teams get their
+ * workflow's model from syncImportedTeams right after). Image/music/video teams and user-edited
+ * agents are kept.
  */
 const migrateGeminiDefault = (system: AgenticSystem): AgenticSystem => {
   if (system.outputType !== 'text') return system;
@@ -45,15 +45,15 @@ const migrateGeminiDefault = (system: AgenticSystem): AgenticSystem => {
   };
 };
 
-/** Refreshes a saved imported team from a fresh import; slots, colours, positions and user-edited agents are kept (the YAML-derived role always follows). */
+/** Refreshes a saved imported team from a fresh import; slots, colours, positions and user-edited agents are kept (the YAML-derived role and station always follow). */
 const resyncSystem = (saved: AgenticSystem, fresh: AgenticSystem): AgenticSystem => {
   const freshById = new Map(getAllAgents(fresh).map((a) => [a.id, a]));
   const leadAgent = mapAgents(saved.leadAgent, (a) => {
     const src = freshById.get(a.id);
     if (!src) return a;
     return a.userEdited
-      ? { ...a, role: src.role }
-      : { ...a, name: src.name, description: src.description, role: src.role, model: src.model, provider: src.provider };
+      ? { ...a, role: src.role, station: src.station }
+      : { ...a, name: src.name, description: src.description, role: src.role, station: src.station, model: src.model, provider: src.provider };
   });
   // The importer derives outputModel from the lead; keep it following unless the user picked another one.
   const outputModel = saved.outputModel === saved.leadAgent.model ? leadAgent.model : saved.outputModel;

@@ -18,7 +18,6 @@ function easeInOutQuad(t) {
 /**
  * @param {object} options
  * @param {object} options.ctx - Shared canvas context
- * @param {import('vue').Ref} options.canvasRef - Canvas element ref
  * @param {import('vue').Ref} options.agentPositions - Agent positions ref
  * @param {import('vue').Ref} options.trailParticles - Trail particles ref
  * @param {import('vue').Ref} options.activeConnections - Active connections ref
@@ -37,7 +36,6 @@ function easeInOutQuad(t) {
  */
 export function useAnimationLoop({
     ctx,
-    canvasRef,
     agentPositions,
     trailParticles,
     activeConnections,

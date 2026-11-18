@@ -1,5 +1,4 @@
-// Text defaults to provider `openai` (OpenAI or any OpenAI-compatible base URL); the backend's
-// GET /api/models `default` overrides it at runtime (coreStore.defaultTextModel). Image, music
+// Text defaults to provider `openai` (OpenAI or any OpenAI-compatible base URL). Image, music
 // and video are Gemini-only features (Imagen, Lyria, Veo).
 export const DEFAULT_MODELS = {
   text: 'gpt-5-mini',
